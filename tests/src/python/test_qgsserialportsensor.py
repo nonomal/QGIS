@@ -15,7 +15,7 @@ import posix
 from qgis.PyQt.QtCore import QCoreApplication, QEvent, QLocale, QTemporaryDir, QIODevice, QBuffer, QByteArray
 from qgis.PyQt.QtTest import QSignalSpy
 from qgis.PyQt.QtXml import QDomDocument
-from PyQt5.QtSerialPort import *
+from qgis.PyQt.QtSerialPort import QSerialPort
 from qgis.core import (
     Qgis,
     QgsApplication,
