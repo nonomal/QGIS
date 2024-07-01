@@ -145,6 +145,11 @@ void QgsModelGraphicsScene::createItems( QgsProcessingModelAlgorithm *model, Qgs
     connect( item, &QgsModelComponentGraphicItem::requestModelRepaint, this, &QgsModelGraphicsScene::rebuildRequired );
     connect( item, &QgsModelComponentGraphicItem::changed, this, &QgsModelGraphicsScene::componentChanged );
     connect( item, &QgsModelComponentGraphicItem::aboutToChange, this, &QgsModelGraphicsScene::componentAboutToChange );
+    connect( item, &QgsModelChildAlgorithmGraphicItem::runFromHere, this, [this, childId]
+    {
+      emit runFromChild( childId );
+    } );
+    connect( item, &QgsModelChildAlgorithmGraphicItem::runSelected, this, &QgsModelGraphicsScene::runSelected );
     connect( item, &QgsModelChildAlgorithmGraphicItem::showPreviousResults, this, [this, childId]
     {
       emit showChildAlgorithmOutputs( childId );
@@ -380,13 +385,13 @@ void QgsModelGraphicsScene::setLastRunResult( const QgsProcessingModelResult &re
 QList<QgsModelGraphicsScene::LinkSource> QgsModelGraphicsScene::linkSourcesForParameterValue( QgsProcessingModelAlgorithm *model, const QVariant &value, const QString &childId, QgsProcessingContext &context ) const
 {
   QList<QgsModelGraphicsScene::LinkSource> res;
-  if ( value.type() == QVariant::List )
+  if ( value.userType() == QMetaType::Type::QVariantList )
   {
     const QVariantList list = value.toList();
     for ( const QVariant &v : list )
       res.append( linkSourcesForParameterValue( model, v, childId, context ) );
   }
-  else if ( value.type() == QVariant::StringList )
+  else if ( value.userType() == QMetaType::Type::QStringList )
   {
     const QStringList list = value.toStringList();
     for ( const QString &v : list )

@@ -624,11 +624,26 @@ bool QgsMapLayer::readLayerXml( const QDomElement &layerElement, QgsReadWriteCon
   // now let the children grab what they need from the Dom node.
   layerError = !readXml( layerElement, context );
 
+  const QgsCoordinateReferenceSystem oldVerticalCrs = verticalCrs();
+  const QgsCoordinateReferenceSystem oldCrs3D = mCrs3D;
+
   // overwrite CRS with what we read from project file before the raster/vector
   // file reading functions changed it. They will if projections is specified in the file.
   // FIXME: is this necessary? Yes, it is (autumn 2019)
   QgsCoordinateReferenceSystem::setCustomCrsValidation( savedValidation );
   mCRS = savedCRS;
+
+  //vertical CRS
+  {
+    QgsCoordinateReferenceSystem verticalCrs;
+    const QDomNode verticalCrsNode = layerElement.firstChildElement( QStringLiteral( "verticalCrs" ) );
+    if ( !verticalCrsNode.isNull() )
+    {
+      verticalCrs.readXml( verticalCrsNode );
+    }
+    mVerticalCrs = verticalCrs;
+  }
+  rebuildCrs3D();
 
   //legendUrl
   const QDomElement legendUrlElem = layerElement.firstChildElement( QStringLiteral( "legendUrl" ) );
@@ -680,6 +695,11 @@ bool QgsMapLayer::readLayerXml( const QDomElement &layerElement, QgsReadWriteCon
   }
 
   mLegendPlaceholderImage = layerElement.attribute( QStringLiteral( "legendPlaceholderImage" ) );
+
+  if ( verticalCrs() != oldVerticalCrs )
+    emit verticalCrsChanged();
+  if ( mCrs3D != oldCrs3D )
+    emit crs3DChanged();
 
   return ! layerError;
 } // bool QgsMapLayer::readLayerXML
@@ -741,6 +761,13 @@ bool QgsMapLayer::writeLayerXml( QDomElement &layerElement, QDomDocument &docume
 
   layerElement.appendChild( layerId );
 
+  if ( mVerticalCrs.isValid() )
+  {
+    QDomElement verticalSrsNode = document.createElement( QStringLiteral( "verticalCrs" ) );
+    mVerticalCrs.writeXml( verticalSrsNode, document );
+    layerElement.appendChild( verticalSrsNode );
+  }
+
   // data source
   QDomElement dataSource = document.createElement( QStringLiteral( "datasource" ) );
   const QgsDataProvider *provider = dataProvider();
@@ -775,6 +802,12 @@ bool QgsMapLayer::writeLayerXml( QDomElement &layerElement, QDomDocument &docume
     QDomElement layerTitle = document.createElement( QStringLiteral( "title" ) );
     const QDomText layerTitleText = document.createTextNode( mServerProperties->title() );
     layerTitle.appendChild( layerTitleText );
+
+    if ( mServerProperties->title() != mServerProperties->wfsTitle() )
+    {
+      layerTitle.setAttribute( "wfs",  mServerProperties->wfsTitle() );
+    }
+
     layerElement.appendChild( layerTitle );
   }
 
@@ -1274,9 +1307,50 @@ QgsCoordinateReferenceSystem QgsMapLayer::crs() const
   return mCRS;
 }
 
+QgsCoordinateReferenceSystem QgsMapLayer::verticalCrs() const
+{
+  QGIS_PROTECT_QOBJECT_THREAD_ACCESS
+
+  switch ( mCRS.type() )
+  {
+    case Qgis::CrsType::Vertical: // would hope this never happens!
+      QgsDebugError( QStringLiteral( "Layer has a vertical CRS set as the horizontal CRS!" ) );
+      return mCRS;
+
+    case Qgis::CrsType::Compound:
+      return mCRS.verticalCrs();
+
+    case Qgis::CrsType::Unknown:
+    case Qgis::CrsType::Geodetic:
+    case Qgis::CrsType::Geocentric:
+    case Qgis::CrsType::Geographic2d:
+    case Qgis::CrsType::Geographic3d:
+    case Qgis::CrsType::Projected:
+    case Qgis::CrsType::Temporal:
+    case Qgis::CrsType::Engineering:
+    case Qgis::CrsType::Bound:
+    case Qgis::CrsType::Other:
+    case Qgis::CrsType::DerivedProjected:
+      break;
+  }
+  return mVerticalCrs;
+}
+
+QgsCoordinateReferenceSystem QgsMapLayer::crs3D() const
+{
+  QGIS_PROTECT_QOBJECT_THREAD_ACCESS
+
+  return mCrs3D.isValid() ? mCrs3D : mCRS;
+}
+
 void QgsMapLayer::setCrs( const QgsCoordinateReferenceSystem &srs, bool emitSignal )
 {
   QGIS_PROTECT_QOBJECT_THREAD_ACCESS
+  if ( mCRS == srs )
+    return;
+
+  const QgsCoordinateReferenceSystem oldVerticalCrs = verticalCrs();
+  const QgsCoordinateReferenceSystem oldCrs3D = mCrs3D;
 
   mCRS = srs;
 
@@ -1286,8 +1360,114 @@ void QgsMapLayer::setCrs( const QgsCoordinateReferenceSystem &srs, bool emitSign
     mCRS.validate();
   }
 
+  rebuildCrs3D();
+
   if ( emitSignal )
     emit crsChanged();
+
+  // Did vertical crs also change as a result of this? If so, emit signal
+  if ( oldVerticalCrs != verticalCrs() )
+    emit verticalCrsChanged();
+  if ( oldCrs3D != mCrs3D )
+    emit crs3DChanged();
+}
+
+bool QgsMapLayer::setVerticalCrs( const QgsCoordinateReferenceSystem &crs, QString *errorMessage )
+{
+  QGIS_PROTECT_QOBJECT_THREAD_ACCESS
+  bool res = true;
+  if ( crs.isValid() )
+  {
+    // validate that passed crs is a vertical crs
+    switch ( crs.type() )
+    {
+      case Qgis::CrsType::Vertical:
+        break;
+
+      case Qgis::CrsType::Unknown:
+      case Qgis::CrsType::Compound:
+      case Qgis::CrsType::Geodetic:
+      case Qgis::CrsType::Geocentric:
+      case Qgis::CrsType::Geographic2d:
+      case Qgis::CrsType::Geographic3d:
+      case Qgis::CrsType::Projected:
+      case Qgis::CrsType::Temporal:
+      case Qgis::CrsType::Engineering:
+      case Qgis::CrsType::Bound:
+      case Qgis::CrsType::Other:
+      case Qgis::CrsType::DerivedProjected:
+        if ( errorMessage )
+          *errorMessage = QObject::tr( "Specified CRS is a %1 CRS, not a Vertical CRS" ).arg( qgsEnumValueToKey( crs.type() ) );
+        return false;
+    }
+  }
+
+  if ( crs != mVerticalCrs )
+  {
+    const QgsCoordinateReferenceSystem oldVerticalCrs = verticalCrs();
+    const QgsCoordinateReferenceSystem oldCrs3D = mCrs3D;
+
+    switch ( mCRS.type() )
+    {
+      case Qgis::CrsType::Compound:
+        if ( crs != oldVerticalCrs )
+        {
+          if ( errorMessage )
+            *errorMessage = QObject::tr( "Layer CRS is a Compound CRS, specified Vertical CRS will be ignored" );
+          return false;
+        }
+        break;
+
+      case Qgis::CrsType::Geographic3d:
+        if ( crs != oldVerticalCrs )
+        {
+          if ( errorMessage )
+            *errorMessage = QObject::tr( "Layer CRS is a Geographic 3D CRS, specified Vertical CRS will be ignored" );
+          return false;
+        }
+        break;
+
+      case Qgis::CrsType::Geocentric:
+        if ( crs != oldVerticalCrs )
+        {
+          if ( errorMessage )
+            *errorMessage = QObject::tr( "Layer CRS is a Geocentric CRS, specified Vertical CRS will be ignored" );
+          return false;
+        }
+        break;
+
+      case Qgis::CrsType::Projected:
+        if ( mCRS.hasVerticalAxis() && crs != oldVerticalCrs )
+        {
+          if ( errorMessage )
+            *errorMessage = QObject::tr( "Layer CRS is a Projected 3D CRS, specified Vertical CRS will be ignored" );
+          return false;
+        }
+        break;
+
+      case Qgis::CrsType::Unknown:
+      case Qgis::CrsType::Geodetic:
+      case Qgis::CrsType::Geographic2d:
+      case Qgis::CrsType::Temporal:
+      case Qgis::CrsType::Engineering:
+      case Qgis::CrsType::Bound:
+      case Qgis::CrsType::Other:
+      case Qgis::CrsType::Vertical:
+      case Qgis::CrsType::DerivedProjected:
+        break;
+    }
+
+    mVerticalCrs = crs;
+    res = rebuildCrs3D( errorMessage );
+
+    // only emit signal if vertical crs was actually changed, so eg if mCrs is compound
+    // then we haven't actually changed the vertical crs by this call!
+    if ( verticalCrs() != oldVerticalCrs )
+      emit verticalCrsChanged();
+    if ( mCrs3D != oldCrs3D )
+      emit crs3DChanged();
+  }
+  return res;
 }
 
 QgsCoordinateTransformContext QgsMapLayer::transformContext() const
@@ -1405,7 +1585,7 @@ QString QgsMapLayer::loadDefaultStyle( bool &resultFlag )
 {
   QGIS_PROTECT_QOBJECT_THREAD_ACCESS
 
-  return loadNamedStyle( styleURI(), resultFlag );
+  return loadNamedStyle( styleURI(), resultFlag, QgsMapLayer::AllStyleCategories, Qgis::LoadStyleFlag::IgnoreMissingStyleErrors );
 }
 
 bool QgsMapLayer::loadNamedMetadataFromDatabase( const QString &db, const QString &uri, QString &qmd )
@@ -1475,20 +1655,21 @@ bool QgsMapLayer::loadNamedPropertyFromDatabase( const QString &db, const QStrin
 }
 
 
-QString QgsMapLayer::loadNamedStyle( const QString &uri, bool &resultFlag, QgsMapLayer::StyleCategories categories )
+QString QgsMapLayer::loadNamedStyle( const QString &uri, bool &resultFlag, QgsMapLayer::StyleCategories categories, Qgis::LoadStyleFlags flags )
 {
   QGIS_PROTECT_QOBJECT_THREAD_ACCESS
 
-  return loadNamedStyle( uri, resultFlag, false, categories );
+  return loadNamedStyle( uri, resultFlag, false, categories, flags );
 }
 
-QString QgsMapLayer::loadNamedProperty( const QString &uri, QgsMapLayer::PropertyType type, bool &resultFlag, StyleCategories categories )
+QString QgsMapLayer::loadNamedProperty( const QString &uri, QgsMapLayer::PropertyType type, bool &namedPropertyExists, bool &propertySuccessfullyLoaded, StyleCategories categories, Qgis::LoadStyleFlags flags )
 {
   QGIS_PROTECT_QOBJECT_THREAD_ACCESS
 
   QgsDebugMsgLevel( QStringLiteral( "uri = %1 myURI = %2" ).arg( uri, publicSource() ), 4 );
 
-  resultFlag = false;
+  namedPropertyExists = false;
+  propertySuccessfullyLoaded = false;
   if ( uri.isEmpty() )
     return QString();
 
@@ -1502,9 +1683,11 @@ QString QgsMapLayer::loadNamedProperty( const QString &uri, QgsMapLayer::Propert
   if ( myFile.open( QFile::ReadOnly ) )
   {
     QgsDebugMsgLevel( QStringLiteral( "file found %1" ).arg( uri ), 2 );
+    namedPropertyExists = true;
+
     // read file
-    resultFlag = myDocument.setContent( &myFile, &myErrorMessage, &line, &column );
-    if ( !resultFlag )
+    propertySuccessfullyLoaded = myDocument.setContent( &myFile, &myErrorMessage, &line, &column );
+    if ( !propertySuccessfullyLoaded )
       myErrorMessage = tr( "%1 at line %2 column %3" ).arg( myErrorMessage ).arg( line ).arg( column );
     myFile.close();
   }
@@ -1522,16 +1705,19 @@ QString QgsMapLayer::loadNamedProperty( const QString &uri, QgsMapLayer::Propert
              ( project.exists() && loadNamedStyleFromDatabase( project.absoluteDir().absoluteFilePath( project.baseName() + ".qmldb" ), uri, xml ) ) ||
              loadNamedStyleFromDatabase( QDir( QgsApplication::pkgDataPath() ).absoluteFilePath( QStringLiteral( "resources/qgis.qmldb" ) ), uri, xml ) )
         {
-          resultFlag = myDocument.setContent( xml, &myErrorMessage, &line, &column );
-          if ( !resultFlag )
+          namedPropertyExists = true;
+          propertySuccessfullyLoaded = myDocument.setContent( xml, &myErrorMessage, &line, &column );
+          if ( !propertySuccessfullyLoaded )
           {
             myErrorMessage = tr( "%1 at line %2 column %3" ).arg( myErrorMessage ).arg( line ).arg( column );
           }
         }
         else
         {
-          myErrorMessage = tr( "Style not found in database" );
-          resultFlag = false;
+          if ( !flags.testFlag( Qgis::LoadStyleFlag::IgnoreMissingStyleErrors ) )
+          {
+            myErrorMessage = tr( "Style not found in database" );
+          }
         }
         break;
       }
@@ -1541,8 +1727,9 @@ QString QgsMapLayer::loadNamedProperty( const QString &uri, QgsMapLayer::Propert
              ( project.exists() && loadNamedMetadataFromDatabase( project.absoluteDir().absoluteFilePath( project.baseName() + ".qmldb" ), uri, xml ) ) ||
              loadNamedMetadataFromDatabase( QDir( QgsApplication::pkgDataPath() ).absoluteFilePath( QStringLiteral( "resources/qgis.qmldb" ) ), uri, xml ) )
         {
-          resultFlag = myDocument.setContent( xml, &myErrorMessage, &line, &column );
-          if ( !resultFlag )
+          namedPropertyExists = true;
+          propertySuccessfullyLoaded = myDocument.setContent( xml, &myErrorMessage, &line, &column );
+          if ( !propertySuccessfullyLoaded )
           {
             myErrorMessage = tr( "%1 at line %2 column %3" ).arg( myErrorMessage ).arg( line ).arg( column );
           }
@@ -1550,14 +1737,13 @@ QString QgsMapLayer::loadNamedProperty( const QString &uri, QgsMapLayer::Propert
         else
         {
           myErrorMessage = tr( "Metadata not found in database" );
-          resultFlag = false;
         }
         break;
       }
     }
   }
 
-  if ( !resultFlag )
+  if ( !propertySuccessfullyLoaded )
   {
     return myErrorMessage;
   }
@@ -1565,13 +1751,13 @@ QString QgsMapLayer::loadNamedProperty( const QString &uri, QgsMapLayer::Propert
   switch ( type )
   {
     case QgsMapLayer::Style:
-      resultFlag = importNamedStyle( myDocument, myErrorMessage, categories );
-      if ( !resultFlag )
+      propertySuccessfullyLoaded = importNamedStyle( myDocument, myErrorMessage, categories );
+      if ( !propertySuccessfullyLoaded )
         myErrorMessage = tr( "Loading style file %1 failed because:\n%2" ).arg( uri, myErrorMessage );
       break;
     case QgsMapLayer::Metadata:
-      resultFlag = importNamedMetadata( myDocument, myErrorMessage );
-      if ( !resultFlag )
+      propertySuccessfullyLoaded = importNamedMetadata( myDocument, myErrorMessage );
+      if ( !propertySuccessfullyLoaded )
         myErrorMessage = tr( "Loading metadata file %1 failed because:\n%2" ).arg( uri, myErrorMessage );
       break;
   }
@@ -1721,7 +1907,14 @@ QString QgsMapLayer::loadNamedMetadata( const QString &uri, bool &resultFlag )
 {
   QGIS_PROTECT_QOBJECT_THREAD_ACCESS
 
-  return loadNamedProperty( uri, QgsMapLayer::Metadata, resultFlag );
+  bool metadataExists = false;
+  bool metadataSuccessfullyLoaded = false;
+  const QString message = loadNamedProperty( uri, QgsMapLayer::Metadata, metadataExists, metadataSuccessfullyLoaded );
+
+  // TODO QGIS 4.0 -- fix API for loadNamedMetadata so we can return metadataExists too
+  ( void )metadataExists;
+  resultFlag = metadataSuccessfullyLoaded;
+  return message;
 }
 
 QString QgsMapLayer::saveNamedProperty( const QString &uri, QgsMapLayer::PropertyType type, bool &resultFlag, StyleCategories categories )
@@ -2512,7 +2705,7 @@ void QgsMapLayer::saveStyleToDatabase( const QString &name, const QString &descr
       description, uiFileContent, useAsDefault, msgError );
 }
 
-QString QgsMapLayer::loadNamedStyle( const QString &theURI, bool &resultFlag, bool loadFromLocalDB, QgsMapLayer::StyleCategories categories )
+QString QgsMapLayer::loadNamedStyle( const QString &theURI, bool &resultFlag, bool loadFromLocalDB, QgsMapLayer::StyleCategories categories, Qgis::LoadStyleFlags flags )
 {
   QGIS_PROTECT_QOBJECT_THREAD_ACCESS
 
@@ -2534,7 +2727,16 @@ QString QgsMapLayer::loadNamedStyle( const QString &theURI, bool &resultFlag, bo
   }
   else
   {
-    returnMessage = loadNamedProperty( theURI, PropertyType::Style, resultFlag, categories );
+    QGIS_PROTECT_QOBJECT_THREAD_ACCESS
+
+    bool styleExists = false;
+    bool styleSuccessfullyLoaded = false;
+
+    returnMessage = loadNamedProperty( theURI, PropertyType::Style, styleExists, styleSuccessfullyLoaded, categories, flags );
+
+    // TODO QGIS 4.0 -- fix API for loadNamedStyle so we can return styleExists too
+    ( void )styleExists;
+    resultFlag = styleSuccessfullyLoaded;
   }
 
   if ( ! styleName.isEmpty() )
@@ -2933,6 +3135,60 @@ void QgsMapLayer::updateExtent( const QgsBox3D &extent ) const
   }
 }
 
+bool QgsMapLayer::rebuildCrs3D( QString *error )
+{
+  bool res = true;
+  if ( !mCRS.isValid() )
+  {
+    mCrs3D = QgsCoordinateReferenceSystem();
+  }
+  else if ( !mVerticalCrs.isValid() )
+  {
+    mCrs3D = mCRS;
+  }
+  else
+  {
+    switch ( mCRS.type() )
+    {
+      case Qgis::CrsType::Compound:
+      case Qgis::CrsType::Geographic3d:
+      case Qgis::CrsType::Geocentric:
+        mCrs3D = mCRS;
+        break;
+
+      case Qgis::CrsType::Projected:
+      {
+        QString tempError;
+        mCrs3D = mCRS.hasVerticalAxis() ? mCRS : QgsCoordinateReferenceSystem::createCompoundCrs( mCRS, mVerticalCrs, error ? *error : tempError );
+        res = mCrs3D.isValid();
+        break;
+      }
+
+      case Qgis::CrsType::Vertical:
+        // nonsense situation
+        mCrs3D = QgsCoordinateReferenceSystem();
+        res = false;
+        break;
+
+      case Qgis::CrsType::Unknown:
+      case Qgis::CrsType::Geodetic:
+      case Qgis::CrsType::Geographic2d:
+      case Qgis::CrsType::Temporal:
+      case Qgis::CrsType::Engineering:
+      case Qgis::CrsType::Bound:
+      case Qgis::CrsType::Other:
+      case Qgis::CrsType::DerivedProjected:
+      {
+        QString tempError;
+        mCrs3D = QgsCoordinateReferenceSystem::createCompoundCrs( mCRS, mVerticalCrs, error ? *error : tempError );
+        res = mCrs3D.isValid();
+        break;
+      }
+    }
+  }
+  return res;
+}
+
 void QgsMapLayer::invalidateWgs84Extent()
 {
   QGIS_PROTECT_QOBJECT_THREAD_ACCESS
@@ -3025,7 +3281,24 @@ QString QgsMapLayer::generalHtmlMetadata() const
         continue;
 
       const QVariant propValue = customProperty( key );
-      metadata += QStringLiteral( "<tr><td class=\"highlight\">%1</td><td>%2</td></tr>" ).arg( key.toHtmlEscaped(), propValue.toString().toHtmlEscaped() );
+      QString stringValue;
+      if ( propValue.type() == QVariant::List || propValue.type() == QVariant::StringList )
+      {
+        for ( const QString &s : propValue.toStringList() )
+        {
+          stringValue += "<p style=\"margin: 0;\">" + s.toHtmlEscaped() + "</p>";
+        }
+      }
+      else
+      {
+        stringValue = propValue.toString().toHtmlEscaped();
+
+        //if the result string is empty but propValue is not, the conversion has failed
+        if ( stringValue.isEmpty() && !QgsVariantUtils::isNull( propValue ) )
+          stringValue = tr( "<i>value cannot be displayed</i>" );
+      }
+
+      metadata += QStringLiteral( "<tr><td class=\"highlight\">%1</td><td>%2</td></tr>" ).arg( key.toHtmlEscaped(), stringValue );
     }
     metadata += QLatin1String( "</tbody></table>\n" );
     metadata += QLatin1String( "<br><br>\n" );
@@ -3119,7 +3392,7 @@ QString QgsMapLayer::crsHtmlMetadata() const
     // coordinate epoch
     if ( !std::isnan( c.coordinateEpoch() ) )
     {
-      metadata += QStringLiteral( "<tr><td class=\"highlight\">" ) + tr( "Coordinate Epoch" ) + QStringLiteral( "</td><td>%1</td></tr>\n" ).arg( c.coordinateEpoch() );
+      metadata += QStringLiteral( "<tr><td class=\"highlight\">" ) + tr( "Coordinate Epoch" ) + QStringLiteral( "</td><td>%1</td></tr>\n" ).arg( qgsDoubleToString( c.coordinateEpoch(), 3 ) );
     }
   }
 

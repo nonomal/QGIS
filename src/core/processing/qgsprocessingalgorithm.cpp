@@ -608,8 +608,23 @@ QVariantMap QgsProcessingAlgorithm::runPrepared( const QVariantMap &parameters, 
     mLocalContext.reset( new QgsProcessingContext() );
     // copy across everything we can safely do from the passed context
     mLocalContext->copyThreadSafeSettings( context );
+
     // and we'll run the actual algorithm processing using the local thread safe context
     runContext = mLocalContext.get();
+  }
+
+  std::unique_ptr< QgsProcessingModelInitialRunConfig > modelConfig = context.takeModelInitialRunConfig();
+  if ( modelConfig )
+  {
+    std::unique_ptr< QgsMapLayerStore > modelPreviousLayerStore = modelConfig->takePreviousLayerStore();
+    if ( modelPreviousLayerStore )
+    {
+      // move layers from previous layer store to context's temporary layer store, in a thread-safe way
+      Q_ASSERT_X( !modelPreviousLayerStore->thread(), "QgsProcessingAlgorithm::runPrepared", "QgsProcessingModelConfig::modelPreviousLayerStore must have been pushed to a nullptr thread" );
+      modelPreviousLayerStore->moveToThread( QThread::currentThread() );
+      runContext->temporaryLayerStore()->transferLayersFromStore( modelPreviousLayerStore.get() );
+    }
+    runContext->setModelInitialRunConfig( std::move( modelConfig ) );
   }
 
   mHasExecuted = true;

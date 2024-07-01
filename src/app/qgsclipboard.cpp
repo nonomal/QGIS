@@ -196,15 +196,18 @@ void QgsClipboard::generateClipboardText( QString &textContent, QString &htmlCon
         {
           QString value;
           QVariant variant = attributes.at( idx );
-          const bool useJSONFromVariant = variant.type() == QVariant::StringList || variant.type() == QVariant::List || variant.type() == QVariant::Map;
+          const bool useJSONFromVariant = variant.userType() == QMetaType::Type::QStringList || variant.userType() == QMetaType::Type::QVariantList || variant.userType() == QMetaType::Type::QVariantMap;
 
           if ( useJSONFromVariant )
           {
-            value = QString::fromStdString( QgsJsonUtils::jsonFromVariant( attributes.at( idx ) ).dump() );
+            value = QString::fromStdString( QgsJsonUtils::jsonFromVariant( variant ).dump() );
           }
           else
           {
-            value = attributes.at( idx ).toString();
+            if ( QgsVariantUtils::isNull( variant ) && variant.isValid() )
+              value = "";
+            else
+              value = variant.toString();
           }
 
           if ( value.contains( '\n' ) || value.contains( '\t' ) )
@@ -215,11 +218,14 @@ void QgsClipboard::generateClipboardText( QString &textContent, QString &htmlCon
           }
           if ( useJSONFromVariant )
           {
-            value = QString::fromStdString( QgsJsonUtils::jsonFromVariant( attributes.at( idx ) ).dump() );
+            value = QString::fromStdString( QgsJsonUtils::jsonFromVariant( variant ).dump() );
           }
           else
           {
-            value = attributes.at( idx ).toString();
+            if ( QgsVariantUtils::isNull( variant ) && variant.isValid() )
+              value = "";
+            else
+              value = variant.toString();
           }
           value.replace( '\n', QLatin1String( "<br>" ) ).replace( '\t', QLatin1String( "&emsp;" ) );
           htmlFields += QStringLiteral( "<td>%1</td>" ).arg( value );
@@ -316,7 +322,7 @@ QgsFeatureList QgsClipboard::stringToFeatureList( const QString &string, const Q
     {
       if ( attrVal != QLatin1String( "wkt_geom" ) ) // ignore this one
       {
-        fieldsFromClipboard.append( QgsField{attrVal, QVariant::String } );
+        fieldsFromClipboard.append( QgsField{attrVal, QMetaType::Type::QString } );
       }
     }
     else // ... or value
@@ -417,7 +423,7 @@ QgsFields QgsClipboard::retrieveFields() const
           continue;
         }
 
-        f.append( QgsField( fieldName, QVariant::String ) );
+        f.append( QgsField( fieldName, QMetaType::Type::QString ) );
       }
     }
   }

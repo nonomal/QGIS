@@ -130,12 +130,6 @@ QgsOptions::QgsOptions( QWidget *parent, Qt::WindowFlags fl, const QList<QgsOpti
   mTreeModel->appendRow( createItem( QCoreApplication::translate( "QgsOptionsBase", "Locator" ), tr( "Locator" ), QStringLiteral( "search.svg" ) ) );
   mTreeModel->appendRow( createItem( QCoreApplication::translate( "QgsOptionsBase", "Acceleration" ), tr( "GPU acceleration" ), QStringLiteral( "mIconGPU.svg" ) ) );
 
-  QStandardItem *ideGroup = new QStandardItem( QCoreApplication::translate( "QgsOptionsBase", "IDE" ) );
-  ideGroup->setData( QStringLiteral( "ide" ) );
-  ideGroup->setToolTip( tr( "Development and Scripting Settings" ) );
-  ideGroup->setSelectable( false );
-  mTreeModel->appendRow( ideGroup );
-
   mOptionsTreeView->setModel( mTreeModel );
 
   // stylesheet setup
@@ -1589,7 +1583,7 @@ void QgsOptions::saveOptions()
   else
     mSettings->remove( QStringLiteral( "cache/directory" ) );
 
-  mSettings->setValue( QStringLiteral( "cache/size" ), QVariant::fromValue( mCacheSize->value() * 1024L ) );
+  mSettings->setValue( QStringLiteral( "cache/size" ), QVariant::fromValue( mCacheSize->value() * 1024LL ) );
 
   //url with no proxy at all
   QStringList noProxyUrls;

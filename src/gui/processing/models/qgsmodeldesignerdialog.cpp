@@ -160,7 +160,8 @@ QgsModelDesignerDialog::QgsModelDesignerDialog( QWidget *parent, Qt::WindowFlags
   connect( mActionReorderOutputs, &QAction::triggered, this, &QgsModelDesignerDialog::reorderOutputs );
   connect( mActionEditHelp, &QAction::triggered, this, &QgsModelDesignerDialog::editHelp );
   connect( mReorderInputsButton, &QPushButton::clicked, this, &QgsModelDesignerDialog::reorderInputs );
-  connect( mActionRun, &QAction::triggered, this, &QgsModelDesignerDialog::run );
+  connect( mActionRun, &QAction::triggered, this, [this] { run(); } );
+  connect( mActionRunSelectedSteps, &QAction::triggered, this, &QgsModelDesignerDialog::runSelectedSteps );
 
   mActionSnappingEnabled->setChecked( settings.value( QStringLiteral( "/Processing/Modeler/enableSnapToGrid" ), false ).toBool() );
   connect( mActionSnappingEnabled, &QAction::toggled, this, [ = ]( bool enabled )
@@ -512,6 +513,8 @@ void QgsModelDesignerDialog::setModelScene( QgsModelGraphicsScene *scene )
   } );
   connect( mScene, &QgsModelGraphicsScene::componentAboutToChange, this, [ = ]( const QString & description, int id ) { beginUndoCommand( description, id ); } );
   connect( mScene, &QgsModelGraphicsScene::componentChanged, this, [ = ] { endUndoCommand(); } );
+  connect( mScene, &QgsModelGraphicsScene::runFromChild, this, &QgsModelDesignerDialog::runFromChild );
+  connect( mScene, &QgsModelGraphicsScene::runSelected, this, &QgsModelDesignerDialog::runSelectedSteps );
   connect( mScene, &QgsModelGraphicsScene::showChildAlgorithmOutputs, this, &QgsModelDesignerDialog::showChildAlgorithmOutputs );
   connect( mScene, &QgsModelGraphicsScene::showChildAlgorithmLog, this, &QgsModelDesignerDialog::showChildAlgorithmLog );
 
@@ -598,7 +601,7 @@ bool QgsModelDesignerDialog::checkForUnsavedChanges()
 
 void QgsModelDesignerDialog::setLastRunResult( const QgsProcessingModelResult &result )
 {
-  mLastResult = result;
+  mLastResult.mergeWith( result );
   if ( mScene )
     mScene->setLastRunResult( mLastResult );
 }
@@ -993,7 +996,35 @@ void QgsModelDesignerDialog::editHelp()
   }
 }
 
-void QgsModelDesignerDialog::run()
+void QgsModelDesignerDialog::runSelectedSteps()
+{
+  QSet<QString> children;
+  const QList< QgsModelComponentGraphicItem * > items = mScene->selectedComponentItems();
+  for ( QgsModelComponentGraphicItem *item : items )
+  {
+    if ( QgsProcessingModelChildAlgorithm *childAlgorithm = dynamic_cast< QgsProcessingModelChildAlgorithm *>( item->component() ) )
+    {
+      children.insert( childAlgorithm->childId() );
+    }
+  }
+
+  if ( children.isEmpty() )
+  {
+    mMessageBar->pushWarning( QString(), tr( "No steps are selected" ) );
+    return;
+  }
+
+  run( children );
+}
+
+void QgsModelDesignerDialog::runFromChild( const QString &id )
+{
+  QSet<QString> children = mModel->dependentChildAlgorithms( id );
+  children.insert( id );
+  run( children );
+}
+
+void QgsModelDesignerDialog::run( const QSet<QString> &childAlgorithmSubset )
 {
   QStringList errors;
   const bool isValid = model()->validate( errors );
@@ -1020,12 +1051,61 @@ void QgsModelDesignerDialog::run()
       return;
   }
 
+  if ( !childAlgorithmSubset.isEmpty() )
+  {
+    for ( const QString &child : childAlgorithmSubset )
+    {
+      // has user previously run all requirements for this step?
+      const QSet< QString > requirements = mModel->dependsOnChildAlgorithms( child );
+      for ( const QString &requirement : requirements )
+      {
+        if ( !mLastResult.executedChildIds().contains( requirement ) )
+        {
+          QMessageBox messageBox;
+          messageBox.setWindowTitle( tr( "Run Model" ) );
+          messageBox.setIcon( QMessageBox::Icon::Warning );
+          messageBox.setText( tr( "Prerequisite parts of this model have not yet been run (try running the full model first)." ) );
+          messageBox.setStandardButtons( QMessageBox::StandardButton::Ok );
+          messageBox.exec();
+          return;
+        }
+      }
+    }
+  }
+
   std::unique_ptr< QgsProcessingAlgorithmDialogBase > dialog( createExecutionDialog() );
   if ( !dialog )
     return;
 
   dialog->setLogLevel( Qgis::ProcessingLogLevel::ModelDebug );
   dialog->setParameters( mModel->designerParameterValues() );
+
+  connect( dialog.get(), &QgsProcessingAlgorithmDialogBase::algorithmAboutToRun, this, [this, &childAlgorithmSubset]( QgsProcessingContext * context )
+  {
+    if ( ! childAlgorithmSubset.empty() )
+    {
+      // start from previous state
+      std::unique_ptr< QgsProcessingModelInitialRunConfig > modelConfig = std::make_unique< QgsProcessingModelInitialRunConfig >();
+      modelConfig->setChildAlgorithmSubset( childAlgorithmSubset );
+      modelConfig->setPreviouslyExecutedChildAlgorithms( mLastResult.executedChildIds() );
+      modelConfig->setInitialChildInputs( mLastResult.rawChildInputs() );
+      modelConfig->setInitialChildOutputs( mLastResult.rawChildOutputs() );
+
+      // add copies of layers from previous runs to context's layer store, so that they can be used
+      // when running the subset
+      const QMap<QString, QgsMapLayer *> previousOutputLayers = mLayerStore.temporaryLayerStore()->mapLayers();
+      std::unique_ptr<QgsMapLayerStore> previousResultStore = std::make_unique< QgsMapLayerStore >();
+      for ( auto it = previousOutputLayers.constBegin(); it != previousOutputLayers.constEnd(); ++it )
+      {
+        std::unique_ptr< QgsMapLayer > clone( it.value()->clone() );
+        clone->setId( it.value()->id() );
+        previousResultStore->addMapLayer( clone.release() );
+      }
+      previousResultStore->moveToThread( nullptr );
+      modelConfig->setPreviousLayerStore( std::move( previousResultStore ) );
+      context->setModelInitialRunConfig( std::move( modelConfig ) );
+    }
+  } );
 
   connect( dialog.get(), &QgsProcessingAlgorithmDialogBase::algorithmFinished, this, [this, &dialog]( bool, const QVariantMap & )
   {

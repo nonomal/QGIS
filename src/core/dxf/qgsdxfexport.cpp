@@ -1483,7 +1483,7 @@ void QgsDxfExport::writeText( const QString &layer, const QString &text, pal::La
     lblX = labelFeature->anchorPosition().x();
     lblY = labelFeature->anchorPosition().y();
 
-    Qgis::LabelQuadrantPosition offsetQuad = layerSettings.quadOffset;
+    Qgis::LabelQuadrantPosition offsetQuad = layerSettings.pointSettings().quadrant();
 
     if ( props.isActive( QgsPalLayerSettings::Property::OffsetQuad ) )
     {
@@ -1761,6 +1761,11 @@ void QgsDxfExport::addFeature( QgsSymbolRenderContext &ctx, const QgsCoordinateT
 
     if ( qgsDoubleNear( offset, 0.0 ) )
       offset = 0.0;
+  }
+
+  if ( mFlags & FlagHairlineWidthExport )
+  {
+    width = 0;
   }
 
   QString lineStyleName = QStringLiteral( "CONTINUOUS" );

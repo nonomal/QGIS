@@ -184,7 +184,9 @@ class GUI_EXPORT QgsModelDesignerDialog : public QMainWindow, public Ui::QgsMode
     void reorderOutputs();
     void setPanelVisibility( bool hidden );
     void editHelp();
-    void run();
+    void runSelectedSteps();
+    void runFromChild( const QString &id );
+    void run( const QSet<QString> &childAlgorithmSubset = QSet<QString>() );
     void showChildAlgorithmOutputs( const QString &childId );
     void showChildAlgorithmLog( const QString &childId );
 
