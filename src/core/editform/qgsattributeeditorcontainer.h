@@ -22,13 +22,12 @@
 
 /**
  * \ingroup core
- * \brief This is a container for attribute editors, used to group them visually in the
+ * \brief A container for attribute editors, used to group them visually in the
  * attribute form if it is set to the drag and drop designer.
  */
 class CORE_EXPORT QgsAttributeEditorContainer : public QgsAttributeEditorElement
 {
   public:
-
     /**
      * Creates a new attribute editor container
      *
@@ -70,7 +69,7 @@ class CORE_EXPORT QgsAttributeEditorContainer : public QgsAttributeEditorElement
      * Determines if this container is rendered as collapsible group box or tab in a tabwidget
      *
      * \param isGroupBox If TRUE, this will be a group box
-     * \deprecated use setType() instead.
+     * \deprecated QGIS 3.40. Use setType() instead.
      */
     Q_DECL_DEPRECATED virtual void setIsGroupBox( bool isGroupBox ) SIP_DEPRECATED;
 
@@ -79,7 +78,7 @@ class CORE_EXPORT QgsAttributeEditorContainer : public QgsAttributeEditorElement
      *
      * \returns TRUE if it will be a group box, FALSE if it will be a tab
      *
-     * \deprecated Use type() instead.
+     * \deprecated QGIS 3.40. Use type() instead.
      */
     Q_DECL_DEPRECATED virtual bool isGroupBox() const SIP_DEPRECATED;
 
@@ -205,7 +204,7 @@ class CORE_EXPORT QgsAttributeEditorContainer : public QgsAttributeEditorElement
 
   private:
     void saveConfiguration( QDomElement &elem, QDomDocument &doc ) const override;
-    void loadConfiguration( const QDomElement &element,  const QString &layerId, const QgsReadWriteContext &context, const QgsFields &fields ) override;
+    void loadConfiguration( const QDomElement &element, const QString &layerId, const QgsReadWriteContext &context, const QgsFields &fields ) override;
     QString typeIdentifier() const override;
 
     Qgis::AttributeEditorContainerType mType = Qgis::AttributeEditorContainerType::GroupBox;

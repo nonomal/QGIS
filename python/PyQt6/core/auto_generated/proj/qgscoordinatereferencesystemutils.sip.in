@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/proj/qgscoordinatereferencesystemutils.h                    *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/
 
 
@@ -12,7 +12,8 @@
 class QgsCoordinateReferenceSystemUtils
 {
 %Docstring(signature="appended")
-Utility functions for working with :py:class:`QgsCoordinateReferenceSystem` objects.
+Utility functions for working with
+:py:class:`QgsCoordinateReferenceSystem` objects.
 
 .. versionadded:: 3.26
 %End
@@ -21,7 +22,6 @@ Utility functions for working with :py:class:`QgsCoordinateReferenceSystem` obje
 #include "qgscoordinatereferencesystemutils.h"
 %End
   public:
-
     static Qgis::CoordinateOrder defaultCoordinateOrderForCrs( const QgsCoordinateReferenceSystem &crs );
 %Docstring
 Returns the default coordinate order to use for the specified ``crs``.
@@ -52,6 +52,22 @@ Returns an empty string for unhandled methods.
 
 .. versionadded:: 3.34
 %End
+
+    static QgsGeometry topocentricHorizonGeometry(
+      const QgsCoordinateReferenceSystem &topocentricCrs, const QgsCoordinateReferenceSystem &outputCrs, const QgsCoordinateTransformContext &transformContext, double degreeStep = 1.0
+    );
+%Docstring
+Builds the geometry of the visible horizon (in ``outputCrs``) when
+``topocentricCrs`` is a topocentric CRS.
+
+The horizon is built up from points spaced at ``degreeStep`` degree
+intervals around the horizon.
+
+Returns null geometry if ``topocentricCrs`` is not a topocentric CRS or
+if the transform fails.
+
+.. versionadded:: 4.4
+%End
 };
 
 /************************************************************************
@@ -59,5 +75,5 @@ Returns an empty string for unhandled methods.
  *                                                                      *
  * src/core/proj/qgscoordinatereferencesystemutils.h                    *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/

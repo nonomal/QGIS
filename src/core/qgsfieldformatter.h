@@ -16,27 +16,23 @@
 #ifndef QGSFIELDKIT_H
 #define QGSFIELDKIT_H
 
-#include <QString>
-#include <QVariant>
-
 #include "qgis_core.h"
 #include "qgsvectorlayerref.h"
+
+#include <QString>
+#include <QVariant>
 
 class QgsVectorLayer;
 
 /**
  * \ingroup core
- * \brief A context for field formatter containing information like the project
+ * \brief A context for field formatter containing information like the project.
  *
  * \since QGIS 3.12
  */
 class CORE_EXPORT QgsFieldFormatterContext
 {
   public:
-
-    /**
-     * Constructor
-     */
     QgsFieldFormatterContext() = default;
 
     /**
@@ -71,10 +67,6 @@ class CORE_EXPORT QgsFieldFormatterContext
 class CORE_EXPORT QgsFieldFormatter
 {
   public:
-
-    /**
-      * Default constructor
-      */
     QgsFieldFormatter() = default;
 
     virtual ~QgsFieldFormatter() = default;
@@ -86,7 +78,7 @@ class CORE_EXPORT QgsFieldFormatter
      */
     enum Flag SIP_ENUM_BASETYPE( IntFlag )
     {
-      CanProvideAvailableValues =  1   //!< Can provide possible values
+      CanProvideAvailableValues = 1 //!< Can provide possible values
     };
     Q_DECLARE_FLAGS( Flags, Flag )
 
@@ -118,8 +110,19 @@ class CORE_EXPORT QgsFieldFormatter
      * Returns the alignment for a particular field. By default this will consider the field type but can be overwritten if mapped
      * values are represented.
      *
+     * \deprecated QGIS 4.4. Use the version taking a QgsField argument.
      */
-    virtual Qt::AlignmentFlag alignmentFlag( QgsVectorLayer *layer, int fieldIndex, const QVariantMap &config ) const;
+    Q_DECL_DEPRECATED virtual Qt::AlignmentFlag alignmentFlag( QgsVectorLayer *layer, int fieldIndex, const QVariantMap &config ) const SIP_DEPRECATED;
+
+    /**
+     * Returns the alignment for a particular \a field.
+     *
+     * By default this will consider the field type but can be overwritten if mapped
+     * values are represented.
+     *
+     * \since QGIS 4.4
+     */
+    virtual Qt::AlignmentFlag alignmentFlag( const QgsField &field, const QVariantMap &config ) const;
 
     /**
      * Create a cache for a given field.

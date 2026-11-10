@@ -22,11 +22,13 @@
 #define QGSSERVERINTERFACE_H
 
 #include "qgsconfig.h"
+
 #include "qgis_sip.h"
 #include "qgscapabilitiescache.h"
 #include "qgsrequesthandler.h"
 #include "qgsserverfilter.h"
 #include "qgsserversettings.h"
+
 #ifdef HAVE_SERVER_PYTHON_PLUGINS
 #include "qgsaccesscontrolfilter.h"
 #include "qgsaccesscontrol.h"
@@ -46,21 +48,18 @@ SIP_IF_MODULE( HAVE_SERVER_PYTHON_PLUGINS )
 
 /**
  * \ingroup server
- * \brief QgsServerInterface
- * Class defining interfaces exposed by QGIS Server and
- * made available to plugins.
+ * \brief Defines interfaces exposed by QGIS Server and made available to plugins.
  *
  * This class provides methods to access the request handler and
  * the capabilities cache. A method to read the environment
  * variables set in the main FCGI loop is also available.
  * Plugins can add listeners (instances of QgsServerFilter) with
- * a certain priority through the registerFilter( QgsServerFilter* , int) method.
+ * a certain priority through the registerFilter() method.
  *
  */
 class SERVER_EXPORT QgsServerInterface
 {
   public:
-
     //! Constructor
     QgsServerInterface() SIP_SKIP;
 
@@ -71,14 +70,14 @@ class SERVER_EXPORT QgsServerInterface
      * \param requestHandler request handler
      * \note not available in Python bindings
      */
-    virtual void setRequestHandler( QgsRequestHandler *requestHandler ) = 0 SIP_SKIP;
+    virtual void setRequestHandler( QgsRequestHandler *requestHandler ) SIP_SKIP = 0;
 
     /**
      * Clear the request handler
      *
      * \note not available in Python bindings
      */
-    virtual void clearRequestHandler() = 0 SIP_SKIP;
+    virtual void clearRequestHandler() SIP_SKIP = 0;
 
     /**
      * Gets pointer to the capabiblities cache
@@ -168,7 +167,7 @@ class SERVER_EXPORT QgsServerInterface
      *
      * \note not available in Python bindings
      */
-    virtual QgsServerSettings *serverSettings() = 0 SIP_SKIP;
+    virtual QgsServerSettings *serverSettings() SIP_SKIP = 0;
 
     /**
      * Reloads the server settings re-reading the configuration.

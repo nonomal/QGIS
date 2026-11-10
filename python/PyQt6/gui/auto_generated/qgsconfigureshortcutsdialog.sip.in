@@ -3,8 +3,9 @@
  *                                                                      *
  * src/gui/qgsconfigureshortcutsdialog.h                                *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/
+
 
 
 
@@ -14,21 +15,33 @@
 class QgsConfigureShortcutsDialog : QDialog
 {
 %Docstring(signature="appended")
-Reusable dialog for allowing users to configure shortcuts contained in a :py:class:`QgsShortcutsManager`.
+Reusable dialog for allowing users to configure shortcuts contained in a
+:py:class:`QgsShortcutsManager`.
 %End
 
 %TypeHeaderCode
 #include "qgsconfigureshortcutsdialog.h"
 %End
   public:
-
     QgsConfigureShortcutsDialog( QWidget *parent /TransferThis/ = 0, QgsShortcutsManager *manager = 0 );
 %Docstring
 Constructor for QgsConfigureShortcutsDialog.
 
 :param parent: parent widget
-:param manager: associated :py:class:`QgsShortcutsManager`, or leave as ``None`` to use the default
-                singleton :py:class:`QgsShortcutsManager` instance.
+:param manager: associated :py:class:`QgsShortcutsManager`, or leave as
+                ``None`` to use the default singleton
+                :py:class:`QgsShortcutsManager` instance.
+%End
+
+  public slots:
+
+    void setFilter( const QString &filterText );
+%Docstring
+Sets the text for the filter line edit.
+
+This will immediately filter the shortcuts list to only matching items.
+
+.. versionadded:: 4.2
 %End
 
   protected:
@@ -44,5 +57,5 @@ Constructor for QgsConfigureShortcutsDialog.
  *                                                                      *
  * src/gui/qgsconfigureshortcutsdialog.h                                *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/

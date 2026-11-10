@@ -3,17 +3,18 @@
  *                                                                      *
  * src/core/sensor/qgssensormodel.h                                     *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/
 
 
 
 
 
-class QgsSensorModel: QAbstractItemModel
+class QgsSensorModel : QAbstractItemModel
 {
 %Docstring(signature="appended")
-A QAbstractItemModel subclass for showing sensors within a :py:class:`QgsSensorManager`.
+A QAbstractItemModel subclass for showing sensors within a
+:py:class:`QgsSensorManager`.
 
 .. versionadded:: 3.32
 %End
@@ -22,7 +23,6 @@ A QAbstractItemModel subclass for showing sensors within a :py:class:`QgsSensorM
 #include "qgssensormodel.h"
 %End
   public:
-
     enum class Column /BaseType=IntEnum/
     {
       Name,
@@ -43,7 +43,8 @@ A QAbstractItemModel subclass for showing sensors within a :py:class:`QgsSensorM
 
     explicit QgsSensorModel( QgsSensorManager *manager, QObject *parent /TransferThis/ = 0 );
 %Docstring
-Constructor for QgsSensorModel, for the specified ``manager`` and ``parent`` object.
+Constructor for QgsSensorModel, for the specified ``manager`` and
+``parent`` object.
 %End
 
     virtual QVariant data( const QModelIndex &index, int role ) const;
@@ -52,10 +53,10 @@ Constructor for QgsSensorModel, for the specified ``manager`` and ``parent`` obj
 
     virtual Qt::ItemFlags flags( const QModelIndex &index ) const;
 
-     virtual QVariant headerData( int section, Qt::Orientation orientation,
-                         int role = Qt::DisplayRole ) const;
-     virtual QModelIndex index( int row, int column,
-                       const QModelIndex &parent = QModelIndex() ) const;
+    virtual QVariant headerData( int section, Qt::Orientation orientation, int role = Qt::DisplayRole ) const;
+
+    virtual QModelIndex index( int row, int column, const QModelIndex &parent = QModelIndex() ) const;
+
     virtual QModelIndex parent( const QModelIndex &index ) const;
 
     virtual int rowCount( const QModelIndex &parent = QModelIndex() ) const;
@@ -70,5 +71,5 @@ Constructor for QgsSensorModel, for the specified ``manager`` and ``parent`` obj
  *                                                                      *
  * src/core/sensor/qgssensormodel.h                                     *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/

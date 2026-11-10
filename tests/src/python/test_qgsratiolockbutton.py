@@ -5,24 +5,23 @@ it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or
 (at your option) any later version.
 """
-__author__ = 'Nyall Dawson'
-__date__ = '18/07/2017'
-__copyright__ = 'Copyright 2017, The QGIS Project'
+
+__author__ = "Nyall Dawson"
+__date__ = "18/07/2017"
+__copyright__ = "Copyright 2017, The QGIS Project"
 
 import unittest
 
-from qgis.PyQt.QtWidgets import QDoubleSpinBox
-
 from qgis.gui import QgsRatioLockButton
-from qgis.testing import start_app, QgisTestCase
+from qgis.PyQt.QtWidgets import QDoubleSpinBox
+from qgis.testing import QgisTestCase, start_app
 
 start_app()
 
 
 class TestQgsRatioLockButton(QgisTestCase):
-
     def testLinkedWidgets(self):
-        """ test linking spin boxes to combobox"""
+        """test linking spin boxes to combobox"""
         w = QgsRatioLockButton()
 
         spin_width = QDoubleSpinBox()
@@ -117,7 +116,9 @@ class TestQgsRatioLockButton(QgisTestCase):
         spin_width.blockSignals(False)
 
         spin_height.setValue(2000)
-        self.assertEqual(spin_width.value(), 4000)  # signals were blocked, so ratio wasn't updated
+        self.assertEqual(
+            spin_width.value(), 4000
+        )  # signals were blocked, so ratio wasn't updated
 
         spin_width.blockSignals(True)
         spin_width.setValue(2000)
@@ -127,5 +128,5 @@ class TestQgsRatioLockButton(QgisTestCase):
         self.assertEqual(spin_width.value(), 1000)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

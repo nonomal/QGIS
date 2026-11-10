@@ -17,20 +17,26 @@
  ***************************************************************************/
 
 #include "qgsplotcanvas.h"
+
+#include "qgslogger.h"
 #include "qgsplotmouseevent.h"
 #include "qgsplottool.h"
-#include "qgslogger.h"
 #include "qgsplottransienttools.h"
 #include "qgssettings.h"
 
-#include <QMenu>
-#include <QKeyEvent>
 #include <QGestureEvent>
+#include <QKeyEvent>
+#include <QMenu>
+#include <QString>
+
+#include "moc_qgsplotcanvas.cpp"
+
+using namespace Qt::StringLiterals;
 
 QgsPlotCanvas::QgsPlotCanvas( QWidget *parent )
   : QGraphicsView( parent )
 {
-  setObjectName( QStringLiteral( "PlotCanvas" ) );
+  setObjectName( u"PlotCanvas"_s );
   mScene = new QGraphicsScene( this );
   setScene( mScene );
 
@@ -77,18 +83,14 @@ QgsPlotCanvas::~QgsPlotCanvas()
 }
 
 void QgsPlotCanvas::cancelJobs()
-{
-
-}
+{}
 
 void QgsPlotCanvas::refresh()
-{
-
-}
+{}
 
 void QgsPlotCanvas::showContextMenu( QgsPlotMouseEvent *event )
 {
-  QMenu menu;
+  QMenu menu( this );
 
   if ( mTool )
   {
@@ -110,7 +112,7 @@ void QgsPlotCanvas::keyPressEvent( QKeyEvent *event )
   if ( mTool && event->isAccepted() )
     return;
 
-  if ( event->key() == Qt::Key_Space && ! event->isAutoRepeat() )
+  if ( event->key() == Qt::Key_Space && !event->isAutoRepeat() )
   {
     if ( !( event->modifiers() & Qt::ControlModifier ) )
     {
@@ -141,7 +143,7 @@ void QgsPlotCanvas::mouseDoubleClickEvent( QMouseEvent *event )
 {
   if ( mTool )
   {
-    std::unique_ptr<QgsPlotMouseEvent> me( new QgsPlotMouseEvent( this, event ) );
+    auto me = std::make_unique<QgsPlotMouseEvent>( this, event );
     mTool->plotDoubleClickEvent( me.get() );
     event->setAccepted( me->isAccepted() );
   }
@@ -154,7 +156,7 @@ void QgsPlotCanvas::mousePressEvent( QMouseEvent *event )
 {
   if ( mTool )
   {
-    std::unique_ptr<QgsPlotMouseEvent> me( new QgsPlotMouseEvent( this, event ) );
+    auto me = std::make_unique<QgsPlotMouseEvent>( this, event );
     mTool->plotPressEvent( me.get() );
     event->setAccepted( me->isAccepted() );
   }
@@ -167,9 +169,9 @@ void QgsPlotCanvas::mousePressEvent( QMouseEvent *event )
       setTool( mMidMouseButtonPanTool );
       event->accept();
     }
-    else if ( event->button() == Qt::RightButton && mTool->flags() & Qgis::PlotToolFlag::ShowContextMenu )
+    else if ( event->button() == Qt::RightButton && mTool && mTool->flags() & Qgis::PlotToolFlag::ShowContextMenu )
     {
-      std::unique_ptr<QgsPlotMouseEvent> me( new QgsPlotMouseEvent( this, event ) );
+      auto me = std::make_unique<QgsPlotMouseEvent>( this, event );
       showContextMenu( me.get() );
       event->accept();
       return;
@@ -185,7 +187,7 @@ void QgsPlotCanvas::mouseReleaseEvent( QMouseEvent *event )
 {
   if ( mTool )
   {
-    std::unique_ptr<QgsPlotMouseEvent> me( new QgsPlotMouseEvent( this, event ) );
+    auto me = std::make_unique<QgsPlotMouseEvent>( this, event );
     mTool->plotReleaseEvent( me.get() );
     event->setAccepted( me->isAccepted() );
   }
@@ -217,7 +219,7 @@ void QgsPlotCanvas::mouseMoveEvent( QMouseEvent *event )
 {
   if ( mTool )
   {
-    std::unique_ptr<QgsPlotMouseEvent> me( new QgsPlotMouseEvent( this, event ) );
+    auto me = std::make_unique<QgsPlotMouseEvent>( this, event );
     mTool->plotMoveEvent( me.get() );
     event->setAccepted( me->isAccepted() );
   }
@@ -275,24 +277,16 @@ QgsPointXY QgsPlotCanvas::toCanvasCoordinates( const QgsPoint & ) const
 }
 
 void QgsPlotCanvas::panContentsBy( double, double )
-{
-
-}
+{}
 
 void QgsPlotCanvas::centerPlotOn( double, double )
-{
-
-}
+{}
 
 void QgsPlotCanvas::scalePlot( double )
-{
-
-}
+{}
 
 void QgsPlotCanvas::zoomToRect( const QRectF & )
-{
-
-}
+{}
 
 QgsPointXY QgsPlotCanvas::snapToPlot( QPoint )
 {
@@ -309,9 +303,7 @@ bool QgsPlotCanvas::viewportEvent( QEvent *event )
 }
 
 void QgsPlotCanvas::wheelZoom( QWheelEvent * )
-{
-
-}
+{}
 
 bool QgsPlotCanvas::event( QEvent *e )
 {

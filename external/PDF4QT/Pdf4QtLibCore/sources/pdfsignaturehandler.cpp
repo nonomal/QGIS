@@ -1,19 +1,24 @@
-//    Copyright (C) 2020-2022 Jakub Melka
+// MIT License
 //
-//    This file is part of PDF4QT.
+// Copyright (c) 2018-2025 Jakub Melka and Contributors
 //
-//    PDF4QT is free software: you can redistribute it and/or modify
-//    it under the terms of the GNU Lesser General Public License as published by
-//    the Free Software Foundation, either version 3 of the License, or
-//    with the written consent of the copyright owner, any later version.
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
 //
-//    PDF4QT is distributed in the hope that it will be useful,
-//    but WITHOUT ANY WARRANTY; without even the implied warranty of
-//    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-//    GNU Lesser General Public License for more details.
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
 //
-//    You should have received a copy of the GNU Lesser General Public License
-//    along with PDF4QT.  If not, see <https://www.gnu.org/licenses/>.
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
 
 #include "pdfsignaturehandler.h"
 #include "pdfdocument.h"
@@ -1298,7 +1303,7 @@ bool PDFSignatureHandler_adbe_pkcs7_rsa_sha1::getMessageDigestAlgorithm(ASN1_OCT
 
     int size = RSA_size(rsa);
     std::vector<unsigned char> decryptedBuffer(size, 0);
-    const int signatureSize = RSA_public_decrypt(encryptedString->length, encryptedString->data, decryptedBuffer.data(), rsa, RSA_PKCS1_PADDING);
+    const int signatureSize = RSA_public_decrypt(ASN1_STRING_length(encryptedString), ASN1_STRING_get0_data(encryptedString), decryptedBuffer.data(), rsa, RSA_PKCS1_PADDING);
 
     if (signatureSize <= 0)
     {
@@ -1497,7 +1502,7 @@ void PDFSignatureHandler_adbe_pkcs7_rsa_sha1::verifyRSASignature(PDFSignatureVer
             OBJ_obj2txt(buffer.data(), int(buffer.size() - 1), OBJ_nid2obj(algorithmNID), 0);
             result.addHashAlgorithm(QString::fromLatin1(buffer.data()));
 
-            const int verifyValue = RSA_verify(algorithmNID, digest, digestLength, encryptedString->data, encryptedString->length, rsa.get());
+            const int verifyValue = RSA_verify(algorithmNID, digest, digestLength, ASN1_STRING_get0_data(encryptedString.get()), ASN1_STRING_length(encryptedString.get()), rsa.get());
 
             if (verifyValue == 0)
             {
@@ -1559,16 +1564,16 @@ PDFCertificateInfo PDFPublicKeySignatureHandler::getCertificateInfo(X509* certif
     return PDFCertificateInfo::getCertificateInfo(certificate);
 }
 
-QString PDFPublicKeySignatureHandler::getStringFromX509Name(X509_NAME* name, int nid)
+QString PDFPublicKeySignatureHandler::getStringFromX509Name(const X509_NAME* name, int nid)
 {
     QString result;
 
     const int stringLocation = X509_NAME_get_index_by_NID(name, nid, -1);
-    X509_NAME_ENTRY* entry = X509_NAME_get_entry(name, stringLocation);
+    const X509_NAME_ENTRY* entry = X509_NAME_get_entry(name, stringLocation);
     return getStringFromASN1_STRING(X509_NAME_ENTRY_get_data(entry));
 }
 
-QString pdf::PDFPublicKeySignatureHandler::getStringFromASN1_STRING(ASN1_STRING* string)
+QString pdf::PDFPublicKeySignatureHandler::getStringFromASN1_STRING(const ASN1_STRING* string)
 {
     QString result;
 
@@ -1647,7 +1652,7 @@ void PDFPublicKeySignatureHandler::addSignatureDateFromSignerInfoStack(STACK_OF(
 
     // Jakub Melka: We will get signed attribute from signer info.
     PKCS7_SIGNER_INFO* signerInfo = sk_PKCS7_SIGNER_INFO_value(signerInfoStack, 0);
-    ASN1_TYPE* attribute = PKCS7_get_signed_attribute(signerInfo, NID_pkcs9_signingTime);
+    const ASN1_TYPE* attribute = PKCS7_get_signed_attribute(signerInfo, NID_pkcs9_signingTime);
 
     if (!attribute)
     {
@@ -1720,6 +1725,22 @@ void pdf::PDFPublicKeySignatureHandler::addTrustedCertificates(X509_STORE* store
         }
     }
 #endif
+
+    if (m_parameters.useSystemCertificateStore)
+    {
+        PDFCertificateEntries aatlCertificates = PDFCertificateStore::getAATLCertificates();
+        for (const PDFCertificateEntry& entry : aatlCertificates)
+        {
+            QByteArray certificateData = entry.info.getCertificateData();
+            const unsigned char* pointer = convertByteArrayToUcharPtr(certificateData);
+            X509* certificate = d2i_X509(nullptr, &pointer, certificateData.size());
+            if (certificate)
+            {
+                X509_STORE_add_cert(store, certificate);
+                X509_free(certificate);
+            }
+        }
+    }
 }
 
 #if defined(PDF4QT_COMPILER_MINGW) || defined(PDF4QT_COMPILER_GCC)

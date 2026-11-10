@@ -14,13 +14,15 @@
  ***************************************************************************/
 
 #include "qgsrangeslider.h"
-#include <QPainter>
+
 #include <QMouseEvent>
+#include <QPainter>
+
+#include "moc_qgsrangeslider.cpp"
 
 QgsRangeSlider::QgsRangeSlider( QWidget *parent )
   : QgsRangeSlider( Qt::Horizontal, parent )
-{
-}
+{}
 
 QgsRangeSlider::QgsRangeSlider( Qt::Orientation orientation, QWidget *parent )
   : QWidget( parent )
@@ -221,8 +223,7 @@ int QgsRangeSlider::pixelPosToRangeValue( int pos ) const
     sliderMax = gr.bottom() - sliderLength + 1;
   }
 
-  int value = QStyle::sliderValueFromPosition( mStyleOption.minimum, mStyleOption.maximum, pos - sliderMin,
-              sliderMax - sliderMin );
+  int value = QStyle::sliderValueFromPosition( mStyleOption.minimum, mStyleOption.maximum, pos - sliderMin, sliderMax - sliderMin );
   if ( mFlipped )
     value = mStyleOption.maximum + mStyleOption.minimum - value;
   return value;
@@ -314,29 +315,13 @@ QRect QgsRangeSlider::selectedRangeRect()
   switch ( mStyleOption.orientation )
   {
     case Qt::Horizontal:
-      selectionRect = mFlipped ? QRect( upperHandleRect.right(),
-                                        grooveRect.y(),
-                                        lowerHandleRect.left() - upperHandleRect.right(),
-                                        grooveRect.height()
-                                      )
-                      : QRect( lowerHandleRect.right(),
-                               grooveRect.y(),
-                               upperHandleRect.left() - lowerHandleRect.right(),
-                               grooveRect.height()
-                             );
+      selectionRect = mFlipped ? QRect( upperHandleRect.right(), grooveRect.y(), lowerHandleRect.left() - upperHandleRect.right(), grooveRect.height() )
+                               : QRect( lowerHandleRect.right(), grooveRect.y(), upperHandleRect.left() - lowerHandleRect.right(), grooveRect.height() );
       break;
 
     case Qt::Vertical:
-      selectionRect = mFlipped ? QRect( grooveRect.x(),
-                                        lowerHandleRect.top(),
-                                        grooveRect.width(),
-                                        upperHandleRect.bottom() - lowerHandleRect.top()
-                                      )
-                      : QRect( grooveRect.x(),
-                               upperHandleRect.top(),
-                               grooveRect.width(),
-                               lowerHandleRect.bottom() - upperHandleRect.top()
-                             );
+      selectionRect = mFlipped ? QRect( grooveRect.x(), lowerHandleRect.top(), grooveRect.width(), upperHandleRect.bottom() - lowerHandleRect.top() )
+                               : QRect( grooveRect.x(), upperHandleRect.top(), grooveRect.width(), lowerHandleRect.bottom() - upperHandleRect.top() );
       break;
   }
 
@@ -772,7 +757,7 @@ void QgsRangeSlider::mouseMoveEvent( QMouseEvent *event )
 
     case Range:
     {
-      newPosition = pixelPosToRangeValue( pick( event->pos() ) - mRangeDragOffset ) ;
+      newPosition = pixelPosToRangeValue( pick( event->pos() ) - mRangeDragOffset );
       int delta = newPosition - mStartDragPos;
 
       if ( delta > 0 )
@@ -788,7 +773,7 @@ void QgsRangeSlider::mouseMoveEvent( QMouseEvent *event )
       {
         // move range down
         delta = -delta;
-        const int maxDelta = mPreDragLowerValue - mStyleOption.minimum ;
+        const int maxDelta = mPreDragLowerValue - mStyleOption.minimum;
         delta = std::min( maxDelta, delta );
         mLowerValue = mPreDragLowerValue - delta;
         mUpperValue = mPreDragUpperValue - delta;
@@ -1088,7 +1073,7 @@ void QgsRangeSlider::keyPressEvent( QKeyEvent *event )
           break;
 
         case Range:
-          applyStep( mFlipped ? mStyleOption.maximum - mUpperValue : mStyleOption.minimum  - mLowerValue );
+          applyStep( mFlipped ? mStyleOption.maximum - mUpperValue : mStyleOption.minimum - mLowerValue );
           break;
 
         case Both:
@@ -1116,7 +1101,7 @@ void QgsRangeSlider::keyPressEvent( QKeyEvent *event )
           break;
 
         case Range:
-          applyStep( mFlipped ? mStyleOption.minimum  - mLowerValue : mStyleOption.maximum - mUpperValue );
+          applyStep( mFlipped ? mStyleOption.minimum - mLowerValue : mStyleOption.maximum - mUpperValue );
           break;
 
         case Both:
@@ -1168,5 +1153,3 @@ QSize QgsRangeSlider::minimumSizeHint() const
     s.setHeight( length );
   return s;
 }
-
-

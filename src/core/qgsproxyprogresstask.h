@@ -18,8 +18,8 @@
 #ifndef QGSPROXYPROGRESSTASK_H
 #define QGSPROXYPROGRESSTASK_H
 
-#include "qgsvirtuallayerdefinition.h"
 #include "qgstaskmanager.h"
+#include "qgsvirtuallayerdefinition.h"
 
 #include <QWaitCondition>
 
@@ -39,15 +39,12 @@ class CORE_EXPORT QgsProxyProgressTask : public QgsTask
     Q_OBJECT
 
   public:
-
     /**
      * Constructor for QgsProxyProgressTask, with the specified \a description.
      */
     QgsProxyProgressTask( const QString &description, bool canCancel = false );
 
-    //! QgsProxyProgressTask cannot be copied
     QgsProxyProgressTask( const QgsProxyProgressTask &other ) = delete;
-    //! QgsProxyProgressTask cannot be copied
     QgsProxyProgressTask &operator=( const QgsProxyProgressTask &other ) = delete;
 
     /**
@@ -79,18 +76,18 @@ class CORE_EXPORT QgsProxyProgressTask : public QgsTask
     void canceled();
 
   private:
-
     QWaitCondition mNotFinishedWaitCondition;
     QMutex mNotFinishedMutex;
     bool mAlreadyFinished = false;
     bool mResult = true;
-
 };
 
 /**
  * \ingroup core
  *
- * \brief Scoped QgsScopedProxyProgressTask, which automatically adds the proxy task
+ * \brief A QgsProxyProgressTask with automatic lifetime.
+ *
+ * QgsScopedProxyProgressTask implements a QgsProxyProgressTask which automatically adds the proxy task
  * to the application task manager on construction and finalizes the task
  * when it goes out of scope.
  *
@@ -99,15 +96,12 @@ class CORE_EXPORT QgsProxyProgressTask : public QgsTask
 class CORE_EXPORT QgsScopedProxyProgressTask
 {
   public:
-
     /**
      * Constructor for QgsScopedProxyProgressTask, with the specified \a description.
      */
     QgsScopedProxyProgressTask( const QString &description );
 
-    //! QgsScopedProxyProgressTask cannot be copied
     QgsScopedProxyProgressTask( const QgsScopedProxyProgressTask &other ) = delete;
-    //! QgsScopedProxyProgressTask cannot be copied
     QgsScopedProxyProgressTask &operator=( const QgsScopedProxyProgressTask &other ) = delete;
 
     ~QgsScopedProxyProgressTask();
@@ -118,11 +112,9 @@ class CORE_EXPORT QgsScopedProxyProgressTask
     void setProgress( double progress );
 
   private:
-
     QgsProxyProgressTask *mTask = nullptr;
 
 #ifdef SIP_RUN
-    //! QgsScopedProxyProgressTask cannot be copied
     QgsScopedProxyProgressTask( const QgsScopedProxyProgressTask &other );
 #endif
 

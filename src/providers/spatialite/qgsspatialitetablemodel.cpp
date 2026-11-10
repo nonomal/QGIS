@@ -16,15 +16,19 @@
  ***************************************************************************/
 
 #include "qgsspatialitetablemodel.h"
+
 #include "qgsiconutils.h"
+
+#include <QString>
+
+#include "moc_qgsspatialitetablemodel.cpp"
+
+using namespace Qt::StringLiterals;
 
 QgsSpatiaLiteTableModel::QgsSpatiaLiteTableModel( QObject *parent )
   : QgsAbstractDbTableModel( parent )
 {
-  mColumns << tr( "Table" )
-           << tr( "Type" )
-           << tr( "Geometry column" )
-           << tr( "SQL" );
+  mColumns << tr( "Table" ) << tr( "Type" ) << tr( "Geometry column" ) << tr( "SQL" );
   setHorizontalHeaderLabels( mColumns );
 }
 
@@ -48,14 +52,14 @@ void QgsSpatiaLiteTableModel::addTableEntry( const QString &type, const QString 
 {
   //is there already a root item ?
   QStandardItem *dbItem = nullptr;
-  const QList < QStandardItem * >dbItems = findItems( mSqliteDb, Qt::MatchExactly, 0 );
+  const QList<QStandardItem *> dbItems = findItems( mSqliteDb, Qt::MatchExactly, 0 );
 
   //there is already an item
   if ( !dbItems.isEmpty() )
   {
     dbItem = dbItems.at( 0 );
   }
-  else                        //create a new toplevel item
+  else //create a new toplevel item
   {
     dbItem = new QStandardItem( mSqliteDb );
     dbItem->setFlags( Qt::ItemIsEnabled );
@@ -66,7 +70,7 @@ void QgsSpatiaLiteTableModel::addTableEntry( const QString &type, const QString 
   const Qgis::WkbType wkbType = qgisTypeFromDbType( type );
   const QIcon iconFile = iconForType( wkbType );
 
-  QList < QStandardItem * >childItemList;
+  QList<QStandardItem *> childItemList;
   QStandardItem *typeItem = new QStandardItem( QIcon( iconFile ), type );
   typeItem->setFlags( Qt::ItemIsEnabled | Qt::ItemIsSelectable );
   QStandardItem *tableItem = new QStandardItem( tableName );
@@ -111,12 +115,12 @@ void QgsSpatiaLiteTableModel::setSql( const QModelIndex &index, const QString &s
 
 void QgsSpatiaLiteTableModel::setGeometryTypesForTable( const QString &table, const QString &attribute, const QString &type )
 {
-  const bool typeIsEmpty = type.isEmpty();  //true means the table has no valid geometry entry and the item for this table should be removed
+  const bool typeIsEmpty = type.isEmpty(); //true means the table has no valid geometry entry and the item for this table should be removed
   const QStringList typeList = type.split( ',' );
 
   //find schema item and table item
   QStandardItem *dbItem = nullptr;
-  const QList < QStandardItem * >dbItems = findItems( mSqliteDb, Qt::MatchExactly, 0 );
+  const QList<QStandardItem *> dbItems = findItems( mSqliteDb, Qt::MatchExactly, 0 );
 
   if ( dbItems.empty() )
   {
@@ -147,8 +151,7 @@ void QgsSpatiaLiteTableModel::setGeometryTypesForTable( const QString &table, co
       continue;
     }
 
-    if ( itemFromIndex( currentTableIndex )->text() == table &&
-         ( geomColText == attribute || geomColText.startsWith( attribute + " AS " ) ) )
+    if ( itemFromIndex( currentTableIndex )->text() == table && ( geomColText == attribute || geomColText.startsWith( attribute + " AS " ) ) )
     {
       if ( typeIsEmpty )
       {
@@ -160,7 +163,7 @@ void QgsSpatiaLiteTableModel::setGeometryTypesForTable( const QString &table, co
       const QIcon myIcon = iconForType( wkbType );
       itemFromIndex( currentTypeIndex )->setText( typeList.at( 0 ) ); //todo: add other rows
       itemFromIndex( currentTypeIndex )->setIcon( myIcon );
-      if ( !geomColText.contains( QLatin1String( " AS " ) ) )
+      if ( !geomColText.contains( " AS "_L1 ) )
       {
         itemFromIndex( currentGeomColumnIndex )->setText( geomColText + " AS " + typeList.at( 0 ) );
       }
@@ -180,13 +183,11 @@ QIcon QgsSpatiaLiteTableModel::iconForType( Qgis::WkbType type ) const
   {
     return QgsIconUtils::iconPoint();
   }
-  else if ( type == Qgis::WkbType::LineString || type == Qgis::WkbType::LineString25D || type == Qgis::WkbType::MultiLineString
-            || type == Qgis::WkbType::MultiLineString25D )
+  else if ( type == Qgis::WkbType::LineString || type == Qgis::WkbType::LineString25D || type == Qgis::WkbType::MultiLineString || type == Qgis::WkbType::MultiLineString25D )
   {
     return QgsIconUtils::iconLine();
   }
-  else if ( type == Qgis::WkbType::Polygon || type == Qgis::WkbType::Polygon25D || type == Qgis::WkbType::MultiPolygon
-            || type == Qgis::WkbType::MultiPolygon25D )
+  else if ( type == Qgis::WkbType::Polygon || type == Qgis::WkbType::Polygon25D || type == Qgis::WkbType::MultiPolygon || type == Qgis::WkbType::MultiPolygon25D )
   {
     return QgsIconUtils::iconPolygon();
   }
@@ -220,32 +221,32 @@ QString QgsSpatiaLiteTableModel::displayStringForType( Qgis::WkbType type ) cons
   {
     return tr( "Multipolygon" );
   }
-  return QStringLiteral( "Unknown" );
+  return u"Unknown"_s;
 }
 
 Qgis::WkbType QgsSpatiaLiteTableModel::qgisTypeFromDbType( const QString &dbType ) const
 {
-  if ( dbType == QLatin1String( "POINT" ) )
+  if ( dbType == "POINT"_L1 )
   {
     return Qgis::WkbType::Point;
   }
-  else if ( dbType == QLatin1String( "MULTIPOINT" ) )
+  else if ( dbType == "MULTIPOINT"_L1 )
   {
     return Qgis::WkbType::MultiPoint;
   }
-  else if ( dbType == QLatin1String( "LINESTRING" ) )
+  else if ( dbType == "LINESTRING"_L1 )
   {
     return Qgis::WkbType::LineString;
   }
-  else if ( dbType == QLatin1String( "MULTILINESTRING" ) )
+  else if ( dbType == "MULTILINESTRING"_L1 )
   {
     return Qgis::WkbType::MultiLineString;
   }
-  else if ( dbType == QLatin1String( "POLYGON" ) )
+  else if ( dbType == "POLYGON"_L1 )
   {
     return Qgis::WkbType::Polygon;
   }
-  else if ( dbType == QLatin1String( "MULTIPOLYGON" ) )
+  else if ( dbType == "MULTIPOLYGON"_L1 )
   {
     return Qgis::WkbType::MultiPolygon;
   }

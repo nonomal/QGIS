@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/locator/qgslocatorcontext.h                                 *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/
 
 
@@ -19,11 +19,10 @@ Encapsulates the properties relating to the context of a locator search.
 #include "qgslocatorcontext.h"
 %End
   public:
+    static const QMetaObject staticMetaObject;
 
+  public:
     QgsLocatorContext();
-%Docstring
-Constructor for QgsLocatorContext.
-%End
 
     QgsRectangle targetExtent;
 
@@ -32,15 +31,12 @@ Constructor for QgsLocatorContext.
     QgsCoordinateTransformContext transformContext;
 
     bool usingPrefix;
-
 };
-
-
 
 /************************************************************************
  * This file has been generated automatically from                      *
  *                                                                      *
  * src/core/locator/qgslocatorcontext.h                                 *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/

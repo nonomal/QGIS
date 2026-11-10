@@ -17,17 +17,24 @@
 
 #include "qgsattributedialog.h"
 
+#include "qgsactionmenu.h"
 #include "qgsattributeform.h"
 #include "qgshighlight.h"
-#include "qgssettings.h"
-#include "qgsmessagebar.h"
-#include "qgsactionmenu.h"
 #include "qgsmaplayeractioncontext.h"
+#include "qgsmessagebar.h"
+#include "qgssettings.h"
+
+#include <QString>
+
+#include "moc_qgsattributedialog.cpp"
+
+using namespace Qt::StringLiterals;
 
 QgsAttributeDialog::QgsAttributeDialog( QgsVectorLayer *vl, QgsFeature *thepFeature, bool featureOwner, QWidget *parent, bool showDialogButtons, const QgsAttributeEditorContext &context )
   : QDialog( parent )
   , mOwnedFeature( featureOwner ? thepFeature : nullptr )
 {
+  mTrackedVectorLayerTools.setProject( QgsProject::instance() );
   init( vl, thepFeature, context, showDialogButtons );
 }
 
@@ -39,7 +46,6 @@ QgsAttributeDialog::~QgsAttributeDialog()
     delete mHighlight;
   }
 
-  delete mOwnedFeature;
 
   saveGeometry();
 }
@@ -48,14 +54,14 @@ void QgsAttributeDialog::saveGeometry()
 {
   // WARNING!!!! Don't use QgsGui::enableAutoGeometryRestore for this dialog -- the object name
   // is dynamic and is set to match the layer/feature combination.
-  QgsSettings().setValue( QStringLiteral( "Windows/AttributeDialog/geometry" ), QDialog::saveGeometry() );
+  QgsSettings().setValue( u"Windows/AttributeDialog/geometry"_s, QDialog::saveGeometry() );
 }
 
 void QgsAttributeDialog::restoreGeometry()
 {
   // WARNING!!!! Don't use QgsGui::enableAutoGeometryRestore for this dialog -- the object name
   // is dynamic and is set to match the layer/feature combination.
-  QDialog::restoreGeometry( QgsSettings().value( QStringLiteral( "Windows/AttributeDialog/geometry" ) ).toByteArray() );
+  QDialog::restoreGeometry( QgsSettings().value( u"Windows/AttributeDialog/geometry"_s ).toByteArray() );
 }
 
 void QgsAttributeDialog::setHighlight( QgsHighlight *h )
@@ -78,9 +84,7 @@ void QgsAttributeDialog::accept()
     if ( error.isEmpty() )
       error = tr( "An unknown error was encountered saving attributes" );
 
-    mMessageBar->pushMessage( QString(),
-                              error,
-                              Qgis::MessageLevel::Critical );
+    mMessageBar->pushMessage( QString(), error, Qgis::MessageLevel::Critical );
   }
 }
 
@@ -88,6 +92,13 @@ void QgsAttributeDialog::show()
 {
   QDialog::show();
 
+  raise();
+  activateWindow();
+}
+
+void QgsAttributeDialog::showEvent( QShowEvent *event )
+{
+  QDialog::showEvent( event );
   // We cannot call restoreGeometry() in the constructor or init because the dialog is not yet visible
   // and the geometry restoration will not take the window decorations (frame) into account.
   if ( mFirstShow )
@@ -95,8 +106,6 @@ void QgsAttributeDialog::show()
     mFirstShow = false;
     restoreGeometry();
   }
-  raise();
-  activateWindow();
 }
 
 void QgsAttributeDialog::reject()
@@ -133,7 +142,7 @@ void QgsAttributeDialog::init( QgsVectorLayer *layer, QgsFeature *feature, const
   connect( buttonBox, &QDialogButtonBox::accepted, this, &QgsAttributeDialog::accept );
   connect( layer, &QObject::destroyed, this, &QWidget::close );
 
-  mMenu = new QgsActionMenu( layer, mAttributeForm->feature(), QStringLiteral( "Feature" ), this );
+  mMenu = new QgsActionMenu( layer, mAttributeForm->feature(), u"Feature"_s, this );
   mMenu->setActionContextGenerator( this );
   if ( !mMenu->isEmpty() )
   {
@@ -185,4 +194,3 @@ QgsMapLayerActionContext QgsAttributeDialog::createActionContext()
   context.setMessageBar( mMessageBar );
   return context;
 }
-

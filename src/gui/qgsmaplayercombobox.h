@@ -16,19 +16,38 @@
 #ifndef QGSMAPLAYERCOMBOBOX_H
 #define QGSMAPLAYERCOMBOBOX_H
 
+#include "qgis_gui.h"
+#include "qgis_sip.h"
+#include "qgsmaplayer.h"
+#include "qgsmaplayerproxymodel.h"
+
 #include <QComboBox>
 
-#include "qgsmaplayerproxymodel.h"
-#include "qgis_gui.h"
-
-#include "qgis_sip.h"
-
-class QgsMapLayer;
 class QgsVectorLayer;
 
 /**
  * \ingroup gui
- * \brief The QgsMapLayerComboBox class is a combo box which displays the list of layers
+ * \brief A combobox which displays a dynamic list of layers from a QGIS project.
+ *
+ * QgsMapLayerComboBox is automatically populated with all the layers from the project.
+ * Any changes to the project's layers are immediately reflected in the combobox, such
+ * as addition of new layers, layer renaming, or layer removal. Accordingly, this
+ * widget should ALWAYS be used when presenting a choice of layers to a user, instead
+ * of manually populated comboboxes.
+ *
+ * In addition to the automatic layer population, QgsMapLayerComboBox also presents
+ * a user-friendly choice of layers by showing standard icons representing the
+ * different layer types (eg raster, mesh, or polygon/point/line icons for vector layers).
+ * Helpful tooltips will be shown if the user hovers over any of the layers, helping
+ * guide the user to the correct layer choice.
+ *
+ * Optionally, the list of available layers can be filtered to a subset of
+ * the project's layers (such as only showing raster layers, or only spatial
+ * layers) by calling setFilters().
+ *
+ * By default, the combobox will be populated using layers from the current project
+ * (see QgsProject::instance()), however a specific source project can be set
+ * via setProject().
  */
 class GUI_EXPORT QgsMapLayerComboBox : public QComboBox
 {
@@ -39,32 +58,50 @@ class GUI_EXPORT QgsMapLayerComboBox : public QComboBox
     Q_PROPERTY( QStringList excludedProviders READ excludedProviders WRITE setExcludedProviders )
 
   public:
-
     /**
-     * \brief QgsMapLayerComboBox creates a combo box to display the list of layers (currently in the registry).
+     * \brief QgsMapLayerComboBox creates a combo box to display the list of layers currently in the project.
+     *
      * The layers can be filtered and/or ordered.
      */
     explicit QgsMapLayerComboBox( QWidget *parent SIP_TRANSFERTHIS = nullptr );
 
-    //! Filters according to layer type and/or geometry type.
+    /**
+     * Sets \a filters for the layers displayed in the combo box.
+     *
+     * This method allows filtering layers according to layer type and/or geometry type.
+     *
+     * \see filters()
+     */
     void setFilters( Qgis::LayerFilters filters ) { mProxyModel->setFilters( filters ); }
 
     /**
      * Filters according to layer type and/or geometry type.
      * \note for API compatibility
      * \since QGIS 3.34
-     * \deprecated since QGIS 3.34 use the flag signature instead
+     * \deprecated QGIS 3.34. Use the flag signature instead.
      */
     Q_DECL_DEPRECATED void setFilters( int filters ) SIP_DEPRECATED { setFilters( static_cast<Qgis::LayerFilters>( filters ) ); }
 
-    //! currently used filter on list layers
+    /**
+     * Returns any currently used filters on the listed layers.
+     *
+     * \see setFilters()
+     */
     Qgis::LayerFilters filters() const { return mProxyModel->filters(); }
 
-    //! except a list of layers not to be listed
-    void setExceptedLayerList( const QList<QgsMapLayer *> &layerList ) { mProxyModel->setExceptedLayerList( layerList );}
+    /**
+     * Sets a list of layers which should be excluded from the combo box.
+     *
+     * \see exceptedLayerList()
+     */
+    void setExceptedLayerList( const QList<QgsMapLayer *> &layerList ) { mProxyModel->setExceptedLayerList( layerList ); }
 
-    //! returns the list of excepted layers
-    QList<QgsMapLayer *> exceptedLayerList() const {return mProxyModel->exceptedLayerList();}
+    /**
+     * Returns a list of layers which should be excluded from the combo box.
+     *
+     * \see setExceptedLayerList()
+     */
+    QList<QgsMapLayer *> exceptedLayerList() const { return mProxyModel->exceptedLayerList(); }
 
     /**
      * Sets a list of data providers which should be excluded from the combobox.
@@ -117,8 +154,8 @@ class GUI_EXPORT QgsMapLayerComboBox : public QComboBox
 
     /**
      * Sets a list of additional (non map layer) items to include at the end of the combobox.
-     * These may represent additional layers such as layers which are not included in the map
-     * layer registry, or paths to layers which have not yet been loaded into QGIS.
+     * These may represent additional layers such as layers which are not included in the project,
+     * or paths to layers which have not yet been loaded into QGIS.
      * \see additionalItems()
      */
     void setAdditionalItems( const QStringList &items );
@@ -146,7 +183,7 @@ class GUI_EXPORT QgsMapLayerComboBox : public QComboBox
      * \see setAdditionalLayers()
      * \since QGIS 3.22
      */
-    QList< QgsMapLayer * > additionalLayers() const;
+    QList<QgsMapLayer *> additionalLayers() const;
 
     /**
      * Returns the current layer selected in the combo box.
@@ -162,7 +199,10 @@ class GUI_EXPORT QgsMapLayerComboBox : public QComboBox
     QgsMapLayer *layer( int layerIndex ) const;
 
   public slots:
-    //! setLayer set the current layer selected in the combo
+
+    /**
+     * Sets the current \a layer selected in the combo box.
+     */
     void setLayer( QgsMapLayer *layer );
 
   signals:
@@ -170,7 +210,6 @@ class GUI_EXPORT QgsMapLayerComboBox : public QComboBox
     void layerChanged( QgsMapLayer *layer );
 
   protected:
-
     void dragEnterEvent( QDragEnterEvent *event ) override;
     void dragLeaveEvent( QDragLeaveEvent *event ) override;
     void dropEvent( QDropEvent *event ) override;

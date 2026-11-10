@@ -14,18 +14,48 @@
  ***************************************************************************/
 
 #include "qgstextdocument.h"
+
 #include "qgis.h"
 #include "qgsstringutils.h"
 #include "qgstextblock.h"
+#include "qgstextformat.h"
 #include "qgstextfragment.h"
 
-#include <QTextDocument>
+#include <QString>
 #include <QTextBlock>
+#include <QTextDocument>
 
+using namespace Qt::StringLiterals;
 
 QgsTextDocument::~QgsTextDocument() = default;
 
 QgsTextDocument::QgsTextDocument() = default;
+
+QgsTextDocument::QgsTextDocument( const QgsTextDocument &other )
+  : mBlocks( other.mBlocks )
+{}
+
+QgsTextDocument::QgsTextDocument( QgsTextDocument &&other )
+  : mBlocks( std::move( other.mBlocks ) )
+{}
+
+QgsTextDocument &QgsTextDocument::operator=( const QgsTextDocument &other )
+{
+  if ( &other == this )
+    return *this;
+
+  mBlocks = other.mBlocks;
+  return *this;
+}
+
+QgsTextDocument &QgsTextDocument::operator=( QgsTextDocument &&other )
+{
+  if ( &other == this )
+    return *this;
+
+  mBlocks = std::move( other.mBlocks );
+  return *this;
+}
 
 QgsTextDocument::QgsTextDocument( const QgsTextBlock &block )
 {
@@ -42,24 +72,56 @@ QgsTextDocument QgsTextDocument::fromPlainText( const QStringList &lines )
   QgsTextDocument document;
   document.reserve( lines.size() );
   for ( const QString &line : lines )
-    document.append( QgsTextBlock( QgsTextFragment( line ) ) );
+  {
+    document.append( QgsTextBlock::fromPlainText( line ) );
+  }
   return document;
 }
 
+// Note -- must start and end with spaces, so that a tab character within
+// a html or css tag doesn't mess things up. Instead, Qt will just silently
+// ignore html attributes it doesn't know about, like this replacement string
+#define TAB_REPLACEMENT_MARKER " ignore_me_i_am_a_tab "
+// when splitting by the tab replacement marker we need to be tolerant to the
+// spaces surrounding REPLACEMENT_MARKER being swallowed when multiple consecutive
+// tab characters exist
+#define TAB_REPLACEMENT_MARKER_RX " ?ignore_me_i_am_a_tab ?"
+
 QgsTextDocument QgsTextDocument::fromHtml( const QStringList &lines )
 {
-
   QgsTextDocument document;
 
   document.reserve( lines.size() );
 
-  for ( const QString &line : std::as_const( lines ) )
+  for ( const QString &l : std::as_const( lines ) )
   {
+    QString line = l;
     // QTextDocument is a very heavy way of parsing HTML + css (it's heavily geared toward an editable text document,
     // and includes a LOT of calculations we don't need, when all we're after is a HTML + CSS style parser).
     // TODO - try to find an alternative library we can use here
 
     QTextDocument sourceDoc;
+
+    // QTextDocument will replace tab characters with a space. We need to hack around this
+    // by first replacing it with a string which QTextDocument won't mess with, and then
+    // handle these markers as tab characters in the parsed HTML document.
+    line.replace( QString( '\t' ), QStringLiteral( TAB_REPLACEMENT_MARKER ) );
+    const thread_local QRegularExpression sTabReplacementMarkerRx( QStringLiteral( TAB_REPLACEMENT_MARKER_RX ) );
+
+    // cheat a little. Qt css requires some properties to have the "px" suffix. But we don't treat these properties
+    // as pixels, because that doesn't scale well with different dpi render targets! So let's instead use just instead treat the suffix as
+    // optional, and ignore ANY unit suffix the user has put, and then replace it with "px" so that Qt's css parsing engine can process it
+    // correctly...
+    const thread_local QRegularExpression sRxPixelsToPtFix( u"(word-spacing|line-height|margin-top|margin-bottom|margin-left|margin-right):\\s*(-?\\d+(?:\\.\\d+)?)(?![%\\d])([a-zA-Z]*)"_s );
+    line.replace( sRxPixelsToPtFix, u"\\1: \\2px"_s );
+    const thread_local QRegularExpression sRxMarginPixelsToPtFix(
+      u"margin:\\s*(-?\\d+(?:\\.\\d+)?)([a-zA-Z]*)\\s*(-?\\d+(?:\\.\\d+)?)([a-zA-Z]*)\\s*(-?\\d+(?:\\.\\d+)?)([a-zA-Z]*)\\s*(-?\\d+(?:\\.\\d+)?)([a-zA-Z]*)"_s
+    );
+    line.replace( sRxMarginPixelsToPtFix, u"margin: \\1px \\3px \\5px \\7px"_s );
+
+    // undo default margins on p, h1-6 elements. We didn't use to respect these and can't change the rendering
+    // of existing projects to suddenly start showing them...
+    line.prepend( u"<style>p, h1, h2, h3, h4, h5, h6 { margin: 0pt; }</style>"_s );
 
     sourceDoc.setHtml( line );
 
@@ -67,34 +129,52 @@ QgsTextDocument QgsTextDocument::fromHtml( const QStringList &lines )
 
     while ( true )
     {
+      const int headingLevel = sourceBlock.blockFormat().headingLevel();
+      QgsTextCharacterFormat blockFormat;
+      if ( headingLevel > 0 )
+      {
+        switch ( headingLevel )
+        {
+          case 1:
+            blockFormat.setFontPercentageSize( 21.0 / 12 );
+            break;
+          case 2:
+            blockFormat.setFontPercentageSize( 16.0 / 12 );
+            break;
+          case 3:
+            blockFormat.setFontPercentageSize( 13.0 / 12 );
+            break;
+          case 4:
+            blockFormat.setFontPercentageSize( 11.0 / 12 );
+            break;
+          case 5:
+            blockFormat.setFontPercentageSize( 8.0 / 12 );
+            break;
+          case 6:
+            blockFormat.setFontPercentageSize( 7.0 / 12 );
+            break;
+          default:
+            break;
+        }
+      }
+
       auto it = sourceBlock.begin();
       QgsTextBlock block;
+      block.setBlockFormat( QgsTextBlockFormat( sourceBlock.blockFormat() ) );
       while ( !it.atEnd() )
       {
         const QTextFragment fragment = it.fragment();
         if ( fragment.isValid() )
         {
           // Search for line breaks in the fragment
-          if ( fragment.text().contains( QStringLiteral( "\u2028" ) ) )
+          const QString fragmentText = fragment.text();
+          if ( fragmentText.contains( u"\u2028"_s ) )
           {
-
-            // Flush last block
-            if ( !block.empty() )
-            {
-              document.append( block );
-              block.clear();
-            }
-
             // Split fragment text into lines
-            const QStringList splitLines = fragment.text().split( QStringLiteral( "\u2028" ), Qt::SplitBehaviorFlags::SkipEmptyParts );
+            const QStringList splitLines = fragmentText.split( u"\u2028"_s, Qt::SplitBehaviorFlags::SkipEmptyParts );
 
             for ( const QString &splitLine : std::as_const( splitLines ) )
             {
-              QgsTextBlock splitLineBlock;
-
-              QgsTextFragment splitFragment( fragment );
-              splitFragment.setText( splitLine );
-
               const QgsTextCharacterFormat *previousFormat = nullptr;
 
               // If the splitLine is not the first, inherit style from previous fragment
@@ -103,22 +183,93 @@ QgsTextDocument QgsTextDocument::fromHtml( const QStringList &lines )
                 previousFormat = &document.at( document.size() - 1 ).at( 0 ).characterFormat();
               }
 
-              if ( previousFormat )
+              if ( splitLine.contains( QStringLiteral( TAB_REPLACEMENT_MARKER ) ) )
               {
-                // Apply overrides from previous fragment
+                // split line by tab characters, each tab should be a
+                // fragment by itself
+                QgsTextFragment splitFragment( fragment );
                 QgsTextCharacterFormat newFormat { splitFragment.characterFormat() };
-                newFormat.overrideWith( *previousFormat );
+                newFormat.overrideWith( blockFormat );
+                if ( previousFormat )
+                {
+                  // Apply overrides from previous fragment
+                  newFormat.overrideWith( *previousFormat );
+                  splitFragment.setCharacterFormat( newFormat );
+                }
                 splitFragment.setCharacterFormat( newFormat );
+
+                const QStringList tabSplit = splitLine.split( sTabReplacementMarkerRx );
+                int index = 0;
+                for ( const QString &part : tabSplit )
+                {
+                  if ( !part.isEmpty() )
+                  {
+                    splitFragment.setText( part );
+                    block.append( splitFragment );
+                  }
+                  if ( index != tabSplit.size() - 1 )
+                  {
+                    block.append( QgsTextFragment( QString( '\t' ) ) );
+                  }
+                  index++;
+                }
+              }
+              else
+              {
+                QgsTextFragment splitFragment( fragment );
+                splitFragment.setText( splitLine );
+
+                QgsTextCharacterFormat newFormat { splitFragment.characterFormat() };
+                newFormat.overrideWith( blockFormat );
+                if ( previousFormat )
+                {
+                  // Apply overrides from previous fragment
+                  newFormat.overrideWith( *previousFormat );
+                }
+                splitFragment.setCharacterFormat( newFormat );
+
+                block.append( splitFragment );
               }
 
-              splitLineBlock.append( splitFragment );
-              document.append( splitLineBlock );
+              document.append( block );
+              block = QgsTextBlock();
+              block.setBlockFormat( QgsTextBlockFormat( sourceBlock.blockFormat() ) );
+            }
+          }
+          else if ( fragmentText.contains( QStringLiteral( TAB_REPLACEMENT_MARKER ) ) )
+          {
+            // split line by tab characters, each tab should be a
+            // fragment by itself
+            QgsTextFragment tmpFragment( fragment );
 
+            QgsTextCharacterFormat newFormat { tmpFragment.characterFormat() };
+            newFormat.overrideWith( blockFormat );
+            tmpFragment.setCharacterFormat( newFormat );
+
+            const QStringList tabSplit = fragmentText.split( sTabReplacementMarkerRx );
+            int index = 0;
+            for ( const QString &part : tabSplit )
+            {
+              if ( !part.isEmpty() )
+              {
+                tmpFragment.setText( part );
+                block.append( tmpFragment );
+              }
+              if ( index != tabSplit.size() - 1 )
+              {
+                block.append( QgsTextFragment( QString( '\t' ) ) );
+              }
+              index++;
             }
           }
           else
           {
-            block.append( QgsTextFragment( fragment ) );
+            QgsTextFragment tmpFragment( fragment );
+            QgsTextCharacterFormat newFormat { tmpFragment.characterFormat() };
+            newFormat.overrideWith( blockFormat );
+            tmpFragment.setCharacterFormat( newFormat );
+
+            block.append( tmpFragment );
           }
         }
         it++;
@@ -136,6 +287,22 @@ QgsTextDocument QgsTextDocument::fromHtml( const QStringList &lines )
   return document;
 }
 
+QgsTextDocument QgsTextDocument::fromTextAndFormat( const QStringList &lines, const QgsTextFormat &format )
+{
+  QgsTextDocument doc;
+  if ( !format.allowHtmlFormatting() || lines.isEmpty() )
+  {
+    doc = QgsTextDocument::fromPlainText( lines );
+  }
+  else
+  {
+    doc = QgsTextDocument::fromHtml( lines );
+  }
+  if ( doc.size() > 0 )
+    doc.applyCapitalization( format.capitalization() );
+  return doc;
+}
+
 void QgsTextDocument::append( const QgsTextBlock &block )
 {
   mBlocks.append( block );
@@ -144,6 +311,16 @@ void QgsTextDocument::append( const QgsTextBlock &block )
 void QgsTextDocument::append( QgsTextBlock &&block )
 {
   mBlocks.push_back( block );
+}
+
+void QgsTextDocument::insert( int index, const QgsTextBlock &block )
+{
+  mBlocks.insert( index, block );
+}
+
+void QgsTextDocument::insert( int index, QgsTextBlock &&block )
+{
+  mBlocks.insert( index, block );
 }
 
 void QgsTextDocument::reserve( int count )
@@ -190,10 +367,11 @@ void QgsTextDocument::splitLines( const QString &wrapCharacter, int autoWrapLeng
   for ( const QgsTextBlock &block : prevBlocks )
   {
     QgsTextBlock destinationBlock;
+    destinationBlock.setBlockFormat( block.blockFormat() );
     for ( const QgsTextFragment &fragment : block )
     {
       QStringList thisParts;
-      if ( !wrapCharacter.isEmpty() && wrapCharacter != QLatin1String( "\n" ) )
+      if ( !wrapCharacter.isEmpty() && wrapCharacter != "\n"_L1 )
       {
         //wrap on both the wrapchr and new line characters
         const QStringList lines = fragment.text().split( wrapCharacter );
@@ -230,9 +408,11 @@ void QgsTextDocument::splitLines( const QString &wrapCharacter, int autoWrapLeng
 
         append( destinationBlock );
         destinationBlock.clear();
-        for ( int i = 1 ; i < thisParts.size() - 1; ++i )
+        for ( int i = 1; i < thisParts.size() - 1; ++i )
         {
-          append( QgsTextBlock( QgsTextFragment( thisParts.at( i ), fragment.characterFormat() ) ) );
+          QgsTextBlock partBlock( QgsTextFragment( thisParts.at( i ), fragment.characterFormat() ) );
+          partBlock.setBlockFormat( block.blockFormat() );
+          append( partBlock );
         }
         destinationBlock.append( QgsTextFragment( thisParts.at( thisParts.size() - 1 ), fragment.characterFormat() ) );
       }
@@ -241,12 +421,28 @@ void QgsTextDocument::splitLines( const QString &wrapCharacter, int autoWrapLeng
   }
 }
 
+QVector<QgsTextDocument> QgsTextDocument::splitBlocksToDocuments() const
+{
+  QVector<QgsTextDocument> res;
+  res.reserve( mBlocks.size() );
+  for ( const QgsTextBlock &block : mBlocks )
+  {
+    res.append( QgsTextDocument( block ) );
+  }
+  return res;
+}
+
 void QgsTextDocument::applyCapitalization( Qgis::Capitalization capitalization )
 {
   for ( QgsTextBlock &block : mBlocks )
   {
     block.applyCapitalization( capitalization );
   }
+}
+
+bool QgsTextDocument::hasBackgrounds() const
+{
+  return std::any_of( mBlocks.begin(), mBlocks.end(), []( const QgsTextBlock &block ) { return block.hasBackgrounds(); } );
 }
 
 ///@cond PRIVATE

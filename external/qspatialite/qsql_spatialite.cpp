@@ -110,7 +110,7 @@ class QSpatiaLiteResult : public QSqlCachedResult
 
   public:
     explicit QSpatiaLiteResult( const QSpatiaLiteDriver *db );
-    ~QSpatiaLiteResult();
+    ~QSpatiaLiteResult() override;
   protected:
     bool gotoNext( QSqlCachedResult::ValueCache &row, int idx ) Q_DECL_OVERRIDE;
     bool reset( const QString &query ) Q_DECL_OVERRIDE;
@@ -632,7 +632,7 @@ bool QSpatiaLiteDriver::open( const QString &db, const QString &, const QString 
   bool openReadOnlyOption = false;
   bool openUriOption = false;
 
-  const auto opts = conOpts.splitRef( QLatin1Char( ';' ) );
+  const auto opts = conOpts.split( QLatin1Char( ';' ) );
   for ( auto option : opts )
   {
     option = option.trimmed();

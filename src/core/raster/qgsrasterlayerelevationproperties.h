@@ -21,8 +21,8 @@
 
 #include "qgis_core.h"
 #include "qgis_sip.h"
-#include "qgsmaplayerelevationproperties.h"
 #include "qgslinesymbol.h"
+#include "qgsmaplayerelevationproperties.h"
 
 class QgsRasterLayer;
 
@@ -35,11 +35,9 @@ class QgsRasterLayer;
  */
 class CORE_EXPORT QgsRasterLayerElevationProperties : public QgsMapLayerElevationProperties
 {
-
     Q_OBJECT
 
   public:
-
     /**
      * Constructor for QgsRasterLayerElevationProperties, with the specified \a parent object.
      */
@@ -53,6 +51,7 @@ class CORE_EXPORT QgsRasterLayerElevationProperties : public QgsMapLayerElevatio
     QString htmlSummary() const override;
     bool isVisibleInZRange( const QgsDoubleRange &range, QgsMapLayer *layer = nullptr ) const override;
     QgsDoubleRange calculateZRange( QgsMapLayer *layer ) const override;
+    QList< double > significantZValues( QgsMapLayer *layer ) const override;
     bool showByDefaultInElevationProfilePlots() const override;
     QgsMapLayerElevationProperties::Flags flags() const override;
 
@@ -259,7 +258,6 @@ class CORE_EXPORT QgsRasterLayerElevationProperties : public QgsMapLayerElevatio
     static bool layerLooksLikeDem( QgsRasterLayer *layer );
 
   private:
-
     void setDefaultProfileLineSymbol( const QColor &color );
     void setDefaultProfileFillSymbol( const QColor &color );
 

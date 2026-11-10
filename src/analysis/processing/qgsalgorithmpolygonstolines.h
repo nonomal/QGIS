@@ -18,11 +18,16 @@
 #ifndef QGSALGORITHMPOLYGONSTOLINES_H
 #define QGSALGORITHMPOLYGONSTOLINES_H
 
-#define SIP_NO_FILE
 
 #include "qgis_sip.h"
-#include "qgsprocessingalgorithm.h"
 #include "qgsapplication.h"
+#include "qgsprocessingalgorithm.h"
+
+#include <QString>
+
+#define SIP_NO_FILE
+
+using namespace Qt::StringLiterals;
 
 ///@cond PRIVATE
 
@@ -31,12 +36,10 @@
  */
 class QgsPolygonsToLinesAlgorithm : public QgsProcessingFeatureBasedAlgorithm
 {
-
   public:
-
     QgsPolygonsToLinesAlgorithm() = default;
-    QIcon icon() const override { return QgsApplication::getThemeIcon( QStringLiteral( "/algorithms/mAlgorithmPolygonToLine.svg" ) ); }
-    QString svgIconPath() const override { return QgsApplication::iconPath( QStringLiteral( "/algorithms/mAlgorithmPolygonToLine.svg" ) ); }
+    QIcon icon() const override { return QgsApplication::getThemeIcon( u"/algorithms/mAlgorithmPolygonToLine.svg"_s ); }
+    QString svgIconPath() const override { return QgsApplication::iconPath( u"/algorithms/mAlgorithmPolygonToLine.svg"_s ); }
     QString name() const override;
     QString displayName() const override;
     QStringList tags() const override;
@@ -51,7 +54,7 @@ class QgsPolygonsToLinesAlgorithm : public QgsProcessingFeatureBasedAlgorithm
     QString outputName() const override;
     Qgis::ProcessingSourceType outputLayerType() const override;
     Qgis::WkbType outputWkbType( Qgis::WkbType inputWkbType ) const override;
-    QgsFeatureList processFeature( const QgsFeature &feature,  QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
+    QgsFeatureList processFeature( const QgsFeature &feature, QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
 
   private:
     QgsGeometry convertToLines( const QgsGeometry &geometry ) const;
@@ -61,5 +64,3 @@ class QgsPolygonsToLinesAlgorithm : public QgsProcessingFeatureBasedAlgorithm
 ///@endcond PRIVATE
 
 #endif // QGSALGORITHMPOLYGONSTOLINES_H
-
-

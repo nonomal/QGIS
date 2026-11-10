@@ -27,19 +27,24 @@
 // version without notice, or even be removed.
 //
 
-#define SIP_NO_FILE
-
-#include "qgis_core.h"
-#include "qgis.h"
 
 #include <memory>
+#include <optional>
+
+#include "qgis.h"
+#include "qgis_core.h"
+#include "qgscoordinatetransform.h"
+
+#include <QMatrix4x4>
 #include <QVector>
+
+#define SIP_NO_FILE
 
 class QMatrix4x4;
 class QImage;
 
-class QgsCoordinateTransform;
 class QgsMatrix4x4;
+class QgsTiledSceneTile;
 class QgsVector3D;
 
 namespace tinygltf
@@ -48,7 +53,7 @@ namespace tinygltf
   class Model;
   class Node;
   class TinyGLTF;
-}
+} //namespace tinygltf
 
 
 /**
@@ -61,7 +66,6 @@ namespace tinygltf
 class CORE_EXPORT QgsGltfUtils
 {
   public:
-
     /**
      * Reads model's accessor given by \a accessorIndex and applies a couple of transforms
      * to convert the raw coordinates to map coordinates (assuming this is a GLTF to be used
@@ -76,14 +80,18 @@ class CORE_EXPORT QgsGltfUtils
      * Finally, P_MAP is calculated by optionally doing a coordinate transform with PROJ
      * using \a ecefToTargetCrs
      */
-    static bool accessorToMapCoordinates( const tinygltf::Model &model,
-                                          int accessorIndex,
-                                          const QgsMatrix4x4 &tileTransform,
-                                          const QgsCoordinateTransform *ecefToTargetCrs,
-                                          const QgsVector3D &tileTranslationEcef,
-                                          const QMatrix4x4 *nodeTransform,
-                                          Qgis::Axis gltfUpAxis,
-                                          QVector<double> &vx, QVector<double> &vy, QVector<double> &vz );
+    static bool accessorToMapCoordinates(
+      const tinygltf::Model &model,
+      int accessorIndex,
+      const QgsMatrix4x4 &tileTransform,
+      const QgsCoordinateTransform *ecefToTargetCrs,
+      const QgsVector3D &tileTranslationEcef,
+      const QMatrix4x4 *nodeTransform,
+      Qgis::Axis gltfUpAxis,
+      QVector<double> &vx,
+      QVector<double> &vy,
+      QVector<double> &vz
+    );
 
     /**
      * Types of resources referenced by GLTF models.
@@ -91,7 +99,7 @@ class CORE_EXPORT QgsGltfUtils
     enum class ResourceType
     {
       Embedded, //!< Embedded resource
-      Linked, //!< Linked (external) resource
+      Linked,   //!< Linked (external) resource
     };
 
     /**
@@ -140,22 +148,20 @@ class CORE_EXPORT QgsGltfUtils
      * Helper function to allow tinygltf to read images, based on QImage readers.
      */
     static bool loadImageDataWithQImage(
-      tinygltf::Image *image, const int image_idx, std::string *err,
-      std::string *warn, int req_width, int req_height,
-      const unsigned char *bytes, int size, void *user_data );
+      tinygltf::Image *image, const int image_idx, std::string *err, std::string *warn, int req_width, int req_height, const unsigned char *bytes, int size, void *user_data
+    );
 
     /**
      * Extracts the texture coordinates from a \a model, and stores the results in the \a x, \a y vectors.
      */
-    static bool extractTextureCoordinates( const tinygltf::Model &model, int accessorIndex,
-                                           QVector<float> &x, QVector<float> &y );
+    static bool extractTextureCoordinates( const tinygltf::Model &model, int accessorIndex, QVector<float> &x, QVector<float> &y );
 
     /**
      * Loads a GLTF model from \a data (both binary and text format are supported)
      * and stores the result in the given \a model. Returns true on success.
      * May set \a errors and/or \a warnings if they are not null pointers.
      */
-    static bool loadGltfModel( const QByteArray &data, tinygltf::Model &model, QString *errors, QString *warnings );
+    static bool loadGltfModel( const QByteArray &data, tinygltf::Model &model, QString *errors, QString *warnings, const QString &baseDir = QString() );
 
     /**
      * Returns the index for the scene to load from a \a model.
@@ -166,6 +172,95 @@ class CORE_EXPORT QgsGltfUtils
      * If no scene is available, \a ok will be set to FALSE.
      */
     static std::size_t sourceSceneForModel( const tinygltf::Model &model, bool &ok );
+
+    /**
+     * Helper structure with additional context for conversion of a Draco-encoded
+     * geometry of a I3S node.
+     * \since QGIS 4.0
+     */
+    struct CORE_EXPORT I3SNodeContext
+    {
+        //! Initialize the node content from tile's info
+        void initFromTile( const QgsTiledSceneTile &tile, const QgsCoordinateReferenceSystem &layerCrs, const QgsCoordinateReferenceSystem &sceneCrs, const QgsCoordinateTransformContext &transformContext );
+
+        /**
+       * Material parsed from I3S material definition of the node. See
+       * loadMaterialFromMetadata() for more details about its content.
+       */
+        QVariantMap materialInfo;
+
+        /**
+       * A flag whether we are in "global" mode, i.e. the geometry's XY
+       * coordinates are lat/lon decimal degrees (in EPSG:4326).
+       * When not in global mode, we are using a projected CRS.
+       */
+        bool isGlobalMode = false;
+
+        /**
+       * Only applies when in global mode: transform from dataset's native CRS
+       * (lat/lon in degrees) to the scene CRS (ECEF - used in scene index).
+       */
+        QgsCoordinateTransform datasetToSceneTransform;
+
+        /**
+       * Only applies when in global mode: origin of the node's geometry
+       * (ECEF coordinates).
+       */
+        QgsVector3D nodeCenterEcef;
+    };
+
+    /**
+     * Loads a GLTF 2.0 model from I3S node's geometry in Draco file format.
+     * The function additionally needs the context of the I3S node, especially
+     * information about the material to be used.
+     *
+     * The function implements I3S-specific behaviors:
+     *
+     * - if position attribute contains "i3s-scale_x" and "i3s-scale_y" metadata,
+     *   they will be used to scale XY position coordinates (used when XY are in degrees)
+     * - if there is a generic attribute with "i3s-attribute-type" metadata being "uv-region",
+     *   the UV coordinates of each vertex are updated accordingly
+     *
+     * \since QGIS 4.0
+     */
+    static bool loadDracoModel( const QByteArray &data, const I3SNodeContext &context, tinygltf::Model &model, QString *errors = nullptr );
+
+    /**
+     * Loads a material into a model (including additions of texture and image objects)
+     * from a variant map representing GLTF 2.0 material. The following subset of properties
+     * is supported:
+     *
+     * - "pbrBaseColorFactor" - a list of 4 doubles (RGBA color)
+     * - "pbrBaseColorTexture" - a string with URI of a texture
+     * - "doubleSided" - a boolean indicating whether the material is double sided (no culling)
+     *
+     * \since QGIS 4.0
+     */
+    static int loadMaterialFromMetadata( const QVariantMap &materialInfo, tinygltf::Model &model );
+
+    /**
+     * Writes a model to a binary GLTF file (.glb)
+     * \since QGIS 4.0
+     */
+    static bool writeGltfModel( const tinygltf::Model &model, const QString &outputFilename );
+
+    /**
+     * Represents a single mesh primitive with per-instance placement in tile space.
+     * Produced by QgsCesiumUtils::resolveInstancing() — format-agnostic, consumed directly by renderers.
+     * \since QGIS 4.2
+     */
+    struct InstancedPrimitive
+    {
+        int meshIndex = -1;      //!< Index into tinygltf::Model::meshes
+        int primitiveIndex = -1; //!< Index within the mesh's primitives
+        int materialIndex = -1;  //!< For material lookup (-1 = default)
+
+        /**
+         * Per-instance 4x4 transform matrices in "tile space" (Z-up, ECEF-relative).
+         * Each matrix transforms raw mesh vertices to tile-space positions.
+         */
+        QVector<QMatrix4x4> instanceTransforms;
+    };
 };
 
 ///@endcond

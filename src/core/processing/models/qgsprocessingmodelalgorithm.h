@@ -18,14 +18,14 @@
 #ifndef QGSPROCESSINGMODELALGORITHM_H
 #define QGSPROCESSINGMODELALGORITHM_H
 
-#include "qgis_core.h"
 #include "qgis.h"
-#include "qgsprocessingmodelchildalgorithm.h"
+#include "qgis_core.h"
 #include "qgsprocessingalgorithm.h"
-#include "qgsprocessingmodelparameter.h"
+#include "qgsprocessingmodelchildalgorithm.h"
+#include "qgsprocessingmodelchilddependency.h"
 #include "qgsprocessingmodelchildparametersource.h"
 #include "qgsprocessingmodelgroupbox.h"
-#include "qgsprocessingmodelchilddependency.h"
+#include "qgsprocessingmodelparameter.h"
 
 ///@cond NOT_STABLE
 
@@ -39,14 +39,14 @@ class CORE_EXPORT QgsProcessingModelAlgorithm : public QgsProcessingAlgorithm
     Q_GADGET
 
   public:
-
     /**
      * Constructor for QgsProcessingModelAlgorithm.
      */
     QgsProcessingModelAlgorithm( const QString &name = QString(), const QString &group = QString(), const QString &groupId = QString() );
 
-    void initAlgorithm( const QVariantMap &configuration = QVariantMap() ) override;  //#spellok
+    void initAlgorithm( const QVariantMap &configuration = QVariantMap() ) override; //#spellok
 
+    Qgis::ProcessingAlgorithmFlags flags() const override;
     QString name() const override;
     QString displayName() const override;
     QString group() const override;
@@ -378,6 +378,14 @@ class CORE_EXPORT QgsProcessingModelAlgorithm : public QgsProcessingAlgorithm
     bool fromFile( const QString &path );
 
     /**
+     * Returns a new instance of QgsProcessingModelAlgorithm loaded from the file \a path.
+     * This is a thin wrapper around fromFile that returns a new instance of QgsProcessingModelAlgorithm.
+     *
+     * \since QGIS 4.4
+     */
+    static std::unique_ptr< QgsProcessingModelAlgorithm > loadModel( const QString &path );
+
+    /**
      * Saves this model to a QVariantMap, wrapped in a QVariant.
      * You can use QgsXmlUtils::writeVariant to save it to an XML document.
      *
@@ -394,6 +402,15 @@ class CORE_EXPORT QgsProcessingModelAlgorithm : public QgsProcessingAlgorithm
      * \since QGIS 3.4
      */
     bool loadVariant( const QVariant &variant );
+
+    /**
+     * Returns the QGIS version the model was originally created (or last saved) in.
+     *
+     * If the model was saved in QGIS versions prior to 4.4, this version will default to 0.0.0.
+     *
+     * \since QGIS 4.4
+     */
+    QString modelQgisVersion() const { return mModelQgisVersion; }
 
     /**
      * Returns the model's help contents (a free-form map of values describing the algorithm's
@@ -448,15 +465,28 @@ class CORE_EXPORT QgsProcessingModelAlgorithm : public QgsProcessingAlgorithm
     QStringList asPythonCode( QgsProcessing::PythonOutputType outputType, int indentSize ) const;
 
     /**
+     * Returns a list of possible sources which can be used for the parameter \a param for a child \a childId
+     * algorithm in the model
+     *
+     * The source compatibilibity is deducted from the parameter type
+     *
+     * \since QGIS 3.44
+     */
+    QList< QgsProcessingModelChildParameterSource > availableSourcesForChild( const QString &childId, const QgsProcessingParameterDefinition *param ) const;
+
+    /**
      * Returns a list of possible sources which can be used for the parameters for a child
      * algorithm in the model. Returned sources are those which match either one of the
      * specified \a parameterTypes (see QgsProcessingParameterDefinition::type() ) or
      * one of the specified \a outputTypes (see QgsProcessingOutputDefinition::type() ).
      * If specified, an optional list of \a dataTypes can be used to filter the returned
      * sources to those with compatible data types for the parameter/outputs.
+     *
+     * Use it when you need fine grained support for the requested compatible sources
      */
-    QList< QgsProcessingModelChildParameterSource > availableSourcesForChild( const QString &childId, const QStringList &parameterTypes = QStringList(),
-        const QStringList &outputTypes = QStringList(), const QList< int > &dataTypes = QList< int >() ) const;
+    QList< QgsProcessingModelChildParameterSource > availableSourcesForChild(
+      const QString &childId, const QStringList &parameterTypes = QStringList(), const QStringList &outputTypes = QStringList(), const QList< int > &dataTypes = QList< int >()
+    ) const;
 
     /**
      * \brief Definition of a expression context variable available during model execution.
@@ -465,12 +495,15 @@ class CORE_EXPORT QgsProcessingModelAlgorithm : public QgsProcessingAlgorithm
     class CORE_EXPORT VariableDefinition
     {
       public:
-
         /**
          * Constructor for a new VariableDefinition with the specified \a value and original
          * parameter \a source, and \a description.
          */
-        VariableDefinition( const QVariant &value = QVariant(), const QgsProcessingModelChildParameterSource &source = QgsProcessingModelChildParameterSource::fromStaticValue( QVariant() ), const QString &description = QString() )
+        VariableDefinition(
+          const QVariant &value = QVariant(),
+          const QgsProcessingModelChildParameterSource &source = QgsProcessingModelChildParameterSource::fromStaticValue( QVariant() ),
+          const QString &description = QString()
+        )
           : value( value )
           , source( source )
           , description( description )
@@ -499,15 +532,17 @@ class CORE_EXPORT QgsProcessingModelAlgorithm : public QgsProcessingAlgorithm
      * algorithm \a results must be passed.
      * \see createExpressionContextScopeForChildAlgorithm()
      */
-    QMap< QString, QgsProcessingModelAlgorithm::VariableDefinition > variablesForChildAlgorithm( const QString &childId, QgsProcessingContext *context = nullptr, const QVariantMap &modelParameters = QVariantMap(),
-        const QVariantMap &results = QVariantMap() ) const;
+    QMap< QString, QgsProcessingModelAlgorithm::VariableDefinition > variablesForChildAlgorithm(
+      const QString &childId, QgsProcessingContext *context = nullptr, const QVariantMap &modelParameters = QVariantMap(), const QVariantMap &results = QVariantMap()
+    ) const;
 
     /**
      * Creates a new expression context scope for a child algorithm within the model.
      * \see variablesForChildAlgorithm()
      */
-    QgsExpressionContextScope *createExpressionContextScopeForChildAlgorithm( const QString &childId, QgsProcessingContext &context, const QVariantMap &modelParameters = QVariantMap(),
-        const QVariantMap &results = QVariantMap() ) const SIP_FACTORY;
+    std::unique_ptr<QgsExpressionContextScope> createExpressionContextScopeForChildAlgorithm(
+      const QString &childId, QgsProcessingContext &context, const QVariantMap &modelParameters = QVariantMap(), const QVariantMap &results = QVariantMap()
+    ) const;
 
     /**
      * Returns the map of custom expression context variables defined for this model.
@@ -573,6 +608,7 @@ class CORE_EXPORT QgsProcessingModelAlgorithm : public QgsProcessingAlgorithm
      */
     static QString safeName( const QString &name, bool capitalize = false );
 
+
 #ifndef SIP_RUN
 
     //! Internal model versions
@@ -586,18 +622,17 @@ class CORE_EXPORT QgsProcessingModelAlgorithm : public QgsProcessingAlgorithm
 #endif
 
   protected:
-
     QgsProcessingAlgorithm *createInstance() const override SIP_FACTORY;
 
     QVariantMap processAlgorithm( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override SIP_THROW( QgsProcessingException );
 
   private:
-
     InternalVersion mInternalVersion = InternalVersion::Version2;
 
     QString mModelName;
     QString mModelGroup;
     QString mModelGroupId;
+    QString mModelQgisVersion;
 
     QMap< QString, QgsProcessingModelChildAlgorithm > mChildAlgorithms;
 
@@ -624,7 +659,14 @@ class CORE_EXPORT QgsProcessingModelAlgorithm : public QgsProcessingAlgorithm
     void dependsOnChildAlgorithmsRecursive( const QString &childId, QSet<QString> &depends ) const;
     void dependentChildAlgorithmsRecursive( const QString &childId, QSet<QString> &depends, const QString &branch ) const;
 
-    QVariantMap parametersForChildAlgorithm( const QgsProcessingModelChildAlgorithm &child, const QVariantMap &modelParameters, const QVariantMap &results, const QgsExpressionContext &expressionContext, QString &error, const QgsProcessingContext *context = nullptr ) const;
+    QVariantMap parametersForChildAlgorithm(
+      const QgsProcessingModelChildAlgorithm &child,
+      const QVariantMap &modelParameters,
+      const QVariantMap &results,
+      const QgsExpressionContext &expressionContext,
+      QString &error,
+      const QgsProcessingContext *context = nullptr
+    ) const;
 
     /**
      * Returns TRUE if an output from a child algorithm is required elsewhere in

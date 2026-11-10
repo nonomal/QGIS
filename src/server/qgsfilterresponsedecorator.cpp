@@ -23,53 +23,46 @@
 QgsFilterResponseDecorator::QgsFilterResponseDecorator( QgsServerFiltersMap filters, QgsServerResponse &response )
   : mFilters( filters )
   , mResponse( response )
-{
-}
+{}
 
 void QgsFilterResponseDecorator::start()
 {
-#ifdef HAVE_SERVER_PYTHON_PLUGINS
   QgsServerFiltersMap::const_iterator filtersIterator;
   for ( filtersIterator = mFilters.constBegin(); filtersIterator != mFilters.constEnd(); ++filtersIterator )
   {
-    if ( ! filtersIterator.value()->onRequestReady() )
+    if ( !filtersIterator.value()->onRequestReady() )
     {
       // stop propagation
       return;
     }
   }
-#endif
 }
 
 void QgsFilterResponseDecorator::ready()
 {
-#ifdef HAVE_SERVER_PYTHON_PLUGINS
   QgsServerFiltersMap::const_iterator filtersIterator;
   for ( filtersIterator = mFilters.constBegin(); filtersIterator != mFilters.constEnd(); ++filtersIterator )
   {
-    if ( ! filtersIterator.value()->onProjectReady() )
+    if ( !filtersIterator.value()->onProjectReady() )
     {
       // stop propagation
       return;
     }
   }
-#endif
 }
 
 void QgsFilterResponseDecorator::finish()
 {
-#ifdef HAVE_SERVER_PYTHON_PLUGINS
   QgsServerFiltersMap::const_iterator filtersIterator;
   for ( filtersIterator = mFilters.constBegin(); filtersIterator != mFilters.constEnd(); ++filtersIterator )
   {
-    if ( ! filtersIterator.value()->onResponseComplete() )
+    if ( !filtersIterator.value()->onResponseComplete() )
     {
       // stop propagation, 'finish' must be called on the wrapped
       // response
       break;
     }
   }
-#endif
   // Will call internal 'flush'
   mResponse.finish();
 }
@@ -77,17 +70,15 @@ void QgsFilterResponseDecorator::finish()
 
 void QgsFilterResponseDecorator::flush()
 {
-#ifdef HAVE_SERVER_PYTHON_PLUGINS
   QgsServerFiltersMap::const_iterator filtersIterator;
 
   for ( filtersIterator = mFilters.constBegin(); filtersIterator != mFilters.constEnd(); ++filtersIterator )
   {
-    if ( ! filtersIterator.value()->onSendResponse() )
+    if ( !filtersIterator.value()->onSendResponse() )
     {
       // Stop propagation
       return;
     }
   }
-#endif
   mResponse.flush();
 }

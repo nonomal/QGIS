@@ -25,9 +25,11 @@
  *
  * A value relation field formatter looks up the values a map.
  *
- * The map is defined in the configuration as dictionary under the key "map".
+ * The map is defined in the configuration as dictionary under the key "map":
  *
+ * \code{.py}
  * { "map": { 1: "one", 2: "two", 3: "three" } }
+ * \endcode
  *
  * Values that are not on the map will be wrapped in parentheses. So with the above
  * configuration:
@@ -39,7 +41,6 @@
 class CORE_EXPORT QgsValueMapFieldFormatter : public QgsFieldFormatter
 {
   public:
-
     /**
      * Will be saved in the configuration when a value is NULL.
      * It's the magic UUID {2839923C-8B7D-419E-B84B-CA2FE9B80EC7}

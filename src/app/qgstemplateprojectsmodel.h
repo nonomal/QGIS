@@ -16,8 +16,10 @@
 #ifndef QGSTEMPLATEPROJECTSMODEL_H
 #define QGSTEMPLATEPROJECTSMODEL_H
 
-#include <QStandardItemModel>
+#include <utility>
+
 #include <QFileSystemWatcher>
+#include <QStandardItemModel>
 #include <QTemporaryDir>
 
 class QgsTemplateProjectsModel : public QStandardItemModel
@@ -25,16 +27,53 @@ class QgsTemplateProjectsModel : public QStandardItemModel
     Q_OBJECT
 
   public:
+    /**
+     * Custom model roles.
+     * \since QGIS 4.0
+     */
+    enum class CustomRole : int
+    {
+      TypeRole = Qt::UserRole + 1,
+      TitleRole,
+      PathRole,
+      NativePathRole,
+      CrsRole,
+      PreviewImagePathRole,
+      WritableRole,
+      CanvasColorRole,
+      SectionRole,
+    };
+    Q_ENUM( CustomRole )
+
+    /**
+     * Template types
+     * \since QGIS 4.0
+     */
+    enum class TemplateType : int
+    {
+      Blank,
+      Basemap,
+      File,
+    };
+    Q_ENUM( TemplateType )
+
     QgsTemplateProjectsModel( QObject *parent = nullptr );
 
-  private slots:
+    QHash<int, QByteArray> roleNames() const override;
+
+    /**
+     * Removes all file templates and refills the model with the templates found in the
+     * directories returned by QgsApplication::projectTemplatePaths()
+     */
+    void reload();
+
+    /**
+     * Returns the configured template directories as (label, path) pairs, in configuration order.
+     * All the labels are the directory name, or the full native path when several directories share the same name.
+     */
+    static QList<std::pair<QString, QString>> labelledTemplatePaths();
 
   private:
-    void addTemplateDirectory( const QString &path );
-    void scanDirectory( const QString &path );
-
-    QFileSystemWatcher mFileSystemWatcher;
-
     QTemporaryDir mTemporaryDir;
 };
 

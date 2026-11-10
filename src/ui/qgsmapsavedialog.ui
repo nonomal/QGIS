@@ -54,7 +54,31 @@
       </widget>
      </item>
      <item row="1" column="1">
-      <widget class="QgsScaleWidget" name="mScaleWidget" native="true"/>
+      <layout class="QHBoxLayout">
+       <item>
+        <widget class="QgsScaleWidget" name="mScaleWidget"/>
+       </item>
+       <item>
+        <widget class="QToolButton" name="mLockScale">
+         <property name="toolTip">
+          <string>Lock scale while setting the extent</string>
+         </property>
+         <property name="text">
+          <string/>
+         </property>
+         <property name="icon">
+          <iconset resource="../../images/images.qrc">
+          <normaloff>:/images/themes/default/lockedGray.svg</normaloff>:/images/themes/default/lockedGray.svg</iconset>
+         </property>
+         <property name="checkable">
+          <bool>true</bool>
+         </property>
+         <property name="checked">
+          <bool>false</bool>
+         </property>
+        </widget>
+       </item>
+      </layout>
      </item>
      <item row="0" column="0" colspan="2">
       <widget class="QgsExtentGroupBox" name="mExtentGroupBox">
@@ -67,9 +91,9 @@
       </widget>
      </item>
      <item row="9" column="0" colspan="2">
-      <widget class="QgsCollapsibleGroupBoxBasic" name="mGeoPDFGroupBox">
+      <widget class="QgsCollapsibleGroupBoxBasic" name="mGeospatialPDFGroupBox">
        <property name="title">
-        <string>Create Geospatial PDF (GeoPDF)</string>
+        <string>Create Geospatial PDF</string>
        </property>
        <property name="checkable">
         <bool>true</bool>
@@ -79,7 +103,7 @@
        </property>
        <layout class="QVBoxLayout" name="verticalLayout_2">
         <item>
-         <widget class="QStackedWidget" name="mGeoPDFOptionsStackedWidget">
+         <widget class="QStackedWidget" name="mGeospatialPDFOptionsStackedWidget">
           <property name="currentIndex">
            <number>1</number>
           </property>
@@ -98,7 +122,7 @@
              <number>0</number>
             </property>
             <item>
-             <widget class="QLabel" name="mGeoPdfUnavailableReason">
+             <widget class="QLabel" name="mGeospatialPdfUnavailableReason">
               <property name="text">
                <string/>
               </property>
@@ -120,18 +144,8 @@
             <property name="bottomMargin">
              <number>0</number>
             </property>
-            <item row="1" column="1">
-             <widget class="QComboBox" name="mGeoPdfFormatComboBox"/>
-            </item>
-            <item row="1" column="0">
-             <widget class="QLabel" name="label">
-              <property name="text">
-               <string>Format</string>
-              </property>
-             </widget>
-            </item>
-            <item row="2" column="0" colspan="2">
-             <widget class="QCheckBox" name="mExportGeoPdfFeaturesCheckBox">
+            <item row="1" column="0" colspan="2">
+             <widget class="QCheckBox" name="mExportGeospatialPdfFeaturesCheckBox">
               <property name="text">
                <string>Include vector feature information</string>
               </property>
@@ -255,7 +269,7 @@ Rasterizing the map is recommended when such effects are used.</string>
          <property name="maximum">
           <number>99999</number>
          </property>
-         <property name="showClearButton" stdset="0">
+         <property name="showClearButton">
           <bool>false</bool>
          </property>
         </widget>
@@ -306,7 +320,7 @@ Rasterizing the map is recommended when such effects are used.</string>
          <property name="maximum">
           <number>99999</number>
          </property>
-         <property name="showClearButton" stdset="0">
+         <property name="showClearButton">
           <bool>false</bool>
          </property>
         </widget>
@@ -327,7 +341,7 @@ Rasterizing the map is recommended when such effects are used.</string>
        <property name="maximum">
         <number>3000</number>
        </property>
-       <property name="showClearButton" stdset="0">
+       <property name="showClearButton">
         <bool>false</bool>
        </property>
       </widget>
@@ -384,26 +398,26 @@ Rasterizing the map is recommended when such effects are used.</string>
    <container>1</container>
   </customwidget>
   <customwidget>
-   <class>QgsSpinBox</class>
-   <extends>QSpinBox</extends>
-   <header>qgsspinbox.h</header>
-  </customwidget>
-  <customwidget>
    <class>QgsExtentGroupBox</class>
    <extends>QgsCollapsibleGroupBox</extends>
    <header>qgsextentgroupbox.h</header>
    <container>1</container>
   </customwidget>
   <customwidget>
+   <class>QgsScaleWidget</class>
+   <extends>QWidget</extends>
+   <header>qgsscalewidget.h</header>
+  </customwidget>
+  <customwidget>
+   <class>QgsSpinBox</class>
+   <extends>QSpinBox</extends>
+   <header>qgsspinbox.h</header>
+  </customwidget>
+  <customwidget>
    <class>QgsRatioLockButton</class>
    <extends>QToolButton</extends>
    <header>qgsratiolockbutton.h</header>
    <container>1</container>
-  </customwidget>
-  <customwidget>
-   <class>QgsScaleWidget</class>
-   <extends>QWidget</extends>
-   <header>qgsscalewidget.h</header>
   </customwidget>
   <customwidget>
    <class>QgsCollapsibleGroupBoxBasic</class>
@@ -420,6 +434,8 @@ Rasterizing the map is recommended when such effects are used.</string>
  </customwidgets>
  <tabstops>
   <tabstop>mExtentGroupBox</tabstop>
+  <tabstop>mScaleWidget</tabstop>
+  <tabstop>mLockScale</tabstop>
   <tabstop>mResolutionSpinBox</tabstop>
   <tabstop>mOutputWidthSpinBox</tabstop>
   <tabstop>mLockAspectRatio</tabstop>
@@ -428,9 +444,8 @@ Rasterizing the map is recommended when such effects are used.</string>
   <tabstop>mDrawAnnotations</tabstop>
   <tabstop>mSaveWorldFile</tabstop>
   <tabstop>mExportMetadataCheckBox</tabstop>
-  <tabstop>mGeoPDFGroupBox</tabstop>
-  <tabstop>mGeoPdfFormatComboBox</tabstop>
-  <tabstop>mExportGeoPdfFeaturesCheckBox</tabstop>
+  <tabstop>mGeospatialPDFGroupBox</tabstop>
+  <tabstop>mExportGeospatialPdfFeaturesCheckBox</tabstop>
   <tabstop>mSaveAsRaster</tabstop>
   <tabstop>mSimplifyGeometriesCheckbox</tabstop>
   <tabstop>mTextRenderFormatComboBox</tabstop>

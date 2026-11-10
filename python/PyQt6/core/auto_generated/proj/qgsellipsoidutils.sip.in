@@ -3,8 +3,9 @@
  *                                                                      *
  * src/core/proj/qgsellipsoidutils.h                                    *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/
+
 
 
 
@@ -12,42 +13,41 @@
 class QgsEllipsoidUtils
 {
 %Docstring(signature="appended")
-Contains utility functions for working with ellipsoids and querying the ellipsoid database.
+Contains utility functions for working with ellipsoids and querying the
+ellipsoid database.
 %End
 
 %TypeHeaderCode
 #include "qgsellipsoidutils.h"
 %End
   public:
-
     struct EllipsoidParameters
     {
-      bool valid;
+        bool valid;
 
-      double semiMajor;
-      double semiMinor;
+        double semiMajor;
+        double semiMinor;
 
-      bool useCustomParameters;
+        bool useCustomParameters;
 
-      double inverseFlattening;
+        double inverseFlattening;
 
-      QgsCoordinateReferenceSystem crs;
-
+        QgsCoordinateReferenceSystem crs;
     };
 
     struct EllipsoidDefinition
     {
-      QString acronym;
-      QString description;
-      QgsEllipsoidUtils::EllipsoidParameters parameters;
+        QString acronym;
+        QString description;
+        QgsEllipsoidUtils::EllipsoidParameters parameters;
 
-      QString celestialBodyName;
+        QString celestialBodyName;
     };
 
     static EllipsoidParameters ellipsoidParameters( const QString &ellipsoid );
 %Docstring
-Returns the parameters for the specified ``ellipsoid``.
-Results are cached to allow for fast retrieval of parameters.
+Returns the parameters for the specified ``ellipsoid``. Results are
+cached to allow for fast retrieval of parameters.
 %End
 
     static QList< QgsEllipsoidUtils::EllipsoidDefinition > definitions();
@@ -78,20 +78,39 @@ Returns a list of all known celestial bodies.
 
    This method requires PROJ 8.1 or later
 
-
-:raises QgsNotSupportedException: on QGIS builds based on PROJ 8.0 or earlier.
-
+:raises QgsNotSupportedException: on QGIS builds based on PROJ 8.0 or
+                                  earlier.
 
 .. versionadded:: 3.20
 %End
 
-};
+    static QQuaternion quaternionFromNormalUpRight( const QVector3D &normalUp, const QVector3D &normalRight );
+%Docstring
+Builds a rotation quaternion from an "up" direction and a "right"
+direction, with the remaining basis axis derived as their cross product.
 
+.. versionadded:: 4.4
+%End
+
+    static QQuaternion ellipsoidEastNorthUpRotation( const QgsVector3D &position, double semiMajorAxis, double semiMinorAxis );
+%Docstring
+Returns a rotation quaternion for the east-north-up (ENU) reference
+frame at ``position`` on the ellipsoid with the given ``semiMajorAxis``
+and ``semiMinorAxis``. The local axes are defined as:
+
+The x axis points in the local east direction. The y axis points in the
+local north direction. The z axis points in the direction of the
+ellipsoid surface normal which passes through the position.
+
+.. versionadded:: 4.4
+%End
+
+};
 
 /************************************************************************
  * This file has been generated automatically from                      *
  *                                                                      *
  * src/core/proj/qgsellipsoidutils.h                                    *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/

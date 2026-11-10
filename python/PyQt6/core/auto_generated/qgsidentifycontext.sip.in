@@ -3,16 +3,15 @@
  *                                                                      *
  * src/core/qgsidentifycontext.h                                        *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/
-
 
 
 class QgsIdentifyContext
 {
 %Docstring(signature="appended")
-Identify contexts are used to encapsulate the settings to be used to perform
-an identify action.
+Identify contexts are used to encapsulate the settings to be used to
+perform an identify action.
 
 .. versionadded:: 3.16.1
 %End
@@ -21,11 +20,7 @@ an identify action.
 #include "qgsidentifycontext.h"
 %End
   public:
-
     QgsIdentifyContext();
-%Docstring
-Constructor for QgsIdentifyContext
-%End
 
     void setTemporalRange( const QgsDateTimeRange &range );
 %Docstring
@@ -52,8 +47,8 @@ Returns ``True`` if the temporal range setting is enabled.
 
     QgsDoubleRange zRange() const;
 %Docstring
-Returns the range of z-values to identify within, or an infinite range if no filtering by
-z should be applied.
+Returns the range of z-values to identify within, or an infinite range
+if no filtering by z should be applied.
 
 .. seealso:: :py:func:`setZRange`
 
@@ -78,5 +73,5 @@ Set to an infinite range if no filtering by z should be applied.
  *                                                                      *
  * src/core/qgsidentifycontext.h                                        *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/

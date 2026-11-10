@@ -14,29 +14,35 @@
  ***************************************************************************/
 
 #include "qgslayertreegrouppropertieswidget.h"
+
 #include "qgsapplication.h"
+#include "qgsmapcanvas.h"
 #include "qgsmaplayer.h"
 #include "qgspainteffect.h"
-#include "qgsmapcanvas.h"
 #include "qgspainteffectregistry.h"
 #include "qgsproject.h"
 #include "qgsprojectutils.h"
 
-#include <QStackedWidget>
 #include <QHBoxLayout>
 #include <QLabel>
+#include <QStackedWidget>
+#include <QString>
+
+#include "moc_qgslayertreegrouppropertieswidget.cpp"
+
+using namespace Qt::StringLiterals;
 
 QgsLayerTreeGroupPropertiesWidget::QgsLayerTreeGroupPropertiesWidget( QgsMapCanvas *canvas, QWidget *parent )
   : QgsMapLayerConfigWidget( nullptr, canvas, parent )
 {
   setupUi( this );
 
-  mPaintEffect.reset( QgsPaintEffectRegistry::defaultStack() );
+  mPaintEffect = QgsPaintEffectRegistry::defaultStack();
   mPaintEffect->setEnabled( false );
   mEffectWidget->setPaintEffect( mPaintEffect.get() );
 
   connect( mOpacityWidget, &QgsOpacityWidget::opacityChanged, this, &QgsLayerTreeGroupPropertiesWidget::onLayerPropertyChanged );
-  connect( mBlendModeComboBox, qOverload< int >( &QgsBlendModeComboBox::currentIndexChanged ), this, &QgsLayerTreeGroupPropertiesWidget::onLayerPropertyChanged );
+  connect( mBlendModeComboBox, qOverload<int>( &QgsBlendModeComboBox::currentIndexChanged ), this, &QgsLayerTreeGroupPropertiesWidget::onLayerPropertyChanged );
   connect( mEffectWidget, &QgsEffectStackCompactWidget::changed, this, &QgsLayerTreeGroupPropertiesWidget::onLayerPropertyChanged );
   connect( mRenderAsGroupCheckBox, &QGroupBox::toggled, this, &QgsLayerTreeGroupPropertiesWidget::onLayerPropertyChanged );
 
@@ -46,8 +52,7 @@ QgsLayerTreeGroupPropertiesWidget::QgsLayerTreeGroupPropertiesWidget( QgsMapCanv
 QgsLayerTreeGroupPropertiesWidget::~QgsLayerTreeGroupPropertiesWidget() = default;
 
 void QgsLayerTreeGroupPropertiesWidget::syncToLayer( QgsMapLayer * )
-{
-}
+{}
 
 void QgsLayerTreeGroupPropertiesWidget::setMapLayerConfigWidgetContext( const QgsMapLayerConfigWidgetContext &context )
 {
@@ -119,7 +124,7 @@ void QgsLayerTreeGroupPropertiesWidget::onLayerPropertyChanged()
   if ( mBlockLayerUpdates )
     return;
 
-  emit widgetChanged();
+  emit changed();
 }
 
 
@@ -130,7 +135,7 @@ void QgsLayerTreeGroupPropertiesWidget::onLayerPropertyChanged()
 QgsLayerTreeGroupPropertiesWidgetFactory::QgsLayerTreeGroupPropertiesWidgetFactory( QObject *parent )
   : QObject( parent )
 {
-  setIcon( QgsApplication::getThemeIcon( QStringLiteral( "propertyicons/symbology.svg" ) ) );
+  setIcon( QgsApplication::getThemeIcon( u"propertyicons/symbology.svg"_s ) );
   setTitle( tr( "Symbology" ) );
 }
 
@@ -158,4 +163,3 @@ bool QgsLayerTreeGroupPropertiesWidgetFactory::supportsLayerTreeGroup( QgsLayerT
 {
   return true;
 }
-

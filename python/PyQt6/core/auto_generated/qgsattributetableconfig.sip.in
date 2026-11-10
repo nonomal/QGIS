@@ -3,9 +3,8 @@
  *                                                                      *
  * src/core/qgsattributetableconfig.h                                   *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/
-
 
 
 
@@ -13,7 +12,8 @@
 class QgsAttributeTableConfig
 {
 %Docstring(signature="appended")
-This is a container for configuration of the attribute table.
+A container for configuration of the attribute table.
+
 The configuration is specific for one vector layer.
 %End
 
@@ -21,7 +21,9 @@ The configuration is specific for one vector layer.
 #include "qgsattributetableconfig.h"
 %End
   public:
+    static const QMetaObject staticMetaObject;
 
+  public:
     enum Type /BaseType=IntEnum/
     {
       Field,
@@ -30,19 +32,16 @@ The configuration is specific for one vector layer.
 
     struct ColumnConfig
     {
-      ColumnConfig();
-%Docstring
-Constructor for ColumnConfig
-%End
+        ColumnConfig();
 
 
-      QgsAttributeTableConfig::Type type;
+        QgsAttributeTableConfig::Type type;
 
-      QString name;
+        QString name;
 
-      bool hidden;
+        bool hidden;
 
-      int width;
+        int width;
     };
 
     enum ActionWidgetStyle /BaseType=IntEnum/
@@ -51,20 +50,26 @@ Constructor for ColumnConfig
       DropDown
     };
 
+    enum class AddFeatureMethod /BaseType=IntEnum/
+    {
+      Unset,
+      Form,
+      Table
+    };
+
+
     QgsAttributeTableConfig();
-%Docstring
-Constructor for QgsAttributeTableConfig.
-%End
 
     QVector<QgsAttributeTableConfig::ColumnConfig> columns() const;
 %Docstring
-Gets the list with all columns and their configuration.
-The list order defines the order of appearance.
+Gets the list with all columns and their configuration. The list order
+defines the order of appearance.
 %End
 
     bool isEmpty() const;
 %Docstring
-Returns ``True`` if the configuration is empty, ie it contains no columns.
+Returns ``True`` if the configuration is empty, ie it contains no
+columns.
 
 .. seealso:: :py:func:`size`
 %End
@@ -81,7 +86,7 @@ Returns the number of columns in the configuration.
     sipRes = sipCpp->size();
 %End
 
-    int mapVisibleColumnToIndex( int visibleColumn ) const;
+      int mapVisibleColumnToIndex( int visibleColumn ) const;
 %Docstring
 Maps a visible column index to its original column index.
 
@@ -92,16 +97,16 @@ Maps a visible column index to its original column index.
 
     void setColumns( const QVector<QgsAttributeTableConfig::ColumnConfig> &columns );
 %Docstring
-Set the list of columns visible in the attribute table.
-The list order defines the order of appearance.
+Set the list of columns visible in the attribute table. The list order
+defines the order of appearance.
 %End
 
     void update( const QgsFields &fields );
 %Docstring
-Update the configuration with the given fields.
-Any field which is present in the configuration but not present in the
-parameter fields will be removed. Any field which is in the parameter
-fields but not in the configuration will be appended.
+Update the configuration with the given fields. Any field which is
+present in the configuration but not present in the parameter fields
+will be removed. Any field which is in the parameter fields but not in
+the configuration will be appended.
 %End
 
     bool actionWidgetVisible() const;
@@ -144,6 +149,26 @@ Gets the expression used for sorting.
 Set the sort expression used for sorting.
 %End
 
+    AddFeatureMethod addFeatureMethod() const;
+%Docstring
+Returns the method that defines how features are added (single form or
+embedded in a table).
+
+.. seealso:: :py:func:`setAddFeatureMethod`
+
+.. versionadded:: 4.2
+%End
+
+    void setAddFeatureMethod( const AddFeatureMethod addFeatureMethod );
+%Docstring
+Sets the ``addFeatureMethod`` that defines how features are added
+(single form or embedded in a table).
+
+.. seealso:: :py:func:`addFeatureMethod`
+
+.. versionadded:: 4.2
+%End
+
 
     int columnWidth( int column ) const;
 %Docstring
@@ -175,7 +200,8 @@ Returns the width of a column, or -1 if column should use default width.
 Sets the width of a column.
 
 :param column: column index
-:param width: column width in pixels, or -1 if column should use default width
+:param width: column width in pixels, or -1 if column should use default
+              width
 
 :raises IndexError: if the column is not found
 
@@ -258,7 +284,7 @@ Compare this configuration's columns name, type, and order to ``other``.
 The column's width is not considered.
 %End
 
-    bool operator!= ( const QgsAttributeTableConfig &other ) const;
+    bool operator!=( const QgsAttributeTableConfig &other ) const;
 
 };
 
@@ -268,5 +294,5 @@ The column's width is not considered.
  *                                                                      *
  * src/core/qgsattributetableconfig.h                                   *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/

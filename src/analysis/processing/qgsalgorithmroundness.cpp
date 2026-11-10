@@ -16,13 +16,18 @@
  ***************************************************************************/
 
 #include "qgsalgorithmroundness.h"
+
 #include "qgscurvepolygon.h"
+
+#include <QString>
+
+using namespace Qt::StringLiterals;
 
 ///@cond PRIVATE
 
 QString QgsRoundnessAlgorithm::name() const
 {
-  return QStringLiteral( "roundness" );
+  return u"roundness"_s;
 }
 
 QString QgsRoundnessAlgorithm::displayName() const
@@ -42,7 +47,7 @@ QString QgsRoundnessAlgorithm::group() const
 
 QString QgsRoundnessAlgorithm::groupId() const
 {
-  return QStringLiteral( "vectorgeometry" );
+  return u"vectorgeometry"_s;
 }
 
 QString QgsRoundnessAlgorithm::outputName() const
@@ -52,8 +57,11 @@ QString QgsRoundnessAlgorithm::outputName() const
 
 QString QgsRoundnessAlgorithm::shortHelpString() const
 {
-  return QObject::tr( "Calculates the roundness of each feature and stores it as a new field. The input vector layer must contain polygons.\n\n"
-                      "The roundness of a polygon is defined as 4π × polygon area / perimeter². The roundness value varies between 0 and 1. A perfect circle has a roundness of 1, while a completely flat polygon has a roundness of 0." );
+  return QObject::tr(
+    "Calculates the roundness of each feature and stores it as a new field. The input vector layer must contain polygons.\n\n"
+    "The roundness of a polygon is defined as 4π × polygon area / perimeter². The roundness value varies between 0 and 1. A perfect circle has a roundness of 1, while a completely flat polygon has a "
+    "roundness of 0."
+  );
 }
 
 QString QgsRoundnessAlgorithm::shortDescription() const
@@ -68,7 +76,7 @@ QgsRoundnessAlgorithm *QgsRoundnessAlgorithm::createInstance() const
 
 QList<int> QgsRoundnessAlgorithm::inputLayerTypes() const
 {
-  return QList<int>() << static_cast< int >( Qgis::ProcessingSourceType::VectorPolygon );
+  return QList<int>() << static_cast<int>( Qgis::ProcessingSourceType::VectorPolygon );
 }
 
 Qgis::ProcessingSourceType QgsRoundnessAlgorithm::outputLayerType() const
@@ -78,19 +86,21 @@ Qgis::ProcessingSourceType QgsRoundnessAlgorithm::outputLayerType() const
 
 QgsFields QgsRoundnessAlgorithm::outputFields( const QgsFields &inputFields ) const
 {
-  QgsFields outputFields = inputFields;
-  outputFields.append( QgsField( QStringLiteral( "roundness" ), QVariant::Double ) );
-  return outputFields;
+  QgsFields newFields;
+  newFields.append( QgsField( u"roundness"_s, QMetaType::Type::Double ) );
+  return QgsProcessingUtils::combineFields( inputFields, newFields );
 }
 
 QgsFeatureList QgsRoundnessAlgorithm::processFeature( const QgsFeature &feature, QgsProcessingContext &, QgsProcessingFeedback * )
 {
+  QGS_MARK_ALGORITHM_SOURCE
+
   QgsFeature f = feature;
   QgsAttributes attributes = f.attributes();
   if ( f.hasGeometry() )
   {
     QgsGeometry geom = f.geometry();
-    if ( const QgsCurvePolygon *poly = qgsgeometry_cast< const QgsCurvePolygon * >( geom.constGet()->simplifiedTypeRef() ) )
+    if ( const QgsCurvePolygon *poly = qgsgeometry_cast<const QgsCurvePolygon *>( geom.constGet()->simplifiedTypeRef() ) )
     {
       double roundness = poly->roundness();
       attributes << QVariant( roundness );
@@ -109,5 +119,3 @@ QgsFeatureList QgsRoundnessAlgorithm::processFeature( const QgsFeature &feature,
 }
 
 ///@endcond
-
-

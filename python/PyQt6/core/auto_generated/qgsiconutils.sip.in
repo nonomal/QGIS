@@ -3,8 +3,9 @@
  *                                                                      *
  * src/core/qgsiconutils.h                                              *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/
+
 
 
 
@@ -21,7 +22,6 @@ Contains utility functions for working with icons.
 #include "qgsiconutils.h"
 %End
   public:
-
     static QIcon iconForWkbType( Qgis::WkbType type );
 %Docstring
 Returns the icon for a vector layer whose geometry ``type`` is provided.
@@ -29,7 +29,8 @@ Returns the icon for a vector layer whose geometry ``type`` is provided.
 
     static QIcon iconForGeometryType( Qgis::GeometryType typeGroup );
 %Docstring
-Returns the icon for a vector layer whose geometry ``typeGroup`` is provided.
+Returns the icon for a vector layer whose geometry ``typeGroup`` is
+provided.
 
 .. versionadded:: 3.28
 %End
@@ -68,7 +69,8 @@ Returns an icon representing raster layers.
 
     static QIcon iconDefaultLayer();
 %Docstring
-Returns a default icon for layers, which aren't the standard raster/vector/... types.
+Returns a default icon for layers, which aren't the standard
+raster/vector/... types.
 %End
 
     static QIcon iconMesh();
@@ -105,14 +107,24 @@ Returns the default icon for the specified layer ``type``.
 .. versionadded:: 3.22
 %End
 
+    static QIcon addOverlay( const QIcon &icon, const QString &overlayPath, QSize size = QSize( 16, 16 ) );
+%Docstring
+Returns a copy of ``icon`` with an overlay icon rendered from the image
+file at ``overlayPath``.
+
+:param icon: The base icon to which the overlay will be added.
+:param overlayPath: The path to the overlay image file.
+:param size: The requested size of the resultant icon. Default value is
+             the standard small icon size 16x16 pixels.
+
+.. versionadded:: 4.4
+%End
 };
-
-
 
 /************************************************************************
  * This file has been generated automatically from                      *
  *                                                                      *
  * src/core/qgsiconutils.h                                              *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/

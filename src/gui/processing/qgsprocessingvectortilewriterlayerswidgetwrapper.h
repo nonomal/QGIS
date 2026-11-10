@@ -16,14 +16,15 @@
 #ifndef QGSPROCESSINGVECTORTILEWRITERLAYERSWIDGETWRAPPER_H
 #define QGSPROCESSINGVECTORTILEWRITERLAYERSWIDGETWRAPPER_H
 
-#define SIP_NO_FILE
-
-#include "qgsprocessingcontext.h"
-#include "qgsprocessingwidgetwrapper.h"
-#include "qgsprocessingmultipleselectiondialog.h"
-#include "qgsvectortilewriter.h"
 
 #include "ui_qgsprocessingvectortilewriterlayerdetailswidgetbase.h"
+
+#include "qgsprocessingcontext.h"
+#include "qgsprocessingmultipleselectiondialog.h"
+#include "qgsprocessingwidgetwrapper.h"
+#include "qgsvectortilewriter.h"
+
+#define SIP_NO_FILE
 
 class QLineEdit;
 class QToolButton;
@@ -52,14 +53,10 @@ class QgsProcessingVectorTileWriterLayersPanelWidget : public QgsProcessingMulti
     Q_OBJECT
 
   public:
-
     /**
      * Constructor for QgsProcessingVectorTileWriterLayersPanelWidget.
      */
-    QgsProcessingVectorTileWriterLayersPanelWidget(
-      const QVariant &value,
-      QgsProject *project,
-      QWidget *parent SIP_TRANSFERTHIS = nullptr );
+    QgsProcessingVectorTileWriterLayersPanelWidget( const QVariant &value, QgsProject *project, QWidget *parent SIP_TRANSFERTHIS = nullptr );
 
   private slots:
 
@@ -75,13 +72,11 @@ class QgsProcessingVectorTileWriterLayersPanelWidget : public QgsProcessingMulti
 };
 
 
-
 class QgsProcessingVectorTileWriterLayersWidget : public QWidget
 {
     Q_OBJECT
 
   public:
-
     QgsProcessingVectorTileWriterLayersWidget( QWidget *parent = nullptr );
 
     QVariant value() const { return mValue; }
@@ -98,7 +93,6 @@ class QgsProcessingVectorTileWriterLayersWidget : public QWidget
     void showDialog();
 
   private:
-
     void updateSummaryText();
 
     QLineEdit *mLineEdit = nullptr;
@@ -117,28 +111,21 @@ class QgsProcessingVectorTileWriterLayersWidgetWrapper : public QgsAbstractProce
     Q_OBJECT
 
   public:
-
-    QgsProcessingVectorTileWriterLayersWidgetWrapper( const QgsProcessingParameterDefinition *parameter = nullptr,
-        QgsProcessingGui::WidgetType type = QgsProcessingGui::Standard, QWidget *parent = nullptr );
+    QgsProcessingVectorTileWriterLayersWidgetWrapper( const QgsProcessingParameterDefinition *parameter = nullptr, Qgis::ProcessingMode type = Qgis::ProcessingMode::Standard, QWidget *parent = nullptr );
 
     // QgsProcessingParameterWidgetFactoryInterface
     QString parameterType() const override;
-    QgsAbstractProcessingParameterWidgetWrapper *createWidgetWrapper( const QgsProcessingParameterDefinition *parameter, QgsProcessingGui::WidgetType type ) override;
+    QgsAbstractProcessingParameterWidgetWrapper *createWidgetWrapper( const QgsProcessingParameterDefinition *parameter, Qgis::ProcessingMode type ) override;
 
     // QgsProcessingParameterWidgetWrapper interface
     QWidget *createWidget() override SIP_FACTORY;
     void setWidgetContext( const QgsProcessingParameterWidgetContext &context ) override;
 
   protected:
-
     void setWidgetValue( const QVariant &value, QgsProcessingContext &context ) override;
     QVariant widgetValue() const override;
 
-    QStringList compatibleParameterTypes() const override;
-    QStringList compatibleOutputTypes() const override;
-
   private:
-
     QgsProcessingVectorTileWriterLayersWidget *mPanel = nullptr;
 
     friend class TestProcessingGui;

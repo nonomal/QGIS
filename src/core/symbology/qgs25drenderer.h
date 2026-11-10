@@ -25,6 +25,7 @@ class QgsFillSymbolLayer;
 /**
  * \ingroup core
  * \class Qgs25DRenderer
+ * \brief A vector renderer which represents 3D features in an isometric view.
  */
 class CORE_EXPORT Qgs25DRenderer : public QgsFeatureRenderer
 {
@@ -37,9 +38,9 @@ class CORE_EXPORT Qgs25DRenderer : public QgsFeatureRenderer
      * \param element XML information
      * \param context reading context
      */
-    static QgsFeatureRenderer *create( QDomElement &element, const QgsReadWriteContext &context ) SIP_FACTORY;
+    static std::unique_ptr<QgsFeatureRenderer> create( QDomElement &element, const QgsReadWriteContext &context );
     QDomElement save( QDomDocument &doc, const QgsReadWriteContext &context ) override;
-
+    Qgis::FeatureRendererFlags flags() const override;
     void startRender( QgsRenderContext &context, const QgsFields &fields ) override;
     void stopRender( QgsRenderContext &context ) override;
 
@@ -105,7 +106,7 @@ class CORE_EXPORT Qgs25DRenderer : public QgsFeatureRenderer
      * we assume that the internals are not compatible and create a new default
      * 2.5D renderer.
      */
-    static Qgs25DRenderer *convertFromRenderer( QgsFeatureRenderer *renderer ) SIP_FACTORY;
+    static std::unique_ptr<Qgs25DRenderer> convertFromRenderer( QgsFeatureRenderer *renderer );
 
     /**
      * Is the shadow enabled
@@ -118,7 +119,6 @@ class CORE_EXPORT Qgs25DRenderer : public QgsFeatureRenderer
     void setShadowEnabled( bool value ) const;
 
   private:
-
     QgsFillSymbolLayer *roofLayer() const;
     QgsFillSymbolLayer *wallLayer() const;
     QgsOuterGlowEffect *glowEffect() const;

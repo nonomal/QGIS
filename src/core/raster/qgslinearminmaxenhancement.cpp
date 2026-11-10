@@ -1,4 +1,4 @@
-/* **************************************************************************
+/***************************************************************************
               qgslinearminmaxenhancement.cpp -  description
                        -------------------
 begin                : Fri Nov 16 2007
@@ -7,7 +7,7 @@ email                : ersts@amnh.org
 
 ****************************************************************************/
 
-/* **************************************************************************
+/***************************************************************************
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
  *   it under the terms of the GNU General Public License as published by  *
@@ -18,9 +18,9 @@ email                : ersts@amnh.org
 
 #include "qgslinearminmaxenhancement.h"
 
-QgsLinearMinMaxEnhancement::QgsLinearMinMaxEnhancement( Qgis::DataType qgsRasterDataType, double minimumValue, double maximumValue ) : QgsContrastEnhancementFunction( qgsRasterDataType, minimumValue, maximumValue )
-{
-}
+QgsLinearMinMaxEnhancement::QgsLinearMinMaxEnhancement( Qgis::DataType qgsRasterDataType, double minimumValue, double maximumValue )
+  : QgsContrastEnhancementFunction( qgsRasterDataType, minimumValue, maximumValue )
+{}
 
 int QgsLinearMinMaxEnhancement::enhance( double value )
 {

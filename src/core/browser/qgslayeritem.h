@@ -17,44 +17,77 @@
 #ifndef QGSLAYERITEM_H
 #define QGSLAYERITEM_H
 
-#include "qgis_sip.h"
-#include "qgis_core.h"
 #include "qgis.h"
+#include "qgis_core.h"
+#include "qgis_sip.h"
 #include "qgsdataitem.h"
 #include "qgslayermetadata.h"
 
+#include <QString>
+
+using namespace Qt::StringLiterals;
+
 /**
  * \ingroup core
- * \brief Item that represents a layer that can be opened with one of the providers
+ * \brief A browser item that represents a layer that can be opened with one of the providers.
 */
 class CORE_EXPORT QgsLayerItem : public QgsDataItem
 {
     Q_OBJECT
 
   public:
-
     /**
      * Constructor for QgsLayerItem.
      */
     QgsLayerItem( QgsDataItem *parent, const QString &name, const QString &path, const QString &uri, Qgis::BrowserLayerType layerType, const QString &providerKey );
 
 #ifdef SIP_RUN
+    // clang-format off
     SIP_PYOBJECT __repr__();
     % MethodCode
-    QString str = QStringLiteral( "<QgsLayerItem: \"%1\" %2>" ).arg( sipCpp->name(), sipCpp->path() );
+    QString str = u"<QgsLayerItem: \"%1\" %2>"_s.arg( sipCpp->name(), sipCpp->path() );
     sipRes = PyUnicode_FromString( str.toUtf8().constData() );
     % End
+// clang-format on
 #endif
 
-    // --- reimplemented from QgsDataItem ---
+      // --- reimplemented from QgsDataItem ---
 
-    bool equal( const QgsDataItem *other ) override;
+      bool equal( const QgsDataItem *other ) override;
 
     bool hasDragEnabled() const override { return true; }
 
     QgsMimeDataUtils::UriList mimeUris() const override;
 
     // --- New virtual methods for layer item derived classes ---
+
+#ifndef SIP_RUN
+    /**
+     * Encapsulates a layer mime URI, with additional details.
+     *
+     * \note Not available in Python bindings
+     *
+     * \since QGIS 4.2
+     */
+    struct LayerUriWithDetails
+    {
+        //! Layer URI
+        QgsMimeDataUtils::Uri uri;
+        //! A user-friendly, translated description of the layer type
+        QString userFriendlyDescription;
+    };
+
+    /**
+     * Returns a list of layer mime URIs, with additional details.
+     *
+     * An alternative to mimeUris(), allowing for returning richer layer detail.
+     *
+     * \note Not available in Python bindings
+     *
+     * \since QGIS 4.2
+     */
+    virtual QList< LayerUriWithDetails > layerUrisWithDetails() const;
+#endif
 
     /**
      * Returns the associated map layer type.
@@ -70,9 +103,6 @@ class CORE_EXPORT QgsLayerItem : public QgsDataItem
     //! Returns layer uri or empty string if layer cannot be created
     QString uri() const { return mUri; }
 
-    //! Returns provider key
-    QString providerKey() const { return mProviderKey; }
-
     /**
      * Returns the supported CRS
      */
@@ -87,6 +117,12 @@ class CORE_EXPORT QgsLayerItem : public QgsDataItem
      * Returns comments of the layer
      */
     virtual QString comments() const { return QString(); }
+
+    /**
+     * Returns the layer item cpabilities
+     * \since QGIS 4.40
+     */
+    virtual Qgis::LayerItemCapabilities layerCapabilities() const { return Qgis::LayerItemCapability::AddComments; }
 
     /**
      * Returns the string representation of the given \a layerType
@@ -119,7 +155,6 @@ class CORE_EXPORT QgsLayerItem : public QgsDataItem
     QStringList mSupportFormats;
 
   public:
-
     /**
      * Returns the icon for a vector layer whose geometry type is provided.
      * \since QGIS 3.18
@@ -138,7 +173,7 @@ class CORE_EXPORT QgsLayerItem : public QgsDataItem
     static QIcon iconVectorTile();
     //! Returns icon for point cloud layer
     static QIcon iconPointCloud();
-    //! \returns the layer name
+    //! Returns the layer name
     virtual QString layerName() const { return name(); }
     QgsAbstractDatabaseProviderConnection *databaseConnection() const override;
 
@@ -156,11 +191,7 @@ class CORE_EXPORT QgsLayerItem : public QgsDataItem
     void setLayerMetadata( const QgsLayerMetadata &metadata );
 
   private:
-
     QgsLayerMetadata mLayerMetadata;
-
 };
 
 #endif // QGSLAYERITEM_H
-
-

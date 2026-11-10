@@ -3,8 +3,10 @@
  *                                                                      *
  * src/3d/qgs3d.h                                                       *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/
+
+
 
 
 
@@ -13,7 +15,7 @@
 class Qgs3D
 {
 %Docstring(signature="appended")
-Qgs3D is a singleton class containing various registries and other global members
+A singleton class containing various registries and other global members
 related to 3D classes.
 
 .. versionadded:: 3.16
@@ -23,7 +25,6 @@ related to 3D classes.
 #include "qgs3d.h"
 %End
   public:
-
 
 
     static Qgs3D *instance();
@@ -43,6 +44,12 @@ Initializes the 3D framework.
 Returns the material registry, used for managing 3D materials.
 %End
 
+    static Qgs3DTerrainRegistry *terrainRegistry();
+%Docstring
+Returns the terrain registry, used for managing 3D terrains.
+%End
+
+
   private:
     Qgs3D( const Qgs3D &other );
 };
@@ -52,5 +59,5 @@ Returns the material registry, used for managing 3D materials.
  *                                                                      *
  * src/3d/qgs3d.h                                                       *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/

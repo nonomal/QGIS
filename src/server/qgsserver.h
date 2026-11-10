@@ -27,28 +27,28 @@
 #ifndef QGSSERVER_H
 #define QGSSERVER_H
 
-#include <QFileInfo>
-#include "qgsrequesthandler.h"
-#include "qgsconfigcache.h"
-#include "qgscapabilitiescache.h"
-#include "qgsserviceregistry.h"
-#include "qgsserversettings.h"
-#include "qgsserverplugins.h"
-#include "qgsserverinterfaceimpl.h"
 #include "qgis_server.h"
+#include "qgscapabilitiescache.h"
+#include "qgsconfigcache.h"
+#include "qgsrequesthandler.h"
+#include "qgsserverinterfaceimpl.h"
+#include "qgsserverplugins.h"
 #include "qgsserverrequest.h"
+#include "qgsserversettings.h"
+#include "qgsserviceregistry.h"
+
+#include <QFileInfo>
 
 class QgsServerResponse;
 class QgsProject;
 
 /**
  * \ingroup server
- * \brief The QgsServer class provides OGC web services.
+ * \brief A server which provides OGC web services.
  */
 class SERVER_EXPORT QgsServer
 {
   public:
-
     /**
      * Creates the server instance
      */
@@ -77,7 +77,7 @@ class SERVER_EXPORT QgsServer
 
 
     //! Returns a pointer to the server interface
-    QgsServerInterfaceImpl SIP_PYALTERNATIVETYPE( QgsServerInterface ) *serverInterface() { return sServerInterface; }
+    QgsServerInterfaceImpl SIP_PYALTERNATIVETYPE( QgsServerInterface ) * serverInterface() { return sServerInterface; }
 
 #ifdef HAVE_SERVER_PYTHON_PLUGINS
 
@@ -100,17 +100,14 @@ class SERVER_EXPORT QgsServer
     /**
      * Returns the configuration file path.
      */
-    static QString configPath( const QString &defaultConfigPath,
-                               const QString &configPath );
+    static QString configPath( const QString &defaultConfigPath, const QString &configPath );
 
     /**
      * \brief QgsServer::printRequestParameters prints the request parameters
      * \param parameterMap
      * \param logLevel
      */
-    static void printRequestParameters(
-      const QMap< QString, QString> &parameterMap,
-      Qgis::MessageLevel logLevel );
+    static void printRequestParameters( const QMap<QString, QString> &parameterMap, Qgis::MessageLevel logLevel );
 
     /**
      * Returns the default project file.

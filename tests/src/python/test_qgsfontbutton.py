@@ -5,30 +5,30 @@ it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or
 (at your option) any later version.
 """
-__author__ = 'Nyall Dawson'
-__date__ = '04/06/2017'
-__copyright__ = 'Copyright 2017, The QGIS Project'
 
-from qgis.PyQt.QtGui import QColor
-from qgis.PyQt.QtTest import QSignalSpy
+__author__ = "Nyall Dawson"
+__date__ = "04/06/2017"
+__copyright__ = "Copyright 2017, The QGIS Project"
+
+import unittest
+
 from qgis.core import QgsTextFormat
 from qgis.gui import QgsFontButton, QgsMapCanvas
-import unittest
-from qgis.testing import start_app, QgisTestCase
-
+from qgis.PyQt.QtGui import QColor
+from qgis.PyQt.QtTest import QSignalSpy
+from qgis.testing import QgisTestCase, start_app
 from utilities import getTestFont
 
 start_app()
 
 
 class TestQgsFontButton(QgisTestCase):
-
     def testGettersSetters(self):
         button = QgsFontButton()
         canvas = QgsMapCanvas()
 
-        button.setDialogTitle('test title')
-        self.assertEqual(button.dialogTitle(), 'test title')
+        button.setDialogTitle("test title")
+        self.assertEqual(button.dialogTitle(), "test title")
 
         button.setMapCanvas(canvas)
         self.assertEqual(button.mapCanvas(), canvas)
@@ -38,7 +38,7 @@ class TestQgsFontButton(QgisTestCase):
 
         s = QgsTextFormat()
         s.setFont(getTestFont())
-        s.setNamedStyle('Italic')
+        s.setNamedStyle("Italic")
         s.setSize(5)
         s.setColor(QColor(255, 0, 0))
         s.setOpacity(0.5)
@@ -48,8 +48,8 @@ class TestQgsFontButton(QgisTestCase):
         self.assertEqual(len(signal_spy), 1)
 
         r = button.textFormat()
-        self.assertEqual(r.font().family(), 'QGIS Vera Sans')
-        self.assertEqual(r.namedStyle(), 'Italic')
+        self.assertEqual(r.font().family(), "QGIS Vera Sans")
+        self.assertEqual(r.namedStyle(), "Italic")
         self.assertEqual(r.size(), 5)
         self.assertEqual(r.color(), QColor(255, 0, 0))
         self.assertEqual(r.opacity(), 0.5)
@@ -67,8 +67,8 @@ class TestQgsFontButton(QgisTestCase):
         self.assertEqual(len(signal_spy), 1)
 
         r = button.currentFont()
-        self.assertEqual(r.family(), 'QGIS Vera Sans')
-        self.assertEqual(r.styleName(), 'Roman')
+        self.assertEqual(r.family(), "QGIS Vera Sans")
+        self.assertEqual(r.styleName(), "Roman")
         self.assertEqual(r.pointSize(), 16)
 
     def testSetColor(self):
@@ -76,7 +76,7 @@ class TestQgsFontButton(QgisTestCase):
 
         s = QgsTextFormat()
         s.setFont(getTestFont())
-        s.setNamedStyle('Italic')
+        s.setNamedStyle("Italic")
         s.setSize(5)
         s.setColor(QColor(255, 0, 0))
         s.setOpacity(0.5)
@@ -87,8 +87,8 @@ class TestQgsFontButton(QgisTestCase):
         self.assertEqual(len(signal_spy), 1)
 
         r = button.textFormat()
-        self.assertEqual(r.font().family(), 'QGIS Vera Sans')
-        self.assertEqual(r.namedStyle(), 'Italic')
+        self.assertEqual(r.font().family(), "QGIS Vera Sans")
+        self.assertEqual(r.namedStyle(), "Italic")
         self.assertEqual(r.size(), 5)
         self.assertEqual(r.color().name(), QColor(0, 255, 0).name())
         self.assertEqual(r.opacity(), 0.5)
@@ -118,5 +118,5 @@ class TestQgsFontButton(QgisTestCase):
         self.assertTrue(button.textFormat().isValid())
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

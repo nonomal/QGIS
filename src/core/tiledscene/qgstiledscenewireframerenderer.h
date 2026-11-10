@@ -18,9 +18,9 @@
 #ifndef QGSTILEDSCENEWIREFRAMERENDERER_H
 #define QGSTILEDSCENEWIREFRAMERENDERER_H
 
-#include "qgstiledscenerenderer.h"
 #include "qgis_core.h"
 #include "qgis_sip.h"
+#include "qgstiledscenerenderer.h"
 
 class QgsFillSymbol;
 class QgsLineSymbol;
@@ -34,12 +34,11 @@ class QgsLineSymbol;
 class CORE_EXPORT QgsTiledSceneWireframeRenderer : public QgsTiledSceneRenderer
 {
   public:
-
     /**
      * Constructor for QgsTiledSceneWireframeRenderer.
      */
     QgsTiledSceneWireframeRenderer();
-    ~QgsTiledSceneWireframeRenderer();
+    ~QgsTiledSceneWireframeRenderer() override;
 
     QString type() const override;
     QgsTiledSceneRenderer *clone() const override;
@@ -53,14 +52,14 @@ class CORE_EXPORT QgsTiledSceneWireframeRenderer : public QgsTiledSceneRenderer
     /**
      * Creates a textured renderer from an XML \a element.
      */
-    static QgsTiledSceneRenderer *create( QDomElement &element, const QgsReadWriteContext &context ) SIP_FACTORY;
+    static std::unique_ptr<QgsTiledSceneRenderer> create( QDomElement &element, const QgsReadWriteContext &context );
 
     /**
      * Returns a copy of the default fill symbol used to render triangles in the wireframe.
      *
      * \see setFillSymbol()
      */
-    static QgsFillSymbol *createDefaultFillSymbol() SIP_FACTORY;
+    static std::unique_ptr< QgsFillSymbol > createDefaultFillSymbol();
 
     /**
      * Returns the fill symbol used to render triangles in the wireframe.
@@ -83,7 +82,7 @@ class CORE_EXPORT QgsTiledSceneWireframeRenderer : public QgsTiledSceneRenderer
      *
      * \see setLineSymbol()
      */
-    static QgsLineSymbol *createDefaultLineSymbol() SIP_FACTORY;
+    static std::unique_ptr< QgsLineSymbol > createDefaultLineSymbol();
 
     /**
      * Returns the line symbol used to render lines in the wireframe.
@@ -118,11 +117,9 @@ class CORE_EXPORT QgsTiledSceneWireframeRenderer : public QgsTiledSceneRenderer
     void setUseTextureColors( bool enabled );
 
   private:
-
     std::unique_ptr< QgsFillSymbol> mFillSymbol;
     std::unique_ptr< QgsLineSymbol> mLineSymbol;
     bool mUseTextureColors = false;
-
 };
 
 #endif // QGSTILEDSCENEWIREFRAMERENDERER_H

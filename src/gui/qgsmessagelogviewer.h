@@ -18,13 +18,14 @@
 #define QGSMESSAGELOGVIEWER_H
 
 #include "ui_qgsmessagelogviewer.h"
+
+#include "qgis_gui.h"
+#include "qgis_sip.h"
 #include "qgsguiutils.h"
 #include "qgsmessagelog.h"
 
 #include <QMenu>
 #include <QString>
-#include "qgis_gui.h"
-#include "qgis_sip.h"
 
 class QStatusBar;
 class QCloseEvent;
@@ -33,11 +34,10 @@ class QCloseEvent;
  * \ingroup gui
  * \brief A generic dialog widget for displaying QGIS log messages.
  */
-class GUI_EXPORT QgsMessageLogViewer: public QDialog, private Ui::QgsMessageLogViewer
+class GUI_EXPORT QgsMessageLogViewer : public QDialog, private Ui::QgsMessageLogViewer
 {
     Q_OBJECT
   public:
-
     /**
      * Create a new message log viewer. The viewer will automatically connect to the system's
      * QgsApplication::messageLog() instance.
@@ -48,8 +48,17 @@ class GUI_EXPORT QgsMessageLogViewer: public QDialog, private Ui::QgsMessageLogV
 
     /**
      * Logs a \a message to the viewer.
+     *
+     * The \a format parameter specifies the message format (since QGIS 4.0)
      */
-    void logMessage( const QString &message, const QString &tag, Qgis::MessageLevel level );
+    void logMessage( const QString &message, const QString &tag, Qgis::MessageLevel level, Qgis::StringFormat format = Qgis::StringFormat::PlainText );
+
+    /**
+     * Activates the tab whose title matches the given \a tag, if any.
+     *
+     * \since QGIS 3.44
+     */
+    void showTab( const QString &tag );
 
   protected:
     void closeEvent( QCloseEvent *e ) override;
@@ -61,7 +70,6 @@ class GUI_EXPORT QgsMessageLogViewer: public QDialog, private Ui::QgsMessageLogV
     void closeTab( int index );
 
   private:
-
     QString mClickedAnchor;
     QMenu *mTabBarContextMenu = nullptr;
     int mMessageLoggedCount = 0;

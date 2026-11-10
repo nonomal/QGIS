@@ -15,20 +15,23 @@
 #ifndef QGSRENDERERWIDGET_H
 #define QGSRENDERERWIDGET_H
 
-#include <QWidget>
+#include "qgsexpressioncontextgenerator.h"
+#include "qgspanelwidget.h"
+#include "qgsrenderer.h"
+#include "qgssymbolwidgetcontext.h"
+
 #include <QMenu>
 #include <QStackedWidget>
-#include "qgspanelwidget.h"
-#include "qgssymbolwidgetcontext.h"
+#include <QWidget>
 
 class QgsDataDefinedSizeLegend;
 class QgsDataDefinedSizeLegendWidget;
 class QgsVectorLayer;
 class QgsStyle;
-class QgsFeatureRenderer;
 class QgsMapCanvas;
 class QgsMarkerSymbol;
 class QgsLegendSymbolItem;
+class QgsPropertyOverrideButton;
 
 /**
  * \ingroup gui
@@ -42,11 +45,12 @@ class QgsLegendSymbolItem;
  * - on any change of renderer type, create some default (dummy?) version and change the stacked widget
  * - when clicked OK/Apply, get the renderer from active widget and clone it for the layer
 */
-class GUI_EXPORT QgsRendererWidget : public QgsPanelWidget
+class GUI_EXPORT QgsRendererWidget : public QgsPanelWidget, public QgsExpressionContextGenerator
 {
     Q_OBJECT
   public:
     QgsRendererWidget( QgsVectorLayer *layer, QgsStyle *style );
+    QgsExpressionContext createExpressionContext() const override;
 
     //! Returns pointer to the renderer (no transfer of ownership)
     virtual QgsFeatureRenderer *renderer() = 0;
@@ -101,7 +105,7 @@ class GUI_EXPORT QgsRendererWidget : public QgsPanelWidget
     /**
      * Emitted when the symbol levels settings have been changed.
      *
-     * \deprecated since QGIS 3.20 -- no longer emitted.
+     * \deprecated QGIS 3.20. No longer emitted.
      */
     Q_DECL_DEPRECATED void symbolLevelsChanged() SIP_DEPRECATED;
 
@@ -149,10 +153,17 @@ class GUI_EXPORT QgsRendererWidget : public QgsPanelWidget
      *
      * \since QGIS 3.20
      */
-    virtual void setSymbolLevels( const QList< QgsLegendSymbolItem > &levels, bool enabled );
+    virtual void setSymbolLevels( const QList<QgsLegendSymbolItem> &levels, bool enabled );
+
+    /**
+     * Registers a data defined override button. Handles setting up connections
+     * for the button and initializing the button to show the correct descriptions
+     * and help text for the associated property.
+     */
+    void registerDataDefinedButton( QgsPropertyOverrideButton *button, QgsFeatureRenderer::Property key );
 
   protected slots:
-    void  contextMenuViewCategories( QPoint p );
+    void contextMenuViewCategories( QPoint p );
     //! Change color of selected symbols
     void changeSymbolColor();
     //! Change opacity of selected symbols
@@ -180,16 +191,14 @@ class GUI_EXPORT QgsRendererWidget : public QgsPanelWidget
   private slots:
 
     void copySymbol();
+    void updateDataDefinedProperty();
 
   private:
-
     /**
      * This will be called whenever the renderer is set on a layer.
      * This can be overwritten in subclasses.
      */
     virtual void apply() SIP_FORCE;
-
-
 };
 
 
@@ -211,11 +220,9 @@ class QgsFields;
  */
 class GUI_EXPORT QgsDataDefinedValueDialog : public QDialog, public Ui::QgsDataDefinedValueBaseDialog, private QgsExpressionContextGenerator
 {
-
     Q_OBJECT
 
   public:
-
     /**
      * Constructor
      * \param symbolList must not be empty
@@ -246,7 +253,6 @@ class GUI_EXPORT QgsDataDefinedValueDialog : public QDialog, public Ui::QgsDataD
     void dataDefinedChanged();
 
   protected:
-
     /**
      * Should be called in the constructor of child classes.
      *
@@ -272,6 +278,7 @@ class GUI_EXPORT QgsDataDefinedValueDialog : public QDialog, public Ui::QgsDataD
 /**
  * \ingroup gui
  * \class QgsDataDefinedSizeDialog
+ * \brief A dialog for configuring symbol-level data defined size.
  */
 class GUI_EXPORT QgsDataDefinedSizeDialog : public QgsDataDefinedValueDialog
 {
@@ -287,13 +294,13 @@ class GUI_EXPORT QgsDataDefinedSizeDialog : public QgsDataDefinedValueDialog
     void setDataDefined( QgsSymbol *symbol, const QgsProperty &dd ) override;
 
   private:
-
-    std::shared_ptr< QgsMarkerSymbol > mAssistantSymbol;
+    std::shared_ptr<QgsMarkerSymbol> mAssistantSymbol;
 };
 
 /**
  * \ingroup gui
  * \class QgsDataDefinedRotationDialog
+ * \brief A dialog for configuring symbol-level data defined rotation.
  */
 class GUI_EXPORT QgsDataDefinedRotationDialog : public QgsDataDefinedValueDialog
 {
@@ -312,6 +319,7 @@ class GUI_EXPORT QgsDataDefinedRotationDialog : public QgsDataDefinedValueDialog
 /**
  * \ingroup gui
  * \class QgsDataDefinedWidthDialog
+ * \brief A dialog for configuring symbol-level data defined width.
  */
 class GUI_EXPORT QgsDataDefinedWidthDialog : public QgsDataDefinedValueDialog
 {
@@ -326,7 +334,6 @@ class GUI_EXPORT QgsDataDefinedWidthDialog : public QgsDataDefinedValueDialog
 
     void setDataDefined( QgsSymbol *symbol, const QgsProperty &dd ) override;
 };
-
 
 
 #endif // QGSRENDERERWIDGET_H

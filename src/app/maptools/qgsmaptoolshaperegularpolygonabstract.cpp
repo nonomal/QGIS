@@ -3,7 +3,7 @@
     ---------------------
     begin                : July 2017
     copyright            : (C) 2017
-    email                : lbartoletti at tuxfamily dot org
+    email                : lituus at free dot fr
  ***************************************************************************
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -14,17 +14,19 @@
  ***************************************************************************/
 
 #include "qgsmaptoolshaperegularpolygonabstract.h"
+
+#include "qgisapp.h"
 #include "qgsgeometryrubberband.h"
 #include "qgsgeometryutils.h"
 #include "qgsmapcanvas.h"
-#include "qgspoint.h"
-#include "qgisapp.h"
 #include "qgsmaptoolcapture.h"
+#include "qgspoint.h"
+
+#include "moc_qgsmaptoolshaperegularpolygonabstract.cpp"
 
 QgsMapToolShapeRegularPolygonAbstract::QgsMapToolShapeRegularPolygonAbstract( const QString &id, QgsMapToolCapture *parentTool )
   : QgsMapToolShapeAbstract( id, parentTool )
-{
-}
+{}
 
 void QgsMapToolShapeRegularPolygonAbstract::createNumberSidesSpinBox()
 {
@@ -51,14 +53,13 @@ void QgsMapToolShapeRegularPolygonAbstract::addRegularPolygonToParentTool()
   {
     return;
   }
-  mParentTool->clearCurve( );
+  mParentTool->clearCurve();
 
   // keep z value from the first snapped point
   std::unique_ptr<QgsLineString> ls( mRegularPolygon.toLineString() );
   for ( const QgsPoint &point : std::as_const( mPoints ) )
   {
-    if ( QgsWkbTypes::hasZ( point.wkbType() ) &&
-         point.z() != mParentTool->defaultZValue() )
+    if ( QgsWkbTypes::hasZ( point.wkbType() ) && point.z() != mParentTool->defaultZValue() )
     {
       ls->dropZValue();
       ls->addZValue( point.z() );

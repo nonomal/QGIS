@@ -3,8 +3,9 @@
  *                                                                      *
  * src/core/effects/qgsblureffect.h                                     *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/
+
 
 
 
@@ -13,22 +14,21 @@
 class QgsBlurEffect : QgsPaintEffect /NoDefaultCtors/
 {
 %Docstring(signature="appended")
-A paint effect which blurs a source picture, using a number of different blur
-methods.
+A paint effect which blurs a source picture, using a number of different
+blur methods.
 %End
 
 %TypeHeaderCode
 #include "qgsblureffect.h"
 %End
   public:
-
     enum BlurMethod /BaseType=IntEnum/
     {
       StackBlur,
       GaussianBlur
     };
 
-    static QgsPaintEffect *create( const QVariantMap &map ) /Factory/;
+    static std::unique_ptr<QgsPaintEffect> create( const QVariantMap &map );
 %Docstring
 Creates a new QgsBlurEffect effect from a properties string map.
 
@@ -38,12 +38,12 @@ Creates a new QgsBlurEffect effect from a properties string map.
 %End
 
     QgsBlurEffect();
-%Docstring
-Constructor for QgsBlurEffect.
-%End
+
+    virtual Qgis::PaintEffectFlags flags() const;
 
     virtual QString type() const;
     virtual QVariantMap properties() const;
+
 
     virtual void readProperties( const QVariantMap &props );
 
@@ -54,8 +54,9 @@ Constructor for QgsBlurEffect.
 %Docstring
 Sets blur level (radius)
 
-:param level: blur level. Depending on the current :py:func:`~QgsBlurEffect.blurMethod`, this parameter
-              has different effects
+:param level: blur level. Depending on the current
+              :py:func:`~QgsBlurEffect.blurMethod`, this parameter has
+              different effects
 
 .. seealso:: :py:func:`blurLevel`
 
@@ -70,8 +71,9 @@ Sets blur level (radius)
 %Docstring
 Returns the blur level (radius)
 
-:return: blur level. Depending on the current :py:func:`~QgsBlurEffect.blurMethod`, this parameter
-         has different effects
+:return: blur level. Depending on the current
+         :py:func:`~QgsBlurEffect.blurMethod`, this parameter has
+         different effects
 
 .. seealso:: :py:func:`setBlurLevel`
 
@@ -164,8 +166,8 @@ Returns the blur method (algorithm) used for performing the blur.
 %Docstring
 Sets the ``opacity`` for the effect.
 
-:param opacity: double between 0 and 1 inclusive, where 0 is fully transparent
-                and 1 is fully opaque
+:param opacity: double between 0 and 1 inclusive, where 0 is fully
+                transparent and 1 is fully opaque
 
 .. seealso:: :py:func:`opacity`
 %End
@@ -174,8 +176,8 @@ Sets the ``opacity`` for the effect.
 %Docstring
 Returns the opacity for the effect.
 
-:return: opacity value between 0 and 1 inclusive, where 0 is fully transparent
-         and 1 is fully opaque
+:return: opacity value between 0 and 1 inclusive, where 0 is fully
+         transparent and 1 is fully opaque
 
 .. seealso:: :py:func:`setOpacity`
 %End
@@ -201,7 +203,6 @@ Returns the blend mode for the effect
 %End
 
   protected:
-
     virtual void draw( QgsRenderContext &context );
 
     virtual QRectF boundingRect( const QRectF &rect, const QgsRenderContext &context ) const;
@@ -209,11 +210,10 @@ Returns the blend mode for the effect
 
 };
 
-
 /************************************************************************
  * This file has been generated automatically from                      *
  *                                                                      *
  * src/core/effects/qgsblureffect.h                                     *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/

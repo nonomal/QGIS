@@ -17,10 +17,15 @@
 
 #include "qgsjsoneditwidget.h"
 
+#include <QString>
+
+#include "moc_qgsjsoneditwrapper.cpp"
+
+using namespace Qt::StringLiterals;
+
 QgsJsonEditWrapper::QgsJsonEditWrapper( QgsVectorLayer *layer, int fieldIdx, QWidget *editor, QWidget *parent )
   : QgsEditorWidgetWrapper( layer, fieldIdx, editor, parent )
-{
-}
+{}
 
 QVariant QgsJsonEditWrapper::value() const
 {
@@ -33,8 +38,8 @@ QVariant QgsJsonEditWrapper::value() const
 QWidget *QgsJsonEditWrapper::createWidget( QWidget *parent )
 {
   QgsJsonEditWidget *jsonEditWidget = new QgsJsonEditWidget( parent );
-  jsonEditWidget->setView( static_cast<QgsJsonEditWidget::View>( config( QStringLiteral( "DefaultView" ) ).toInt() ) );
-  jsonEditWidget->setFormatJsonMode( static_cast<QgsJsonEditWidget::FormatJson>( config( QStringLiteral( "FormatJson" ) ).toInt() ) );
+  jsonEditWidget->setView( static_cast<QgsJsonEditWidget::View>( config( u"DefaultView"_s ).toInt() ) );
+  jsonEditWidget->setFormatJsonMode( static_cast<QgsJsonEditWidget::FormatJson>( config( u"FormatJson"_s ).toInt() ) );
   return jsonEditWidget;
 }
 
@@ -58,7 +63,7 @@ void QgsJsonEditWrapper::showIndeterminateState()
     return;
 
   mJsonEditWidget->blockSignals( true );
-  mJsonEditWidget->setJsonText( QStringLiteral( "<mixed values>" ) );
+  mJsonEditWidget->setJsonText( u"<mixed values>"_s );
   mJsonEditWidget->blockSignals( false );
 }
 
@@ -82,4 +87,3 @@ void QgsJsonEditWrapper::setEnabled( bool enabled )
   // No need to disable JsonEditWidget as it is already read only
   Q_UNUSED( enabled )
 }
-

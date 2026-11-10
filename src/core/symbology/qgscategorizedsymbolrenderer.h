@@ -15,11 +15,14 @@
 #ifndef QGSCATEGORIZEDSYMBOLRENDERER_H
 #define QGSCATEGORIZEDSYMBOLRENDERER_H
 
-#include "qgis_core.h"
 #include "qgis.h"
+#include "qgis_core.h"
 #include "qgsrenderer.h"
 
 #include <QHash>
+#include <QString>
+
+using namespace Qt::StringLiterals;
 
 class QgsVectorLayer;
 class QgsStyle;
@@ -35,10 +38,6 @@ class QgsColorRamp;
 class CORE_EXPORT QgsRendererCategory
 {
   public:
-
-    /**
-     * Constructor for QgsRendererCategory.
-     */
     QgsRendererCategory() = default;
 
     /**
@@ -56,9 +55,6 @@ class CORE_EXPORT QgsRendererCategory
     */
     QgsRendererCategory( const QVariant &value, QgsSymbol *symbol SIP_TRANSFER, const QString &label, bool render = true, const QString &uuid = QString() );
 
-    /**
-     * Copy constructor.
-     */
     QgsRendererCategory( const QgsRendererCategory &cat );
     QgsRendererCategory &operator=( QgsRendererCategory cat );
     ~QgsRendererCategory();
@@ -137,29 +133,42 @@ class CORE_EXPORT QgsRendererCategory
 
     /**
      * Converts the category to a matching SLD rule, within the specified DOM document and \a element.
+     *
+     * \deprecated QGIS 3.44. Use the version with QgsSldExportContext instead.
      */
-    void toSld( QDomDocument &doc, QDomElement &element, QVariantMap props ) const;
+    Q_DECL_DEPRECATED void toSld( QDomDocument &doc, QDomElement &element, QVariantMap props ) const SIP_DEPRECATED;
+
+    /**
+     * Converts the category to a matching SLD rule, within the specified DOM document and \a element.
+     *
+     * \since QGIS 3.44
+     */
+    bool toSld( QDomDocument &doc, QDomElement &element, const QString &classAttribute, QgsSldExportContext &context ) const;
 
 #ifdef SIP_RUN
+    // clang-format off
     SIP_PYOBJECT __repr__();
     % MethodCode
     const QString str = !sipCpp->value().isValid()
-                        ? QStringLiteral( "<QgsRendererCategory>" )
+                        ? u"<QgsRendererCategory>"_s
                         : sipCpp->label().isEmpty()
-                        ? QStringLiteral( "<QgsRendererCategory: %1>" ).arg( sipCpp->value().toString() )
-                        : QStringLiteral( "<QgsRendererCategory: %1 (%2)>" ).arg( sipCpp->value().toString(), sipCpp->label() );
+                        ? u"<QgsRendererCategory: %1>"_s.arg( sipCpp->value().toString() )
+                        : u"<QgsRendererCategory: %1 (%2)>"_s.arg( sipCpp->value().toString(), sipCpp->label() );
     sipRes = PyUnicode_FromString( str.toUtf8().constData() );
     % End
+// clang-format on
 #endif
 
-  protected:
+    // clang-format off
+    protected:
+    // clang-format on
+    friend class QgsCategorizedSymbolRendererWidget;
+
     QVariant mValue;
     std::unique_ptr<QgsSymbol> mSymbol;
     QString mLabel;
     bool mRender = true;
     QString mUuid;
-
-    void swap( QgsRendererCategory &other );
 };
 
 typedef QList<QgsRendererCategory> QgsCategoryList;
@@ -167,10 +176,13 @@ typedef QList<QgsRendererCategory> QgsCategoryList;
 /**
  * \ingroup core
  * \class QgsCategorizedSymbolRenderer
+ * \brief A feature renderer which represents features using a list of renderer categories.
  */
 class CORE_EXPORT QgsCategorizedSymbolRenderer : public QgsFeatureRenderer
 {
   public:
+    using Category = QgsRendererCategory;
+    using Categories = QgsCategoryList;
 
     /**
      * Constructor for QgsCategorizedSymbolRenderer.
@@ -183,6 +195,7 @@ class CORE_EXPORT QgsCategorizedSymbolRenderer : public QgsFeatureRenderer
     QgsCategorizedSymbolRenderer( const QString &attrName = QString(), const QgsCategoryList &categories = QgsCategoryList() );
     ~QgsCategorizedSymbolRenderer() override;
 
+    Qgis::FeatureRendererFlags flags() const override;
     QgsSymbol *symbolForFeature( const QgsFeature &feature, QgsRenderContext &context ) const override;
     QgsSymbol *originalSymbolForFeature( const QgsFeature &feature, QgsRenderContext &context ) const override;
     void startRender( QgsRenderContext &context, const QgsFields &fields ) override;
@@ -191,7 +204,8 @@ class CORE_EXPORT QgsCategorizedSymbolRenderer : public QgsFeatureRenderer
     bool filterNeedsGeometry() const override;
     QString dump() const override;
     QgsCategorizedSymbolRenderer *clone() const override SIP_FACTORY;
-    void toSld( QDomDocument &doc, QDomElement &element, const QVariantMap &props = QVariantMap() ) const override;
+    Q_DECL_DEPRECATED void toSld( QDomDocument &doc, QDomElement &element, const QVariantMap &props = QVariantMap() ) const override SIP_DEPRECATED;
+    bool toSld( QDomDocument &doc, QDomElement &element, QgsSldExportContext &context ) const override;
     QgsFeatureRenderer::Capabilities capabilities() override { return SymbolLevels | Filter; }
     QString filter( const QgsFields &fields = QgsFields() ) override;
     QgsSymbolList symbols( QgsRenderContext &context ) const override;
@@ -328,7 +342,7 @@ class CORE_EXPORT QgsCategorizedSymbolRenderer : public QgsFeatureRenderer
     /**
      * Creates a categorized renderer from an XML \a element.
      */
-    static QgsFeatureRenderer *create( QDomElement &element, const QgsReadWriteContext &context ) SIP_FACTORY;
+    static std::unique_ptr<QgsFeatureRenderer> create( QDomElement &element, const QgsReadWriteContext &context );
 
     QDomElement save( QDomDocument &doc, const QgsReadWriteContext &context ) override;
     QgsLegendSymbolList legendSymbolItems() const override;
@@ -393,6 +407,7 @@ class CORE_EXPORT QgsCategorizedSymbolRenderer : public QgsFeatureRenderer
     bool legendSymbolItemsCheckable() const override;
     bool legendSymbolItemChecked( const QString &key ) override;
     void setLegendSymbolItem( const QString &key, QgsSymbol *symbol SIP_TRANSFER ) override;
+    void setLegendSymbolItemLabel( const QString &key, const QString &label ) override;
     void checkLegendSymbolItem( const QString &key, bool state = true ) override;
     QString legendClassificationAttribute() const override { return classAttribute(); }
 
@@ -403,7 +418,7 @@ class CORE_EXPORT QgsCategorizedSymbolRenderer : public QgsFeatureRenderer
      *
      * \returns a new renderer if the conversion was possible, otherwise NULLPTR.
      */
-    static QgsCategorizedSymbolRenderer *convertFromRenderer( const QgsFeatureRenderer *renderer, QgsVectorLayer *layer = nullptr ) SIP_FACTORY;
+    static std::unique_ptr<QgsCategorizedSymbolRenderer> convertFromRenderer( const QgsFeatureRenderer *renderer, QgsVectorLayer *layer = nullptr );
 
     /**
      * Configures appearance of legend when renderer is configured to use data-defined size for marker symbols.
@@ -439,8 +454,7 @@ class CORE_EXPORT QgsCategorizedSymbolRenderer : public QgsFeatureRenderer
      *
      * \since QGIS 3.4
      */
-    int matchToSymbols( QgsStyle *style, Qgis::SymbolType type,
-                        QVariantList &unmatchedCategories SIP_OUT, QStringList &unmatchedSymbols SIP_OUT, bool caseSensitive = true, bool useTolerantMatch = false );
+    int matchToSymbols( QgsStyle *style, Qgis::SymbolType type, QVariantList &unmatchedCategories SIP_OUT, QStringList &unmatchedSymbols SIP_OUT, bool caseSensitive = true, bool useTolerantMatch = false );
 
 
     /**
@@ -463,8 +477,9 @@ class CORE_EXPORT QgsCategorizedSymbolRenderer : public QgsFeatureRenderer
      *  \note Precision is ignored for integers.
      *
      *  \since QGIS 3.22.1
+     * \deprecated QGIS 4.0. Use QgsVariantUtils::displayString() instead.
      */
-    static QString displayString( const QVariant &value, int precision = -1 );
+    Q_DECL_DEPRECATED static QString displayString( const QVariant &value, int precision = -1 ) SIP_DEPRECATED;
 
 
   protected:
@@ -479,6 +494,9 @@ class CORE_EXPORT QgsCategorizedSymbolRenderer : public QgsFeatureRenderer
     //! attribute index (derived from attribute name in startRender)
     int mAttrNum = -1;
 
+    //! whether the attribute is numeric (derived from attribute name in startRender)
+    bool mAttrIsNumeric = false;
+
     //! hashtable for faster access to symbols
     QHash<QString, QgsSymbol *> mSymbolHash;
     bool mCounting = false;
@@ -486,17 +504,17 @@ class CORE_EXPORT QgsCategorizedSymbolRenderer : public QgsFeatureRenderer
     void rebuildHash();
 
     /**
-     * \deprecated No longer used, will be removed in QGIS 4.0
+     * \deprecated QGIS 3.40. No longer used, will be removed in QGIS 5.0.
      */
     Q_DECL_DEPRECATED QgsSymbol *skipRender() SIP_DEPRECATED;
 
     /**
      * Returns the matching symbol corresponding to an attribute \a value.
-     * \deprecated use variant which takes a second bool argument instead.
+     * \deprecated QGIS 3.40. Use variant which takes a second bool argument instead.
      */
     Q_DECL_DEPRECATED QgsSymbol *symbolForValue( const QVariant &value ) const SIP_DEPRECATED;
 
-    // TODO QGIS 4.0 - rename Python method to symbolForValue
+    // TODO QGIS 5.0 - rename Python method to symbolForValue
 
     /**
      * Returns the matching symbol corresponding to an attribute \a value.
@@ -524,7 +542,6 @@ class CORE_EXPORT QgsCategorizedSymbolRenderer : public QgsFeatureRenderer
 
     //! Returns list of legend symbol items from individual categories
     QgsLegendSymbolList baseLegendSymbolItems() const;
-
 };
 
 #endif // QGSCATEGORIZEDSYMBOLRENDERER_H

@@ -4,8 +4,13 @@ QgsLayoutItemPicture.Stretch = QgsLayoutItemPicture.ResizeMode.Stretch
 QgsLayoutItemPicture.Clip = QgsLayoutItemPicture.ResizeMode.Clip
 QgsLayoutItemPicture.ZoomResizeFrame = QgsLayoutItemPicture.ResizeMode.ZoomResizeFrame
 QgsLayoutItemPicture.FrameToImageSize = QgsLayoutItemPicture.ResizeMode.FrameToImageSize
-QgsLayoutItemPicture.FormatSVG = QgsLayoutItemPicture.Format.FormatSVG
-QgsLayoutItemPicture.FormatRaster = QgsLayoutItemPicture.Format.FormatRaster
-QgsLayoutItemPicture.FormatUnknown = QgsLayoutItemPicture.Format.FormatUnknown
 QgsLayoutItemPicture.GridNorth = QgsLayoutItemPicture.NorthMode.GridNorth
 QgsLayoutItemPicture.TrueNorth = QgsLayoutItemPicture.NorthMode.TrueNorth
+try:
+    QgsLayoutItemPicture.__attribute_docs__ = {'pictureRotationChanged': 'Emitted on picture rotation change\n'}
+    QgsLayoutItemPicture.create = staticmethod(QgsLayoutItemPicture.create)
+    QgsLayoutItemPicture.__overridden_methods__ = ['type', 'icon', 'finalizeRestoreFromXml', 'refreshDataDefinedProperty', 'draw', 'framePath', 'applyItemSizeConstraint', 'writePropertiesToElement', 'readPropertiesFromElement']
+    QgsLayoutItemPicture.__signal_arguments__ = {'pictureRotationChanged': ['newRotation: float']}
+    QgsLayoutItemPicture.__group__ = ['layout']
+except (NameError, AttributeError):
+    pass

@@ -3,24 +3,26 @@
  *                                                                      *
  * src/core/symbology/qgspointclusterrenderer.h                         *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/
 
 
 
 
-class QgsPointClusterRenderer: QgsPointDistanceRenderer
+class QgsPointClusterRenderer : QgsPointDistanceRenderer
 {
 %Docstring(signature="appended")
-A renderer that automatically clusters points with the same geographic position.
+A renderer that automatically clusters points with the same geographic
+position.
 %End
 
 %TypeHeaderCode
 #include "qgspointclusterrenderer.h"
 %End
   public:
-
     QgsPointClusterRenderer();
+
+    virtual Qgis::FeatureRendererFlags flags() const;
 
     virtual QgsPointClusterRenderer *clone() const /Factory/;
 
@@ -35,14 +37,15 @@ A renderer that automatically clusters points with the same geographic position.
     virtual bool accept( QgsStyleEntityVisitorInterface *visitor ) const;
 
 
-    static QgsFeatureRenderer *create( QDomElement &symbologyElem, const QgsReadWriteContext &context ) /Factory/;
+    static std::unique_ptr<QgsFeatureRenderer> create( QDomElement &symbologyElem, const QgsReadWriteContext &context );
 %Docstring
 Creates a renderer from XML element
 %End
 
     QgsMarkerSymbol *clusterSymbol();
 %Docstring
-Returns the symbol used for rendering clustered groups (but not ownership of the symbol).
+Returns the symbol used for rendering clustered groups (but not
+ownership of the symbol).
 
 .. seealso:: :py:func:`setClusterSymbol`
 %End
@@ -51,16 +54,18 @@ Returns the symbol used for rendering clustered groups (but not ownership of the
 %Docstring
 Sets the symbol for rendering clustered groups.
 
-:param symbol: new cluster symbol. Ownership is transferred to the renderer.
+:param symbol: new cluster symbol. Ownership is transferred to the
+               renderer.
 
 .. seealso:: :py:func:`clusterSymbol`
 %End
 
-    static QgsPointClusterRenderer *convertFromRenderer( const QgsFeatureRenderer *renderer ) /Factory/;
+    static std::unique_ptr<QgsPointClusterRenderer> convertFromRenderer( const QgsFeatureRenderer *renderer );
 %Docstring
 Creates a QgsPointClusterRenderer from an existing renderer.
 
-:return: a new renderer if the conversion was possible, otherwise ``None``.
+:return: a new renderer if the conversion was possible, otherwise
+         ``None``.
 %End
 
   private:
@@ -75,5 +80,5 @@ Creates a QgsPointClusterRenderer from an existing renderer.
  *                                                                      *
  * src/core/symbology/qgspointclusterrenderer.h                         *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/

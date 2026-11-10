@@ -18,13 +18,14 @@
 
 #include "qgis_core.h"
 #include "qgis_sip.h"
-#include "qgsvectortiledataprovider.h"
 #include "qgsprovidermetadata.h"
+#include "qgsvectortiledataprovider.h"
 #include "qgsvectortilematrixset.h"
+
+#define SIP_NO_FILE
 
 class QgsMbTiles;
 
-#define SIP_NO_FILE
 
 ///@cond PRIVATE
 
@@ -33,15 +34,10 @@ class CORE_EXPORT QgsMbTilesVectorTileDataProvider : public QgsVectorTileDataPro
     Q_OBJECT
 
   public:
-    QgsMbTilesVectorTileDataProvider( const QString &uri,
-                                      const QgsDataProvider::ProviderOptions &providerOptions,
-                                      QgsDataProvider::ReadFlags flags );
+    QgsMbTilesVectorTileDataProvider( const QString &uri, const QgsDataProvider::ProviderOptions &providerOptions, Qgis::DataProviderReadFlags flags );
 
     QgsMbTilesVectorTileDataProvider( const QgsMbTilesVectorTileDataProvider &other );
 
-    /**
-     * QgsMbTilesVectorTileDataProvider cannot be assigned.
-     */
     QgsMbTilesVectorTileDataProvider &operator=( const QgsMbTilesVectorTileDataProvider &other ) = delete;
 
     Qgis::DataProviderFlags flags() const override;
@@ -60,13 +56,11 @@ class CORE_EXPORT QgsMbTilesVectorTileDataProvider : public QgsVectorTileDataPro
     static QString MB_TILES_VECTOR_TILE_DATA_PROVIDER_DESCRIPTION;
 
   private:
-
     //! Returns raw tile data for a single tile loaded from MBTiles file
     static QByteArray loadFromMBTiles( QgsMbTiles &mbTileReader, const QgsTileXYZ &id, QgsFeedback *feedback = nullptr );
     bool mIsValid = false;
     QgsRectangle mExtent;
     QgsVectorTileMatrixSet mMatrixSet;
-
 };
 
 class QgsMbTilesVectorTileDataProviderMetadata : public QgsProviderMetadata
@@ -75,7 +69,7 @@ class QgsMbTilesVectorTileDataProviderMetadata : public QgsProviderMetadata
   public:
     QgsMbTilesVectorTileDataProviderMetadata();
     QgsProviderMetadata::ProviderMetadataCapabilities capabilities() const override;
-    QgsMbTilesVectorTileDataProvider *createProvider( const QString &uri, const QgsDataProvider::ProviderOptions &options, QgsDataProvider::ReadFlags flags = QgsDataProvider::ReadFlags() ) override;
+    QgsMbTilesVectorTileDataProvider *createProvider( const QString &uri, const QgsDataProvider::ProviderOptions &options, Qgis::DataProviderReadFlags flags = Qgis::DataProviderReadFlags() ) override;
     QIcon icon() const override;
     ProviderCapabilities providerCapabilities() const override;
     QString filters( Qgis::FileFilterType type ) override;

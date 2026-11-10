@@ -3,13 +3,15 @@
  *                                                                      *
  * src/core/geometry/qgsmultipolygon.h                                  *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/
 
 
 
 
-class QgsMultiPolygon: QgsMultiSurface
+
+
+class QgsMultiPolygon : QgsMultiSurface
 {
 %Docstring(signature="appended")
 Multi polygon geometry collection.
@@ -19,12 +21,28 @@ Multi polygon geometry collection.
 #include "qgsmultipolygon.h"
 %End
   public:
-
     QgsMultiPolygon() /HoldGIL/;
 %Docstring
 Constructor for an empty multipolygon geometry.
 %End
 
+    QgsMultiPolygon( const QList< QgsPolygon > &polygons ) /HoldGIL/;
+%Docstring
+Constructor for a multipolygon containing the specified ``polygons``.
+
+The ``polygons`` will be internally cloned.
+
+.. versionadded:: 3.38
+%End
+
+    QgsMultiPolygon( const QList< QgsPolygon * > &polygons /Transfer/ ) /HoldGIL/;
+%Docstring
+Constructor for a multipolygon containing the specified ``polygons``.
+
+Ownership of the ``polygons`` will be transferred to the multipolygon.
+
+.. versionadded:: 3.38
+%End
 
 
     SIP_PYOBJECT polygonN( int index ) /TypeHint="QgsPolygon"/;
@@ -62,13 +80,17 @@ Returns the polygon with the specified ``index``.
 
     virtual bool addGeometry( QgsAbstractGeometry *g /Transfer/ );
 
+    bool addGeometries( const QVector< QgsAbstractGeometry * > &geometries /Transfer/ ) final;
     virtual bool insertGeometry( QgsAbstractGeometry *g /Transfer/, int index );
+
+    virtual QgsMultiPolygon *simplifyByDistance( double tolerance ) const /Factory/;
 
 
     virtual QgsMultiSurface *toCurveType() const /Factory/;
 
 %Docstring
-Returns the geometry converted to the more generic curve type :py:class:`QgsMultiSurface`
+Returns the geometry converted to the more generic curve type
+:py:class:`QgsMultiSurface`
 
 :return: the converted geometry. Caller takes ownership
 %End
@@ -100,5 +122,5 @@ Returns the geometry converted to the more generic curve type :py:class:`QgsMult
  *                                                                      *
  * src/core/geometry/qgsmultipolygon.h                                  *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/

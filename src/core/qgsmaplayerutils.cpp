@@ -16,16 +16,26 @@
  ***************************************************************************/
 
 #include "qgsmaplayerutils.h"
-#include "qgsrectangle.h"
-#include "qgscoordinatereferencesystem.h"
-#include "qgscoordinatetransformcontext.h"
+
 #include "qgsabstractdatabaseproviderconnection.h"
-#include "qgsprovidermetadata.h"
-#include "qgsproviderregistry.h"
+#include "qgscoordinatereferencesystem.h"
+#include "qgscoordinatetransform.h"
+#include "qgscoordinatetransformcontext.h"
 #include "qgslogger.h"
 #include "qgsmaplayer.h"
-#include "qgscoordinatetransform.h"
+#include "qgsprovidermetadata.h"
+#include "qgsproviderregistry.h"
+#include "qgsreadwritecontext.h"
+#include "qgsrectangle.h"
+#include "qgssettingsentryimpl.h"
+#include "qgssettingsregistrycore.h"
+#include "qgssldexportcontext.h"
+#include "qgsvectorlayer.h"
+
 #include <QRegularExpression>
+#include <QString>
+
+using namespace Qt::StringLiterals;
 
 QgsRectangle QgsMapLayerUtils::combinedExtent( const QList<QgsMapLayer *> &layers, const QgsCoordinateReferenceSystem &crs, const QgsCoordinateTransformContext &transformContext )
 {
@@ -35,7 +45,7 @@ QgsRectangle QgsMapLayerUtils::combinedExtent( const QList<QgsMapLayer *> &layer
 
   // iterate through the map layers and test each layers extent
   // against the current min and max values
-  QgsDebugMsgLevel( QStringLiteral( "Layer count: %1" ).arg( layers.count() ), 5 );
+  QgsDebugMsgLevel( u"Layer count: %1"_s.arg( layers.count() ), 5 );
   for ( const QgsMapLayer *layer : layers )
   {
     QgsDebugMsgLevel( "Updating extent using " + layer->name(), 5 );
@@ -57,7 +67,7 @@ QgsRectangle QgsMapLayerUtils::combinedExtent( const QList<QgsMapLayer *> &layer
     }
     catch ( QgsCsException & )
     {
-      QgsDebugError( QStringLiteral( "Could not reproject layer extent" ) );
+      QgsDebugError( u"Could not reproject layer extent"_s );
     }
   }
 
@@ -67,8 +77,7 @@ QgsRectangle QgsMapLayerUtils::combinedExtent( const QList<QgsMapLayer *> &layer
     // rectangle a bit. If they are all at zero, do something a bit
     // more crude.
 
-    if ( fullExtent.xMinimum() == 0.0 && fullExtent.xMaximum() == 0.0 &&
-         fullExtent.yMinimum() == 0.0 && fullExtent.yMaximum() == 0.0 )
+    if ( fullExtent.xMinimum() == 0.0 && fullExtent.xMaximum() == 0.0 && fullExtent.yMinimum() == 0.0 && fullExtent.yMaximum() == 0.0 )
     {
       fullExtent.set( -1.0, -1.0, 1.0, 1.0 );
     }
@@ -91,15 +100,15 @@ QgsRectangle QgsMapLayerUtils::combinedExtent( const QList<QgsMapLayer *> &layer
 
 QgsAbstractDatabaseProviderConnection *QgsMapLayerUtils::databaseConnection( const QgsMapLayer *layer )
 {
-  if ( ! layer || ! layer->dataProvider() )
+  if ( !layer )
   {
     return nullptr;
   }
 
   try
   {
-    QgsProviderMetadata *providerMetadata = QgsProviderRegistry::instance()->providerMetadata( layer->dataProvider()->name() );
-    if ( ! providerMetadata )
+    QgsProviderMetadata *providerMetadata = QgsProviderRegistry::instance()->providerMetadata( layer->providerType() );
+    if ( !providerMetadata )
     {
       return nullptr;
     }
@@ -109,7 +118,10 @@ QgsAbstractDatabaseProviderConnection *QgsMapLayerUtils::databaseConnection( con
   }
   catch ( const QgsProviderConnectionException &ex )
   {
-    QgsDebugError( QStringLiteral( "Error retrieving database connection for layer %1: %2" ).arg( layer->name(), ex.what() ) );
+    if ( !ex.what().contains( "createConnection"_L1 ) )
+    {
+      QgsDebugError( u"Error retrieving database connection for layer %1: %2"_s.arg( layer->name(), ex.what() ) );
+    }
     return nullptr;
   }
 }
@@ -120,7 +132,26 @@ bool QgsMapLayerUtils::layerSourceMatchesPath( const QgsMapLayer *layer, const Q
     return false;
 
   const QVariantMap parts = QgsProviderRegistry::instance()->decodeUri( layer->providerType(), layer->source() );
-  return parts.value( QStringLiteral( "path" ) ).toString() == path;
+  return parts.value( u"path"_s ).toString() == path;
+}
+
+bool QgsMapLayerUtils::layerRefersToUri( const QgsMapLayer *layer, const QString &uri, Qgis::SourceHierarchyLevel level )
+{
+  if ( !layer )
+    return false;
+
+  const QgsProviderMetadata *metadata = QgsProviderRegistry::instance()->providerMetadata( layer->providerType() );
+  if ( !metadata )
+  {
+    throw QgsNotSupportedException( u"Could not retrieve metadata for %1 provider"_s.arg( layer->providerType() ) );
+  }
+
+  if ( !metadata->capabilities().testFlag( QgsProviderMetadata::ProviderMetadataCapability::UrisReferToSame ) )
+  {
+    throw QgsNotSupportedException( u"%1 provider does not support UrisReferToSame capability"_s.arg( layer->providerType() ) );
+  }
+
+  return metadata->urisReferToSame( layer->source(), uri, level );
 }
 
 bool QgsMapLayerUtils::updateLayerSourcePath( QgsMapLayer *layer, const QString &newPath )
@@ -129,10 +160,10 @@ bool QgsMapLayerUtils::updateLayerSourcePath( QgsMapLayer *layer, const QString 
     return false;
 
   QVariantMap parts = QgsProviderRegistry::instance()->decodeUri( layer->providerType(), layer->source() );
-  if ( !parts.contains( QStringLiteral( "path" ) ) )
+  if ( !parts.contains( u"path"_s ) )
     return false;
 
-  parts.insert( QStringLiteral( "path" ), newPath );
+  parts.insert( u"path"_s, newPath );
   const QString newUri = QgsProviderRegistry::instance()->encodeUri( layer->providerType(), parts );
   layer->setDataSource( newUri, layer->name(), layer->providerType() );
   return true;
@@ -141,8 +172,7 @@ bool QgsMapLayerUtils::updateLayerSourcePath( QgsMapLayer *layer, const QString 
 QList<QgsMapLayer *> QgsMapLayerUtils::sortLayersByType( const QList<QgsMapLayer *> &layers, const QList<Qgis::LayerType> &order )
 {
   QList< QgsMapLayer * > res = layers;
-  std::sort( res.begin(), res.end(), [&order]( const QgsMapLayer * a, const QgsMapLayer * b ) -> bool
-  {
+  std::sort( res.begin(), res.end(), [&order]( const QgsMapLayer *a, const QgsMapLayer *b ) -> bool {
     for ( Qgis::LayerType type : order )
     {
       if ( a->type() == type && b->type() != type )
@@ -158,11 +188,165 @@ QList<QgsMapLayer *> QgsMapLayerUtils::sortLayersByType( const QList<QgsMapLayer
 QString QgsMapLayerUtils::launderLayerName( const QString &name )
 {
   QString laundered = name.toLower();
-  const thread_local QRegularExpression sRxSwapChars( QStringLiteral( "\\s" ) );
-  laundered.replace( sRxSwapChars, QStringLiteral( "_" ) );
+  const thread_local QRegularExpression sRxSwapChars( u"\\s"_s );
+  laundered.replace( sRxSwapChars, u"_"_s );
 
-  const thread_local QRegularExpression sRxRemoveChars( QStringLiteral( "[^a-zA-Z0-9_]" ) );
+  const thread_local QRegularExpression sRxRemoveChars( u"[^a-zA-Z0-9_]"_s );
   laundered.replace( sRxRemoveChars, QString() );
 
   return laundered;
+}
+
+bool QgsMapLayerUtils::isOpenStreetMapLayer( QgsMapLayer *layer )
+{
+  if ( !layer )
+  {
+    return false;
+  }
+
+  return QgsMapLayerUtils::isOpenStreetMapUri( layer->source(), layer->providerType() );
+}
+
+bool QgsMapLayerUtils::isOpenStreetMapUri( const QString &uri, const QString &providerType )
+{
+  QUrl url;
+  if ( providerType == "wms"_L1 )
+  {
+    if ( const QgsProviderMetadata *metadata = QgsProviderRegistry::instance()->providerMetadata( providerType ) )
+    {
+      QVariantMap details = metadata->decodeUri( uri );
+      url = QUrl( details.value( u"url"_s ).toString() );
+    }
+  }
+  else if ( providerType == "xyzvectortiles"_L1 )
+  {
+    if ( const QgsProviderMetadata *metadata = QgsProviderRegistry::instance()->providerMetadata( providerType ) )
+    {
+      QVariantMap details = metadata->decodeUri( uri );
+      url = QUrl( details.value( u"url"_s ).toString() );
+    }
+  }
+  return !url.isEmpty() && ( url.host().endsWith( ".openstreetmap.org"_L1 ) || url.host().endsWith( ".osm.org"_L1 ) );
+}
+
+QString QgsMapLayerUtils::layerTypeToString( Qgis::LayerType type )
+{
+  switch ( type )
+  {
+    case Qgis::LayerType::Vector:
+      return QObject::tr( "Vector" );
+    case Qgis::LayerType::Raster:
+      return QObject::tr( "Raster" );
+    case Qgis::LayerType::Mesh:
+      return QObject::tr( "Mesh" );
+    case Qgis::LayerType::PointCloud:
+      return QObject::tr( "Point Cloud" );
+    case Qgis::LayerType::Annotation:
+      return QObject::tr( "Annotation" );
+    case Qgis::LayerType::VectorTile:
+      return QObject::tr( "Vector Tile" );
+    case Qgis::LayerType::Plugin:
+      return QObject::tr( "Plugin" );
+    case Qgis::LayerType::Group:
+      return QObject::tr( "Group" );
+    case Qgis::LayerType::TiledScene:
+      return QObject::tr( "Tiled Scene" );
+  }
+  Q_ASSERT( false );
+  return QString();
+}
+
+QString QgsMapLayerUtils::layerToolTip( const QgsMapLayer *layer )
+{
+  if ( layer )
+  {
+    QStringList parts;
+    QString title = !layer->metadata().title().isEmpty() ? layer->metadata().title()
+                                                         : ( layer->serverProperties()->title().isEmpty() ? layer->serverProperties()->shortName() : layer->serverProperties()->title() );
+    if ( title.isEmpty() )
+      title = layer->name();
+    title = "<b>" + title + "</b>";
+    if ( layer->isSpatial() && layer->crs().isValid() )
+    {
+      QString layerCrs = layer->crs().authid();
+      if ( !std::isnan( layer->crs().coordinateEpoch() ) )
+      {
+        layerCrs += u" @ %1"_s.arg( qgsDoubleToString( layer->crs().coordinateEpoch(), 3 ) );
+      }
+      if ( const QgsVectorLayer *vl = qobject_cast<const QgsVectorLayer *>( layer ) )
+        title = QObject::tr( "%1 (%2 - %3)" ).arg( title, QgsWkbTypes::displayString( vl->wkbType() ), layerCrs );
+      else
+        title = QObject::tr( "%1 (%2)" ).arg( title, layerCrs );
+    }
+    parts << title;
+
+    QString abstract = !layer->metadata().abstract().isEmpty() ? layer->metadata().abstract() : layer->serverProperties()->abstract();
+    if ( !abstract.isEmpty() )
+      parts << "<br/>" + abstract.replace( "\n"_L1, "<br/>"_L1 );
+    parts << "<i>" + layer->publicSource() + "</i>";
+    if ( QgsSettingsRegistryCore::settingsLayerTreeShowIdInLayerTooltips->value() )
+    {
+      parts << QObject::tr( "ID: %1" ).arg( layer->id() );
+    }
+    return parts.join( "<br/>"_L1 );
+  }
+  return QString();
+}
+
+QgsSaveStyleResult QgsMapLayerUtils::saveLayerStyleToDatabase(
+  QgsMapLayer *layer,
+  const QString &providerKey,
+  const QString &dataSource,
+  const QString &name,
+  const QString &description,
+  bool useAsDefault,
+  const QString &uiFileContent,
+  const Qgis::SaveStyleFormats formats,
+  QgsMapLayer::StyleCategories categories
+)
+{
+  QgsSaveStyleResult result;
+
+  QString sldStyle, qmlStyle, qmlError;
+
+  if ( formats.testFlag( Qgis::SaveStyleFormat::QML ) )
+  {
+    QDomDocument qmlDocument;
+    QgsReadWriteContext context;
+    layer->exportNamedStyle( qmlDocument, qmlError, context, categories );
+    if ( !qmlError.isEmpty() )
+    {
+      result.saveResult.setFlag( QgsMapLayer::SaveStyleResult::QmlGenerationFailed );
+      result.qmlError = qmlError;
+    }
+    else
+    {
+      qmlStyle = qmlDocument.toString();
+    }
+  }
+
+  if ( formats.testFlag( Qgis::SaveStyleFormat::SLD ) )
+  {
+    QgsSldExportContext sldContext;
+    QDomDocument sldDocument = layer->exportSldStyleV3( sldContext );
+    if ( !sldContext.errors().empty() )
+    {
+      result.saveResult.setFlag( QgsMapLayer::SaveStyleResult::SldGenerationFailed );
+      result.sldErrorMessages.append( sldContext.errors() );
+      result.sldWarningMessages.append( sldContext.warnings() );
+    }
+    else
+    {
+      sldStyle = sldDocument.toString();
+    }
+  }
+
+  QString providerSaveStyleError;
+  if ( !QgsProviderRegistry::instance()->saveStyle( providerKey, dataSource, qmlStyle, sldStyle, name, description, uiFileContent, useAsDefault, providerSaveStyleError ) )
+  {
+    result.saveResult.setFlag( QgsMapLayer::SaveStyleResult::DatabaseWriteFailed );
+    result.providerSaveStyleError = providerSaveStyleError;
+  }
+
+  return result;
 }

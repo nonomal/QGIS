@@ -18,8 +18,8 @@
 #ifndef QGSSVGCACHE_H
 #define QGSSVGCACHE_H
 
-#include "qgsabstractcontentcache.h"
 #include "qgis.h"
+#include "qgsabstractcontentcache.h"
 
 #include <QPicture>
 
@@ -36,7 +36,6 @@ class QDomElement;
 class CORE_EXPORT QgsSvgCacheEntry : public QgsAbstractContentCacheEntry
 {
   public:
-
     /**
      * Constructor.
      * \param path Absolute path to SVG file (relative paths are not resolved).
@@ -48,12 +47,18 @@ class CORE_EXPORT QgsSvgCacheEntry : public QgsAbstractContentCacheEntry
      * \param fixedAspectRatio fixed aspect ratio (optional)
      * \param parameters an optional map of parameters to dynamically replace content in the SVG
      */
-    QgsSvgCacheEntry( const QString &path, double size, double strokeWidth, double widthScaleFactor, const QColor &fill, const QColor &stroke,
-                      double fixedAspectRatio = 0, const QMap<QString, QString> &parameters = QMap<QString, QString>() ) ;
+    QgsSvgCacheEntry(
+      const QString &path,
+      double size,
+      double strokeWidth,
+      double widthScaleFactor,
+      const QColor &fill,
+      const QColor &stroke,
+      double fixedAspectRatio = 0,
+      const QMap<QString, QString> &parameters = QMap<QString, QString>()
+    );
 
-    //! QgsSvgCacheEntry cannot be copied.
     QgsSvgCacheEntry( const QgsSvgCacheEntry &rh ) = delete;
-    //! QgsSvgCacheEntry cannot be copied.
     QgsSvgCacheEntry &operator=( const QgsSvgCacheEntry &rh ) = delete;
 
     double size = 0.0; //size in pixels (cast to int for QImage)
@@ -87,7 +92,6 @@ class CORE_EXPORT QgsSvgCacheEntry : public QgsAbstractContentCacheEntry
     bool isEqual( const QgsAbstractContentCacheEntry *other ) const override;
     int dataSize() const override;
     void dump() const override;
-
 };
 
 ///@endcond
@@ -95,22 +99,24 @@ class CORE_EXPORT QgsSvgCacheEntry : public QgsAbstractContentCacheEntry
 
 /**
  * \ingroup core
- * \brief A cache for images / pictures derived from SVG files
+ * \brief A cache for images / pictures derived from SVG files.
  *
  * This class supports parameter replacement in SVG files according to the SVG params specification
  * (http://www.w3.org/TR/2009/WD-SVGParamPrimer-20090616/).
  *
  * Supported parameters are:
  *
- * - \a param(fill): fill color (with no opacity value)
- * - \a param(fill-opacity): fill color opacity
- * - \a param(outline): outline color (with no opacity value)
- * - \a param(outline-opacity): outline color opacity
- * - \a param(outline-width): width of outline strokes
+ * - ``param(fill)``: fill color (with no opacity value)
+ * - ``param(fill-opacity)``: fill color opacity
+ * - ``param(outline)``: outline color (with no opacity value)
+ * - ``param(outline-opacity)``: outline color opacity
+ * - ``param(outline-width)``: width of outline strokes
  *
  * E.g:
  *
+ * \code{.unparsed}
  *   <circle fill="param(fill-color red)" stroke="param(pen-color black)" stroke-width="param(outline-width 1)"
+ * \endcode
  *
  * \note QgsSvgCache is not usually directly created, but rather accessed through QgsApplication::svgCache().
 */
@@ -124,7 +130,6 @@ class CORE_EXPORT QgsSvgCache : public QgsAbstractContentCache< QgsSvgCacheEntry
     Q_OBJECT
 
   public:
-
     /**
      * Constructor for QgsSvgCache.
      */
@@ -147,9 +152,18 @@ class CORE_EXPORT QgsSvgCache : public QgsAbstractContentCache< QgsSvgCacheEntry
      * \warning The \a blocking parameter must NEVER be TRUE from GUI based applications (like the main QGIS
      * application) or crashes will result. Only for use in external scripts or QGIS server.
      */
-    QImage svgAsImage( const QString &path, double size, const QColor &fill, const QColor &stroke, double strokeWidth,
-                       double widthScaleFactor, bool &fitsInCache, double fixedAspectRatio = 0, bool blocking = false,
-                       const QMap<QString, QString> &parameters = QMap<QString, QString>() );
+    QImage svgAsImage(
+      const QString &path,
+      double size,
+      const QColor &fill,
+      const QColor &stroke,
+      double strokeWidth,
+      double widthScaleFactor,
+      bool &fitsInCache,
+      double fixedAspectRatio = 0,
+      bool blocking = false,
+      const QMap<QString, QString> &parameters = QMap<QString, QString>()
+    );
 
     /**
      * Returns an SVG drawing as a QPicture.
@@ -173,9 +187,18 @@ class CORE_EXPORT QgsSvgCache : public QgsAbstractContentCache< QgsSvgCacheEntry
      * \warning The \a blocking parameter must NEVER be TRUE from GUI based applications (like the main QGIS
      * application) or crashes will result. Only for use in external scripts or QGIS server.
      */
-    QPicture svgAsPicture( const QString &path, double size, const QColor &fill, const QColor &stroke, double strokeWidth,
-                           double widthScaleFactor, bool forceVectorOutput = false, double fixedAspectRatio = 0, bool blocking = false,
-                           const QMap<QString, QString> &parameters = QMap<QString, QString>() );
+    QPicture svgAsPicture(
+      const QString &path,
+      double size,
+      const QColor &fill,
+      const QColor &stroke,
+      double strokeWidth,
+      double widthScaleFactor,
+      bool forceVectorOutput = false,
+      double fixedAspectRatio = 0,
+      bool blocking = false,
+      const QMap<QString, QString> &parameters = QMap<QString, QString>()
+    );
 
     /**
      * Calculates the viewbox size of a (possibly cached) SVG file.
@@ -194,8 +217,17 @@ class CORE_EXPORT QgsSvgCache : public QgsAbstractContentCache< QgsSvgCacheEntry
      * application) or crashes will result. Only for use in external scripts or QGIS server.
      *
      */
-    QSizeF svgViewboxSize( const QString &path, double size, const QColor &fill, const QColor &stroke, double strokeWidth,
-                           double widthScaleFactor, double fixedAspectRatio = 0, bool blocking = false, const QMap<QString, QString> &parameters = QMap<QString, QString>() );
+    QSizeF svgViewboxSize(
+      const QString &path,
+      double size,
+      const QColor &fill,
+      const QColor &stroke,
+      double strokeWidth,
+      double widthScaleFactor,
+      double fixedAspectRatio = 0,
+      bool blocking = false,
+      const QMap<QString, QString> &parameters = QMap<QString, QString>()
+    );
 
     /**
      * Tests if an SVG file contains parameters for fill, stroke color, stroke width. If yes, possible default values are returned. If there are several
@@ -203,8 +235,9 @@ class CORE_EXPORT QgsSvgCache : public QgsAbstractContentCache< QgsSvgCacheEntry
      * blocking parameter must NEVER be TRUE from GUI based applications (like the main QGIS application) or crashes will result. Only for use in external
      * scripts or QGIS server.
     */
-    void containsParams( const QString &path, bool &hasFillParam, QColor &defaultFillColor, bool &hasStrokeParam, QColor &defaultStrokeColor, bool &hasStrokeWidthParam,
-                         double &defaultStrokeWidth, bool blocking = false ) const;
+    void containsParams(
+      const QString &path, bool &hasFillParam, QColor &defaultFillColor, bool &hasStrokeParam, QColor &defaultStrokeColor, bool &hasStrokeWidthParam, double &defaultStrokeWidth, bool blocking = false
+    ) const;
 
     /**
      * Tests if an SVG file contains parameters for fill, stroke color, stroke width. If yes, possible default values are returned. If there are several
@@ -233,12 +266,25 @@ class CORE_EXPORT QgsSvgCache : public QgsAbstractContentCache< QgsSvgCacheEntry
      * application) or crashes will result. Only for use in external scripts or QGIS server.
      *
      */
-    void containsParams( const QString &path, bool &hasFillParam, bool &hasDefaultFillParam, QColor &defaultFillColor,
-                         bool &hasFillOpacityParam, bool &hasDefaultFillOpacity, double &defaultFillOpacity,
-                         bool &hasStrokeParam, bool &hasDefaultStrokeColor, QColor &defaultStrokeColor,
-                         bool &hasStrokeWidthParam, bool &hasDefaultStrokeWidth, double &defaultStrokeWidth,
-                         bool &hasStrokeOpacityParam, bool &hasDefaultStrokeOpacity, double &defaultStrokeOpacity,
-                         bool blocking = false ) const SIP_PYNAME( containsParamsV3 );
+    void containsParams(
+      const QString &path,
+      bool &hasFillParam,
+      bool &hasDefaultFillParam,
+      QColor &defaultFillColor,
+      bool &hasFillOpacityParam,
+      bool &hasDefaultFillOpacity,
+      double &defaultFillOpacity,
+      bool &hasStrokeParam,
+      bool &hasDefaultStrokeColor,
+      QColor &defaultStrokeColor,
+      bool &hasStrokeWidthParam,
+      bool &hasDefaultStrokeWidth,
+      double &defaultStrokeWidth,
+      bool &hasStrokeOpacityParam,
+      bool &hasDefaultStrokeOpacity,
+      double &defaultStrokeOpacity,
+      bool blocking = false
+    ) const SIP_PYNAME( containsParamsV3 );
 
     /**
      * Gets the SVG content corresponding to the given \a path.
@@ -272,20 +318,39 @@ class CORE_EXPORT QgsSvgCache : public QgsAbstractContentCache< QgsSvgCacheEntry
      * or crashes will result. Only for use in external scripts or QGIS server.
      */
 #ifndef SIP_RUN
-    QByteArray svgContent( const QString &path, double size, const QColor &fill, const QColor &stroke, double strokeWidth,
-                           double widthScaleFactor, double fixedAspectRatio = 0, bool blocking = false, const QMap<QString, QString> &parameters = QMap<QString, QString>(), bool *isMissingImage = nullptr );
+    QByteArray svgContent(
+      const QString &path,
+      double size,
+      const QColor &fill,
+      const QColor &stroke,
+      double strokeWidth,
+      double widthScaleFactor,
+      double fixedAspectRatio = 0,
+      bool blocking = false,
+      const QMap<QString, QString> &parameters = QMap<QString, QString>(),
+      bool *isMissingImage = nullptr
+    );
 #else
-    QByteArray svgContent( const QString &path, double size, const QColor &fill, const QColor &stroke, double strokeWidth,
-                           double widthScaleFactor, double fixedAspectRatio = 0, bool blocking = false, const QMap<QString, QString> &parameters = QMap<QString, QString>() );
+    QByteArray svgContent(
+      const QString &path,
+      double size,
+      const QColor &fill,
+      const QColor &stroke,
+      double strokeWidth,
+      double widthScaleFactor,
+      double fixedAspectRatio = 0,
+      bool blocking = false,
+      const QMap<QString, QString> &parameters = QMap<QString, QString>()
+    );
 #endif
 
   signals:
 
     /**
      * Emit a signal to be caught by qgisapp and display a msg on status bar.
-     * \deprecated Deprecated since QGIS 3.6 -- no longer emitted.
+     * \deprecated QGIS 3.6. No longer emitted.
      */
-    Q_DECL_DEPRECATED void statusChanged( const QString  &statusQString ) SIP_DEPRECATED;
+    Q_DECL_DEPRECATED void statusChanged( const QString &statusQString ) SIP_DEPRECATED;
 
     /**
      * Emitted when the cache has finished retrieving an SVG file from a remote \a url.
@@ -294,27 +359,47 @@ class CORE_EXPORT QgsSvgCache : public QgsAbstractContentCache< QgsSvgCacheEntry
     void remoteSvgFetched( const QString &url );
 
   protected:
-
     bool checkReply( QNetworkReply *reply, const QString &path ) const override;
 
   private:
-
     void replaceParamsAndCacheSvg( QgsSvgCacheEntry *entry, bool blocking = false );
     void cacheImage( QgsSvgCacheEntry *entry );
     void cachePicture( QgsSvgCacheEntry *entry, bool forceVectorOutput = false );
     //! Returns entry from cache or creates a new entry if it does not exist already
-    QgsSvgCacheEntry *cacheEntry( const QString &path, double size, const QColor &fill, const QColor &stroke, double strokeWidth,
-                                  double widthScaleFactor, double fixedAspectRatio = 0, const QMap<QString, QString> &parameters = QMap<QString, QString>(), bool blocking = false, bool *isMissingImage = nullptr );
+    QgsSvgCacheEntry *cacheEntry(
+      const QString &path,
+      double size,
+      const QColor &fill,
+      const QColor &stroke,
+      double strokeWidth,
+      double widthScaleFactor,
+      double fixedAspectRatio = 0,
+      const QMap<QString, QString> &parameters = QMap<QString, QString>(),
+      bool blocking = false,
+      bool *isMissingImage = nullptr
+    );
 
     //! Replaces parameters in elements of a dom node and calls method for all child nodes
     void replaceElemParams( QDomElement &elem, const QColor &fill, const QColor &stroke, double strokeWidth, const QMap<QString, QString> &parameters );
 
-    void containsElemParams( const QDomElement &elem,
-                             bool &hasFillParam, bool &hasDefaultFill, QColor &defaultFill,
-                             bool &hasFillOpacityParam, bool &hasDefaultFillOpacity, double &defaultFillOpacity,
-                             bool &hasStrokeParam, bool &hasDefaultStroke, QColor &defaultStroke,
-                             bool &hasStrokeWidthParam, bool &hasDefaultStrokeWidth, double &defaultStrokeWidth,
-                             bool &hasStrokeOpacityParam, bool &hasDefaultStrokeOpacity, double &defaultStrokeOpacity ) const SIP_PYNAME( containsParamsV3 );
+    void containsElemParams(
+      const QDomElement &elem,
+      bool &hasFillParam,
+      bool &hasDefaultFill,
+      QColor &defaultFill,
+      bool &hasFillOpacityParam,
+      bool &hasDefaultFillOpacity,
+      double &defaultFillOpacity,
+      bool &hasStrokeParam,
+      bool &hasDefaultStroke,
+      QColor &defaultStroke,
+      bool &hasStrokeWidthParam,
+      bool &hasDefaultStrokeWidth,
+      double &defaultStrokeWidth,
+      bool &hasStrokeOpacityParam,
+      bool &hasDefaultStrokeOpacity,
+      double &defaultStrokeOpacity
+    ) const SIP_PYNAME( containsParamsV3 );
 
     //! Calculates scaling for rendered image sizes to SVG logical sizes
     double calcSizeScaleFactor( QgsSvgCacheEntry *entry, const QDomElement &docElem, QSizeF &viewboxSize ) const;

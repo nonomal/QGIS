@@ -20,14 +20,20 @@
 #include "qgslayertreemodel.h"
 #include "qgssymbol.h"
 
+#include "moc_qgslayertreefilterproxymodel.cpp"
+
 QgsLayerTreeFilterProxyModel::QgsLayerTreeFilterProxyModel( QObject *parent )
   : QSortFilterProxyModel( parent )
 {
-  connect( QgsProject::instance(), &QgsProject::readProject, this, [this]
-  {
-    beginResetModel();
-    endResetModel();
-  } );
+  connect(
+    QgsProject::instance(), // skip-keyword-check
+    &QgsProject::readProject,
+    this,
+    [this] {
+      beginResetModel();
+      endResetModel();
+    }
+  );
 }
 
 void QgsLayerTreeFilterProxyModel::setCheckedLayers( const QList<QgsMapLayer *> layers )
@@ -107,6 +113,20 @@ void QgsLayerTreeFilterProxyModel::setLayerTreeModel( QgsLayerTreeModel *layerTr
   QSortFilterProxyModel::setSourceModel( layerTreeModel );
 }
 
+bool QgsLayerTreeFilterProxyModel::showPrivateLayers() const
+{
+  return mShowPrivateLayers;
+}
+
+void QgsLayerTreeFilterProxyModel::setShowPrivateLayers( bool showPrivate )
+{
+  if ( showPrivate == mShowPrivateLayers )
+    return;
+
+  mShowPrivateLayers = showPrivate;
+  invalidateFilter();
+}
+
 void QgsLayerTreeFilterProxyModel::setFilters( Qgis::LayerFilters filters )
 {
   mFilters = filters;
@@ -180,6 +200,10 @@ bool QgsLayerTreeFilterProxyModel::nodeShown( QgsLayerTreeNode *node ) const
       return false;
     if ( !mFilterText.isEmpty() && !layer->name().contains( mFilterText, Qt::CaseInsensitive ) )
       return false;
+    if ( !mShowPrivateLayers && layer->flags().testFlag( QgsMapLayer::LayerFlag::Private ) )
+    {
+      return false;
+    }
     if ( !QgsMapLayerProxyModel::layerMatchesFilters( layer, mFilters ) )
       return false;
 
@@ -237,7 +261,7 @@ QVariant QgsLayerTreeFilterProxyModel::data( const QModelIndex &idx, int role ) 
           return Qt::Unchecked;
 
         // both
-        if ( hasChecked &&  hasUnchecked )
+        if ( hasChecked && hasUnchecked )
           return Qt::PartiallyChecked;
 
         if ( hasChecked )
@@ -262,7 +286,7 @@ bool QgsLayerTreeFilterProxyModel::setData( const QModelIndex &index, const QVar
     if ( role == Qt::CheckStateRole )
     {
       int i = 0;
-      for ( i = 0; ; i++ )
+      for ( i = 0;; i++ )
       {
         const QModelIndex child = QgsLayerTreeFilterProxyModel::index( i, 0, index );
         if ( !child.isValid() )

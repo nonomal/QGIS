@@ -15,20 +15,22 @@
 
 #include "qgsclassificationcustom.h"
 
-const QString QgsClassificationCustom::METHOD_ID = QStringLiteral( "Custom" );
+#include <QString>
+
+using namespace Qt::StringLiterals;
+
+const QString QgsClassificationCustom::METHOD_ID = u"Custom"_s;
 
 
 QgsClassificationCustom::QgsClassificationCustom()
-  : QgsClassificationMethod( NoFlag,
-                             0 /*codeComplexity*/ )
-{
-}
+  : QgsClassificationMethod( NoFlag, 0 /*codeComplexity*/ )
+{}
 
 
-QgsClassificationMethod *QgsClassificationCustom::clone() const
+std::unique_ptr<QgsClassificationMethod> QgsClassificationCustom::clone() const
 {
-  QgsClassificationCustom *c = new QgsClassificationCustom();
-  copyBase( c );
+  auto c = std::make_unique< QgsClassificationCustom >();
+  copyBase( c.get() );
   return c;
 }
 
@@ -42,12 +44,12 @@ QString QgsClassificationCustom::id() const
   return METHOD_ID;
 }
 
-QList<double> QgsClassificationCustom::calculateBreaks( double &minimum, double &maximum,
-    const QList<double> &values, int nclasses )
+QList<double> QgsClassificationCustom::calculateBreaks( double &minimum, double &maximum, const QList<double> &values, int nclasses, QString &error )
 {
   Q_UNUSED( minimum )
   Q_UNUSED( maximum )
   Q_UNUSED( values )
   Q_UNUSED( nclasses )
+  Q_UNUSED( error )
   return QList<double>();
 }

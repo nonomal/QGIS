@@ -13,6 +13,7 @@
  *                                                                         *
  ***************************************************************************/
 #include "qgssensorthingsfeatureiterator.h"
+
 #include "geometry/qgsgeometry.h"
 #include "qgsexception.h"
 #include "qgsfeedback.h"
@@ -26,8 +27,7 @@
 
 QgsSensorThingsFeatureSource::QgsSensorThingsFeatureSource( const std::shared_ptr<QgsSensorThingsSharedData> &sharedData )
   : mSharedData( sharedData )
-{
-}
+{}
 
 QgsFeatureIterator QgsSensorThingsFeatureSource::getFeatures( const QgsFeatureRequest &request )
 {
@@ -48,10 +48,7 @@ QgsSensorThingsFeatureIterator::QgsSensorThingsFeatureIterator( QgsSensorThingsF
   : QgsAbstractFeatureIteratorFromSource<QgsSensorThingsFeatureSource>( source, ownSource, request )
   , mInterruptionChecker( request.feedback() )
 {
-  if ( mRequest.destinationCrs().isValid() && mRequest.destinationCrs() != mSource->sharedData()->crs() )
-  {
-    mTransform = QgsCoordinateTransform( mSource->sharedData()->crs(), mRequest.destinationCrs(), mRequest.transformContext() );
-  }
+  mTransform = mRequest.calculateTransform( mSource->sharedData()->crs() );
   try
   {
     mFilterRect = filterRectToSourceCrs( mTransform );
@@ -98,7 +95,7 @@ QgsSensorThingsFeatureIterator::QgsSensorThingsFeatureIterator( QgsSensorThingsF
       if ( !mRequest.referenceGeometry().isEmpty() )
       {
         mDistanceWithinGeom = mRequest.referenceGeometry();
-        mDistanceWithinEngine.reset( QgsGeometry::createGeometryEngine( mDistanceWithinGeom.constGet() ) );
+        mDistanceWithinEngine = QgsGeometry::createGeometryEngine( mDistanceWithinGeom.constGet() );
         mDistanceWithinEngine->prepareGeometry();
       }
       break;

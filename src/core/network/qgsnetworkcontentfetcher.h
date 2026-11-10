@@ -20,19 +20,23 @@
 #ifndef QGSNETWORKCONTENTFETCHER_H
 #define QGSNETWORKCONTENTFETCHER_H
 
+#include "qgis_core.h"
+#include "qgshttpheaders.h"
+
 #include <QNetworkReply>
 #include <QUrl>
-
-#include "qgis_core.h"
 
 class QTextCodec;
 
 /**
  * \class QgsNetworkContentFetcher
  * \ingroup core
- * \brief HTTP network content fetcher. A simple method for fetching remote HTTP content
- * and converting the content to standard formats. Url redirects are automatically
- * handled.
+ * \brief HTTP network content fetcher.
+ *
+ * A simple method for fetching remote HTTP content
+ * and converting the content to standard formats.
+ *
+ * URL redirects are automatically handled.
  * \see QgsNetworkContentFetcherTask
 */
 class CORE_EXPORT QgsNetworkContentFetcher : public QObject
@@ -40,10 +44,6 @@ class CORE_EXPORT QgsNetworkContentFetcher : public QObject
     Q_OBJECT
 
   public:
-
-    /**
-     * Constructor for QgsNetworkContentFetcher.
-     */
     QgsNetworkContentFetcher() = default;
 
     ~QgsNetworkContentFetcher() override;
@@ -53,8 +53,10 @@ class CORE_EXPORT QgsNetworkContentFetcher : public QObject
      * signal will be emitted when content has been fetched.
      * \param url URL to fetch
      * \param authcfg optional authentication configuration
+     * \param headers optional HTTP headers to add to the request (since QGIS 3.44.8)
+     *
      */
-    void fetchContent( const QUrl &url, const QString &authcfg = QString() );
+    void fetchContent( const QUrl &url, const QString &authcfg = QString(), const QgsHttpHeaders &headers = QgsHttpHeaders() );
 
     /**
      * Fetches content using a network \a request and handles redirects. The finished()
@@ -119,9 +121,8 @@ class CORE_EXPORT QgsNetworkContentFetcher : public QObject
     void errorOccurred( QNetworkReply::NetworkError code, const QString &errorMsg );
 
   private:
-
     QString mAuthCfg;
-    QNetworkReply *mReply = nullptr;
+    std::unique_ptr<QNetworkReply> mReply;
 
     bool mContentLoaded = false;
 
@@ -141,7 +142,6 @@ class CORE_EXPORT QgsNetworkContentFetcher : public QObject
      * result is a redirect then the redirect is fetched automatically.
      */
     void contentLoaded( bool ok = true );
-
 };
 
 #endif

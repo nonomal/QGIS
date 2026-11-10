@@ -15,13 +15,16 @@
 
 #include "qgsjsoneditwidgetfactory.h"
 
-#include "qgsjsoneditwrapper.h"
 #include "qgsjsoneditconfigdlg.h"
+#include "qgsjsoneditwrapper.h"
 
-QgsJsonEditWidgetFactory::QgsJsonEditWidgetFactory( const QString &name )
-  : QgsEditorWidgetFactory( name )
-{
-}
+#include <QString>
+
+using namespace Qt::StringLiterals;
+
+QgsJsonEditWidgetFactory::QgsJsonEditWidgetFactory( const QString &name, const QIcon &icon )
+  : QgsEditorWidgetFactory( name, icon )
+{}
 
 QgsEditorWidgetWrapper *QgsJsonEditWidgetFactory::create( QgsVectorLayer *vl, int fieldIdx, QWidget *editor, QWidget *parent ) const
 {
@@ -35,23 +38,16 @@ QgsEditorConfigWidget *QgsJsonEditWidgetFactory::configWidget( QgsVectorLayer *v
 
 unsigned int QgsJsonEditWidgetFactory::fieldScore( const QgsVectorLayer *vl, int fieldIdx ) const
 {
-  const QVariant::Type type = vl->fields().field( fieldIdx ).type();
-
-  switch ( type )
+  const QgsField field = vl->fields().field( fieldIdx );
+  // Handle the json field
+  if ( field.typeName().compare( u"json"_s, Qt::CaseInsensitive ) == 0 || field.typeName().compare( u"jsonb"_s, Qt::CaseInsensitive ) == 0 )
   {
-    case QVariant::Map:
-    {
-      const QString typeName = vl->fields().field( fieldIdx ).typeName();
-      if ( typeName == QLatin1String( "json" ) || typeName == QLatin1String( "jsonb" ) )
-        return 21;
-      return 15;
-    }
-    break;
-    case QVariant::List:
-      return 10;
-      break;
-    default:
-      return 5;
-      break;
+    return 15;
   }
+  return 5;
+}
+
+bool QgsJsonEditWidgetFactory::isReadOnly() const
+{
+  return true;
 }

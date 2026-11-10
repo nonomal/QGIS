@@ -1,6 +1,6 @@
 /***************************************************************************
-    qgsbackgroundcachedfeatureiterator.h
-    ---------------------
+    qgsbackgroundcachedfeatureiterator.cpp
+    --------------------------------------
     begin                : October 2019
     copyright            : (C) 2016-2019 by Even Rouault
     email                : even.rouault at spatialys.com
@@ -14,263 +14,43 @@
  ***************************************************************************/
 
 #include "qgsbackgroundcachedfeatureiterator.h"
-#include "qgsbackgroundcachedshareddata.h"
+
+#include <memory>
 
 #include "qgsapplication.h"
+#include "qgsbackgroundcachedfeaturesource.h"
+#include "qgsbackgroundcachedshareddata.h"
+#include "qgsfeaturedownloader.h"
 #include "qgsfeedback.h"
+#include "qgsgeometryengine.h"
 #include "qgslogger.h"
 #include "qgsmessagelog.h"
-#include "qgswfsutils.h" // for isCompatibleType()
-#include "qgsgeometryengine.h"
+#include "qgsvectordataprovider.h"
+#include "qgswfsutils.h"
 
 #include <QDataStream>
 #include <QDir>
+#include <QElapsedTimer>
 #include <QFile>
 #include <QJsonDocument>
 #include <QMutex>
-#include <QPushButton>
-#include <QStyle>
+#include <QString>
 #include <QTimer>
-#include <QElapsedTimer>
 
-#include <sqlite3.h>
+#include "moc_qgsbackgroundcachedfeatureiterator.cpp"
 
-const QString QgsBackgroundCachedFeatureIteratorConstants::FIELD_GEN_COUNTER( QStringLiteral( "__qgis_gen_counter" ) );
-const QString QgsBackgroundCachedFeatureIteratorConstants::FIELD_UNIQUE_ID( QStringLiteral( "__qgis_unique_id" ) );
-const QString QgsBackgroundCachedFeatureIteratorConstants::FIELD_HEXWKB_GEOM( QStringLiteral( "__qgis_hexwkb_geom" ) );
-const QString QgsBackgroundCachedFeatureIteratorConstants::FIELD_MD5( QStringLiteral( "__qgis_md5" ) );
+using namespace Qt::StringLiterals;
 
-// -------------------------
-
-
-QgsFeatureDownloaderProgressDialog::QgsFeatureDownloaderProgressDialog( const QString &labelText,
-    const QString &cancelButtonText,
-    int minimum, int maximum, QWidget *parent )
-  : QProgressDialog( labelText, cancelButtonText, minimum, maximum, parent )
-{
-  mCancel = new QPushButton( cancelButtonText, this );
-  setCancelButton( mCancel );
-  mHide = new QPushButton( tr( "Hide" ), this );
-  connect( mHide, &QAbstractButton::clicked, this, &QgsFeatureDownloaderProgressDialog::hideRequest );
-}
-
-void QgsFeatureDownloaderProgressDialog::resizeEvent( QResizeEvent *ev )
-{
-  QProgressDialog::resizeEvent( ev );
-  // Note: this relies heavily on the details of the layout done in QProgressDialogPrivate::layout()
-  // Might be a bit fragile depending on QT versions.
-  QRect rect = geometry();
-  QRect cancelRect = mCancel->geometry();
-  QRect hideRect = mHide->geometry();
-  int mtb = style()->pixelMetric( QStyle::PM_LayoutRightMargin );
-  int mlr = std::min( width() / 10, mtb );
-  if ( rect.width() - cancelRect.x() - cancelRect.width() > mlr )
-  {
-    // Force right alignment of cancel button
-    cancelRect.setX( rect.width() - cancelRect.width() - mlr );
-    mCancel->setGeometry( cancelRect );
-  }
-  mHide->setGeometry( rect.width() - cancelRect.x() - cancelRect.width(),
-                      cancelRect.y(), hideRect.width(), cancelRect.height() );
-}
-
-// -------------------------
-
-QgsFeatureDownloaderImpl::QgsFeatureDownloaderImpl( QgsBackgroundCachedSharedData *shared, QgsFeatureDownloader *downloader ): mSharedBase( shared ), mDownloader( downloader )
-{
-  // Needed because used by a signal
-  qRegisterMetaType< QVector<QgsFeatureUniqueIdPair> >( "QVector<QgsFeatureUniqueIdPair>" );
-}
-
-QgsFeatureDownloaderImpl::~QgsFeatureDownloaderImpl()
-{
-  if ( mProgressDialog )
-    mProgressDialog->deleteLater();
-}
-
-void QgsFeatureDownloaderImpl::emitFeatureReceived( QVector<QgsFeatureUniqueIdPair> features )
-{
-  emit mDownloader->featureReceived( features );
-}
-
-void QgsFeatureDownloaderImpl::emitFeatureReceived( long long featureCount )
-{
-  emit mDownloader->featureReceived( featureCount );
-}
-
-void QgsFeatureDownloaderImpl::emitEndOfDownload( bool success )
-{
-  emit mDownloader->endOfDownload( success );
-}
-
-void QgsFeatureDownloaderImpl::emitResumeMainThread()
-{
-  emit mDownloader->resumeMainThread();
-}
-
-void QgsFeatureDownloaderImpl::stop()
-{
-  QgsDebugMsgLevel( QStringLiteral( "QgsFeatureDownloaderImpl::stop()" ), 4 );
-  mStop = true;
-  emitDoStop();
-}
-
-void QgsFeatureDownloaderImpl::setStopFlag()
-{
-  QgsDebugMsgLevel( QStringLiteral( "QgsFeatureDownloaderImpl::setStopFlag()" ), 4 );
-  mStop = true;
-}
-
-void QgsFeatureDownloaderImpl::hideProgressDialog()
-{
-  mSharedBase->setHideProgressDialog( true );
-  mProgressDialog->deleteLater();
-  mProgressDialog = nullptr;
-}
-
-// Called from GUI thread
-void QgsFeatureDownloaderImpl::createProgressDialog( int numberMatched )
-{
-  Q_ASSERT( qApp->thread() == QThread::currentThread() );
-
-  // Make sure that the creation is done in an atomic way, so that the
-  // starting thread (running QgsFeatureDownloaderImpl::run()) can be sure that
-  // this function has either run completely, or not at all (mStop == true),
-  // when it wants to destroy mProgressDialog
-  QMutexLocker locker( &mMutexCreateProgressDialog );
-
-  if ( mStop )
-    return;
-  Q_ASSERT( !mProgressDialog );
-
-  if ( !mMainWindow )
-  {
-    const QWidgetList widgets = QgsApplication::topLevelWidgets();
-    for ( QWidget *widget : widgets )
-    {
-      if ( widget->objectName() == QLatin1String( "QgisApp" ) )
-      {
-        mMainWindow = widget;
-        break;
-      }
-    }
-  }
-
-  if ( !mMainWindow )
-    return;
-
-  mProgressDialog = new QgsFeatureDownloaderProgressDialog( QObject::tr( "Loading features for layer %1" ).arg( mSharedBase->layerName() ),
-      QObject::tr( "Abort" ), 0, numberMatched, mMainWindow );
-  mProgressDialog->setWindowTitle( QObject::tr( "QGIS" ) );
-  mProgressDialog->setValue( 0 );
-  if ( mProgressDialogShowImmediately )
-    mProgressDialog->show();
-}
-
-void QgsFeatureDownloaderImpl::endOfRun( bool serializeFeatures,
-    bool success, int totalDownloadedFeatureCount,
-    bool truncatedResponse, bool interrupted,
-    const QString &errorMessage )
-{
-  {
-    QMutexLocker locker( &mMutexCreateProgressDialog );
-    mStop = true;
-  }
-
-  if ( serializeFeatures )
-    mSharedBase->endOfDownload( success, totalDownloadedFeatureCount, truncatedResponse, interrupted, errorMessage );
-  else if ( !errorMessage.isEmpty() )
-    mSharedBase->pushError( errorMessage );
-
-  // We must emit the signal *AFTER* the previous call to mShared->endOfDownload()
-  // to avoid issues with iterators that would start just now, wouldn't detect
-  // that the downloader has finished, would register to itself, but would never
-  // receive the endOfDownload signal. This is not just a theoretical problem.
-  // If you switch both calls, it happens quite easily in Release mode with the
-  // test suite.
-  emitEndOfDownload( success );
-
-  if ( mProgressDialog )
-  {
-    mProgressDialog->deleteLater();
-    mProgressDialog = nullptr;
-  }
-  if ( mTimer )
-  {
-    mTimer->deleteLater();
-    mTimer = nullptr;
-  }
-}
-
-// -------------------------
-
-
-void QgsFeatureDownloader::run( bool serializeFeatures, long long maxFeatures )
-{
-  Q_ASSERT( mImpl );
-  mImpl->run( serializeFeatures, maxFeatures );
-}
-
-void QgsFeatureDownloader::stop()
-{
-  Q_ASSERT( mImpl );
-  mImpl->stop();
-}
-
-// -------------------------
-
-QgsThreadedFeatureDownloader::QgsThreadedFeatureDownloader( QgsBackgroundCachedSharedData *shared )
-  : mShared( shared )
-  , mRequestMadeFromMainThread( QThread::currentThread() == QApplication::instance()->thread() )
-{
-}
-
-QgsThreadedFeatureDownloader::~QgsThreadedFeatureDownloader()
-{
-  stop();
-}
-
-void QgsThreadedFeatureDownloader::stop()
-{
-  if ( mDownloader )
-  {
-    mDownloader->stop();
-    wait();
-    delete mDownloader;
-    mDownloader = nullptr;
-  }
-}
-
-void QgsThreadedFeatureDownloader::startAndWait()
-{
-  start();
-
-  QMutexLocker locker( &mWaitMutex );
-  while ( !mDownloader )
-  {
-    mWaitCond.wait( &mWaitMutex );
-  }
-}
-
-void QgsThreadedFeatureDownloader::run()
-{
-  // We need to construct it in the run() method (i.e. in the new thread)
-  mDownloader = new QgsFeatureDownloader();
-  mDownloader->setImpl( mShared->newFeatureDownloaderImpl( mDownloader, mRequestMadeFromMainThread ) );
-  {
-    QMutexLocker locker( &mWaitMutex );
-    mWaitCond.wakeOne();
-  }
-  mDownloader->run( true, /* serialize features */
-                    mShared->requestLimit() /* user max features */ );
-}
+const QString QgsBackgroundCachedFeatureIterator::Constants::FIELD_GEN_COUNTER( u"__qgis_gen_counter"_s );
+const QString QgsBackgroundCachedFeatureIterator::Constants::FIELD_UNIQUE_ID( u"__qgis_unique_id"_s );
+const QString QgsBackgroundCachedFeatureIterator::Constants::FIELD_HEXWKB_GEOM( u"__qgis_hexwkb_geom"_s );
+const QString QgsBackgroundCachedFeatureIterator::Constants::FIELD_MD5( u"__qgis_md5"_s );
 
 // -------------------------
 
 QgsBackgroundCachedFeatureIterator::QgsBackgroundCachedFeatureIterator(
-  QgsBackgroundCachedFeatureSource *source, bool ownSource,
-  std::shared_ptr<QgsBackgroundCachedSharedData> shared,
-  const QgsFeatureRequest &request )
+  QgsBackgroundCachedFeatureSource *source, bool ownSource, std::shared_ptr<QgsBackgroundCachedSharedData> shared, const QgsFeatureRequest &request
+)
   : QgsAbstractFeatureIteratorFromSource<QgsBackgroundCachedFeatureSource>( source, ownSource, request )
   , mShared( shared )
   , mCachedFeaturesIter( mCachedFeatures.begin() )
@@ -294,10 +74,7 @@ QgsBackgroundCachedFeatureIterator::QgsBackgroundCachedFeatureIterator(
     }
   }
 
-  if ( mRequest.destinationCrs().isValid() && mRequest.destinationCrs() != mShared->sourceCrs() )
-  {
-    mTransform = QgsCoordinateTransform( mShared->sourceCrs(), mRequest.destinationCrs(), mRequest.transformContext() );
-  }
+  mTransform = mRequest.calculateTransform( mShared->sourceCrs() );
   try
   {
     mFilterRect = filterRectToSourceCrs( mTransform );
@@ -320,7 +97,7 @@ QgsBackgroundCachedFeatureIterator::QgsBackgroundCachedFeatureIterator(
       if ( !mRequest.referenceGeometry().isEmpty() )
       {
         mDistanceWithinGeom = mRequest.referenceGeometry();
-        mDistanceWithinEngine.reset( QgsGeometry::createGeometryEngine( mDistanceWithinGeom.constGet() ) );
+        mDistanceWithinEngine = QgsGeometry::createGeometryEngine( mDistanceWithinGeom.constGet() );
         mDistanceWithinEngine->prepareGeometry();
       }
       break;
@@ -335,9 +112,7 @@ QgsBackgroundCachedFeatureIterator::QgsBackgroundCachedFeatureIterator(
   // are requested by Fid and we already have them in cache, no need to
   // download anything.
   auto cacheDataProvider = mShared->cacheDataProvider();
-  if ( cacheDataProvider &&
-       ( mRequest.filterType() == Qgis::FeatureRequestFilterType::Fid ||
-         ( mRequest.filterType() == Qgis::FeatureRequestFilterType::Fids && mRequest.filterFids().size() < 100000 ) ) )
+  if ( cacheDataProvider && ( mRequest.filterType() == Qgis::FeatureRequestFilterType::Fid || ( mRequest.filterType() == Qgis::FeatureRequestFilterType::Fids && mRequest.filterFids().size() < 100000 ) ) )
   {
     QgsFeatureRequest requestCache;
     QgsFeatureIds qgisIds;
@@ -369,18 +144,17 @@ QgsBackgroundCachedFeatureIterator::QgsBackgroundCachedFeatureIterator(
     }
   }
 
-  int genCounter = ( mShared->isRestrictedToRequestBBOX() && !mFilterRect.isNull() ) ?
-                   mShared->registerToCache( this, static_cast<int>( mRequest.limit() ), mFilterRect, serverExpression ) :
-                   mShared->registerToCache( this, static_cast<int>( mRequest.limit() ), QgsRectangle(), serverExpression );
+  int genCounter = ( mShared->isRestrictedToRequestBBOX() && !mFilterRect.isNull() ) ? mShared->registerToCache( this, static_cast<int>( mRequest.limit() ), mFilterRect, serverExpression )
+                                                                                     : mShared->registerToCache( this, static_cast<int>( mRequest.limit() ), QgsRectangle(), serverExpression );
   // Reload cacheDataProvider as registerToCache() has likely refreshed it
   cacheDataProvider = mShared->cacheDataProvider();
   mDownloadFinished = genCounter < 0;
   if ( !cacheDataProvider )
     return;
 
-  QgsDebugMsgLevel( QStringLiteral( "QgsBackgroundCachedFeatureIterator::constructor(): genCounter=%1 " ).arg( genCounter ), 4 );
+  QgsDebugMsgLevel( u"QgsBackgroundCachedFeatureIterator::constructor(): genCounter=%1 "_s.arg( genCounter ), 4 );
 
-  QgsFeatureRequest requestCache = initRequestCache( genCounter ) ;
+  QgsFeatureRequest requestCache = initRequestCache( genCounter );
   fillRequestCache( requestCache );
   mCacheIterator = cacheDataProvider->getFeatures( requestCache );
 }
@@ -392,8 +166,7 @@ QgsFeatureRequest QgsBackgroundCachedFeatureIterator::initRequestCache( int genC
   const QgsFields fields = mShared->fields();
 
   auto cacheDataProvider = mShared->cacheDataProvider();
-  if ( mRequest.filterType() == Qgis::FeatureRequestFilterType::Fid ||
-       mRequest.filterType() == Qgis::FeatureRequestFilterType::Fids )
+  if ( mRequest.filterType() == Qgis::FeatureRequestFilterType::Fid || mRequest.filterType() == Qgis::FeatureRequestFilterType::Fids )
   {
     QgsFeatureIds qgisIds;
     if ( mRequest.filterType() == Qgis::FeatureRequestFilterType::Fid )
@@ -417,7 +190,7 @@ QgsFeatureRequest QgsBackgroundCachedFeatureIterator::initRequestCache( int genC
       for ( const auto &columnName : setColumns )
       {
         int idx = fields.indexOf( columnName );
-        if ( idx >= 0 && fields[idx].type() == QVariant::DateTime )
+        if ( idx >= 0 && fields[idx].type() == QMetaType::Type::QDateTime )
         {
           hasDateTimeFieldInExpr = true;
           break;
@@ -427,7 +200,7 @@ QgsFeatureRequest QgsBackgroundCachedFeatureIterator::initRequestCache( int genC
       {
         // Transfer and transform context
         requestCache.setFilterExpression( mRequest.filterExpression()->expression() );
-        QgsExpressionContext ctx { *mRequest.expressionContext( ) };
+        QgsExpressionContext ctx { *mRequest.expressionContext() };
         QgsExpressionContextScope *scope { ctx.activeScopeForVariable( QgsExpressionContext::EXPR_FIELDS ) };
         if ( scope )
         {
@@ -438,7 +211,7 @@ QgsFeatureRequest QgsBackgroundCachedFeatureIterator::initRequestCache( int genC
     }
     if ( genCounter >= 0 )
     {
-      requestCache.combineFilterExpression( QString( QgsBackgroundCachedFeatureIteratorConstants::FIELD_GEN_COUNTER + " <= %1" ).arg( genCounter ) );
+      requestCache.combineFilterExpression( QString( QgsBackgroundCachedFeatureIterator::Constants::FIELD_GEN_COUNTER + " <= %1" ).arg( genCounter ) );
     }
   }
 
@@ -449,9 +222,9 @@ void QgsBackgroundCachedFeatureIterator::fillRequestCache( QgsFeatureRequest req
 {
   requestCache.setFilterRect( mFilterRect );
 
-  if ( ( !( mRequest.flags() & Qgis::FeatureRequestFlag::NoGeometry ) || !mFilterRect.isNull() ) ||
-       ( mRequest.spatialFilterType() == Qgis::SpatialFilterType::DistanceWithin ) ||
-       ( mRequest.filterType() == Qgis::FeatureRequestFilterType::Expression && mRequest.filterExpression()->needsGeometry() ) )
+  if ( ( !( mRequest.flags() & Qgis::FeatureRequestFlag::NoGeometry ) || !mFilterRect.isNull() )
+       || ( mRequest.spatialFilterType() == Qgis::SpatialFilterType::DistanceWithin )
+       || ( mRequest.filterType() == Qgis::FeatureRequestFilterType::Expression && mRequest.filterExpression()->needsGeometry() ) )
   {
     mFetchGeometry = true;
   }
@@ -486,7 +259,7 @@ void QgsBackgroundCachedFeatureIterator::fillRequestCache( QgsFeatureRequest req
           if ( cacheFieldIdx >= 0 && !cacheSubSet.contains( cacheFieldIdx ) )
             cacheSubSet.append( cacheFieldIdx );
 
-          if ( wfsFieldIdx >= 0  && !mSubSetAttributes.contains( wfsFieldIdx ) )
+          if ( wfsFieldIdx >= 0 && !mSubSetAttributes.contains( wfsFieldIdx ) )
             mSubSetAttributes.append( wfsFieldIdx );
         }
       }
@@ -512,7 +285,7 @@ void QgsBackgroundCachedFeatureIterator::fillRequestCache( QgsFeatureRequest req
 
     if ( mFetchGeometry )
     {
-      int hexwkbGeomIdx = dataProviderFields.indexFromName( QgsBackgroundCachedFeatureIteratorConstants::FIELD_HEXWKB_GEOM );
+      int hexwkbGeomIdx = dataProviderFields.indexFromName( QgsBackgroundCachedFeatureIterator::Constants::FIELD_HEXWKB_GEOM );
       Q_ASSERT( hexwkbGeomIdx >= 0 );
       cacheSubSet.append( hexwkbGeomIdx );
     }
@@ -522,7 +295,7 @@ void QgsBackgroundCachedFeatureIterator::fillRequestCache( QgsFeatureRequest req
 
 QgsBackgroundCachedFeatureIterator::~QgsBackgroundCachedFeatureIterator()
 {
-  QgsDebugMsgLevel( QStringLiteral( "QgsBackgroundCachedFeatureIterator::~QgsBackgroundCachedFeatureIterator()" ), 4 );
+  QgsDebugMsgLevel( u"QgsBackgroundCachedFeatureIterator::~QgsBackgroundCachedFeatureIterator()"_s, 4 );
 
   close();
 
@@ -546,14 +319,11 @@ void QgsBackgroundCachedFeatureIterator::connectSignals( QgsFeatureDownloader *d
   // We want to run the slot for that signal in the same thread as the sender
   // so as to avoid the list of features to accumulate without control in
   // memory
-  connect( downloader, static_cast<void ( QgsFeatureDownloader::* )( QVector<QgsFeatureUniqueIdPair> )>( &QgsFeatureDownloader::featureReceived ),
-           this, &QgsBackgroundCachedFeatureIterator::featureReceivedSynchronous, Qt::DirectConnection );
+  connect( downloader, static_cast<void ( QgsFeatureDownloader::* )( QVector<QgsFeatureUniqueIdPair> )>( &QgsFeatureDownloader::featureReceived ), this, &QgsBackgroundCachedFeatureIterator::featureReceivedSynchronous, Qt::DirectConnection );
 
-  connect( downloader, &QgsFeatureDownloader::endOfDownload,
-           this, &QgsBackgroundCachedFeatureIterator::endOfDownloadSynchronous, Qt::DirectConnection );
+  connect( downloader, &QgsFeatureDownloader::endOfDownload, this, &QgsBackgroundCachedFeatureIterator::endOfDownloadSynchronous, Qt::DirectConnection );
 
-  connect( downloader, &QgsFeatureDownloader::resumeMainThread,
-           this, &QgsBackgroundCachedFeatureIterator::resumeMainThreadSynchronous, Qt::DirectConnection );
+  connect( downloader, &QgsFeatureDownloader::resumeMainThread, this, &QgsBackgroundCachedFeatureIterator::resumeMainThreadSynchronous, Qt::DirectConnection );
 }
 
 void QgsBackgroundCachedFeatureIterator::endOfDownloadSynchronous( bool )
@@ -581,7 +351,7 @@ void QgsBackgroundCachedFeatureIterator::setInterruptionChecker( QgsFeedback *in
 // if it goes above a given threshold, on disk
 void QgsBackgroundCachedFeatureIterator::featureReceivedSynchronous( const QVector<QgsFeatureUniqueIdPair> &list )
 {
-  QgsDebugMsgLevel( QStringLiteral( "QgsBackgroundCachedFeatureIterator::featureReceivedSynchronous %1 features" ).arg( list.size() ), 4 );
+  QgsDebugMsgLevel( u"QgsBackgroundCachedFeatureIterator::featureReceivedSynchronous %1 features"_s.arg( list.size() ), 4 );
   QMutexLocker locker( &mMutex );
 
   // Wake up waiting loop
@@ -590,23 +360,32 @@ void QgsBackgroundCachedFeatureIterator::featureReceivedSynchronous( const QVect
 
   if ( !mWriterStream )
   {
-    mWriterStream.reset( new QDataStream( &mWriterByteArray, QIODevice::WriteOnly ) );
+    mWriterStream = std::make_unique<QDataStream>( &mWriterByteArray, QIODevice::WriteOnly );
   }
   const auto constList = list;
+  const Qgis::WkbType expectedType { mShared->mWKBType };
+  bool errorRaised = false;
   for ( const QgsFeatureUniqueIdPair &pair : constList )
   {
+    if ( !errorRaised && QgsWkbTypes::hasZ( pair.first.geometry().wkbType() ) && !QgsWkbTypes::hasZ( expectedType ) )
+    {
+      mShared->pushError(
+        u"Received feature geometry has Z values but the layer type (%1) does not. Please check the WFS connection setting 'Force initial GetFeature'."_s.arg( QgsWkbTypes::displayString( expectedType ) )
+      );
+      errorRaised = true;
+    }
     *mWriterStream << pair.first;
   }
   if ( !mWriterFile && mWriterByteArray.size() > mWriteTransferThreshold )
   {
-    const QString thisStr = QStringLiteral( "%1" ).arg( reinterpret_cast< quintptr >( this ), QT_POINTER_SIZE * 2, 16, QLatin1Char( '0' ) );
-    ++ mCounter;
-    mWriterFilename = QDir( mShared->acquireCacheDirectory() ).filePath( QStringLiteral( "iterator_%1_%2.bin" ).arg( thisStr ).arg( mCounter ) );
-    QgsDebugMsgLevel( QStringLiteral( "Transferring feature iterator cache to %1" ).arg( mWriterFilename ), 4 );
-    mWriterFile.reset( new QFile( mWriterFilename ) );
+    const QString thisStr = u"%1"_s.arg( reinterpret_cast<quintptr>( this ), QT_POINTER_SIZE * 2, 16, '0'_L1 );
+    ++mCounter;
+    mWriterFilename = QDir( mShared->acquireCacheDirectory() ).filePath( u"iterator_%1_%2.bin"_s.arg( thisStr ).arg( mCounter ) );
+    QgsDebugMsgLevel( u"Transferring feature iterator cache to %1"_s.arg( mWriterFilename ), 4 );
+    mWriterFile = std::make_unique<QFile>( mWriterFilename );
     if ( !mWriterFile->open( QIODevice::WriteOnly | QIODevice::Truncate ) )
     {
-      QgsDebugError( QStringLiteral( "Cannot open %1 for writing" ).arg( mWriterFilename ) );
+      QgsDebugError( u"Cannot open %1 for writing"_s.arg( mWriterFilename ) );
       mWriterFile.reset();
       mWriterFilename.clear();
       mShared->releaseCacheDirectory();
@@ -653,11 +432,11 @@ bool QgsBackgroundCachedFeatureIterator::fetchFeature( QgsFeature &f )
 
     if ( mShared->hasGeometry() && mFetchGeometry )
     {
-      int idx = cachedFeature.fields().indexFromName( QgsBackgroundCachedFeatureIteratorConstants::FIELD_HEXWKB_GEOM );
+      int idx = cachedFeature.fields().indexFromName( QgsBackgroundCachedFeatureIterator::Constants::FIELD_HEXWKB_GEOM );
       Q_ASSERT( idx >= 0 );
 
       const QVariant &v = cachedFeature.attributes().value( idx );
-      if ( !QgsVariantUtils::isNull( v ) && v.type() == QVariant::String )
+      if ( !QgsVariantUtils::isNull( v ) && v.userType() == QMetaType::Type::QString )
       {
         QByteArray wkbGeom( QByteArray::fromHex( v.toString().toLatin1() ) );
         QgsGeometry g;
@@ -668,7 +447,7 @@ bool QgsBackgroundCachedFeatureIterator::fetchFeature( QgsFeature &f )
         }
         catch ( const QgsWkbException & )
         {
-          QgsDebugError( QStringLiteral( "Invalid WKB for cached feature %1" ).arg( cachedFeature.id() ) );
+          QgsDebugError( u"Invalid WKB for cached feature %1"_s.arg( cachedFeature.id() ) );
           cachedFeature.clearGeometry();
         }
       }
@@ -683,8 +462,7 @@ bool QgsBackgroundCachedFeatureIterator::fetchFeature( QgsFeature &f )
     }
 
     QgsGeometry constGeom = cachedFeature.geometry();
-    if ( !mFilterRect.isNull() &&
-         ( constGeom.isNull() || !constGeom.intersects( mFilterRect ) ) )
+    if ( !mFilterRect.isNull() && ( constGeom.isNull() || !constGeom.intersects( mFilterRect ) ) )
     {
       continue;
     }
@@ -739,19 +517,19 @@ bool QgsBackgroundCachedFeatureIterator::fetchFeature( QgsFeature &f )
       // Instantiates the reader stream from memory buffer if not empty
       if ( !mReaderByteArray.isEmpty() )
       {
-        mReaderStream.reset( new QDataStream( &mReaderByteArray, QIODevice::ReadOnly ) );
+        mReaderStream = std::make_unique<QDataStream>( &mReaderByteArray, QIODevice::ReadOnly );
       }
       // Otherwise from the on-disk file
       else if ( !mReaderFilename.isEmpty() )
       {
-        mReaderFile.reset( new QFile( mReaderFilename ) );
+        mReaderFile = std::make_unique<QFile>( mReaderFilename );
         if ( !mReaderFile->open( QIODevice::ReadOnly ) )
         {
-          QgsDebugError( QStringLiteral( "Cannot open %1" ).arg( mReaderFilename ) );
+          QgsDebugError( u"Cannot open %1"_s.arg( mReaderFilename ) );
           mReaderFile.reset();
           return false;
         }
-        mReaderStream.reset( new QDataStream( mReaderFile.get() ) );
+        mReaderStream = std::make_unique<QDataStream>( mReaderFile.get() );
       }
     }
 
@@ -784,8 +562,7 @@ bool QgsBackgroundCachedFeatureIterator::fetchFeature( QgsFeature &f )
         }
 
         QgsGeometry constGeom = feat.geometry();
-        if ( !mFilterRect.isNull() &&
-             ( constGeom.isNull() || !constGeom.intersects( mFilterRect ) ) )
+        if ( !mFilterRect.isNull() && ( constGeom.isNull() || !constGeom.intersects( mFilterRect ) ) )
         {
           continue;
         }
@@ -834,9 +611,7 @@ bool QgsBackgroundCachedFeatureIterator::fetchFeature( QgsFeature &f )
         break;
       }
       const int delayCheckInterruption = 50;
-      const int timeout = ( requestTimeout > 0 ) ?
-                          std::min( requestTimeout - ( int ) timeRequestTimeout.elapsed(), delayCheckInterruption ) :
-                          delayCheckInterruption;
+      const int timeout = ( requestTimeout > 0 ) ? std::min( requestTimeout - ( int ) timeRequestTimeout.elapsed(), delayCheckInterruption ) : delayCheckInterruption;
       if ( timeout < 0 )
       {
         mTimeoutOrInterruptionOccurred = true;
@@ -856,7 +631,6 @@ bool QgsBackgroundCachedFeatureIterator::fetchFeature( QgsFeature &f )
         break;
       }
     }
-
   }
 }
 
@@ -892,7 +666,7 @@ bool QgsBackgroundCachedFeatureIterator::rewind()
     QgsFeatureRequest requestCache;
     int genCounter = mShared->getUpdatedCounter();
     if ( genCounter >= 0 )
-      requestCache.setFilterExpression( QString( QgsBackgroundCachedFeatureIteratorConstants::FIELD_GEN_COUNTER + " <= %1" ).arg( genCounter ) );
+      requestCache.setFilterExpression( QString( QgsBackgroundCachedFeatureIterator::Constants::FIELD_GEN_COUNTER + " <= %1" ).arg( genCounter ) );
     else
       mDownloadFinished = true;
     auto cacheDataProvider = mShared->cacheDataProvider();
@@ -907,7 +681,7 @@ bool QgsBackgroundCachedFeatureIterator::close()
 {
   if ( mClosed )
     return false;
-  QgsDebugMsgLevel( QStringLiteral( "QgsBackgroundCachedFeatureIterator::close()" ), 4 );
+  QgsDebugMsgLevel( u"QgsBackgroundCachedFeatureIterator::close()"_s, 4 );
 
   iteratorClosed();
 
@@ -933,20 +707,19 @@ void QgsBackgroundCachedFeatureIterator::copyFeature( const QgsFeature &srcFeatu
   const QgsFields &fields = mShared->fields();
   dstFeature.initAttributes( fields.size() );
 
-  auto setAttr = [ & ]( const int i )
-  {
+  auto setAttr = [&]( const int i ) {
     int idx = srcFeature.fields().indexFromName( srcIsCache ? mShared->getSpatialiteFieldNameFromUserVisibleName( fields.at( i ).name() ) : fields.at( i ).name() );
     if ( idx >= 0 )
     {
       const QVariant &v = srcFeature.attributes().value( idx );
-      const QVariant::Type fieldType = fields.at( i ).type();
+      const QMetaType::Type fieldType = fields.at( i ).type();
       if ( QgsVariantUtils::isNull( v ) )
-        dstFeature.setAttribute( i, QVariant( fieldType ) );
-      else if ( QgsWFSUtils::isCompatibleType( v.type(), fieldType ) )
+        dstFeature.setAttribute( i, QgsVariantUtils::createNullVariant( fieldType ) );
+      else if ( QgsWFSUtils::isCompatibleType( static_cast<QMetaType::Type>( v.userType() ), fieldType ) )
         dstFeature.setAttribute( i, v );
-      else if ( fieldType == QVariant::DateTime && !QgsVariantUtils::isNull( v ) )
+      else if ( fieldType == QMetaType::Type::QDateTime && !QgsVariantUtils::isNull( v ) )
         dstFeature.setAttribute( i, QDateTime::fromMSecsSinceEpoch( v.toLongLong() ) );
-      else if ( fieldType == QVariant::Map && !QgsVariantUtils::isNull( v ) )
+      else if ( fieldType == QMetaType::Type::QVariantMap && !QgsVariantUtils::isNull( v ) )
         dstFeature.setAttribute( i, QJsonDocument::fromJson( v.toString().toUtf8() ).toVariant() );
       else
         dstFeature.setAttribute( i, QgsVectorDataProvider::convertValue( fieldType, v.toString() ) );
@@ -972,18 +745,4 @@ void QgsBackgroundCachedFeatureIterator::copyFeature( const QgsFeature &srcFeatu
   dstFeature.setValid( true );
   dstFeature.setId( srcFeature.id() );
   dstFeature.setFields( fields ); // allow name-based attribute lookups
-}
-
-
-// -------------------------
-
-QgsBackgroundCachedFeatureSource::QgsBackgroundCachedFeatureSource(
-  std::shared_ptr<QgsBackgroundCachedSharedData> shared )
-  : mShared( shared )
-{
-}
-
-QgsFeatureIterator QgsBackgroundCachedFeatureSource::getFeatures( const QgsFeatureRequest &request )
-{
-  return QgsFeatureIterator( new QgsBackgroundCachedFeatureIterator( this, false, mShared, request ) );
 }

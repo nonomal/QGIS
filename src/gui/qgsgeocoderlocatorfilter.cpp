@@ -14,16 +14,19 @@
  ***************************************************************************/
 
 #include "qgsgeocoderlocatorfilter.h"
+
+#include "qgsgeocoderresult.h"
 #include "qgsmapcanvas.h"
 #include "qgsmessagelog.h"
-#include "qgsgeocoderresult.h"
 
-QgsGeocoderLocatorFilter::QgsGeocoderLocatorFilter( const QString &name, const QString &displayName, const QString &prefix, QgsGeocoderInterface *geocoder, QgsMapCanvas *canvas, const QgsRectangle &boundingBox )
+#include "moc_qgsgeocoderlocatorfilter.cpp"
+
+QgsGeocoderLocatorFilter::QgsGeocoderLocatorFilter(
+  const QString &name, const QString &displayName, const QString &prefix, QgsGeocoderInterface *geocoder, QgsMapCanvas *canvas, const QgsRectangle &boundingBox
+)
   : QgsAbstractGeocoderLocatorFilter( name, displayName, prefix, geocoder, boundingBox )
   , mCanvas( canvas )
-{
-
-}
+{}
 
 QgsLocatorFilter *QgsGeocoderLocatorFilter::clone() const
 {
@@ -53,11 +56,10 @@ void QgsGeocoderLocatorFilter::handleGeocodeResult( const QgsGeocoderResult &res
     }
     mCanvas->zoomToFeatureExtent( bounds );
 
-    mCanvas->flashGeometries( QList< QgsGeometry >() << g );
+    mCanvas->flashGeometries( QList<QgsGeometry>() << g );
   }
   catch ( QgsCsException & )
   {
     QgsMessageLog::logMessage( tr( "Could not transform result to canvas CRS" ) );
   }
 }
-

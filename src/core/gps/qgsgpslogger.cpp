@@ -14,52 +14,58 @@
  ***************************************************************************/
 
 #include "qgsgpslogger.h"
-#include "qgsgpsconnection.h"
+
+#include <memory>
+
 #include "gmath.h"
 #include "qgsgeometry.h"
+#include "qgsgpsconnection.h"
 #include "qgslinestring.h"
 #include "qgspolygon.h"
-#include "qgssettingsentryimpl.h"
 #include "qgssettingsentryenumflag.h"
+#include "qgssettingsentryimpl.h"
 #include "qgssettingstree.h"
 
-#include <QTimer>
+#include <QString>
 #include <QTimeZone>
+#include <QTimer>
 
+#include "moc_qgsgpslogger.cpp"
 
-const QgsSettingsEntryDouble *QgsGpsLogger::settingsDistanceThreshold = new QgsSettingsEntryDouble( QStringLiteral( "distanceThreshold" ), QgsSettingsTree::sTreeGps, 0 );
-const QgsSettingsEntryBool *QgsGpsLogger::settingsApplyLeapSeconds = new QgsSettingsEntryBool( QStringLiteral( "applyLeapSeconds" ), QgsSettingsTree::sTreeGps, true );
-const QgsSettingsEntryString *QgsGpsLogger::settingsTimestampTimeZone = new QgsSettingsEntryString( QStringLiteral( "timestampTimeZone" ), QgsSettingsTree::sTreeGps, QString() );
-const QgsSettingsEntryInteger *QgsGpsLogger::settingsTimeStampFormat = new QgsSettingsEntryInteger( QStringLiteral( "timeStampFormat" ), QgsSettingsTree::sTreeGps, Qt::LocalTime );
-const QgsSettingsEntryInteger *QgsGpsLogger::settingsLeapSecondsCorrection = new QgsSettingsEntryInteger( QStringLiteral( "leapSecondsCorrection" ), QgsSettingsTree::sTreeGps, 18 );
-const QgsSettingsEntryInteger *QgsGpsLogger::settingsAcquisitionInterval = new QgsSettingsEntryInteger( QStringLiteral( "acquisitionInterval" ), QgsSettingsTree::sTreeGps, 0 );
+using namespace Qt::StringLiterals;
 
-const QgsSettingsEntryEnumFlag<Qgis::GpsInformationComponent> *QgsGpsLogger::settingsGpsMValueComponent = new QgsSettingsEntryEnumFlag<Qgis::GpsInformationComponent>( QStringLiteral( "m-value-attribute" ), QgsSettingsTree::sTreeGps, Qgis::GpsInformationComponent::Timestamp, QStringLiteral( "Which GPS attribute should be stored in geometry m values" ) ) SIP_SKIP;
+const QgsSettingsEntryDouble *QgsGpsLogger::settingsDistanceThreshold = new QgsSettingsEntryDouble( u"distanceThreshold"_s, QgsSettingsTree::sTreeGps, 0 );
+const QgsSettingsEntryBool *QgsGpsLogger::settingsApplyLeapSeconds = new QgsSettingsEntryBool( u"applyLeapSeconds"_s, QgsSettingsTree::sTreeGps, true );
+const QgsSettingsEntryString *QgsGpsLogger::settingsTimestampTimeZone = new QgsSettingsEntryString( u"timestampTimeZone"_s, QgsSettingsTree::sTreeGps, QString() );
+const QgsSettingsEntryInteger *QgsGpsLogger::settingsTimeStampFormat = new QgsSettingsEntryInteger( u"timeStampFormat"_s, QgsSettingsTree::sTreeGps, Qt::LocalTime );
+const QgsSettingsEntryInteger *QgsGpsLogger::settingsLeapSecondsCorrection = new QgsSettingsEntryInteger( u"leapSecondsCorrection"_s, QgsSettingsTree::sTreeGps, 18 );
+const QgsSettingsEntryInteger *QgsGpsLogger::settingsAcquisitionInterval = new QgsSettingsEntryInteger( u"acquisitionInterval"_s, QgsSettingsTree::sTreeGps, 0 );
 
-const QgsSettingsEntryBool *QgsGpsLogger::settingsGpsStoreAttributeInMValues = new QgsSettingsEntryBool( QStringLiteral( "store-attribute-in-m-values" ), QgsSettingsTree::sTreeGps, false, QStringLiteral( "Whether GPS attributes should be stored in geometry m values" ) ) SIP_SKIP;
+const QgsSettingsEntryEnumFlag<Qgis::GpsInformationComponent> *QgsGpsLogger::settingsGpsMValueComponent = new QgsSettingsEntryEnumFlag<
+  Qgis::GpsInformationComponent>( u"m-value-attribute"_s, QgsSettingsTree::sTreeGps, Qgis::GpsInformationComponent::Timestamp, u"Which GPS attribute should be stored in geometry m values"_s ) SIP_SKIP;
+
+const QgsSettingsEntryBool *QgsGpsLogger::settingsGpsStoreAttributeInMValues
+  = new QgsSettingsEntryBool( u"store-attribute-in-m-values"_s, QgsSettingsTree::sTreeGps, false, u"Whether GPS attributes should be stored in geometry m values"_s ) SIP_SKIP;
 
 QgsGpsLogger::QgsGpsLogger( QgsGpsConnection *connection, QObject *parent )
   : QObject( parent )
-  , mWgs84CRS( QgsCoordinateReferenceSystem( QStringLiteral( "EPSG:4326" ) ) )
+  , mWgs84CRS( QgsCoordinateReferenceSystem( u"EPSG:4326"_s ) )
 {
   setConnection( connection );
 
   mLastNmeaPosition.lat = nmea_degree2radian( 0.0 );
   mLastNmeaPosition.lon = nmea_degree2radian( 0.0 );
 
-  mAcquisitionTimer = std::unique_ptr<QTimer>( new QTimer( this ) );
+  mAcquisitionTimer = std::make_unique<QTimer>( this );
   mAcquisitionTimer->setSingleShot( true );
 
   updateGpsSettings();
 
-  connect( mAcquisitionTimer.get(), &QTimer::timeout,
-           this, &QgsGpsLogger::switchAcquisition );
+  connect( mAcquisitionTimer.get(), &QTimer::timeout, this, &QgsGpsLogger::switchAcquisition );
 }
 
 QgsGpsLogger::~QgsGpsLogger()
-{
-
-}
+{}
 
 QgsGpsConnection *QgsGpsLogger::connection()
 {
@@ -152,7 +158,7 @@ QgsGeometry QgsGpsLogger::currentGeometry( Qgis::WkbType type, QString &error ) 
     {
       QgsGeometry g;
 
-      std::unique_ptr<QgsLineString> ringWgs84( new QgsLineString( captureListWgs84 ) );
+      auto ringWgs84 = std::make_unique<QgsLineString>( captureListWgs84 );
       if ( !is3D )
         ringWgs84->dropZValue();
       if ( !isMeasure )
@@ -167,7 +173,7 @@ QgsGeometry QgsGpsLogger::currentGeometry( Qgis::WkbType type, QString &error ) 
       else if ( geometryType == Qgis::GeometryType::Polygon )
       {
         ringWgs84->close();
-        std::unique_ptr<QgsPolygon> polygon( new QgsPolygon() );
+        auto polygon = std::make_unique<QgsPolygon>();
         polygon->setExteriorRing( ringWgs84.release() );
 
         g = QgsGeometry( polygon.release() );
@@ -267,7 +273,16 @@ double QgsGpsLogger::totalTrackLength() const
 {
   QVector<QgsPointXY> points;
   QgsGeometry::convertPointList( mCaptureListWgs84, points );
-  return mDistanceCalculator.measureLine( points );
+  try
+  {
+    return mDistanceCalculator.measureLine( points );
+  }
+  catch ( QgsCsException & )
+  {
+    // TODO report errors to user
+    QgsDebugError( u"An error occurred while calculating length"_s );
+    return 0;
+  }
 }
 
 double QgsGpsLogger::trackDistanceFromStart() const
@@ -275,7 +290,16 @@ double QgsGpsLogger::trackDistanceFromStart() const
   if ( mCaptureListWgs84.empty() )
     return 0;
 
-  return mDistanceCalculator.measureLine( { QgsPointXY( mCaptureListWgs84.constFirst() ), QgsPointXY( mCaptureListWgs84.constLast() )} );
+  try
+  {
+    return mDistanceCalculator.measureLine( { QgsPointXY( mCaptureListWgs84.constFirst() ), QgsPointXY( mCaptureListWgs84.constLast() ) } );
+  }
+  catch ( QgsCsException & )
+  {
+    // TODO report errors to user
+    QgsDebugError( u"An error occurred while calculating length"_s );
+    return 0;
+  }
 }
 
 QVariant QgsGpsLogger::componentValue( Qgis::GpsInformationComponent component ) const
@@ -313,7 +337,17 @@ QVariant QgsGpsLogger::componentValue( Qgis::GpsInformationComponent component )
       return lastTimestamp();
 
     case Qgis::GpsInformationComponent::TrackDistanceSinceLastPoint:
-      return mPreviousTrackPoint.isEmpty() ? QVariant() : distanceArea().measureLine( mPreviousTrackPoint, lastPosition() );
+      try
+      {
+        return mPreviousTrackPoint.isEmpty() ? QVariant() : distanceArea().measureLine( mPreviousTrackPoint, lastPosition() );
+      }
+      catch ( QgsCsException & )
+      {
+        // TODO report errors to user
+        QgsDebugError( u"An error occurred while calculating length"_s );
+        return 0;
+      }
+
     case Qgis::GpsInformationComponent::TrackTimeSinceLastPoint:
       return mPreviousTrackPointTime.isValid() ? static_cast< double >( mPreviousTrackPointTime.msecsTo( lastTimestamp() ) ) / 1000 : QVariant();
   }
@@ -400,7 +434,6 @@ void QgsGpsLogger::gpsStateChanged( const QgsGpsInformation &info )
   {
     // do not update position if update is disabled by timer or distance is under threshold
     newLocationWgs84 = mLastGpsPositionWgs84;
-
   }
   if ( validFlag && mAcquisitionEnabled )
   {
@@ -478,12 +511,16 @@ QDateTime QgsGpsLogger::lastTimestamp() const
 
   if ( mTimeStampSpec == Qt::TimeSpec::TimeZone )
   {
+#if QT_FEATURE_timezone > 0
     // Get timezone from the combo
     const QTimeZone destTz( mTimeZone.toUtf8() );
     if ( destTz.isValid() )
     {
       time = time.toTimeZone( destTz );
     }
+#else
+    QgsDebugError( u"Qt is built without timezone support, cannot convert GPS timestamps to specified timezone."_s );
+#endif
   }
   else if ( mTimeStampSpec == Qt::TimeSpec::LocalTime )
   {

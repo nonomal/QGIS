@@ -20,7 +20,46 @@ QgsBrowserModel.ProviderKeyRole.__doc__ = "Data item provider key that created t
 QgsBrowserModel.LayerMetadataRole = QgsBrowserModel.CustomRole.LayerMetadata
 QgsBrowserModel.ItemDataRole.LayerMetadataRole = QgsBrowserModel.CustomRole.LayerMetadata
 QgsBrowserModel.LayerMetadataRole.is_monkey_patched = True
-QgsBrowserModel.LayerMetadataRole.__doc__ = ""
-QgsBrowserModel.CustomRole.__doc__ = "Custom model roles.\n\n.. note::\n\n   Prior to QGIS 3.36 this was available as QgsBrowserModel.ItemDataRole\n\n.. versionadded:: 3.36\n\n" + '* ``PathRole``: ' + QgsBrowserModel.CustomRole.Path.__doc__ + '\n' + '* ``CommentRole``: ' + QgsBrowserModel.CustomRole.Comment.__doc__ + '\n' + '* ``SortRole``: ' + QgsBrowserModel.CustomRole.Sort.__doc__ + '\n' + '* ``ProviderKeyRole``: ' + QgsBrowserModel.CustomRole.ProviderKey.__doc__ + '\n' + '* ``LayerMetadataRole``: ' + QgsBrowserModel.CustomRole.LayerMetadata.__doc__
+QgsBrowserModel.LayerMetadataRole.__doc__ = "Data item layer metadata for layer items"
+QgsBrowserModel.CustomRole.__doc__ = """Custom model roles.
+
+.. note::
+
+   Prior to QGIS 3.36 this was available as QgsBrowserModel.ItemDataRole
+
+.. versionadded:: 3.36
+
+* ``Path``: Item path used to access path in the tree, see QgsDataItem.mPath
+
+  Available as ``QgsBrowserModel.PathRole`` in older QGIS releases.
+
+* ``Comment``: Item comment
+
+  Available as ``QgsBrowserModel.CommentRole`` in older QGIS releases.
+
+* ``Sort``: Custom sort role, see QgsDataItem.sortKey()
+
+  Available as ``QgsBrowserModel.SortRole`` in older QGIS releases.
+
+* ``ProviderKey``: Data item provider key that created the item, see QgsDataItem.providerKey()
+
+  .. versionadded:: 3.12
+
+
+  Available as ``QgsBrowserModel.ProviderKeyRole`` in older QGIS releases.
+
+* ``LayerMetadata``: Data item layer metadata for layer items
+
+  Available as ``QgsBrowserModel.LayerMetadataRole`` in older QGIS releases.
+
+
+"""
 # --
 QgsBrowserModel.CustomRole.baseClass = QgsBrowserModel
+try:
+    QgsBrowserModel.__attribute_docs__ = {'stateChanged': 'Emitted when item children fetch was finished\n', 'connectionsChanged': 'Emitted when connections for the specified ``providerKey`` have changed\nin the browser.\n\nForwarded to the widget and used to notify the provider dialogs of a\nchanged connection.\n'}
+    QgsBrowserModel.__overridden_methods__ = ['flags', 'data', 'setData', 'headerData', 'rowCount', 'columnCount', 'index', 'parent', 'mimeTypes', 'mimeData', 'dropMimeData', 'hasChildren', 'canFetchMore', 'fetchMore']
+    QgsBrowserModel.__signal_arguments__ = {'stateChanged': ['index: QModelIndex', 'oldState: Qgis.BrowserItemState'], 'connectionsChanged': ['providerKey: str']}
+    QgsBrowserModel.__group__ = ['browser']
+except (NameError, AttributeError):
+    pass

@@ -13,17 +13,19 @@
  *                                                                         *
  ***************************************************************************/
 
-#include "qgstest.h"
-
 #include "qgisapp.h"
 #include "qgsgeometry.h"
+#include "qgsgeos.h"
 #include "qgsmapcanvas.h"
-#include "qgssettings.h"
-#include "qgsvectorlayer.h"
 #include "qgsmaptoolsplitfeatures.h"
-#include "qgsgeometryutils.h"
-
+#include "qgssnappingutils.h"
+#include "qgstest.h"
+#include "qgsvectorlayer.h"
 #include "testqgsmaptoolutils.h"
+
+#include <QString>
+
+using namespace Qt::StringLiterals;
 
 class TestQgsMapToolSplitFeatures : public QObject
 {
@@ -44,6 +46,8 @@ class TestQgsMapToolSplitFeatures : public QObject
     void testSplitSomeOfSelectedLines();
     // see https://github.com/qgis/QGIS/issues/29270
     void testSplitPolygonSnapToSegment();
+    void testLargestGeometryToOriginalFeaturePolygon();
+    void testLargestGeometryToOriginalFeatureLine();
 
   private:
     QPoint mapToPoint( double x, double y );
@@ -68,27 +72,27 @@ void TestQgsMapToolSplitFeatures::initTestCase()
   mQgisApp = new QgisApp();
 
   mCanvas = new QgsMapCanvas();
-  mCanvas->setDestinationCrs( QgsCoordinateReferenceSystem( QStringLiteral( "EPSG:3946" ) ) );
+  mCanvas->setDestinationCrs( QgsCoordinateReferenceSystem( u"EPSG:3946"_s ) );
 
   // make testing layers
-  mMultiLineStringLayer = new QgsVectorLayer( QStringLiteral( "MultiLineString?crs=EPSG:3946" ), QStringLiteral( "layer multiline" ), QStringLiteral( "memory" ) );
+  mMultiLineStringLayer = new QgsVectorLayer( u"MultiLineString?crs=EPSG:3946"_s, u"layer multiline"_s, u"memory"_s );
   QVERIFY( mMultiLineStringLayer->isValid() );
   mMultiLineStringLayer->startEditing();
-  lineF1.setGeometry( QgsGeometry::fromWkt( QStringLiteral( "MultiLineString ((0 0, 10 0))" ) ) );
-  lineF2.setGeometry( QgsGeometry::fromWkt( QStringLiteral( "MultiLineString ((0 5, 10 5),(10 5, 15 5))" ) ) );
+  lineF1.setGeometry( QgsGeometry::fromWkt( u"MultiLineString ((0 0, 10 0))"_s ) );
+  lineF2.setGeometry( QgsGeometry::fromWkt( u"MultiLineString ((0 5, 10 5),(10 5, 15 5))"_s ) );
   mMultiLineStringLayer->dataProvider()->addFeatures( QgsFeatureList() << lineF1 << lineF2 );
 
-  mPolygonLayer = new QgsVectorLayer( QStringLiteral( "PolygonZ?crs=EPSG:3946" ), QStringLiteral( "layer polygon" ), QStringLiteral( "memory" ) );
+  mPolygonLayer = new QgsVectorLayer( u"PolygonZ?crs=EPSG:3946"_s, u"layer polygon"_s, u"memory"_s );
   QVERIFY( mPolygonLayer->isValid() );
   mPolygonLayer->startEditing();
-  polygonF1.setGeometry( QgsGeometry::fromWkt( QStringLiteral( "PolygonZ ((0 5 10, 0 10 20, 10 10 30, 10 5 20, 0 5 10))" ) ) );
-  polygonF2.setGeometry( QgsGeometry::fromWkt( QStringLiteral( "PolygonZ ((0 0 10, 0 5 20, 10 5 30, 0 0 10))" ) ) );
+  polygonF1.setGeometry( QgsGeometry::fromWkt( u"PolygonZ ((0 5 10, 0 10 20, 10 10 30, 10 5 20, 0 5 10))"_s ) );
+  polygonF2.setGeometry( QgsGeometry::fromWkt( u"PolygonZ ((0 0 10, 0 5 20, 10 5 30, 0 0 10))"_s ) );
   mPolygonLayer->dataProvider()->addFeatures( QgsFeatureList() << polygonF1 << polygonF2 );
 
-  mMultiPolygonLayer = new QgsVectorLayer( QStringLiteral( "MultiPolygon?crs=EPSG:3946" ), QStringLiteral( "layer multipolygon" ), QStringLiteral( "memory" ) );
+  mMultiPolygonLayer = new QgsVectorLayer( u"MultiPolygon?crs=EPSG:3946"_s, u"layer multipolygon"_s, u"memory"_s );
   QVERIFY( mMultiPolygonLayer->isValid() );
   mMultiPolygonLayer->startEditing();
-  multipolygonF1.setGeometry( QgsGeometry::fromWkt( QStringLiteral( "MultiPolygon (((0 5, 0 10, 10 10, 10 5, 0 5)),((0 0, 0 4, 10 4, 10 0, 0 0)))" ) ) );
+  multipolygonF1.setGeometry( QgsGeometry::fromWkt( u"MultiPolygon (((0 5, 0 10, 10 10, 10 5, 0 5)),((0 0, 0 4, 10 4, 10 0, 0 0)))"_s ) );
   mMultiPolygonLayer->dataProvider()->addFeature( multipolygonF1 );
 
   mCanvas->setFrameStyle( QFrame::NoFrame );
@@ -97,16 +101,12 @@ void TestQgsMapToolSplitFeatures::initTestCase()
   mCanvas->show(); // to make the canvas resize
   mCanvas->hide();
 
-  QgsProject::instance()->addMapLayers( QList<QgsMapLayer *>() << mMultiLineStringLayer
-                                        << mPolygonLayer
-                                        << mMultiPolygonLayer );
+  QgsProject::instance()->addMapLayers( QList<QgsMapLayer *>() << mMultiLineStringLayer << mPolygonLayer << mMultiPolygonLayer );
 
   // set layers in canvas
-  mCanvas->setLayers( QList<QgsMapLayer *>() << mMultiLineStringLayer
-                      << mPolygonLayer
-                      << mMultiPolygonLayer );
+  mCanvas->setLayers( QList<QgsMapLayer *>() << mMultiLineStringLayer << mPolygonLayer << mMultiPolygonLayer );
 
-  QgsMapToolSplitFeatures *mapTool = new QgsMapToolSplitFeatures( mCanvas ) ;
+  QgsMapToolSplitFeatures *mapTool = new QgsMapToolSplitFeatures( mCanvas );
   mCanvas->setMapTool( mapTool );
   mUtils = new TestQgsMapToolUtils( mapTool );
 }
@@ -129,7 +129,6 @@ void TestQgsMapToolSplitFeatures::cleanup()
 
 QPoint TestQgsMapToolSplitFeatures::mapToPoint( double x, double y )
 {
-
   const QgsPointXY mapPoint = mCanvas->mapSettings().mapToPixel().transform( x, y );
 
   return QPoint( std::round( mapPoint.x() ), std::round( mapPoint.y() ) );
@@ -151,14 +150,27 @@ void TestQgsMapToolSplitFeatures::testSplitPolygon()
 {
   mCanvas->setCurrentLayer( mPolygonLayer );
 
+  QSet<QgsFeatureId> oldFids = mUtils->existingFeatureIds();
+
   mUtils->mouseClick( 4, 11, Qt::LeftButton );
   mUtils->mouseClick( 4, 3, Qt::LeftButton );
   mUtils->mouseClick( 4, 3, Qt::RightButton );
 
+  QgsFeatureId newFid = mUtils->newFeatureId( oldFids );
+
   QCOMPARE( mPolygonLayer->undoStack()->index(), 1 );
   QCOMPARE( mPolygonLayer->featureCount(), 3 );
-  QCOMPARE( mPolygonLayer->getFeature( 1 ).geometry().asWkt(), QStringLiteral( "PolygonZ ((4 10 24, 4 5 14, 0 5 10, 0 10 20, 4 10 24))" ) );
-  QCOMPARE( mPolygonLayer->getFeature( 2 ).geometry().asWkt(), QStringLiteral( "PolygonZ ((0 0 10, 0 5 20, 10 5 30, 0 0 10))" ) );
+  QgsGeometry geom = mPolygonLayer->getFeature( newFid ).geometry();
+  geom.normalize();
+  QCOMPARE( geom.asWkt(), u"Polygon Z ((0 5 10, 0 10 20, 4 10 24, 4 5 14, 0 5 10))"_s );
+  geom = mPolygonLayer->getFeature( 2 ).geometry();
+  geom.normalize();
+#if GEOS_VERSION_NUM >= GEOS_COMPUTE_VERSION( 3, 15, 0 )
+  // In GEOS 3.15, the result is already "topological", adding a new vertex to the boundary
+  QCOMPARE( geom.asWkt(), u"Polygon Z ((0 0 10, 0 5 20, 4 5 24, 10 5 30, 0 0 10))"_s );
+#else
+  QCOMPARE( geom.asWkt(), u"Polygon Z ((0 0 10, 0 5 20, 10 5 30, 0 0 10))"_s );
+#endif
 
   // no change to other layers
   QCOMPARE( mMultiLineStringLayer->undoStack()->index(), 0 );
@@ -170,19 +182,27 @@ void TestQgsMapToolSplitFeatures::testSplitPolygonTopologicalEditing()
   QgsProject::instance()->setTopologicalEditing( true );
   mCanvas->setCurrentLayer( mPolygonLayer );
 
+  QSet<QgsFeatureId> oldFids = mUtils->existingFeatureIds();
+
   mUtils->mouseClick( 4, 11, Qt::LeftButton );
   mUtils->mouseClick( 4, 3, Qt::LeftButton );
   mUtils->mouseClick( 4, 3, Qt::RightButton );
 
+  QgsFeatureId newFid = mUtils->newFeatureId( oldFids );
+
   QCOMPARE( mPolygonLayer->undoStack()->index(), 1 );
   QCOMPARE( mPolygonLayer->featureCount(), 3 );
-  QCOMPARE( mPolygonLayer->getFeature( 1 ).geometry().asWkt(), QStringLiteral( "PolygonZ ((4 10 24, 4 5 14, 0 5 10, 0 10 20, 4 10 24))" ) );
-  QCOMPARE( mPolygonLayer->getFeature( 2 ).geometry().asWkt(), QStringLiteral( "PolygonZ ((0 0 10, 0 5 20, 4 5 14, 10 5 30, 0 0 10))" ) );
+  QgsGeometry geom = mPolygonLayer->getFeature( newFid ).geometry();
+  geom.normalize();
+  QCOMPARE( geom.asWkt(), u"Polygon Z ((0 5 10, 0 10 20, 4 10 24, 4 5 14, 0 5 10))"_s );
+  geom = mPolygonLayer->getFeature( 2 ).geometry();
+  geom.normalize();
+  QCOMPARE( geom.asWkt(), u"Polygon Z ((0 0 10, 0 5 20, 4 5 24, 10 5 30, 0 0 10))"_s );
 
   QCOMPARE( mMultiLineStringLayer->undoStack()->index(), 1 );
-  QCOMPARE( mMultiLineStringLayer->getFeature( 2 ).geometry().asWkt(), QStringLiteral( "MultiLineString ((0 5, 4 5, 10 5),(10 5, 15 5))" ) );
+  QCOMPARE( mMultiLineStringLayer->getFeature( 2 ).geometry().asWkt(), u"MultiLineString ((0 5, 4 5, 10 5),(10 5, 15 5))"_s );
   QCOMPARE( mMultiPolygonLayer->undoStack()->index(), 1 );
-  QCOMPARE( mMultiPolygonLayer->getFeature( 1 ).geometry().asWkt(), QStringLiteral( "MultiPolygon (((0 5, 0 10, 4 10, 10 10, 10 5, 4 5, 0 5)),((0 0, 0 4, 10 4, 10 0, 0 0)))" ) );
+  QCOMPARE( mMultiPolygonLayer->getFeature( 1 ).geometry().asWkt(), u"MultiPolygon (((0 5, 0 10, 4 10, 10 10, 10 5, 4 5, 0 5)),((0 0, 0 4, 10 4, 10 0, 0 0)))"_s );
 
   QgsProject::instance()->setTopologicalEditing( false );
 }
@@ -247,14 +267,71 @@ void TestQgsMapToolSplitFeatures::testSplitPolygonSnapToSegment()
   QCOMPARE( mPolygonLayer->undoStack()->index(), 1 );
   QCOMPARE( mPolygonLayer->featureCount(), 12 );
 
+#if GEOS_VERSION_NUM >= GEOS_COMPUTE_VERSION( 3, 15, 0 )
+  // In GEOS 3.15, polygon boundaries are split by points that lie on them
+  // or by lines that touch them. In this test, the snapped line vertices
+  // touch the other polygon, so it gets new vertices in the bottom boundary edge.
+  QCOMPARE( mPolygonLayer->getFeature( 1 ).geometry().asWkt( 2 ), u"Polygon Z ((0 5 10, 0 10 20, 10 10 30, 10 5 20, 5 5 15, 4 5 14, 3 5 13, 2 5 12, 1 5 11, 0 5 10))"_s );
+#else
   // No change to the other feature in the layer
-  QCOMPARE( mPolygonLayer->getFeature( 1 ).geometry().asWkt( 2 ), QStringLiteral( "PolygonZ ((0 5 10, 0 10 20, 10 10 30, 10 5 20, 0 5 10))" ) );
+  QCOMPARE( mPolygonLayer->getFeature( 1 ).geometry().asWkt( 2 ), u"Polygon Z ((0 5 10, 0 10 20, 10 10 30, 10 5 20, 0 5 10))"_s );
+#endif
 
   // No change to other layers
   QCOMPARE( mMultiLineStringLayer->undoStack()->index(), 0 );
   QCOMPARE( mMultiPolygonLayer->undoStack()->index(), 0 );
 
   mCanvas->snappingUtils()->setConfig( oldCfg );
+}
+
+void TestQgsMapToolSplitFeatures::testLargestGeometryToOriginalFeaturePolygon()
+{
+  mCanvas->setCurrentLayer( mPolygonLayer );
+
+  QSet<QgsFeatureId> oldFids = mUtils->existingFeatureIds();
+
+  mUtils->mouseClick( 1, 11, Qt::LeftButton );
+  mUtils->mouseClick( 1, 5, Qt::LeftButton );
+  mUtils->mouseClick( 1, 5, Qt::RightButton );
+
+  QgsFeatureId newFid = mUtils->newFeatureId( oldFids );
+
+  QCOMPARE( mPolygonLayer->featureCount(), 3 );
+
+  QgsFeature oldFeat = mPolygonLayer->getFeature( 1 );
+  QgsFeature newFeat = mPolygonLayer->getFeature( newFid );
+
+  //larger
+  QgsGeometry geom = oldFeat.geometry();
+  geom.normalize();
+  QCOMPARE( geom.asWkt( 1 ), u"Polygon Z ((1 5 11, 1 10 21, 10 10 30, 10 5 20, 1 5 11))"_s );
+
+  //smaller
+  geom = newFeat.geometry();
+  geom.normalize();
+  QCOMPARE( geom.asWkt( 1 ), u"Polygon Z ((0 5 10, 0 10 20, 1 10 21, 1 5 11, 0 5 10))"_s );
+}
+
+void TestQgsMapToolSplitFeatures::testLargestGeometryToOriginalFeatureLine()
+{
+  mCanvas->setCurrentLayer( mMultiLineStringLayer );
+
+  QSet<QgsFeatureId> oldFids = mUtils->existingFeatureIds();
+
+  mUtils->mouseClick( 4, 1, Qt::LeftButton );
+  mUtils->mouseClick( 4, -1, Qt::LeftButton );
+  mUtils->mouseClick( 4, -1, Qt::RightButton );
+
+  QgsFeatureId newFid = mUtils->newFeatureId( oldFids );
+
+  QgsFeature oldFeat = mMultiLineStringLayer->getFeature( 1 );
+  QgsFeature newFeat = mMultiLineStringLayer->getFeature( newFid );
+
+  //larger
+  QCOMPARE( oldFeat.geometry().asWkt(), u"MultiLineString ((4 0, 10 0))"_s );
+
+  //smaller
+  QCOMPARE( newFeat.geometry().asWkt(), u"MultiLineString ((0 0, 4 0))"_s );
 }
 
 QGSTEST_MAIN( TestQgsMapToolSplitFeatures )

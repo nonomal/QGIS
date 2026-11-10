@@ -16,23 +16,25 @@
 #ifndef QGSTRANSACTIONGROUP_H
 #define QGSTRANSACTIONGROUP_H
 
+#include <memory>
+
 #include "qgis_core.h"
+#include "qgstransaction.h"
+
 #include <QObject>
 #include <QSet>
-#include <memory>
-#include "qgstransaction.h"
 
 class QgsVectorLayer;
 
 /**
  * \ingroup core
  * \class QgsTransactionGroup
+ * \brief Represents a transaction group.
  */
 class CORE_EXPORT QgsTransactionGroup : public QObject
 {
     Q_OBJECT
   public:
-
     //! Constructor for QgsTransactionGroup
     explicit QgsTransactionGroup( QObject *parent = nullptr );
 
@@ -86,7 +88,6 @@ class CORE_EXPORT QgsTransactionGroup : public QObject
     void onRollback();
 
   private:
-    bool mEditingStarting = false;
     bool mEditingStopping = false;
 
     void disableTransaction();

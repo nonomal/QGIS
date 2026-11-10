@@ -9,11 +9,18 @@
  *   (at your option) any later version.                                   *
  ***************************************************************************/
 #include "qgscoordinateboundspreviewmapwidget.h"
-#include "qgsrubberband.h"
-#include "qgsvertexmarker.h"
+
 #include "qgsapplication.h"
-#include "qgsvectorlayer.h"
 #include "qgsmaptoolpan.h"
+#include "qgsrubberband.h"
+#include "qgsvectorlayer.h"
+#include "qgsvertexmarker.h"
+
+#include <QString>
+
+#include "moc_qgscoordinateboundspreviewmapwidget.cpp"
+
+using namespace Qt::StringLiterals;
 
 QgsCoordinateBoundsPreviewMapWidget::QgsCoordinateBoundsPreviewMapWidget( QWidget *parent )
   : QgsMapCanvas( parent )
@@ -31,13 +38,13 @@ QgsCoordinateBoundsPreviewMapWidget::QgsCoordinateBoundsPreviewMapWidget( QWidge
   mCanvasCenterMarker->setColor( QColor( 185, 84, 210 ) );
   mCanvasCenterMarker->setPenWidth( 3 );
 
-  const QgsCoordinateReferenceSystem srs( QStringLiteral( "EPSG:4326" ) );
+  const QgsCoordinateReferenceSystem srs( u"EPSG:4326"_s );
   setDestinationCrs( srs );
 
-  const QString layerPath = QgsApplication::pkgDataPath() + QStringLiteral( "/resources/data/world_map.gpkg|layername=countries" );
+  const QString layerPath = QgsApplication::pkgDataPath() + u"/resources/data/world_map.gpkg|layername=countries"_s;
   QgsVectorLayer::LayerOptions options;
   options.forceReadOnly = true;
-  mLayers << new QgsVectorLayer( layerPath, tr( "World Map" ), QStringLiteral( "ogr" ), options );
+  mLayers << new QgsVectorLayer( layerPath, tr( "World Map" ), u"ogr"_s, options );
   setLayers( mLayers );
   mPanTool = new QgsMapToolPan( this );
   setMapTool( mPanTool );
@@ -47,32 +54,16 @@ QgsCoordinateBoundsPreviewMapWidget::QgsCoordinateBoundsPreviewMapWidget( QWidge
 QgsCoordinateBoundsPreviewMapWidget::~QgsCoordinateBoundsPreviewMapWidget()
 {
   setMapTool( nullptr );
-  delete mPanTool;
-  mPanTool = nullptr;
+
 
   qDeleteAll( mLayers );
-  delete mPreviewBand;
-  delete mCanvasPreviewBand;
-  delete mCanvasCenterMarker;
 }
 
 void QgsCoordinateBoundsPreviewMapWidget::setPreviewRect( const QgsRectangle &rect )
 {
   if ( !qgsDoubleNear( rect.area(), 0.0 ) )
   {
-    QgsGeometry geom;
-    if ( rect.xMinimum() > rect.xMaximum() )
-    {
-      const QgsRectangle rect1 = QgsRectangle( -180, rect.yMinimum(), rect.xMaximum(), rect.yMaximum() );
-      const QgsRectangle rect2 = QgsRectangle( rect.xMinimum(), rect.yMinimum(), 180, rect.yMaximum() );
-      geom = QgsGeometry::fromRect( rect1 );
-      geom.addPart( QgsGeometry::fromRect( rect2 ) );
-    }
-    else
-    {
-      geom = QgsGeometry::fromRect( rect );
-    }
-    mPreviewBand->setToGeometry( geom, nullptr );
+    const QgsGeometry geom = setBandGeometryToRect( mPreviewBand, rect );
     mPreviewBand->setColor( QColor( 255, 0, 0, 65 ) );
     QgsRectangle extent = geom.boundingBox();
     extent.scale( 1.1 );
@@ -87,6 +78,24 @@ void QgsCoordinateBoundsPreviewMapWidget::setPreviewRect( const QgsRectangle &re
   }
 }
 
+QgsGeometry QgsCoordinateBoundsPreviewMapWidget::setBandGeometryToRect( QgsRubberBand *band, const QgsRectangle &rect ) const
+{
+  QgsGeometry geom;
+
+  const std::pair< QgsRectangle, QgsRectangle > parts = rect.splitAtAntimeridian();
+  if ( !parts.second.isNull() )
+  {
+    geom = QgsGeometry::fromRect( parts.first );
+    geom.addPart( QgsGeometry::fromRect( parts.second ) );
+  }
+  else
+  {
+    geom = QgsGeometry::fromRect( parts.first );
+  }
+  band->setToGeometry( geom, nullptr );
+  return geom;
+}
+
 QgsRectangle QgsCoordinateBoundsPreviewMapWidget::canvasRect() const
 {
   return mCanvasRect;
@@ -95,8 +104,25 @@ QgsRectangle QgsCoordinateBoundsPreviewMapWidget::canvasRect() const
 void QgsCoordinateBoundsPreviewMapWidget::setCanvasRect( const QgsRectangle &rect )
 {
   mCanvasRect = rect;
-  mCanvasPreviewBand->setToGeometry( QgsGeometry::fromRect( mCanvasRect ), nullptr );
+  const QgsGeometry geom = setBandGeometryToRect( mCanvasPreviewBand, rect );
   mCanvasPreviewBand->show();
-  mCanvasCenterMarker->setCenter( rect.center() );
+
+  const std::pair< QgsRectangle, QgsRectangle > parts = rect.splitAtAntimeridian();
+  if ( !parts.second.isNull() )
+  {
+    const double y = rect.center().y();
+    const double x1 = parts.first.center().x();
+    const double x2 = parts.second.center().x() + 360;
+    double x = ( x1 + x2 ) * 0.5;
+    if ( x > 180 )
+      x -= 360;
+
+    mCanvasCenterMarker->setCenter( QgsPointXY( x, y ) );
+  }
+  else
+  {
+    mCanvasCenterMarker->setCenter( rect.center() );
+  }
+
   mCanvasCenterMarker->show();
 }

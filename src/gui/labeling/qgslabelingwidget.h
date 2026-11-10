@@ -16,16 +16,17 @@
 #define QGSLABELINGWIDGET_H
 
 // We don't want to expose this in the public API
-#define SIP_NO_FILE
+
+#include "ui_qgslabelingwidget.h"
+
+#include "qgis_gui.h"
+#include "qgsmaplayerconfigwidget.h"
+#include "qgspallabeling.h"
+#include "qgsvectorlayerlabeling.h"
 
 #include <QWidget>
 
-#include "ui_qgslabelingwidget.h"
-#include "qgspallabeling.h"
-#include "qgsvectorlayerlabeling.h"
-#include "qgis_gui.h"
-
-#include "qgsmaplayerconfigwidget.h"
+#define SIP_NO_FILE
 
 class QgsLabelingGui;
 class QgsMapCanvas;
@@ -54,6 +55,24 @@ class GUI_EXPORT QgsLabelingWidget : public QgsMapLayerConfigWidget, private Ui:
      */
     QgsLabelingGui *labelingGui();
 
+    /**
+     * Shows the labeling engine rules.
+     *
+     * The rules widget will either be shown as a dialog or an inline panel, depending on the \a parent widget.
+     *
+     * \since QGIS 3.42
+     */
+    static void showLabelingEngineRules( QWidget *parent, QgsMapCanvas *canvas );
+
+    /**
+     * Shows the labeling engine configuration.
+     *
+     * The config widget will either be shown as a dialog or an inline panel, depending on the \a parent widget.
+     *
+     * \since QGIS 3.42
+     */
+    static void showEngineConfiguration( QWidget *parent, QgsMapCanvas *canvas );
+
   public slots:
     //! Sets the layer to configure
     void setLayer( QgsMapLayer *layer );
@@ -75,10 +94,10 @@ class GUI_EXPORT QgsLabelingWidget : public QgsMapLayerConfigWidget, private Ui:
 
   private slots:
     void labelModeChanged( int index );
-    void showEngineConfigDialog();
+    void showLabelingEngineRulesPrivate();
+    void showEngineConfigDialogPrivate();
 
   private:
-
     enum Mode
     {
       ModeNone,
@@ -92,8 +111,8 @@ class GUI_EXPORT QgsLabelingWidget : public QgsMapLayerConfigWidget, private Ui:
     QgsMessageBar *mMessageBar = nullptr;
 
     QWidget *mWidget = nullptr;
-    std::unique_ptr< QgsPalLayerSettings > mSimpleSettings;
-    std::unique_ptr< QgsAbstractVectorLayerLabeling > mOldSettings;
+    std::unique_ptr<QgsPalLayerSettings> mSimpleSettings;
+    std::unique_ptr<QgsAbstractVectorLayerLabeling> mOldSettings;
     bool mOldLabelsEnabled = false;
 };
 

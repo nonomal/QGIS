@@ -16,14 +16,15 @@
 #ifndef QGSPROCESSINGDXFLAYERSWIDGETWRAPPER_H
 #define QGSPROCESSINGDXFLAYERSWIDGETWRAPPER_H
 
-#define SIP_NO_FILE
-
-#include "qgsprocessingcontext.h"
-#include "qgsprocessingwidgetwrapper.h"
-#include "qgsprocessingmultipleselectiondialog.h"
-#include "qgsdxfexport.h"
 
 #include "ui_qgsprocessingdxflayerdetailswidgetbase.h"
+
+#include "qgsdxfexport.h"
+#include "qgsprocessingcontext.h"
+#include "qgsprocessingmultipleselectiondialog.h"
+#include "qgsprocessingwidgetwrapper.h"
+
+#define SIP_NO_FILE
 
 class QLineEdit;
 class QToolButton;
@@ -51,14 +52,10 @@ class GUI_EXPORT QgsProcessingDxfLayersPanelWidget : public QgsProcessingMultipl
     Q_OBJECT
 
   public:
-
     /**
      * Constructor for QgsProcessingDxfLayersPanelWidget.
      */
-    QgsProcessingDxfLayersPanelWidget(
-      const QVariant &value,
-      QgsProject *project,
-      QWidget *parent SIP_TRANSFERTHIS = nullptr );
+    QgsProcessingDxfLayersPanelWidget( const QVariant &value, QgsProject *project, QWidget *parent SIP_TRANSFERTHIS = nullptr );
 
   private slots:
 
@@ -78,7 +75,6 @@ class GUI_EXPORT QgsProcessingDxfLayersWidget : public QWidget
     Q_OBJECT
 
   public:
-
     QgsProcessingDxfLayersWidget( QWidget *parent = nullptr );
 
     QVariant value() const { return mValue; }
@@ -95,7 +91,6 @@ class GUI_EXPORT QgsProcessingDxfLayersWidget : public QWidget
     void showDialog();
 
   private:
-
     void updateSummaryText();
 
     QLineEdit *mLineEdit = nullptr;
@@ -114,28 +109,21 @@ class GUI_EXPORT QgsProcessingDxfLayersWidgetWrapper : public QgsAbstractProcess
     Q_OBJECT
 
   public:
-
-    QgsProcessingDxfLayersWidgetWrapper( const QgsProcessingParameterDefinition *parameter = nullptr,
-                                         QgsProcessingGui::WidgetType type = QgsProcessingGui::Standard, QWidget *parent = nullptr );
+    QgsProcessingDxfLayersWidgetWrapper( const QgsProcessingParameterDefinition *parameter = nullptr, Qgis::ProcessingMode type = Qgis::ProcessingMode::Standard, QWidget *parent = nullptr );
 
     // QgsProcessingParameterWidgetFactoryInterface
     QString parameterType() const override;
-    QgsAbstractProcessingParameterWidgetWrapper *createWidgetWrapper( const QgsProcessingParameterDefinition *parameter, QgsProcessingGui::WidgetType type ) override;
+    QgsAbstractProcessingParameterWidgetWrapper *createWidgetWrapper( const QgsProcessingParameterDefinition *parameter, Qgis::ProcessingMode type ) override;
 
     // QgsProcessingParameterWidgetWrapper interface
     QWidget *createWidget() override SIP_FACTORY;
     void setWidgetContext( const QgsProcessingParameterWidgetContext &context ) override;
 
   protected:
-
     void setWidgetValue( const QVariant &value, QgsProcessingContext &context ) override;
     QVariant widgetValue() const override;
 
-    QStringList compatibleParameterTypes() const override;
-    QStringList compatibleOutputTypes() const override;
-
   private:
-
     QgsProcessingDxfLayersWidget *mPanel = nullptr;
 
     friend class TestProcessingGui;

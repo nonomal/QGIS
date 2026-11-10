@@ -20,16 +20,17 @@
 #ifndef QGSOWSSOURCESELECT_H
 #define QGSOWSSOURCESELECT_H
 #include "ui_qgsowssourceselectbase.h"
+
+#include "qgis_gui.h"
 #include "qgis_sip.h"
+#include "qgsabstractdatasourcewidget.h"
 #include "qgsdatasourceuri.h"
 #include "qgsguiutils.h"
 #include "qgsproviderregistry.h"
-#include "qgsabstractdatasourcewidget.h"
 
-#include <QStringList>
-#include <QPushButton>
 #include <QNetworkRequest>
-#include "qgis_gui.h"
+#include <QPushButton>
+#include <QStringList>
 
 class QgsDataProvider;
 class QButtonGroup;
@@ -49,7 +50,7 @@ class QgsOWSSourceWidget;
  * The user can then connect and add
  * layers from the WCS server to the map canvas.
  */
-class GUI_EXPORT QgsOWSSourceSelect : public QgsAbstractDataSourceWidget, protected Ui::QgsOWSSourceSelectBase
+class GUI_EXPORT QgsOWSSourceSelect : public QgsAbstractDataSourceWidget, public Ui::QgsOWSSourceSelectBase
 {
     Q_OBJECT
 
@@ -57,12 +58,17 @@ class GUI_EXPORT QgsOWSSourceSelect : public QgsAbstractDataSourceWidget, protec
     //! Formats supported by provider
     struct SupportedFormat
     {
-      QString format;
-      QString label;
+        QString format;
+        QString label;
     };
 
     //! Constructor
-    QgsOWSSourceSelect( const QString &service, QWidget *parent SIP_TRANSFERTHIS = nullptr, Qt::WindowFlags fl = QgsGuiUtils::ModalDialogFlags, QgsProviderRegistry::WidgetMode widgetMode = QgsProviderRegistry::WidgetMode::None );
+    QgsOWSSourceSelect(
+      const QString &service,
+      QWidget *parent SIP_TRANSFERTHIS = nullptr,
+      Qt::WindowFlags fl = QgsGuiUtils::ModalDialogFlags,
+      QgsProviderRegistry::WidgetMode widgetMode = QgsProviderRegistry::WidgetMode::Standalone
+    );
 
     //! Triggered when the provider's connections need to be refreshed
     void refresh() override;
@@ -80,7 +86,6 @@ class GUI_EXPORT QgsOWSSourceSelect : public QgsAbstractDataSourceWidget, protec
     void showStatusMessage( const QString &message );
 
   protected:
-
     /**
      * List of image formats (encodings) supported by provider
      * \returns list of format/label pairs
@@ -143,12 +148,9 @@ class GUI_EXPORT QgsOWSSourceSelect : public QgsAbstractDataSourceWidget, protec
      * create an item including possible parents
      * \note not available in Python bindings
      */
-    QgsTreeWidgetItem *createItem( int id,
-                                   const QStringList &names,
-                                   QMap<int, QgsTreeWidgetItem *> &items,
-                                   int &layerAndStyleCount,
-                                   const QMap<int, int> &layerParents,
-                                   const QMap<int, QStringList> &layerParentNames ) SIP_FACTORY SIP_SKIP;
+    QgsTreeWidgetItem *createItem(
+      int id, const QStringList &names, QMap<int, QgsTreeWidgetItem *> &items, int &layerAndStyleCount, const QMap<int, int> &layerParents, const QMap<int, QStringList> &layerParentNames
+    ) SIP_FACTORY SIP_SKIP;
 
     //! Returns a textual description for the authority id
     QString descriptionForAuthId( const QString &authId );
@@ -226,7 +228,6 @@ class GUI_EXPORT QgsOWSSourceSelect : public QgsAbstractDataSourceWidget, protec
 
 
   private:
-
     //! Selected CRS
     QString mSelectedCRS;
 
@@ -238,9 +239,6 @@ class GUI_EXPORT QgsOWSSourceSelect : public QgsAbstractDataSourceWidget, protec
 
     //! Map mime type labels to supported formats
     QMap<QString, QString> mMimeLabelMap;
-
-    //! Layer specific settings widget
-    QgsOWSSourceWidget *mSourceWidget = nullptr;
 
   private slots:
     void mTilesetsTableWidget_itemClicked( QTableWidgetItem *item );

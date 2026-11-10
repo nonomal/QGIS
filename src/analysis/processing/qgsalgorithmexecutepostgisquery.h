@@ -18,10 +18,11 @@
 #ifndef QGSALGORITHMEXECUTEPOSTGISQUERY_H
 #define QGSALGORITHMEXECUTEPOSTGISQUERY_H
 
-#define SIP_NO_FILE
 
 #include "qgis_sip.h"
 #include "qgsprocessingalgorithm.h"
+
+#define SIP_NO_FILE
 
 ///@cond PRIVATE
 
@@ -30,9 +31,7 @@
  */
 class QgsExecutePostgisQueryAlgorithm : public QgsProcessingAlgorithm
 {
-
   public:
-
     QgsExecutePostgisQueryAlgorithm() = default;
     void initAlgorithm( const QVariantMap &configuration = QVariantMap() ) override;
     QString name() const override;
@@ -41,12 +40,11 @@ class QgsExecutePostgisQueryAlgorithm : public QgsProcessingAlgorithm
     QString group() const override;
     QString groupId() const override;
     QString shortHelpString() const override;
+    QString shortDescription() const override;
     QgsExecutePostgisQueryAlgorithm *createInstance() const override SIP_FACTORY;
 
   protected:
-
-    QVariantMap processAlgorithm( const QVariantMap &parameters,
-                                  QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
+    QVariantMap processAlgorithm( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
 };
 
 ///@endcond PRIVATE

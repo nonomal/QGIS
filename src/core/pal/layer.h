@@ -30,18 +30,19 @@
 #ifndef PAL_LAYER_H_
 #define PAL_LAYER_H_
 
-#define SIP_NO_FILE
 
-
-#include "qgis_core.h"
-#include "pal.h" // for LineArrangementFlags enum
-#include "qgsgeos.h"
-#include "qgsgenericspatialindex.h"
-#include "qgslabelobstaclesettings.h"
-#include <QMutex>
-#include <QLinkedList>
-#include <QHash>
 #include <fstream>
+
+#include "pal.h"
+#include "qgis_core.h"
+#include "qgsgenericspatialindex.h"
+#include "qgsgeos.h"
+#include "qgslabelobstaclesettings.h"
+
+#include <QHash>
+#include <QMutex>
+
+#define SIP_NO_FILE
 
 class QgsLabelFeature;
 
@@ -51,7 +52,6 @@ namespace pal
   class FeaturePart;
 
   class Pal;
-  class LabelInfo;
 
   /**
    * \ingroup core
@@ -69,7 +69,6 @@ namespace pal
       friend class LabelPosition;
 
     public:
-
       /**
        * \brief Create a new layer
        *
@@ -88,7 +87,7 @@ namespace pal
       /**
        * Returns the number of features in layer.
        */
-      int featureCount() { return mHashtable.size(); }
+      int featureCount() const { return mHashtable.size(); }
 
       /**
        * Returns the maximum number of point label candidates to generate for features
@@ -337,7 +336,7 @@ namespace pal
       Qgis::UpsideDownLabelHandling mUpsidedownLabels = Qgis::UpsideDownLabelHandling::FlipUpsideDownLabels;
 
       //! Lookup table of label features (owned by the label feature provider that created them)
-      QHash< QgsFeatureId, QgsLabelFeature *> mHashtable;
+      QHash< QPair< QgsFeatureId, int >, QgsLabelFeature *> mHashtable;
 
       QHash< QString, QVector<FeaturePart *> > mConnectedHashtable;
       QHash< QgsFeatureId, int > mConnectedFeaturesIds;
@@ -349,7 +348,6 @@ namespace pal
 
       //! Add newly created obstacle part into r tree and to the list
       void addObstaclePart( FeaturePart *fpart );
-
   };
 
 } // end namespace pal

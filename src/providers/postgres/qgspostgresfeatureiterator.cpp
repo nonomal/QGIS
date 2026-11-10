@@ -12,21 +12,26 @@
  *   (at your option) any later version.                                   *
  *                                                                         *
  ***************************************************************************/
-#include "qgsgeometry.h"
-#include "qgspostgresconnpool.h"
-#include "qgspostgresexpressioncompiler.h"
 #include "qgspostgresfeatureiterator.h"
-#include "qgspostgresprovider.h"
-#include "qgspostgrestransaction.h"
-#include "qgslogger.h"
+
 #include "qgsdbquerylog.h"
 #include "qgsdbquerylog_p.h"
-#include "qgsmessagelog.h"
 #include "qgsexception.h"
+#include "qgsgeometry.h"
 #include "qgsgeometryengine.h"
+#include "qgslogger.h"
+#include "qgsmessagelog.h"
+#include "qgspostgresconnpool.h"
+#include "qgspostgresexpressioncompiler.h"
+#include "qgspostgresprovider.h"
+#include "qgspostgrestransaction.h"
+#include "qgspostgresutils.h"
 
 #include <QElapsedTimer>
 #include <QObject>
+#include <QString>
+
+using namespace Qt::StringLiterals;
 
 QgsPostgresFeatureIterator::QgsPostgresFeatureIterator( QgsPostgresFeatureSource *source, bool ownSource, const QgsFeatureRequest &request )
   : QgsAbstractFeatureIteratorFromSource<QgsPostgresFeatureSource>( source, ownSource, request )
@@ -57,10 +62,7 @@ QgsPostgresFeatureIterator::QgsPostgresFeatureIterator( QgsPostgresFeatureSource
     return;
   }
 
-  if ( mRequest.destinationCrs().isValid() && mRequest.destinationCrs() != mSource->mCrs )
-  {
-    mTransform = QgsCoordinateTransform( mSource->mCrs, mRequest.destinationCrs(), mRequest.transformContext() );
-  }
+  mTransform = mRequest.calculateTransform( mSource->mCrs );
   try
   {
     mFilterRect = filterRectToSourceCrs( mTransform );
@@ -100,18 +102,19 @@ QgsPostgresFeatureIterator::QgsPostgresFeatureIterator( QgsPostgresFeatureSource
         if ( !mTransform.isShortCircuited() || mSource->mSpatialColType != SctGeometry )
         {
           mDistanceWithinGeom = mRequest.referenceGeometry();
-          mDistanceWithinEngine.reset( QgsGeometry::createGeometryEngine( mDistanceWithinGeom.constGet() ) );
+          mDistanceWithinEngine = QgsGeometry::createGeometryEngine( mDistanceWithinGeom.constGet() );
           mDistanceWithinEngine->prepareGeometry();
           limitAtProvider = false;
         }
         else
         {
           // we can safely hand this off to the backend to evaluate, so that it will nicely handle it within the query planner!
-          whereClause = QgsPostgresUtils::andWhereClauses( whereClause, QStringLiteral( "ST_DWithin(%1,ST_GeomFromText('%2',%3),%4)" ).arg(
-                          QgsPostgresConn::quotedIdentifier( mSource->mGeometryColumn ),
-                          mRequest.referenceGeometry().asWkt(),
-                          mSource->mRequestedSrid.isEmpty() ? mSource->mDetectedSrid : mSource->mRequestedSrid )
-                        .arg( mRequest.distanceWithin() ) );
+          whereClause = QgsPostgresUtils::andWhereClauses(
+            whereClause,
+            u"ST_DWithin(%1,ST_GeomFromText('%2',%3),%4)"_s
+              .arg( QgsPostgresConn::quotedIdentifier( mSource->mGeometryColumn ), mRequest.referenceGeometry().asWkt(), mSource->mRequestedSrid.isEmpty() ? mSource->mDetectedSrid : mSource->mRequestedSrid )
+              .arg( mRequest.distanceWithin() )
+          );
         }
       }
       break;
@@ -226,11 +229,11 @@ QgsPostgresFeatureIterator::QgsPostgresFeatureIterator( QgsPostgresFeatureSource
     if ( !mOrderByCompiled )
       limitAtProvider = false;
 
-    bool success = declareCursor( whereClause, limitAtProvider ? mRequest.limit() : -1, false, orderByParts.join( QLatin1Char( ',' ) ) );
+    bool success = declareCursor( whereClause, limitAtProvider ? mRequest.limit() : -1, false, orderByParts.join( ','_L1 ) );
     if ( !success && useFallbackWhereClause )
     {
       //try with the fallback where clause, e.g., for cases when using compiled expression failed to prepare
-      success = declareCursor( fallbackWhereClause, -1, false, orderByParts.join( QLatin1Char( ',' ) ) );
+      success = declareCursor( fallbackWhereClause, -1, false, orderByParts.join( ','_L1 ) );
       if ( success )
       {
         mExpressionCompiled = false;
@@ -289,12 +292,12 @@ bool QgsPostgresFeatureIterator::fetchFeature( QgsFeature &feature )
       timer.start();
 #endif
 
-      QString fetch = QStringLiteral( "FETCH FORWARD %1 FROM %2" ).arg( mFeatureQueueSize ).arg( mCursorName );
-      QgsDebugMsgLevel( QStringLiteral( "fetching %1 features." ).arg( mFeatureQueueSize ), 4 );
+      QString fetch = u"FETCH FORWARD %1 FROM %2"_s.arg( mFeatureQueueSize ).arg( mCursorName );
+      QgsDebugMsgLevel( u"fetching %1 features."_s.arg( mFeatureQueueSize ), 4 );
 
       lock();
 
-      QgsDatabaseQueryLogWrapper logWrapper { fetch, mSource->mConnInfo, QStringLiteral( "postgres" ), QStringLiteral( "QgsPostgresFeatureIterator" ), QGS_QUERY_LOG_ORIGIN };
+      QgsDatabaseQueryLogWrapper logWrapper { fetch, mSource->mConnInfo, u"postgres"_s, u"QgsPostgresFeatureIterator"_s, QGS_QUERY_LOG_ORIGIN };
 
       if ( mConn->PQsendQuery( fetch ) == 0 ) // fetch features asynchronously
       {
@@ -369,7 +372,7 @@ bool QgsPostgresFeatureIterator::fetchFeature( QgsFeature &feature )
     feature.setFields( mSource->mFields ); // allow name-based attribute lookups
     return true;
   }
-  QgsDebugMsgLevel( QStringLiteral( "Finished after %1 features" ).arg( mFetched ), 2 );
+  QgsDebugMsgLevel( u"Finished after %1 features"_s.arg( mFetched ), 2 );
   close();
 
   mSource->mShared->ensureFeaturesCountedAtLeast( mFetched );
@@ -388,9 +391,7 @@ bool QgsPostgresFeatureIterator::nextFeatureFilterExpression( QgsFeature &f )
 bool QgsPostgresFeatureIterator::prepareSimplification( const QgsSimplifyMethod &simplifyMethod )
 {
   // setup simplification of geometries to fetch
-  if ( !( mRequest.flags() & Qgis::FeatureRequestFlag::NoGeometry ) &&
-       simplifyMethod.methodType() != QgsSimplifyMethod::NoSimplification &&
-       !simplifyMethod.forceLocalOptimization() )
+  if ( !( mRequest.flags() & Qgis::FeatureRequestFlag::NoGeometry ) && simplifyMethod.methodType() != QgsSimplifyMethod::NoSimplification && !simplifyMethod.forceLocalOptimization() )
   {
     QgsSimplifyMethod::MethodType methodType = simplifyMethod.methodType();
 
@@ -400,7 +401,7 @@ bool QgsPostgresFeatureIterator::prepareSimplification( const QgsSimplifyMethod 
     }
     else
     {
-      QgsDebugError( QStringLiteral( "Simplification method type (%1) is not recognised by PostgresFeatureIterator" ).arg( methodType ) );
+      QgsDebugError( u"Simplification method type (%1) is not recognised by PostgresFeatureIterator"_s.arg( methodType ) );
     }
   }
   return QgsAbstractFeatureIterator::prepareSimplification( simplifyMethod );
@@ -437,7 +438,7 @@ bool QgsPostgresFeatureIterator::rewind()
 
   // move cursor to first record
 
-  mConn->LoggedPQexecNR( "QgsPostgresFeatureIterator", QStringLiteral( "move absolute 0 in %1" ).arg( mCursorName ) );
+  mConn->LoggedPQexecNR( "QgsPostgresFeatureIterator", u"move absolute 0 in %1"_s.arg( mCursorName ) );
   mFeatureQueue.clear();
   mFetched = 0;
   mLastFetch = false;
@@ -489,33 +490,24 @@ QString QgsPostgresFeatureIterator::whereClauseRect()
   if ( !rect.isFinite() )
   {
     QgsMessageLog::logMessage( QObject::tr( "Infinite filter rectangle specified" ), QObject::tr( "PostGIS" ) );
-    return QStringLiteral( "false" );
+    return u"false"_s;
   }
 
   QString qBox;
   const QString bboxSrid = mSource->mRequestedSrid.isEmpty() ? mSource->mDetectedSrid : mSource->mRequestedSrid;
   if ( mConn->majorVersion() < 2 )
   {
-    qBox = QStringLiteral( "setsrid('BOX3D(%1)'::box3d,%2)" )
-           .arg( rect.asWktCoordinates(),
-                 bboxSrid );
+    qBox = u"setsrid('BOX3D(%1)'::box3d,%2)"_s.arg( rect.asWktCoordinates(), bboxSrid );
   }
   else
   {
-    qBox = QStringLiteral( "st_makeenvelope(%1,%2,%3,%4,%5)" )
-           .arg( qgsDoubleToString( rect.xMinimum() ),
-                 qgsDoubleToString( rect.yMinimum() ),
-                 qgsDoubleToString( rect.xMaximum() ),
-                 qgsDoubleToString( rect.yMaximum() ),
-                 bboxSrid );
+    qBox = u"st_makeenvelope(%1,%2,%3,%4,%5)"_s.arg( qgsDoubleToString( rect.xMinimum() ), qgsDoubleToString( rect.yMinimum() ), qgsDoubleToString( rect.xMaximum() ), qgsDoubleToString( rect.yMaximum() ), bboxSrid );
   }
 
-  bool castToGeometry = mSource->mSpatialColType == SctGeography ||
-                        mSource->mSpatialColType == SctPcPatch;
+  bool castToGeometry = mSource->mSpatialColType == SctGeography || mSource->mSpatialColType == SctPcPatch;
 
   QString whereClause;
-  if ( mSource->mSpatialColType == SctTopoGeometry &&
-       mSource->mTopoLayerInfo.layerLevel == 0 )
+  if ( mSource->mSpatialColType == SctTopoGeometry && mSource->mTopoLayerInfo.layerLevel == 0 )
   {
     whereClause = QStringLiteral( R"SQL(
       id(%1) in (
@@ -542,24 +534,17 @@ QString QgsPostgresFeatureIterator::whereClauseRect()
         FROM %3.relation r, elems e
         WHERE r.layer_id = %4
           AND r.element_type = e.typ
-          AND r.element_id = e.id
+          AND ( r.element_id = e.id OR r.element_id = -e.id )
       )
     )SQL" )
-                  // Should we bother with mBoundingBoxColumn ?
-                  .arg(
-                    QgsPostgresConn::quotedIdentifier( mSource->mGeometryColumn ),
-                    qBox,
-                    QgsPostgresConn::quotedIdentifier( mSource->mTopoLayerInfo.topologyName )
-                  )
-                  .arg( mSource->mTopoLayerInfo.layerId )
-                  .arg( mSource->mTopoLayerInfo.featureType );
+                    // Should we bother with mBoundingBoxColumn ?
+                    .arg( QgsPostgresConn::quotedIdentifier( mSource->mGeometryColumn ), qBox, QgsPostgresConn::quotedIdentifier( mSource->mTopoLayerInfo.topologyName ) )
+                    .arg( mSource->mTopoLayerInfo.layerId )
+                    .arg( mSource->mTopoLayerInfo.featureType );
   }
   else
   {
-    whereClause = QStringLiteral( "%1%2 && %3" )
-                  .arg( QgsPostgresConn::quotedIdentifier( mSource->mBoundingBoxColumn ),
-                        castToGeometry ? "::geometry" : "",
-                        qBox );
+    whereClause = u"%1%2 && %3"_s.arg( QgsPostgresConn::quotedIdentifier( mSource->mBoundingBoxColumn ), castToGeometry ? "::geometry" : "", qBox );
   }
 
   // For geography type, using a && filter with the geography column cast as
@@ -568,12 +553,12 @@ QString QgsPostgresFeatureIterator::whereClauseRect()
   // geography uses geodesic arcs, and not rhumb lines, so we must expand a bit the QGIS
   // bounding box (which assumes rhumb lines) to the south in the northern hemisphere
   // See https://trac.osgeo.org/postgis/ticket/2495 for some background
-  if ( mConn->majorVersion() >= 2 &&
-       mSource->mSpatialColType == SctGeography &&
-       bboxSrid == QLatin1String( "4326" ) &&
-       std::fabs( rect.yMaximum()  - rect.yMinimum() ) <= 10 &&
-       std::fabs( rect.xMaximum()  - rect.xMinimum() ) <= 10 &&
-       std::fabs( rect.yMaximum() ) <= 70 )
+  if ( mConn->majorVersion() >= 2
+       && mSource->mSpatialColType == SctGeography
+       && bboxSrid == "4326"_L1
+       && std::fabs( rect.yMaximum() - rect.yMinimum() ) <= 10
+       && std::fabs( rect.xMaximum() - rect.xMinimum() ) <= 10
+       && std::fabs( rect.yMaximum() ) <= 70 )
   {
     /* The following magic constant has been obtained by running :
         #include "geodesic.h"
@@ -615,8 +600,7 @@ QString QgsPostgresFeatureIterator::whereClauseRect()
     double dlat = 1.04;
 
     // For smaller filtering bounding box, use smaller bbox expansion
-    if ( std::fabs( rect.yMaximum()  - rect.yMinimum() ) <= 1 &&
-         std::fabs( rect.xMaximum()  - rect.xMinimum() ) <= 1 )
+    if ( std::fabs( rect.yMaximum() - rect.yMinimum() ) <= 1 && std::fabs( rect.xMaximum() - rect.xMinimum() ) <= 1 )
     {
       // Value got by changing lat1 to 69 and lon2 to 1 in the above code snippet
       dlat = 0.013;
@@ -624,48 +608,79 @@ QString QgsPostgresFeatureIterator::whereClauseRect()
     // In the northern hemisphere, extends the geog bbox to the south
     const double yminGeog = rect.yMinimum() >= 0 ? std::max( 0.0, rect.yMinimum() - dlat ) : rect.yMinimum();
     const double ymaxGeog = rect.yMaximum() >= 0 ? rect.yMaximum() : std::min( 0.0, rect.yMaximum() + dlat );
-    const QString qBoxGeog = QStringLiteral( "st_makeenvelope(%1,%2,%3,%4,%5)" )
-                             .arg( qgsDoubleToString( rect.xMinimum() ),
-                                   qgsDoubleToString( yminGeog ),
-                                   qgsDoubleToString( rect.xMaximum() ),
-                                   qgsDoubleToString( ymaxGeog ),
-                                   bboxSrid );
-    whereClause += QStringLiteral( " AND %1 && %2" )
-                   .arg( QgsPostgresConn::quotedIdentifier( mSource->mBoundingBoxColumn ),
-                         qBoxGeog );
+    const QString qBoxGeog
+      = u"st_makeenvelope(%1,%2,%3,%4,%5)"_s.arg( qgsDoubleToString( rect.xMinimum() ), qgsDoubleToString( yminGeog ), qgsDoubleToString( rect.xMaximum() ), qgsDoubleToString( ymaxGeog ), bboxSrid );
+    whereClause += u" AND %1 && %2"_s.arg( QgsPostgresConn::quotedIdentifier( mSource->mBoundingBoxColumn ), qBoxGeog );
   }
 
   if ( mRequest.flags() & Qgis::FeatureRequestFlag::ExactIntersect )
   {
-    QString curveToLineFn; // in PostGIS < 1.5 the st_curvetoline function does not exist
-    if ( mConn->majorVersion() >= 2 || ( mConn->majorVersion() == 1 && mConn->minorVersion() >= 5 ) )
-      curveToLineFn = QStringLiteral( "st_curvetoline" ); // st_ prefix is always used
-    whereClause += QStringLiteral( " AND %1(%2(%3%4),%5)" )
-                   .arg( mConn->majorVersion() < 2 ? "intersects" : "st_intersects",
-                         curveToLineFn,
-                         QgsPostgresConn::quotedIdentifier( mSource->mGeometryColumn ),
-                         castToGeometry ? "::geometry" : "",
-                         qBox );
+    // Build geometry conversion function chain based on geometry type
+    // This is needed because ST_Intersects uses GEOS which doesn't support
+    // certain geometry types (TIN, PolyhedralSurface)
+    QString geomConversionFn;
+    const Qgis::WkbType flatGeomType = QgsWkbTypes::flatType( mSource->mDetectedGeomType );
+
+    // For TIN and PolyhedralSurface: convert to MultiPolygon for GEOS compatibility
+    // This is a workaround since GEOS doesn't support these types directly
+    if ( flatGeomType == Qgis::WkbType::TIN || flatGeomType == Qgis::WkbType::PolyhedralSurface )
+    {
+      if ( mConn->majorVersion() >= 3 )
+      {
+        // PostGIS 3.0+: TIN works directly with GEOS, only PolyhedralSurface needs conversion
+        if ( flatGeomType == Qgis::WkbType::PolyhedralSurface )
+        {
+          geomConversionFn = u"(SELECT ST_Collect(d.geom) FROM ST_Dump(%1) AS d)"_s;
+        }
+      }
+      else
+      {
+        // PostGIS < 3.0: Both TIN and PolyhedralSurface need full conversion
+        // ST_Dump extracts individual triangles/polygons, then convert each to simple polygon
+        // using ST_MakePolygon to avoid Triangle type (unsupported by GEOS in PostGIS < 3.0)
+        if ( flatGeomType == Qgis::WkbType::TIN )
+        {
+          // Triangles have no interior rings (holes)
+          geomConversionFn = u"(SELECT ST_Multi(ST_Collect(ST_MakePolygon(ST_ExteriorRing(d.geom)))) FROM ST_Dump(%1) AS d)"_s;
+        }
+        else
+        {
+          // PolyhedralSurface: preserve interior rings (holes)
+          geomConversionFn
+            = u"(SELECT ST_Multi(ST_Collect(ST_MakePolygon(ST_ExteriorRing(d.geom), ARRAY(SELECT ST_InteriorRingN(d.geom, i) FROM generate_series(1, ST_NumInteriorRings(d.geom)) AS i)))) FROM ST_Dump(%1) AS d)"_s;
+        }
+      }
+    }
+    // For curve types use st_curvetoline to linearize
+    else if ( mConn->majorVersion() >= 2 || ( mConn->majorVersion() == 1 && mConn->minorVersion() >= 5 ) )
+    {
+      geomConversionFn = u"st_curvetoline(%1)"_s;
+    }
+
+    QString geomExpr = QgsPostgresConn::quotedIdentifier( mSource->mGeometryColumn );
+    if ( castToGeometry )
+      geomExpr += "::geometry"_L1;
+
+    if ( !geomConversionFn.isEmpty() )
+      geomExpr = geomConversionFn.arg( geomExpr );
+
+    whereClause += u" AND %1(%2,%3)"_s.arg( mConn->majorVersion() < 2 ? "intersects" : "st_intersects", geomExpr, qBox );
   }
 
   if ( !mSource->mRequestedSrid.isEmpty() && ( mSource->mRequestedSrid != mSource->mDetectedSrid || mSource->mRequestedSrid.toInt() == 0 ) )
   {
-    whereClause += QStringLiteral( " AND %1(%2%3)=%4" )
-                   .arg( mConn->majorVersion() < 2 ? "srid" : "st_srid",
-                         QgsPostgresConn::quotedIdentifier( mSource->mGeometryColumn ),
-                         castToGeometry ? "::geometry" : "",
-                         mSource->mRequestedSrid );
+    whereClause
+      += u" AND %1(%2%3)=%4"_s.arg( mConn->majorVersion() < 2 ? "srid" : "st_srid", QgsPostgresConn::quotedIdentifier( mSource->mGeometryColumn ), castToGeometry ? "::geometry" : "", mSource->mRequestedSrid );
   }
 
   if ( mSource->mRequestedGeomType != Qgis::WkbType::Unknown && mSource->mRequestedGeomType != mSource->mDetectedGeomType )
   {
-    whereClause += QStringLiteral( " AND %1" ).arg( QgsPostgresConn::postgisTypeFilter( mSource->mGeometryColumn, mSource->mRequestedGeomType, castToGeometry ) );
+    whereClause += u" AND %1"_s.arg( QgsPostgresConn::postgisTypeFilter( mSource->mGeometryColumn, mSource->mRequestedGeomType, castToGeometry ) );
   }
 
-  QgsDebugMsgLevel( QStringLiteral( "whereClause = %1" ).arg( whereClause ), 4 );
+  QgsDebugMsgLevel( u"whereClause = %1"_s.arg( whereClause ), 4 );
   return whereClause;
 }
-
 
 
 bool QgsPostgresFeatureIterator::declareCursor( const QString &whereClause, long limit, bool closeOnFail, const QString &orderBy )
@@ -683,23 +698,21 @@ bool QgsPostgresFeatureIterator::declareCursor( const QString &whereClause, long
   }
 #endif
 
-  QString query( QStringLiteral( "SELECT " ) );
+  QString query( u"SELECT "_s );
   QString delim;
 
   if ( mFetchGeometry )
   {
     QString geom = QgsPostgresConn::quotedIdentifier( mSource->mGeometryColumn );
 
-    if ( mSource->mSpatialColType == SctGeography ||
-         mSource->mSpatialColType == SctPcPatch )
-      geom += QLatin1String( "::geometry" );
+    if ( mSource->mSpatialColType == SctGeography || mSource->mSpatialColType == SctPcPatch )
+      geom += "::geometry"_L1;
 
-    Qgis::WkbType usedGeomType = mSource->mRequestedGeomType != Qgis::WkbType::Unknown
-                                 ? mSource->mRequestedGeomType : mSource->mDetectedGeomType;
+    Qgis::WkbType usedGeomType = mSource->mRequestedGeomType != Qgis::WkbType::Unknown ? mSource->mRequestedGeomType : mSource->mDetectedGeomType;
 
-    if ( !mRequest.simplifyMethod().forceLocalOptimization() &&
-         mRequest.simplifyMethod().methodType() != QgsSimplifyMethod::NoSimplification &&
-         QgsWkbTypes::flatType( QgsWkbTypes::singleType( usedGeomType ) ) != Qgis::WkbType::Point )
+    if ( !mRequest.simplifyMethod().forceLocalOptimization()
+         && mRequest.simplifyMethod().methodType() != QgsSimplifyMethod::NoSimplification
+         && QgsWkbTypes::flatType( QgsWkbTypes::singleType( usedGeomType ) ) != Qgis::WkbType::Point )
     {
       // PostGIS simplification method to use
       QString simplifyPostgisMethod;
@@ -713,23 +726,21 @@ bool QgsPostgresFeatureIterator::declareCursor( const QString &whereClause, long
         // Optimize simplification for rendering
         if ( mConn->majorVersion() < 2 )
         {
-          simplifyPostgisMethod = QStringLiteral( "snaptogrid" );
+          simplifyPostgisMethod = u"snaptogrid"_s;
         }
         else
         {
-
           // Default to st_snaptogrid
-          simplifyPostgisMethod = QStringLiteral( "st_snaptogrid" );
+          simplifyPostgisMethod = u"st_snaptogrid"_s;
 
-          if ( ( mConn->majorVersion() == 2 && mConn->minorVersion() >= 2 ) ||
-               mConn->majorVersion() > 2 )
+          if ( ( mConn->majorVersion() == 2 && mConn->minorVersion() >= 2 ) || mConn->majorVersion() > 2 )
           {
             // For postgis >= 2.2 Use ST_RemoveRepeatedPoints instead
             // Do it only if threshold is <= 1 pixel to avoid holes in adjacent polygons
             // We should perhaps use it always for Linestrings, even if threshold > 1 ?
             if ( mRequest.simplifyMethod().threshold() <= 1.0f )
             {
-              simplifyPostgisMethod = QStringLiteral( "st_removerepeatedpoints" );
+              simplifyPostgisMethod = u"st_removerepeatedpoints"_s;
               postSimplification = true; // Ask to apply a post-filtering simplification
             }
           }
@@ -740,36 +751,25 @@ bool QgsPostgresFeatureIterator::declareCursor( const QString &whereClause, long
         // preserve topology
         if ( mConn->majorVersion() < 2 )
         {
-          simplifyPostgisMethod = QStringLiteral( "simplifypreservetopology" );
+          simplifyPostgisMethod = u"simplifypreservetopology"_s;
         }
         else
         {
-          simplifyPostgisMethod = QStringLiteral( "st_simplifypreservetopology" );
+          simplifyPostgisMethod = u"st_simplifypreservetopology"_s;
         }
       }
-      QgsDebugMsgLevel(
-        QStringLiteral( "PostGIS Server side simplification : threshold %1 pixels - method %2" )
-        .arg( mRequest.simplifyMethod().threshold() )
-        .arg( simplifyPostgisMethod ), 3
-      );
+      QgsDebugMsgLevel( u"PostGIS Server side simplification : threshold %1 pixels - method %2"_s.arg( mRequest.simplifyMethod().threshold() ).arg( simplifyPostgisMethod ), 3 );
 
-      geom = QStringLiteral( "%1(%2,%3)" )
-             .arg( simplifyPostgisMethod, geom )
-             .arg( mRequest.simplifyMethod().tolerance() * 0.8 ); //-> Default factor for the maximum displacement distance for simplification, similar as GeoServer does
+      geom = u"%1(%2,%3)"_s.arg( simplifyPostgisMethod, geom ).arg( mRequest.simplifyMethod().tolerance() * 0.8 ); //-> Default factor for the maximum displacement distance for simplification, similar as GeoServer does
 
       // Post-simplification
       if ( postSimplification )
       {
-        geom = QStringLiteral( "st_simplify( %1, %2, true )" )
-               .arg( geom )
-               .arg( mRequest.simplifyMethod().tolerance() * 0.7 ); //-> We use a smaller tolerance than pre-filtering to be on the safe side
+        geom = u"st_simplify( %1, %2, true )"_s.arg( geom ).arg( mRequest.simplifyMethod().tolerance() * 0.7 ); //-> We use a smaller tolerance than pre-filtering to be on the safe side
       }
     }
 
-    geom = QStringLiteral( "%1(%2,'%3')" )
-           .arg( mConn->majorVersion() < 2 ? "asbinary" : "st_asbinary",
-                 geom,
-                 QgsPostgresProvider::endianString() );
+    geom = u"%1(%2,'%3')"_s.arg( mConn->majorVersion() < 2 ? "asbinary" : "st_asbinary", geom, QgsPostgresProvider::endianString() );
 
     query += delim + geom;
     delim = ',';
@@ -803,7 +803,7 @@ bool QgsPostgresFeatureIterator::declareCursor( const QString &whereClause, long
       break;
 
     case PktUnknown:
-      QgsDebugError( QStringLiteral( "Cannot declare cursor without primary key." ) );
+      QgsDebugError( u"Cannot declare cursor without primary key."_s );
       return false;
   }
 
@@ -820,13 +820,13 @@ bool QgsPostgresFeatureIterator::declareCursor( const QString &whereClause, long
   query += " FROM " + mSource->mQuery;
 
   if ( !whereClause.isEmpty() )
-    query += QStringLiteral( " WHERE %1" ).arg( whereClause );
+    query += u" WHERE %1"_s.arg( whereClause );
 
   if ( limit >= 0 )
-    query += QStringLiteral( " LIMIT %1" ).arg( limit );
+    query += u" LIMIT %1"_s.arg( limit );
 
   if ( !orderBy.isEmpty() )
-    query += QStringLiteral( " ORDER BY %1 " ).arg( orderBy );
+    query += u" ORDER BY %1 "_s.arg( orderBy );
 
   if ( !mConn->openCursor( mCursorName, query ) )
   {
@@ -860,40 +860,11 @@ bool QgsPostgresFeatureIterator::getFeature( QgsPostgresResult &queryResult, int
       memcpy( &wkbType, featureGeom + 1, sizeof( wkbType ) );
       Qgis::WkbType newType = QgsPostgresConn::wkbTypeFromOgcWkbType( wkbType );
 
-      if ( static_cast< unsigned int >( newType ) != wkbType )
+      if ( static_cast<unsigned int>( newType ) != wkbType )
       {
         // overwrite type
-        unsigned int n = static_cast< quint32>( newType );
+        unsigned int n = static_cast<quint32>( newType );
         memcpy( featureGeom + 1, &n, sizeof( n ) );
-      }
-
-      // PostGIS stores TIN as a collection of Triangles.
-      // Since Triangles are not supported, they have to be converted to Polygons
-      const int nDims = 2 + ( QgsWkbTypes::hasZ( newType ) ? 1 : 0 ) + ( QgsWkbTypes::hasM( newType ) ? 1 : 0 );
-      if ( wkbType % 1000 == 16 )
-      {
-        unsigned int numGeoms;
-        memcpy( &numGeoms, featureGeom + 5, sizeof( unsigned int ) );
-        unsigned char *wkb = featureGeom + 9;
-        for ( unsigned int i = 0; i < numGeoms; ++i )
-        {
-          const unsigned int localType = static_cast< quint32>( QgsWkbTypes::singleType( newType ) ); // polygon(Z|M)
-          memcpy( wkb + 1, &localType, sizeof( localType ) );
-
-          // skip endian and type info
-          wkb += sizeof( unsigned int ) + 1;
-
-          // skip coordinates
-          unsigned int nRings;
-          memcpy( &nRings, wkb, sizeof( int ) );
-          wkb += sizeof( int );
-          for ( unsigned int j = 0; j < nRings; ++j )
-          {
-            unsigned int nPoints;
-            memcpy( &nPoints, wkb, sizeof( int ) );
-            wkb += sizeof( nPoints ) + sizeof( double ) * nDims * nPoints;
-          }
-        }
       }
 
       QgsGeometry g;
@@ -963,7 +934,7 @@ bool QgsPostgresFeatureIterator::getFeature( QgsPostgresResult &queryResult, int
         QgsField fld = mSource->mFields.at( idx );
         QVariant v;
 
-        if ( fld.type() == QVariant::LongLong )
+        if ( fld.type() == QMetaType::Type::LongLong )
         {
           v = QgsPostgresProvider::convertValue( fld.type(), fld.subType(), QString::number( mConn->getBinaryInt( queryResult, row, col ) ), fld.typeName(), mConn );
         }
@@ -980,7 +951,6 @@ bool QgsPostgresFeatureIterator::getFeature( QgsPostgresResult &queryResult, int
       }
 
       fid = mSource->mShared->lookupFid( primaryKeyVals );
-
     }
     break;
 
@@ -990,7 +960,7 @@ bool QgsPostgresFeatureIterator::getFeature( QgsPostgresResult &queryResult, int
   }
 
   feature.setId( fid );
-  QgsDebugMsgLevel( QStringLiteral( "fid=%1" ).arg( fid ), 4 );
+  QgsDebugMsgLevel( u"fid=%1"_s.arg( fid ), 4 );
 
   // iterate attributes
   if ( subsetOfAttributes )
@@ -1019,12 +989,12 @@ void QgsPostgresFeatureIterator::getFeatureAttribute( int idx, QgsPostgresResult
 
   switch ( fld.type() )
   {
-    case QVariant::ByteArray:
+    case QMetaType::Type::QByteArray:
     {
       //special handling for binary field values
       if ( ::PQgetisnull( queryResult.result(), row, col ) )
       {
-        v = QVariant( QVariant::ByteArray );
+        v = QgsVariantUtils::createNullVariant( QMetaType::Type::QByteArray );
       }
       else
       {
@@ -1033,7 +1003,7 @@ void QgsPostgresFeatureIterator::getFeatureAttribute( int idx, QgsPostgresResult
         unsigned char *data = ::PQunescapeBytea( reinterpret_cast<const unsigned char *>( value ), &returnedLength );
         if ( returnedLength == 0 )
         {
-          v = QVariant( QVariant::ByteArray );
+          v = QgsVariantUtils::createNullVariant( QMetaType::Type::QByteArray );
         }
         else
         {
@@ -1043,11 +1013,11 @@ void QgsPostgresFeatureIterator::getFeatureAttribute( int idx, QgsPostgresResult
       }
       break;
     }
-    case QVariant::LongLong:
+    case QMetaType::Type::LongLong:
     {
       if ( ::PQgetisnull( queryResult.result(), row, col ) )
       {
-        v = QVariant( QVariant::LongLong );
+        v = QgsVariantUtils::createNullVariant( QMetaType::Type::LongLong );
       }
       else
       {
@@ -1070,7 +1040,7 @@ void QgsPostgresFeatureIterator::getFeatureAttribute( int idx, QgsPostgresResult
 //  ------------------
 
 QgsPostgresFeatureSource::QgsPostgresFeatureSource( const QgsPostgresProvider *p )
-  : mConnInfo( p->mUri.connectionInfo( false ) )
+  : mConnInfo( QgsPostgresConn::connectionInfo( p->mUri, false ) )
   , mGeometryColumn( p->mGeometryColumn )
   , mBoundingBoxColumn( p->mBoundingBoxColumn )
   , mSqlWhereClause( p->filterWhereClause() )
@@ -1087,7 +1057,7 @@ QgsPostgresFeatureSource::QgsPostgresFeatureSource( const QgsPostgresProvider *p
   , mShared( p->mShared )
   , mTopoLayerInfo( p->mTopoLayerInfo )
 {
-  if ( mSqlWhereClause.startsWith( QLatin1String( " WHERE " ) ) )
+  if ( mSqlWhereClause.startsWith( " WHERE "_L1 ) )
     mSqlWhereClause = mSqlWhereClause.mid( 7 );
 
   if ( p->mTransaction )

@@ -17,12 +17,16 @@
 #ifndef QGSTRANSFORMEFFECT_H
 #define QGSTRANSFORMEFFECT_H
 
+#include "qgis.h"
 #include "qgis_core.h"
-#include "qgspainteffect.h"
 #include "qgis_sip.h"
 #include "qgsmapunitscale.h"
-#include "qgis.h"
+#include "qgspainteffect.h"
+
 #include <QPainter>
+#include <QString>
+
+using namespace Qt::StringLiterals;
 
 /**
  * \ingroup core
@@ -34,23 +38,20 @@
 
 class CORE_EXPORT QgsTransformEffect : public QgsPaintEffect SIP_NODEFAULTCTORS
 {
-
   public:
-
     /**
      * Creates a new QgsTransformEffect effect from a properties string map.
      * \param map encoded properties string map
      * \returns new QgsTransformEffect
      */
-    static QgsPaintEffect *create( const QVariantMap &map ) SIP_FACTORY;
+    static std::unique_ptr<QgsPaintEffect> create( const QVariantMap &map );
 
-    /**
-     * Constructor for QgsTransformEffect.
-     */
     QgsTransformEffect() = default;
 
-    QString type() const override { return QStringLiteral( "transform" ); }
+    QString type() const override { return u"transform"_s; }
     QVariantMap properties() const override;
+
+    using QgsPaintEffect::readProperties;
     void readProperties( const QVariantMap &props ) override;
     QgsTransformEffect *clone() const override SIP_FACTORY;
 
@@ -242,12 +243,10 @@ class CORE_EXPORT QgsTransformEffect : public QgsPaintEffect SIP_NODEFAULTCTORS
     bool reflectY() const { return mReflectY; }
 
   protected:
-
     void draw( QgsRenderContext &context ) override;
     QRectF boundingRect( const QRectF &rect, const QgsRenderContext &context ) const override;
 
   private:
-
     double mTranslateX = 0.0;
     double mTranslateY = 0.0;
     Qgis::RenderUnit mTranslateUnit = Qgis::RenderUnit::Millimeters;
@@ -261,8 +260,6 @@ class CORE_EXPORT QgsTransformEffect : public QgsPaintEffect SIP_NODEFAULTCTORS
     bool mReflectY = false;
 
     QTransform createTransform( const QgsRenderContext &context ) const;
-
 };
 
 #endif // QGSTRANSFORMEFFECT_H
-

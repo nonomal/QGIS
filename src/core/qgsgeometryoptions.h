@@ -28,7 +28,7 @@ class QgsSettingsEntryString;
 /**
  * \ingroup core
  *
- * \brief The QgsGeometryOptions class contains options to automatically adjust geometries to
+ * \brief Contains options to automatically adjust geometries to
  * constraints on a layer.
  *
  * \since QGIS 3.4
@@ -38,7 +38,6 @@ class CORE_EXPORT QgsGeometryOptions : public QObject
     Q_OBJECT
 
   public:
-
     /**
      * Create a new QgsGeometryOptions object.
      */
@@ -170,7 +169,6 @@ class CORE_EXPORT QgsGeometryOptions : public QObject
     void geometryPrecisionChanged();
 
   private:
-
     /**
      * Automatically remove duplicate nodes on all geometries which are edited on this layer.
      *

@@ -13,8 +13,11 @@
  *                                                                         *
  ***************************************************************************/
 
-#include "qgsmaptoolcapturelayergeometry.h"
+#ifndef QGSMAPTOOLADDPART_H
+#define QGSMAPTOOLADDPART_H
+
 #include "qgis_app.h"
+#include "qgsmaptoolcapturelayergeometry.h"
 
 class QgsCurvePolygon;
 
@@ -34,16 +37,15 @@ class APP_EXPORT QgsMapToolAddPart : public QgsMapToolCaptureLayerGeometry
     void activate() override;
 
   private:
-
     /**
      * Check if there is any feature selected and the layer supports adding the part
      * Returns a nullptr otherwise
      */
     QgsVectorLayer *getLayerAndCheckSelection();
 
-    void layerPointCaptured( const QgsPoint &point ) override;
-    void layerLineCaptured( const QgsCurve *line ) override;
-    void layerPolygonCaptured( const QgsCurvePolygon *polygon ) override;
+    void layerGeometryCaptured( const QgsGeometry &geometry ) final;
 
-    void finalizeEditCommand( QgsVectorLayer *layer, Qgis::GeometryOperationResult errorCode );
+    void finalizeEditCommand( QgsVectorLayer *layer, const QgsGeometry &topologicalCandidates, Qgis::GeometryOperationResult errorCode );
 };
+
+#endif // QGSMAPTOOLADDPART_H

@@ -22,26 +22,42 @@
 
 class QgsVectorDataProvider;
 
-#ifdef SIP_RUN
-% ModuleHeaderCode
-#include "qgstestutils.h"
-% End
-#endif
-
 ///@cond PRIVATE
 
 // Used only for utilities required for the QGIS Python unit tests - not stable or public API
-namespace QgsTestUtils
+class CORE_EXPORT QgsTestUtils
 {
+  public:
+    /**
+     * Runs a thready safety test on iterators from a vector data \a provider, by concurrently
+     * requesting features from the provider.
+     *
+     * This method returns TRUE... or it segfaults.
+     */
+    static bool testProviderIteratorThreadSafety( QgsVectorDataProvider *provider, const QgsFeatureRequest &request = QgsFeatureRequest() );
 
-  /**
-   * Runs a thready safety test on iterators from a vector data \a provider, by concurrently
-   * requesting features from the provider.
-   *
-   * This method returns TRUE... or it segfaults.
-   */
-  CORE_EXPORT bool testProviderIteratorThreadSafety( QgsVectorDataProvider *provider, const QgsFeatureRequest &request = QgsFeatureRequest() );
+    /**
+     * Runs a concurrent access stress test on the layer \a uri from the provider \a providerKey,
+     * by concurrently opening, reading and closing vector layers and querying the sublayers
+     * of the URI from multiple threads for \a runTimeMs milliseconds.
+     *
+     * Returns FALSE if any of the involved threads failed to finish within \a timeoutMs
+     * milliseconds (i.e. a deadlock occurred), or if the concurrent layer opens and sublayer
+     * queries did not return the same results as when performed from a single thread.
+     */
+    static bool testConcurrentLayerAccess( const QString &uri, const QString &providerKey, int runTimeMs = 2000, int timeoutMs = 60000 );
 
+    /**
+     * Compares two DOM elements and returns TRUE if they are equivalent.
+     *
+     * Dumps useful diff information to the console if the elements differ.
+     */
+    static bool compareDomElements( const QDomElement &element1, const QDomElement &element2 );
+
+    /**
+     * Sanitizes fake_qgis_http_endpoint URLs
+     */
+    static QString sanitizeFakeHttpEndpoint( const QString &urlString );
 };
 
 ///@endcond

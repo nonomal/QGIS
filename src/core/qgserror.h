@@ -17,17 +17,19 @@
 #ifndef QGSERROR_H
 #define QGSERROR_H
 
-#include <QString>
-#include <QList>
-
 #include "qgis_core.h"
 
+#include <QList>
+#include <QString>
+
+using namespace Qt::StringLiterals;
+
 // Macro to create Error message including info about where it was created.
-#define QGS_ERROR_MESSAGE(message, tag) QgsErrorMessage(QString(message),QString(tag), QString(__FILE__), QString(__FUNCTION__), __LINE__)
+#define QGS_ERROR_MESSAGE( message, tag ) QgsErrorMessage( QString( message ), QString( tag ), QString( __FILE__ ), QString( __FUNCTION__ ), __LINE__ )
 
 /**
  * \ingroup core
- * \brief QgsErrorMessage represents single error message.
+ * \brief Represents a single error message.
 */
 class CORE_EXPORT QgsErrorMessage
 {
@@ -35,11 +37,10 @@ class CORE_EXPORT QgsErrorMessage
     //! Format
     enum Format
     {
-      Text, // Plain text
-      Html
+      Text, //!< Plain text format
+      Html, //!< HTML format
     };
 
-    //! Constructor for QgsErrorMessage
     QgsErrorMessage() = default;
 
     /**
@@ -73,15 +74,14 @@ class CORE_EXPORT QgsErrorMessage
 
 /**
  * \ingroup core
- * \brief QgsError is container for error messages (report). It may contain chain
- * (sort of traceback) of error messages (e.g. GDAL - provider - layer).
+ * \brief A container for error messages.
+ *
+ * It may contain a chain (e.g. a traceback) of error messages (e.g. GDAL - provider - layer).
  * Higher level messages are appended at the end.
 */
 class CORE_EXPORT QgsError
 {
   public:
-
-    //! Constructor for QgsError
     QgsError() = default;
 
     /**
@@ -105,8 +105,8 @@ class CORE_EXPORT QgsError
     void append( const QgsErrorMessage &message );
 
     /**
-     * Test if any error is set.
-     *  \returns TRUE if contains error
+     * Test if no error is set.
+     *  \returns FALSE if contains error
      */
     bool isEmpty() const { return mMessageList.isEmpty(); }
 
@@ -134,16 +134,21 @@ class CORE_EXPORT QgsError
 
 
 #ifdef SIP_RUN
+    // clang-format off
     SIP_PYOBJECT __repr__();
     % MethodCode
-    QString str = QStringLiteral( "<QgsError: %1>" ).arg( sipCpp->message( QgsErrorMessage::Text ) );
+    QString str = u"<QgsError: %1>"_s.arg( sipCpp->message( QgsErrorMessage::Text ) );
     sipRes = PyUnicode_FromString( str.toUtf8().constData() );
     % End
+// clang-format on
 #endif
 
-  private:
+    // clang-format off
+    private:
+    // clang-format on
     //! List of messages
-    QList<QgsErrorMessage> mMessageList;
+    QList<QgsErrorMessage>
+      mMessageList;
 };
 
 #endif

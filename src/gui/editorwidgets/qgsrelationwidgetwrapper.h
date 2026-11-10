@@ -16,47 +16,34 @@
 #ifndef QGSRELATIONWIDGETWRAPPER_H
 #define QGSRELATIONWIDGETWRAPPER_H
 
-#include "qgswidgetwrapper.h"
-#include "qgis_sip.h"
 #include "qgis_gui.h"
+#include "qgis_sip.h"
 #include "qgsattributeeditorrelation.h"
-
+#include "qgswidgetwrapper.h"
 
 class QgsAbstractRelationEditorWidget;
 
 /**
  * \ingroup gui
  * \class QgsRelationWidgetWrapper
+ * \brief A widget wrapper for relation widgets.
  */
-
 class GUI_EXPORT QgsRelationWidgetWrapper : public QgsWidgetWrapper
 {
     Q_OBJECT
 
   public:
+    //! Constructor for QgsRelationWidgetWrapper
+    QgsRelationWidgetWrapper( QgsVectorLayer *vl, const QgsRelation &relation, QWidget *editor SIP_CONSTRAINED = nullptr, QWidget *parent SIP_TRANSFERTHIS SIP_CONSTRAINED = nullptr );
 
     //! Constructor for QgsRelationWidgetWrapper
-    QgsRelationWidgetWrapper(
-      QgsVectorLayer *vl,
-      const QgsRelation &relation,
-      QWidget *editor SIP_CONSTRAINED = nullptr,
-      QWidget *parent SIP_TRANSFERTHIS SIP_CONSTRAINED  = nullptr
-    );
-
-    //! Constructor for QgsRelationWidgetWrapper
-    QgsRelationWidgetWrapper(
-      const QString &relationEditorName,
-      QgsVectorLayer *vl,
-      const QgsRelation &relation,
-      QWidget *editor = nullptr,
-      QWidget *parent SIP_TRANSFERTHIS = nullptr
-    );
+    QgsRelationWidgetWrapper( const QString &relationEditorName, QgsVectorLayer *vl, const QgsRelation &relation, QWidget *editor = nullptr, QWidget *parent SIP_TRANSFERTHIS = nullptr );
 
     /**
      * Defines if a title label should be shown for this widget.
      * Only has an effect after widget() has been called at least once.
      *
-     * \deprecated since QGIS 3.20 label is handled directly in QgsAttributeForm.
+     * \deprecated QGIS 3.20. Label is handled directly in QgsAttributeForm.
      */
     Q_DECL_DEPRECATED bool showLabel() const SIP_DEPRECATED;
 
@@ -64,59 +51,59 @@ class GUI_EXPORT QgsRelationWidgetWrapper : public QgsWidgetWrapper
      * Defines if a title label should be shown for this widget.
      * Only has an effect after widget() has been called at least once.
      *
-     * \deprecated since QGIS 3.20 label is handled directly in QgsAttributeForm.
+     * \deprecated QGIS 3.20. Label is handled directly in QgsAttributeForm.
      */
     Q_DECL_DEPRECATED void setShowLabel( bool showLabel ) SIP_DEPRECATED;
 
     /**
      * Determines if the "link feature" button should be shown
-     * \deprecated since QGIS 3.16 use visibleButtons() instead
+     * \deprecated QGIS 3.16. Use visibleButtons() instead.
      */
     Q_DECL_DEPRECATED bool showLinkButton() const SIP_DEPRECATED;
 
     /**
      * Determines if the "link feature" button should be shown
-     * \deprecated since QGIS 3.16 use setVisibleButtons() instead
+     * \deprecated QGIS 3.16. Use setVisibleButtons() instead.
      */
     Q_DECL_DEPRECATED void setShowLinkButton( bool showLinkButton ) SIP_DEPRECATED;
 
     /**
      * Determines if the "unlink feature" button should be shown
-     * \deprecated since QGIS 3.16 use visibleButtons() instead
+     * \deprecated QGIS 3.16. Use visibleButtons() instead.
      */
     Q_DECL_DEPRECATED bool showUnlinkButton() const SIP_DEPRECATED;
 
     /**
      * Determines if the "unlink feature" button should be shown
-     * \deprecated since QGIS 3.16 use setVisibleButtons() instead
+     * \deprecated QGIS 3.16. Use setVisibleButtons() instead.
      */
     Q_DECL_DEPRECATED void setShowUnlinkButton( bool showUnlinkButton ) SIP_DEPRECATED;
 
     /**
      * Determines if the "Save child layer edits" button should be shown
      * \since QGIS 3.14
-     * \deprecated since QGIS 3.16 use setVisibleButtons() instead
+     * \deprecated QGIS 3.16. Use setVisibleButtons() instead.
      */
     Q_DECL_DEPRECATED void setShowSaveChildEditsButton( bool showChildEdits ) SIP_DEPRECATED;
 
     /**
      * Determines if the "Save child layer edits" button should be shown
      * \since QGIS 3.14
-     * \deprecated since QGIS 3.16 use visibleButtons() instead
+     * \deprecated QGIS 3.16. Use visibleButtons() instead.
      */
     Q_DECL_DEPRECATED bool showSaveChildEditsButton() const SIP_DEPRECATED;
 
     /**
      * Defines the buttons which are shown
      * \since QGIS 3.16
-     * \deprecated since QGIS 3.18 use setWidgetConfig() instead
+     * \deprecated QGIS 3.18. Use setWidgetConfig() instead.
      */
     Q_DECL_DEPRECATED void setVisibleButtons( const QgsAttributeEditorRelation::Buttons &buttons ) SIP_DEPRECATED;
 
     /**
      * Returns the buttons which are shown
      * \since QGIS 3.16
-     * \deprecated since QGIS 3.18 use widgetConfig() instead
+     * \deprecated QGIS 3.18. Use widgetConfig() instead.
      */
     Q_DECL_DEPRECATED QgsAttributeEditorRelation::Buttons visibleButtons() const SIP_DEPRECATED;
 
@@ -166,7 +153,7 @@ class GUI_EXPORT QgsRelationWidgetWrapper : public QgsWidgetWrapper
     /**
      * Determines the label of this element
      * \since QGIS 3.16
-     * \deprecated since QGIS 3.20 label is handled directly in QgsAttributeForm.
+     * \deprecated QGIS 3.20. Label is handled directly in QgsAttributeForm.
      */
     Q_DECL_DEPRECATED QString label() const SIP_DEPRECATED;
 
@@ -174,7 +161,7 @@ class GUI_EXPORT QgsRelationWidgetWrapper : public QgsWidgetWrapper
      * Sets \a label for this element
      * If it's empty it takes the relation id as label
      * \since QGIS 3.16
-     * \deprecated since QGIS 3.20 label is handled directly in QgsAttributeForm.
+     * \deprecated QGIS 3.20. Label is handled directly in QgsAttributeForm.
      */
     Q_DECL_DEPRECATED void setLabel( const QString &label = QString() ) SIP_DEPRECATED;
 

@@ -17,17 +17,19 @@
 #define QGSFIELDCALCULATOR_H
 
 #include "ui_qgsfieldcalculatorbase.h"
-#include "qgshelp.h"
-#include "qgsfields.h"
+
 #include "qgis_gui.h"
+#include "qgsfields.h"
+#include "qgshelp.h"
 
 class QgsVectorLayer;
+class QgsMessageBar;
 
 /**
  * \ingroup gui
  * \class QgsFieldCalculator
  *
- * \brief A dialog class that provides calculation of new fields using existing fields, values and a set of operators
+ * \brief A dialog that provides calculation of new fields using existing fields, values and a set of operators.
  *
  * Sample usage of the QgsFieldCalculator class:
  *
@@ -39,11 +41,19 @@ class QgsVectorLayer;
  *     dialog.exec()
  * \endcode
  */
-class GUI_EXPORT QgsFieldCalculator: public QDialog, private Ui::QgsFieldCalculatorBase
+class GUI_EXPORT QgsFieldCalculator : public QDialog, private Ui::QgsFieldCalculatorBase
 {
     Q_OBJECT
   public:
-    QgsFieldCalculator( QgsVectorLayer *vl, QWidget *parent = nullptr );
+    /**
+     * Constructor for QgsFieldCalculator, with the specified \a parent widget.
+     *
+     * The target layer must be specified using the \a vl argument.
+     *
+     * Since QGIS 4.2, the optional \a fieldIndex argument can be used to automatically
+     * select the existing field with the specified index in the dialog.
+     */
+    QgsFieldCalculator( QgsVectorLayer *vl, QWidget *parent = nullptr, int fieldIndex = -1 );
 
     /**
      * \brief Returns the field index of the field for which new attribute values were calculated.
@@ -61,17 +71,21 @@ class GUI_EXPORT QgsFieldCalculator: public QDialog, private Ui::QgsFieldCalcula
     void mCreateVirtualFieldCheckbox_stateChanged( int state );
     void mOutputFieldNameLineEdit_textChanged( const QString &text );
     void mOutputFieldTypeComboBox_activated( int index );
+    void mExistingFieldComboBox_currentIndexChanged( const int index );
 
-    //! Sets the OK button enabled / disabled
-    void setOkButtonState();
+    //! Sets the dialog buttons (Ok and Apply) enabled / disabled
+    void setDialogButtonState();
     void setPrecisionMinMax();
     void showHelp();
+    void calculate();
+    //! show the given message in the dialog internal message bar
+    void pushMessage( const QString &text, Qgis::MessageLevel level = Qgis::MessageLevel::Info, int duration = -1 );
 
   private:
     //! default constructor forbidden
     QgsFieldCalculator();
     //! Inserts existing fields into the combo box
-    void populateFields();
+    void populateFields( int fieldIndex );
     //! Inserts the types supported by the provider into the combo box
     void populateOutputFieldTypes();
 
@@ -85,6 +99,8 @@ class GUI_EXPORT QgsFieldCalculator: public QDialog, private Ui::QgsFieldCalcula
 
     //! Idx of changed attribute
     int mAttributeId;
+
+    QgsMessageBar *mMsgBar = nullptr;
 
     friend class TestQgsFieldCalculator;
 };

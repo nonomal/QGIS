@@ -3,25 +3,28 @@
  *                                                                      *
  * src/core/qgsrange.h                                                  *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/
 
 
 
 
 
-template <T>
+
+template<T>
 class QgsRange
 {
 %Docstring(signature="appended")
 A template based class for storing ranges (lower to upper values).
 
-:py:class:`QgsRange` classes represent a range of values of some element type. For instance,
-ranges of int might be used to represent integer ranges.
+:py:class:`QgsRange` classes represent a range of values of some element
+type. For instance, ranges of int might be used to represent integer
+ranges.
 
-Ranges can indicate whether the upper and lower values are inclusive or exclusive.
-The inclusivity or exclusivity of bounds is considered when determining things like
-whether ranges overlap or during calculation of range intersections.
+Ranges can indicate whether the upper and lower values are inclusive or
+exclusive. The inclusivity or exclusivity of bounds is considered when
+determining things like whether ranges overlap or during calculation of
+range intersections.
 
 .. seealso:: :py:class:`QgsDoubleRange`
 
@@ -36,17 +39,17 @@ whether ranges overlap or during calculation of range intersections.
 #include "qgsrange.h"
 %End
   public:
-
     QgsRange( T lower, T upper, bool includeLower = true, bool includeUpper = true );
 %Docstring
-Constructor for QgsRange. The ``lower`` and ``upper`` bounds are specified,
-and optionally whether or not these bounds are included in the range.
+Constructor for QgsRange. The ``lower`` and ``upper`` bounds are
+specified, and optionally whether or not these bounds are included in
+the range.
 %End
 
     QgsRange( T lower, T upper, Qgis::RangeLimits limits );
 %Docstring
-Constructor for QgsRange. The ``lower`` and ``upper`` bounds are specified,
-and whether or not these bounds are included in the range.
+Constructor for QgsRange. The ``lower`` and ``upper`` bounds are
+specified, and whether or not these bounds are included in the range.
 
 .. versionadded:: 3.38
 %End
@@ -71,8 +74,8 @@ Returns the upper bound of the range.
 
     bool includeLower() const;
 %Docstring
-Returns ``True`` if the lower bound is inclusive, or ``False`` if the lower
-bound is exclusive.
+Returns ``True`` if the lower bound is inclusive, or ``False`` if the
+lower bound is exclusive.
 
 .. seealso:: :py:func:`lower`
 
@@ -81,8 +84,8 @@ bound is exclusive.
 
     bool includeUpper() const;
 %Docstring
-Returns ``True`` if the upper bound is inclusive, or ``False`` if the upper
-bound is exclusive.
+Returns ``True`` if the upper bound is inclusive, or ``False`` if the
+upper bound is exclusive.
 
 .. seealso:: :py:func:`upper`
 
@@ -98,15 +101,16 @@ Returns the limit handling of the range.
 
     bool isEmpty() const;
 %Docstring
-Returns ``True`` if the range is empty, ie the lower bound equals (or exceeds) the upper bound
-and either the bounds are exclusive.
+Returns ``True`` if the range is empty, ie the lower bound equals (or
+exceeds) the upper bound and either the bounds are exclusive.
 
 .. seealso:: :py:func:`isSingleton`
 %End
 
     bool isSingleton() const;
 %Docstring
-Returns ``True`` if the range consists only of a single value or instant.
+Returns ``True`` if the range consists only of a single value or
+instant.
 
 .. seealso:: :py:func:`isEmpty`
 %End
@@ -135,18 +139,21 @@ Returns ``True`` if this range overlaps another range.
     bool operator!=( const QgsRange<T> &other ) const;
 
   protected:
-
-
 };
 
 
 
+%ModuleHeaderCode
+#include "qgsrange.h"
 typedef QgsRange<double> QgsRangedoubleBase;
+%End
+
+typedef QgsRange<double> QgsRangedoubleBase /NoTypeName/;
 
 class QgsDoubleRange : QgsRangedoubleBase
 {
 %Docstring(signature="appended")
-QgsRange which stores a range of double values.
+:py:class:`QgsRange` which stores a range of double values.
 
 .. seealso:: :py:class:`QgsIntRange`
 
@@ -157,30 +164,28 @@ QgsRange which stores a range of double values.
 
 %TypeHeaderCode
 #include "qgsrange.h"
-typedef QgsRange<double> QgsRangedoubleBase;
 %End
   public:
-
     QgsDoubleRange( double lower, double upper, Qgis::RangeLimits limits );
 %Docstring
-Constructor for QgsDoubleRange. The ``lower`` and ``upper`` bounds are specified,
-and whether or not these bounds are included in the range.
+Constructor for QgsDoubleRange. The ``lower`` and ``upper`` bounds are
+specified, and whether or not these bounds are included in the range.
 
 .. versionadded:: 3.38
 %End
 
 
-    QgsDoubleRange( double lower,
-                    double upper,
-                    bool includeLower = true, bool includeUpper = true );
+    QgsDoubleRange( double lower, double upper, bool includeLower = true, bool includeUpper = true );
 %Docstring
-Constructor for QgsDoubleRange. The ``lower`` and ``upper`` bounds are specified,
-and optionally whether or not these bounds are included in the range.
+Constructor for QgsDoubleRange. The ``lower`` and ``upper`` bounds are
+specified, and optionally whether or not these bounds are included in
+the range.
 %End
 
     QgsDoubleRange();
 %Docstring
-Constructor for QgsDoubleRange containing an infinite range (see :py:func:`~QgsDoubleRange.isInfinite`).
+Constructor for QgsDoubleRange containing an infinite range (see
+:py:func:`~QgsDoubleRange.isInfinite`).
 
 .. versionadded:: 3.18
 %End
@@ -201,16 +206,20 @@ Returns ``True`` if the range consists of all possible values.
     sipRes = PyUnicode_FromString( str.toUtf8().constData() );
 %End
 
-    bool operator==( const QgsDoubleRange &other ) const;
+      bool operator==( const QgsDoubleRange &other ) const;
 
     bool operator!=( const QgsDoubleRange &other ) const;
-
 };
 
 
 
 
+%ModuleHeaderCode
+#include "qgsrange.h"
 typedef QgsRange<int> QgsRangeintBase;
+%End
+
+typedef QgsRange<int> QgsRangeintBase /NoTypeName/;
 
 class QgsIntRange : QgsRangeintBase
 {
@@ -226,30 +235,28 @@ class QgsIntRange : QgsRangeintBase
 
 %TypeHeaderCode
 #include "qgsrange.h"
-typedef QgsRange<int> QgsRangeintBase;
 %End
   public:
-
     QgsIntRange( int lower, int upper, Qgis::RangeLimits limits );
 %Docstring
-Constructor for QgsIntRange. The ``lower`` and ``upper`` bounds are specified,
-and whether or not these bounds are included in the range.
+Constructor for QgsIntRange. The ``lower`` and ``upper`` bounds are
+specified, and whether or not these bounds are included in the range.
 
 .. versionadded:: 3.38
 %End
 
 
-    QgsIntRange( int lower,
-                 int upper,
-                 bool includeLower = true, bool includeUpper = true );
+    QgsIntRange( int lower, int upper, bool includeLower = true, bool includeUpper = true );
 %Docstring
-Constructor for QgsIntRange. The ``lower`` and ``upper`` bounds are specified,
-and optionally whether or not these bounds are included in the range.
+Constructor for QgsIntRange. The ``lower`` and ``upper`` bounds are
+specified, and optionally whether or not these bounds are included in
+the range.
 %End
 
     QgsIntRange();
 %Docstring
-Constructor for QgsIntRange containing an infinite range (see :py:func:`~QgsIntRange.isInfinite`).
+Constructor for QgsIntRange containing an infinite range (see
+:py:func:`~QgsIntRange.isInfinite`).
 
 .. versionadded:: 3.18
 %End
@@ -269,23 +276,25 @@ Returns ``True`` if the range consists of all possible values.
                   .arg( sipCpp->includeUpper() ? QStringLiteral( "]" ) : QStringLiteral( ")" ) );
     sipRes = PyUnicode_FromString( str.toUtf8().constData() );
 %End
-
 };
 
 
 
-template <T>
+template<T>
 class QgsTemporalRange
 {
 %Docstring(signature="appended")
-A template based class for storing temporal ranges (beginning to end values).
+A template based class for storing temporal ranges (beginning to end
+values).
 
-:py:class:`QgsTemporalRange` classes represent a range of values of some temporal type. For instance,
-ranges of QDateTime might be used to represent datetime ranges.
+:py:class:`QgsTemporalRange` classes represent a range of values of some
+temporal type. For instance, ranges of QDateTime might be used to
+represent datetime ranges.
 
-Ranges can indicate whether the upper and lower values are inclusive or exclusive.
-The inclusivity or exclusivity of bounds is considered when determining things like
-whether ranges overlap or during calculation of range intersections.
+Ranges can indicate whether the upper and lower values are inclusive or
+exclusive. The inclusivity or exclusivity of bounds is considered when
+determining things like whether ranges overlap or during calculation of
+range intersections.
 
 .. seealso:: :py:class:`QgsDateRange`
 
@@ -298,11 +307,11 @@ whether ranges overlap or during calculation of range intersections.
 #include "qgsrange.h"
 %End
   public:
-
     QgsTemporalRange( const T &begin, const T &end, bool includeBeginning = true, bool includeEnd = true );
 %Docstring
-Constructor for QgsTemporalRange. The ``begin`` and ``end`` are specified,
-and optionally whether or not these bounds are included in the range.
+Constructor for QgsTemporalRange. The ``begin`` and ``end`` are
+specified, and optionally whether or not these bounds are included in
+the range.
 
 .. note::
 
@@ -330,8 +339,8 @@ Returns the upper bound of the range.
 
     bool includeBeginning() const;
 %Docstring
-Returns ``True`` if the beginning is inclusive, or ``False`` if the beginning
-is exclusive.
+Returns ``True`` if the beginning is inclusive, or ``False`` if the
+beginning is exclusive.
 
 .. seealso:: :py:func:`begin`
 
@@ -340,7 +349,8 @@ is exclusive.
 
     bool includeEnd() const;
 %Docstring
-Returns ``True`` if the end is inclusive, or ``False`` if the end is exclusive.
+Returns ``True`` if the end is inclusive, or ``False`` if the end is
+exclusive.
 
 .. seealso:: :py:func:`end`
 
@@ -367,9 +377,9 @@ Returns ``True`` if the range consists of all possible values.
 
     bool isEmpty() const;
 %Docstring
-Returns ``True`` if the range is empty, ie the beginning equals (or exceeds) the end
-and either of the bounds are exclusive.
-A range with both invalid beginning and end is considered infinite and not empty.
+Returns ``True`` if the range is empty, ie the beginning equals (or
+exceeds) the end and either of the bounds are exclusive. A range with
+both invalid beginning and end is considered infinite and not empty.
 %End
 
     bool contains( const QgsTemporalRange<T> &other ) const;
@@ -385,13 +395,16 @@ Returns ``True`` if this range contains a specified ``element``.
     bool overlaps( const QgsTemporalRange<T> &other ) const;
 %Docstring
 Returns ``True`` if this range overlaps another range.
+
+.. seealso:: :py:func:`contains`
 %End
 
     bool extend( const QgsTemporalRange<T> &other );
 %Docstring
-Extends the range in place by extending this range out to include an ``other`` range.
-If ``other`` is empty the range is not changed.
-If the range is empty and ``other`` is not, the range is changed and set to ``other``.
+Extends the range in place by extending this range out to include an
+``other`` range. If ``other`` is empty the range is not changed. If the
+range is empty and ``other`` is not, the range is changed and set to
+``other``.
 
 .. seealso:: :py:func:`isEmpty`
 
@@ -409,29 +422,21 @@ If the range is empty and ``other`` is not, the range is changed and set to ``ot
 
 
 typedef QgsTemporalRange< QDate > QgsDateRange;
-@DOCSTRINGSTEMPLATE@%Docstring
-@DOCSTRINGSTEMPLATE@:py:class:`QgsRange` which stores a range of dates.
-@DOCSTRINGSTEMPLATE@
-@DOCSTRINGSTEMPLATE@Invalid QDates as the beginning or end are permitted. In this case,
-@DOCSTRINGSTEMPLATE@the bound is considered to be infinite. E.g. QgsDateRange(QDate(),QDate(2017,1,1))
-@DOCSTRINGSTEMPLATE@is treated as a range containing all dates before 2017-1-1.
-@DOCSTRINGSTEMPLATE@QgsDateRange(QDate(2017,1,1),QDate()) is treated as a range containing all dates after 2017-1-1.
-@DOCSTRINGSTEMPLATE@
-@DOCSTRINGSTEMPLATE@.. seealso:: :py:class:`QgsDateTimeRange`
-@DOCSTRINGSTEMPLATE@%End
 
 
 typedef QgsTemporalRange< QDateTime > QgsDateTimeRange;
-@DOCSTRINGSTEMPLATE@%Docstring
-@DOCSTRINGSTEMPLATE@:py:class:`QgsRange` which stores a range of date times.
-@DOCSTRINGSTEMPLATE@
-@DOCSTRINGSTEMPLATE@Invalid QDateTimes as the beginning or end are permitted. In this case,
-@DOCSTRINGSTEMPLATE@the bound is considered to be infinite. E.g. QgsDateTimeRange(QDateTime(),QDateTime(2017,1,1))
-@DOCSTRINGSTEMPLATE@is treated as a range containing all dates before 2017-1-1.
-@DOCSTRINGSTEMPLATE@QgsDateTimeRange(QDateTime(2017,1,1),QDateTime()) is treated as a range containing all dates after 2017-1-1.
-@DOCSTRINGSTEMPLATE@
-@DOCSTRINGSTEMPLATE@.. seealso:: :py:class:`QgsDateRange`
-@DOCSTRINGSTEMPLATE@%End
+%Docstring
+:py:class:`QgsRange` which stores a range of date times.
+
+Invalid QDateTimes as the beginning or end are permitted. In this case,
+the bound is considered to be infinite. E.g.
+QgsDateTimeRange(QDateTime(),QDateTime(2017,1,1)) is treated as a range
+containing all dates before 2017-1-1.
+QgsDateTimeRange(QDateTime(2017,1,1),QDateTime()) is treated as a range
+containing all dates after 2017-1-1.
+
+.. seealso:: :py:class:`QgsDateRange`
+%End
 
 
 /************************************************************************
@@ -439,5 +444,5 @@ typedef QgsTemporalRange< QDateTime > QgsDateTimeRange;
  *                                                                      *
  * src/core/qgsrange.h                                                  *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/

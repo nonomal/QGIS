@@ -16,13 +16,17 @@ email                : hugo dot mercier at oslandia dot com
  ***************************************************************************/
 
 #include "qgsembeddedlayerselectdialog.h"
-#include "qgsmaplayerproxymodel.h"
-#include "qgsmaplayermodel.h"
+
 #include "qgsgui.h"
+#include "qgsmaplayermodel.h"
+#include "qgsmaplayerproxymodel.h"
+#include "qgsproject.h"
+
+#include "moc_qgsembeddedlayerselectdialog.cpp"
 
 QgsEmbeddedLayerSelectDialog::QgsEmbeddedLayerSelectDialog( QWidget *parent )
   : QDialog( parent )
-  , mLayerProxyModel( new QgsMapLayerProxyModel( this ) )
+  , mLayerProxyModel( new QgsMapLayerProxyModel( QgsProject::instance(), this ) ) // skip-keyword-check
 {
   setupUi( this );
 
@@ -44,7 +48,7 @@ QStringList QgsEmbeddedLayerSelectDialog::layers() const
   ids.reserve( selected.size() );
   for ( const QModelIndex &index : selected )
   {
-    ids << index.data( static_cast< int >( QgsMapLayerModel::CustomRole::LayerId ) ).toString();
+    ids << index.data( static_cast<int>( QgsMapLayerModel::CustomRole::LayerId ) ).toString();
   }
   return ids;
 }

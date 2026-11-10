@@ -17,20 +17,22 @@
 
 #include "qgis_core.h"
 #include "qgis_sip.h"
+#include "qgscoordinatetransform.h"
+#include "qgsdiagram.h"
+#include "qgsexpressioncontext.h"
+#include "qgsmapunitscale.h"
+#include "qgspropertycollection.h"
+#include "qgsreadwritecontext.h"
+
 #include <QColor>
+#include <QDomDocument>
 #include <QFont>
 #include <QList>
 #include <QPointF>
 #include <QSizeF>
-#include <QDomDocument>
+#include <QString>
 
-#include "qgsexpressioncontext.h"
-#include "qgscoordinatetransform.h"
-#include "qgspropertycollection.h"
-
-#include "qgsdiagram.h"
-#include "qgsreadwritecontext.h"
-#include "qgsmapunitscale.h"
+using namespace Qt::StringLiterals;
 
 class QgsDiagramRenderer;
 class QgsFeature;
@@ -45,7 +47,10 @@ class QgsPaintEffect;
 class QgsDataDefinedSizeLegend;
 class QgsLineSymbol;
 
-namespace pal { class Layer; } SIP_SKIP
+namespace pal SIP_SKIP
+{
+  class Layer;
+}
 
 /**
  * \ingroup core
@@ -59,22 +64,21 @@ namespace pal { class Layer; } SIP_SKIP
 class CORE_EXPORT QgsDiagramLayerSettings
 {
   public:
-
     //avoid inclusion of QgsPalLabeling
     enum Placement
     {
-      AroundPoint = 0, // Point / Polygon
-      OverPoint, // Point / Polygon
-      Line, // Line / Polygon
-      Curved, // Line
-      Horizontal, // Polygon
-      Free // Polygon
+      AroundPoint = 0, //!< Point / Polygon
+      OverPoint,       //!< Point / Polygon
+      Line,            //!< Line / Polygon
+      Curved,          //!< Line
+      Horizontal,      //!< Polygon
+      Free             //!< Polygon
     };
 
     //! Line placement flags for controlling line based placements
     enum LinePlacementFlag SIP_ENUM_BASETYPE( IntFlag )
     {
-      OnLine    = 1,
+      OnLine = 1,
       AboveLine = 1 << 1,
       BelowLine = 1 << 2,
       MapOrientation = 1 << 4,
@@ -87,36 +91,44 @@ class CORE_EXPORT QgsDiagramLayerSettings
      * Data definable properties.
      */
     enum class Property SIP_MONKEYPATCH_SCOPEENUM_UNNEST( QgsDiagramLayerSettings, Property ) : int
-      {
+    {
       BackgroundColor, //!< Diagram background color
-      StrokeColor, //!< Stroke color
-      StrokeWidth, //!< Stroke width
-      PositionX, //!< X-coordinate data defined diagram position
-      PositionY, //!< Y-coordinate data defined diagram position
-      Distance, //!< Distance to diagram from feature
-      Priority, //!< Diagram priority (between 0 and 10)
-      ZIndex, //!< Z-index for diagram ordering
-      IsObstacle, //!< Whether diagram features act as obstacles for other diagrams/labels
-      Show, //!< Whether to show the diagram
-      AlwaysShow, //!< Whether the diagram should always be shown, even if it overlaps other diagrams/labels
-      StartAngle, //!< Angle offset for pie diagram
+      StrokeColor,     //!< Stroke color
+      StrokeWidth,     //!< Stroke width
+      PositionX,       //!< X-coordinate data defined diagram position
+      PositionY,       //!< Y-coordinate data defined diagram position
+      Distance,        //!< Distance to diagram from feature
+      Priority,        //!< Diagram priority (between 0 and 10)
+      ZIndex,          //!< Z-index for diagram ordering
+      IsObstacle,      //!< Whether diagram features act as obstacles for other diagrams/labels
+      Show,            //!< Whether to show the diagram
+      AlwaysShow,      //!< Whether the diagram should always be shown, even if it overlaps other diagrams/labels
+      StartAngle,      //!< Angle offset for pie diagram
     };
     // *INDENT-ON*
+
+    /**
+     * Diagram type
+     * \since QGIS 3.40
+     */
+    enum DiagramType
+    {
+      Single,
+      Stacked
+    };
 
     /**
      * Returns the diagram property definitions.
      */
     static const QgsPropertiesDefinition &propertyDefinitions();
 
-    /**
-     * Constructor for QgsDiagramLayerSettings.
-     */
     QgsDiagramLayerSettings();
 
-    //! Copy constructor
     QgsDiagramLayerSettings( const QgsDiagramLayerSettings &rh );
+    SIP_SKIP QgsDiagramLayerSettings( QgsDiagramLayerSettings &&rh );
 
     QgsDiagramLayerSettings &operator=( const QgsDiagramLayerSettings &rh );
+    QgsDiagramLayerSettings &operator=( QgsDiagramLayerSettings &&rh );
 
     ~QgsDiagramLayerSettings();
 
@@ -211,14 +223,14 @@ class CORE_EXPORT QgsDiagramLayerSettings
      * Returns the diagram renderer associated with the layer.
      * \see setRenderer()
      */
-    QgsDiagramRenderer *renderer() { return mRenderer; }
+    QgsDiagramRenderer *renderer() { return mRenderer.get(); }
 
     /**
      * Returns the diagram renderer associated with the layer.
      * \see setRenderer()
      * \note not available in Python bindings
      */
-    const QgsDiagramRenderer *renderer() const { return mRenderer; } SIP_SKIP
+    const QgsDiagramRenderer *renderer() const SIP_SKIP { return mRenderer.get(); }
 
     /**
      * Sets the diagram renderer associated with the layer.
@@ -291,7 +303,7 @@ class CORE_EXPORT QgsDiagramLayerSettings
      * \see Property
      * \note not available in Python bindings
      */
-    const QgsPropertyCollection &dataDefinedProperties() const { return mDataDefinedProperties; } SIP_SKIP
+    const QgsPropertyCollection &dataDefinedProperties() const SIP_SKIP { return mDataDefinedProperties; }
 
     /**
      * Sets the diagram's property collection, used for data defined overrides.
@@ -302,7 +314,6 @@ class CORE_EXPORT QgsDiagramLayerSettings
     void setDataDefinedProperties( const QgsPropertyCollection &collection ) { mDataDefinedProperties = collection; }
 
   private:
-
     //! Associated coordinate transform, or invalid transform for no transformation
     QgsCoordinateTransform mCt;
 
@@ -329,7 +340,7 @@ class CORE_EXPORT QgsDiagramLayerSettings
     double mDistance = 0.0;
 
     //! Associated diagram renderer. Owned by this object.
-    QgsDiagramRenderer *mRenderer = nullptr;
+    std::unique_ptr<QgsDiagramRenderer> mRenderer;
 
     //! Whether to show all diagrams, including overlapping diagrams
     bool mShowAll = true;
@@ -341,7 +352,6 @@ class CORE_EXPORT QgsDiagramLayerSettings
 
     //! Property definitions
     static QgsPropertiesDefinition sPropertyDefinitions;
-
 };
 
 /**
@@ -356,7 +366,6 @@ class CORE_EXPORT QgsDiagramLayerSettings
 class CORE_EXPORT QgsDiagramSettings
 {
   public:
-
     enum LabelPlacementMethod
     {
       Height,
@@ -378,15 +387,22 @@ class CORE_EXPORT QgsDiagramSettings
      */
     enum Direction
     {
-      Clockwise, //!< Clockwise orientation
+      Clockwise,        //!< Clockwise orientation
       Counterclockwise, //!< Counter-clockwise orientation
     };
 
-    //! Constructor for QgsDiagramSettings
+    /**
+     * Orientation of the stacked diagrams
+     * \since QGIS 3.40
+     */
+    enum StackedDiagramMode
+    {
+      Horizontal,
+      Vertical
+    };
+
     QgsDiagramSettings();
     ~QgsDiagramSettings();
-
-    //! Copy constructor
     QgsDiagramSettings( const QgsDiagramSettings &other );
 
     QgsDiagramSettings &operator=( const QgsDiagramSettings &other );
@@ -423,6 +439,7 @@ class CORE_EXPORT QgsDiagramSettings
     double penWidth = 0.0;
     LabelPlacementMethod labelPlacementMethod = QgsDiagramSettings::Height;
     DiagramOrientation diagramOrientation = QgsDiagramSettings::Up;
+    StackedDiagramMode stackedDiagramMode = QgsDiagramSettings::Horizontal;
     double barWidth = 5.0;
 
     //! Opacity, from 0 (transparent) to 1.0 (opaque)
@@ -522,6 +539,72 @@ class CORE_EXPORT QgsDiagramSettings
     const QgsMapUnitScale &spacingMapUnitScale() const { return mSpacingMapUnitScale; }
 
     /**
+     * Returns the spacing between subdiagrams in a stacked diagram.
+     *
+     * Spacing units can be retrieved by calling stackedDiagramSpacingUnit().
+     *
+     * \see setStackedDiagramSpacing()
+     * \see stackedDiagramSpacingUnit()
+     * \see stackedDiagramSpacingMapUnitScale()
+     *
+     * \since QGIS 3.40
+     */
+    double stackedDiagramSpacing() const { return mStackedDiagramSpacing; }
+
+    /**
+     * Sets the \a spacing between subdiagrams in a stacked diagram.
+     *
+     * Spacing units are set via setStackedDiagramSpacingUnit().
+     *
+     * \see stackedDiagramSpacing()
+     * \see setStackedDiagramSpacingUnit()
+     * \see setStackedDiagramSpacingMapUnitScale()
+     *
+     * \since QGIS 3.40
+     */
+    void setStackedDiagramSpacing( double spacing ) { mStackedDiagramSpacing = spacing; }
+
+    /**
+     * Sets the \a unit for the spacing between subdiagrams in a stacked diagram.
+     * \see stackedDiagramSpacingUnit()
+     * \see setStackedDiagramSpacing()
+     * \see setStackedDiagramSpacingMapUnitScale()
+     *
+     * \since QGIS 3.40
+    */
+    void setStackedDiagramSpacingUnit( Qgis::RenderUnit unit ) { mStackedDiagramSpacingUnit = unit; }
+
+    /**
+     * Returns the units for the spacing between subdiagrams in a stacked diagram.
+     * \see setStackedDiagramSpacingUnit()
+     * \see stackedDiagramSpacing()
+     * \see stackedDiagramSpacingMapUnitScale()
+     *
+     * \since QGIS 3.40
+    */
+    Qgis::RenderUnit stackedDiagramSpacingUnit() const { return mStackedDiagramSpacingUnit; }
+
+    /**
+     * Sets the map unit \a scale for the spacing between subdiagrams in a stacked diagram.
+     * \see stackedDiagramSpacingMapUnitScale()
+     * \see setStackedDiagramSpacing()
+     * \see setStackedDiagramSpacingUnit()
+     *
+     * \since QGIS 3.40
+    */
+    void setStackedDiagramSpacingMapUnitScale( const QgsMapUnitScale &scale ) { mStackedDiagramSpacingMapUnitScale = scale; }
+
+    /**
+     * Returns the map unit scale for the spacing between subdiagrams in a stacked diagram.
+     * \see setStackedDiagramSpacingMapUnitScale();
+     * \see stackedDiagramSpacing()
+     * \see stackedDiagramSpacingUnit()
+     *
+     * \since QGIS 3.40
+    */
+    const QgsMapUnitScale &stackedDiagramSpacingMapUnitScale() const { return mStackedDiagramSpacingMapUnitScale; }
+
+    /**
      * Returns the chart's angular direction.
      *
      * \see setDirection()
@@ -611,16 +694,19 @@ class CORE_EXPORT QgsDiagramSettings
     void setPaintEffect( QgsPaintEffect *effect SIP_TRANSFER );
 
   private:
-
     double mSpacing = 0;
     Qgis::RenderUnit mSpacingUnit = Qgis::RenderUnit::Millimeters;
     QgsMapUnitScale mSpacingMapUnitScale;
+
+    double mStackedDiagramSpacing = 0;
+    Qgis::RenderUnit mStackedDiagramSpacingUnit = Qgis::RenderUnit::Millimeters;
+    QgsMapUnitScale mStackedDiagramSpacingMapUnitScale;
+
     Direction mDirection = Counterclockwise;
 
     bool mShowAxis = false;
     std::unique_ptr< QgsLineSymbol > mAxisLineSymbol;
     std::unique_ptr< QgsPaintEffect > mPaintEffect;
-
 };
 
 /**
@@ -652,23 +738,21 @@ class CORE_EXPORT QgsDiagramInterpolationSettings
 
 class CORE_EXPORT QgsDiagramRenderer
 {
-
 #ifdef SIP_RUN
     SIP_CONVERT_TO_SUBCLASS_CODE
-    if ( sipCpp->rendererName() == QLatin1String( "SingleCategory" ) )
+    if ( sipCpp->rendererName() == "SingleCategory"_L1 )
       sipType = sipType_QgsSingleCategoryDiagramRenderer;
-    else if ( sipCpp->rendererName() == QLatin1String( "LinearlyInterpolated" ) )
+    else if ( sipCpp->rendererName() == "LinearlyInterpolated"_L1 )
       sipType = sipType_QgsLinearlyInterpolatedDiagramRenderer;
+    else if ( sipCpp->rendererName() == "Stacked"_L1 )
+      sipType = sipType_QgsStackedDiagramRenderer;
     else
       sipType = NULL;
-    SIP_END
+  SIP_END
 #endif
 
   public:
 
-    /**
-     * Constructor for QgsDiagramRenderer.
-     */
     QgsDiagramRenderer() = default;
     virtual ~QgsDiagramRenderer() = default;
 
@@ -694,7 +778,7 @@ class CORE_EXPORT QgsDiagramRenderer
     /**
      * Renders the diagram for a specified feature at a specific position in the passed render context.
      */
-    void renderDiagram( const QgsFeature &feature, QgsRenderContext &c, QPointF pos, const QgsPropertyCollection &properties = QgsPropertyCollection() ) const;
+    virtual void renderDiagram( const QgsFeature &feature, QgsRenderContext &c, QPointF pos, const QgsPropertyCollection &properties = QgsPropertyCollection() ) const;
 
     void setDiagram( QgsDiagram *d SIP_TRANSFER );
     QgsDiagram *diagram() const { return mDiagram.get(); }
@@ -747,8 +831,12 @@ class CORE_EXPORT QgsDiagramRenderer
      */
     virtual bool diagramSettings( const QgsFeature &feature, const QgsRenderContext &c, QgsDiagramSettings &s ) const = 0;
 
-    //! Returns size of the diagram (in painter units) or an invalid size in case of error
-    virtual QSizeF diagramSize( const QgsFeature &features, const QgsRenderContext &c ) const = 0;
+    /**
+     * Returns size of the diagram (in painter units) or an invalid size in case of error
+     * \param feature the feature
+     * \param c render context
+     */
+    virtual QSizeF diagramSize( const QgsFeature &feature, const QgsRenderContext &c ) const = 0;
 
     //! Converts size from mm to map units
     void convertSizeToMapUnits( QSizeF &size, const QgsRenderContext &context ) const;
@@ -775,22 +863,24 @@ class CORE_EXPORT QgsDiagramRenderer
 
     //! Whether to show an attribute legend for the diagrams
     bool mShowAttributeLegend = true;
+
+    friend class QgsStackedDiagramRenderer;
 };
 
 /**
  * \ingroup core
- * \brief Renders the diagrams for all features with the same settings
+ * \brief Renders the diagrams for all features with the same settings.
 */
 class CORE_EXPORT QgsSingleCategoryDiagramRenderer : public QgsDiagramRenderer
 {
   public:
+    static const QString DIAGRAM_RENDERER_NAME_SINGLE_CATEGORY SIP_SKIP;
 
-    //! Constructor for QgsSingleCategoryDiagramRenderer
     QgsSingleCategoryDiagramRenderer() = default;
 
     QgsSingleCategoryDiagramRenderer *clone() const override SIP_FACTORY;
 
-    QString rendererName() const override { return QStringLiteral( "SingleCategory" ); }
+    QString rendererName() const override { return QgsSingleCategoryDiagramRenderer::DIAGRAM_RENDERER_NAME_SINGLE_CATEGORY; }
 
     QList<QString> diagramAttributes() const override { return mSettings.categoryAttributes; }
 
@@ -815,13 +905,15 @@ class CORE_EXPORT QgsSingleCategoryDiagramRenderer : public QgsDiagramRenderer
 /**
  * \ingroup core
  * \class QgsLinearlyInterpolatedDiagramRenderer
+ * \brief Alters the size of rendered diagrams using linear scaling.
  */
 class CORE_EXPORT QgsLinearlyInterpolatedDiagramRenderer : public QgsDiagramRenderer
 {
   public:
+    static const QString DIAGRAM_RENDERER_NAME_LINEARLY_INTERPOLATED SIP_SKIP;
+
     QgsLinearlyInterpolatedDiagramRenderer();
     ~QgsLinearlyInterpolatedDiagramRenderer() override;
-    //! Copy constructor
     QgsLinearlyInterpolatedDiagramRenderer( const QgsLinearlyInterpolatedDiagramRenderer &other );
 
     QgsLinearlyInterpolatedDiagramRenderer &operator=( const QgsLinearlyInterpolatedDiagramRenderer &other );
@@ -837,7 +929,7 @@ class CORE_EXPORT QgsLinearlyInterpolatedDiagramRenderer : public QgsDiagramRend
 
     QSet< QString > referencedFields( const QgsExpressionContext &context = QgsExpressionContext() ) const override;
 
-    QString rendererName() const override { return QStringLiteral( "LinearlyInterpolated" ); }
+    QString rendererName() const override { return QgsLinearlyInterpolatedDiagramRenderer::DIAGRAM_RENDERER_NAME_LINEARLY_INTERPOLATED; }
 
     void setLowerValue( double val ) { mInterpolationSettings.lowerValue = val; }
     double lowerValue() const { return mInterpolationSettings.lowerValue; }
@@ -894,7 +986,104 @@ class CORE_EXPORT QgsLinearlyInterpolatedDiagramRenderer : public QgsDiagramRend
     QgsDiagramInterpolationSettings mInterpolationSettings;
 
     //! Stores more settings about how legend for varying size of symbols should be rendered
-    QgsDataDefinedSizeLegend *mDataDefinedSizeLegend = nullptr;
+    std::unique_ptr<QgsDataDefinedSizeLegend> mDataDefinedSizeLegend;
 };
+
+/**
+ * \ingroup core
+ * \class QgsStackedDiagramRenderer
+ * Renders diagrams using mixed diagram render types.
+ *
+ * The size of the rendered diagram is given by a combination of subrenderers.
+ *
+ * \since QGIS 3.40
+ */
+class CORE_EXPORT QgsStackedDiagramRenderer : public QgsDiagramRenderer
+{
+  public:
+    static const QString DIAGRAM_RENDERER_NAME_STACKED SIP_SKIP;
+
+    QgsStackedDiagramRenderer() = default;
+    ~QgsStackedDiagramRenderer() override;
+
+    QgsStackedDiagramRenderer( const QgsStackedDiagramRenderer &other );
+
+    QgsStackedDiagramRenderer &operator=( const QgsStackedDiagramRenderer &other );
+
+    QgsStackedDiagramRenderer *clone() const override SIP_FACTORY;
+
+    //! Returns size of the diagram for a feature in map units. Returns an invalid QSizeF in case of error
+    QSizeF sizeMapUnits( const QgsFeature &feature, const QgsRenderContext &c ) const override;
+
+    /**
+     * Renders the diagram for a specified feature at a specific position in the
+     * passed render context, taking all renderers and their own diagrams into account.
+     * Diagram rendering is delegated to renderer's diagram.
+     */
+    void renderDiagram( const QgsFeature &feature, QgsRenderContext &c, QPointF pos, const QgsPropertyCollection &properties = QgsPropertyCollection() ) const override;
+
+    //! Returns list with all diagram settings in the renderer
+    QList<QgsDiagramSettings> diagramSettings() const override;
+
+    void setDiagramSettings( const QgsDiagramSettings &s ) { mSettings = s; }
+
+    QList<QString> diagramAttributes() const override;
+
+    QString rendererName() const override { return QgsStackedDiagramRenderer::DIAGRAM_RENDERER_NAME_STACKED; }
+
+    void readXml( const QDomElement &elem, const QgsReadWriteContext &context ) override;
+    void writeXml( QDomElement &layerElem, QDomDocument &doc, const QgsReadWriteContext &context ) const override;
+
+    /**
+     * Reads stacked renderers state from a DOM element.
+     * \see _writeXmlSubRenderers()
+     */
+    void _readXmlSubRenderers( const QDomElement &elem, const QgsReadWriteContext &context );
+
+    /**
+     * Writes stacked renderers state to a DOM element.
+     * \see _readXmlSubRenderers()
+     */
+    void _writeXmlSubRenderers( QDomElement &rendererElem, QDomDocument &doc, const QgsReadWriteContext &context ) const;
+
+    QList< QgsLayerTreeModelLegendNode * > legendItems( QgsLayerTreeLayer *nodeLayer ) const override SIP_FACTORY;
+
+    /**
+     * Returns an ordered list with the renderers of the stacked renderer object.
+     * Does not transfer ownership.
+     *
+     * \param sortByDiagramMode If true, the list is returned backwards for vertical orientation.
+     */
+    QList< QgsDiagramRenderer * > renderers( bool sortByDiagramMode = false ) const;
+
+    /**
+     * Adds a renderer to the stacked renderer object. Takes ownership.
+     *
+     * Renderers added first will render their diagrams first, i.e., more to
+     * the left (horizontal mode) or more to the top (vertical mode).
+     *
+     * \param renderer diagram renderer to be added to the stacked renderer
+     */
+    void addRenderer( QgsDiagramRenderer *renderer SIP_TRANSFER );
+
+    /**
+     * Returns the renderer at the given \a index. Does not transfer ownership.
+     *
+     * \param index index of the desired renderer in the stacked renderer
+     */
+    const QgsDiagramRenderer *renderer( const int index ) const;
+
+    //! Returns the number of sub renderers in the stacked diagram renderer
+    int rendererCount() const;
+
+  protected:
+    bool diagramSettings( const QgsFeature &feature, const QgsRenderContext &c, QgsDiagramSettings &s ) const override;
+    QSizeF diagramSize( const QgsFeature &, const QgsRenderContext &c ) const override;
+
+  private:
+    QgsDiagramSettings mSettings;
+    QList< QgsDiagramRenderer * > mDiagramRenderers;
+};
+
 
 #endif // QGSDIAGRAMRENDERER_H

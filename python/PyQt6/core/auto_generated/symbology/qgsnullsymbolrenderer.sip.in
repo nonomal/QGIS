@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/symbology/qgsnullsymbolrenderer.h                           *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/
 
 
@@ -11,15 +11,16 @@
 class QgsNullSymbolRenderer : QgsFeatureRenderer
 {
 %Docstring(signature="appended")
-Null symbol renderer. Renderer which draws no symbols for features by default, but allows for labeling
-and diagrams for the layer. Selected features will also be drawn with a default symbol.
+Null symbol renderer, which draws no symbols for features by default,
+but allows for labeling and diagrams for the layer.
+
+Selected features will also be drawn with a default symbol.
 %End
 
 %TypeHeaderCode
 #include "qgsnullsymbolrenderer.h"
 %End
   public:
-
     QgsNullSymbolRenderer();
     ~QgsNullSymbolRenderer();
 
@@ -28,7 +29,7 @@ and diagrams for the layer. Selected features will also be drawn with a default 
     virtual QgsSymbol *originalSymbolForFeature( const QgsFeature &feature, QgsRenderContext &context ) const;
 
 
-    virtual bool renderFeature( const QgsFeature &feature, QgsRenderContext &context, int layer = -1, bool selected = false, bool drawVertexMarker = false ) throw( QgsCsException );
+    virtual bool renderFeature( const QgsFeature &feature, QgsRenderContext &context, int layer = -1, bool selected = false, bool drawVertexMarker = false );
 
     virtual void stopRender( QgsRenderContext &context );
 
@@ -44,7 +45,7 @@ and diagrams for the layer. Selected features will also be drawn with a default 
     virtual QgsSymbolList symbols( QgsRenderContext &context ) const;
 
 
-    static QgsFeatureRenderer *create( QDomElement &element, const QgsReadWriteContext &context ) /Factory/;
+    static std::unique_ptr<QgsFeatureRenderer> create( QDomElement &element, const QgsReadWriteContext &context );
 %Docstring
 Creates a null renderer from XML element.
 
@@ -57,13 +58,14 @@ Creates a null renderer from XML element.
     virtual QDomElement save( QDomDocument &doc, const QgsReadWriteContext &context );
 
 
-    static QgsNullSymbolRenderer *convertFromRenderer( const QgsFeatureRenderer *renderer ) /Factory/;
+    static std::unique_ptr<QgsNullSymbolRenderer> convertFromRenderer( const QgsFeatureRenderer *renderer );
 %Docstring
 Creates a QgsNullSymbolRenderer from an existing renderer.
 
 :param renderer: renderer to convert from
 
-:return: a new renderer if the conversion was possible, otherwise ``None``.
+:return: a new renderer if the conversion was possible, otherwise
+         ``None``.
 %End
 
 };
@@ -73,5 +75,5 @@ Creates a QgsNullSymbolRenderer from an existing renderer.
  *                                                                      *
  * src/core/symbology/qgsnullsymbolrenderer.h                           *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/

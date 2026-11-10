@@ -16,10 +16,26 @@
  ***************************************************************************/
 
 #include "qgsnative.h"
-#include <QString>
+
 #include <QDesktopServices>
-#include <QUrl>
 #include <QFileInfo>
+#include <QString>
+#include <QUrl>
+
+#include "moc_qgsnative.cpp"
+
+//
+// QgsPointerLocker
+//
+
+QgsPointerLocker::QgsPointerLocker( QWindow *window, QObject *parent )
+  : QObject( parent )
+  , mWindow( window )
+{}
+
+//
+// QgsNative
+//
 
 void QgsNative::cleanup()
 {}
@@ -29,17 +45,11 @@ QgsNative::Capabilities QgsNative::capabilities() const
   return QgsNative::Capabilities();
 }
 
-void QgsNative::initializeMainWindow( QWindow *,
-                                      const QString &,
-                                      const QString &,
-                                      const QString & )
-{
-
-}
+void QgsNative::initializeMainWindow( QWindow *, const QString &, const QString &, const QString & )
+{}
 
 void QgsNative::currentAppActivateIgnoringOtherApps()
-{
-}
+{}
 
 void QgsNative::openFileExplorerAndSelectFile( const QString &path )
 {
@@ -49,29 +59,19 @@ void QgsNative::openFileExplorerAndSelectFile( const QString &path )
 }
 
 void QgsNative::showFileProperties( const QString & )
-{
-
-}
+{}
 
 void QgsNative::showUndefinedApplicationProgress()
-{
-
-}
+{}
 
 void QgsNative::setApplicationProgress( double )
-{
-
-}
+{}
 
 void QgsNative::hideApplicationProgress()
-{
-
-}
+{}
 
 void QgsNative::setApplicationBadgeCount( int )
-{
-
-}
+{}
 
 bool QgsNative::hasDarkTheme()
 {
@@ -83,6 +83,11 @@ bool QgsNative::openTerminalAtPath( const QString & )
   return false;
 }
 
+QgsPointerLocker *QgsNative::createPointerLocker( QWindow *, QObject * )
+{
+  return nullptr;
+}
+
 QgsNative::NotificationResult QgsNative::showDesktopNotification( const QString &, const QString &, const NotificationSettings & )
 {
   NotificationResult result;
@@ -91,6 +96,4 @@ QgsNative::NotificationResult QgsNative::showDesktopNotification( const QString 
 }
 
 void QgsNative::onRecentProjectsChanged( const std::vector<QgsNative::RecentProjectProperties> & )
-{
-
-}
+{}

@@ -17,10 +17,11 @@
 
 #include "qgsprocessingalgorithmconfigurationwidget.h"
 
+#include "moc_qgsprocessingalgorithmconfigurationwidget.cpp"
+
 QgsProcessingAlgorithmConfigurationWidget::QgsProcessingAlgorithmConfigurationWidget( QWidget *parent )
   : QWidget( parent )
-{
-}
+{}
 
 void QgsProcessingAlgorithmConfigurationWidget::setWidgetContext( const QgsProcessingParameterWidgetContext &context )
 {
@@ -44,5 +45,5 @@ void QgsProcessingAlgorithmConfigurationWidget::registerProcessingContextGenerat
 
 QgsExpressionContext QgsProcessingAlgorithmConfigurationWidget::createExpressionContext() const
 {
-  return QgsProcessingGuiUtils::createExpressionContext( mContextGenerator, mWidgetContext, mAlgorithm, nullptr );
+  return QgsProcessingWidgetWrapperUtils::createExpressionContext( mContextGenerator, mWidgetContext, mAlgorithm, nullptr );
 }

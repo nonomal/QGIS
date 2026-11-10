@@ -18,11 +18,12 @@
 #ifndef QGSALGORITHMANGLETONEAREST_H
 #define QGSALGORITHMANGLETONEAREST_H
 
-#define SIP_NO_FILE
 
 #include "qgis_sip.h"
 #include "qgsprocessingalgorithm.h"
 #include "qgsrenderer.h"
+
+#define SIP_NO_FILE
 
 ///@cond PRIVATE
 
@@ -31,9 +32,7 @@
  */
 class QgsAngleToNearestAlgorithm : public QgsProcessingAlgorithm
 {
-
   public:
-
     QgsAngleToNearestAlgorithm() = default;
     ~QgsAngleToNearestAlgorithm() override;
     void initAlgorithm( const QVariantMap &configuration = QVariantMap() ) override;
@@ -49,19 +48,14 @@ class QgsAngleToNearestAlgorithm : public QgsProcessingAlgorithm
     bool supportInPlaceEdit( const QgsMapLayer *layer ) const override;
 
   protected:
-
     bool prepareAlgorithm( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
-    QVariantMap processAlgorithm( const QVariantMap &parameters,
-                                  QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
+    QVariantMap processAlgorithm( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
 
   private:
     bool mIsInPlace = false;
-    std::unique_ptr< QgsFeatureRenderer > mSourceRenderer;
-
+    std::unique_ptr<QgsFeatureRenderer> mSourceRenderer;
 };
 
 ///@endcond PRIVATE
 
 #endif // QGSALGORITHMANGLETONEAREST_H
-
-

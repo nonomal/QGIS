@@ -72,7 +72,6 @@ if (WITH_INTERNAL_MDAL)
     ${CMAKE_SOURCE_DIR}/external/mdal/3rdparty/libplyxx.h
     ${CMAKE_SOURCE_DIR}/external/mdal/3rdparty/libplyxx/libplyxx_internal.h
     ${CMAKE_SOURCE_DIR}/external/mdal/3rdparty/textio.h
-    ${CMAKE_SOURCE_DIR}/external/nlohmann/json.hpp
   )
 
   if(HDF5_FOUND)
@@ -91,11 +90,11 @@ if (WITH_INTERNAL_MDAL)
     set (HAVE_HDF5 TRUE)
   endif()
 
-  if(SQLITE3_FOUND)
+  if(SQLite3_FOUND)
      set(HAVE_SQLITE3 TRUE)
   endif()
 
-  if(SQLITE3_FOUND AND NETCDF_FOUND)
+  if(SQLite3_FOUND AND NETCDF_FOUND)
      set(MDAL_LIB_SRCS ${MDAL_LIB_SRCS}
       ${CMAKE_SOURCE_DIR}/external/mdal/frmts/mdal_sqlite3.cpp
       ${CMAKE_SOURCE_DIR}/external/mdal/frmts/mdal_3di.cpp
@@ -159,6 +158,16 @@ if (WITH_INTERNAL_MDAL)
     set (HAVE_XML TRUE)
   endif()
 
+  set(MDAL_LIB_COMPILE_OPTIONS)
+  if(HAVE_WFLAG_SUGGEST_OVERRIDE)
+    list(APPEND MDAL_LIB_COMPILE_OPTIONS "-Wno-suggest-override")
+  endif()
+  if(HAVE_WFLAG_SUGGEST_DESTRUCTOR_OVERRIDE)
+    list(APPEND MDAL_LIB_COMPILE_OPTIONS "-Wno-suggest-destructor-override")
+  endif()
+  if (MDAL_LIB_COMPILE_OPTIONS)
+    set_source_files_properties(${MDAL_LIB_SRCS} PROPERTIES COMPILE_OPTIONS "${MDAL_LIB_COMPILE_OPTIONS}")
+  endif()
 
   # create mdal_config.h
   set (BUILD_PLY TRUE)
@@ -184,9 +193,6 @@ include_directories (
 )
 
 add_library (provider_mdal MODULE ${MDAL_SRCS} ${MDAL_LIB_SRCS} ${MDAL_LIB_HDRS})
-
-# require c++17
-target_compile_features(provider_mdal PRIVATE cxx_std_17)
 
 target_link_libraries (provider_mdal
   qgis_core

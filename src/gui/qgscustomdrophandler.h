@@ -16,8 +16,8 @@
 #ifndef QGSCUSTOMDROPHANDLER_H
 #define QGSCUSTOMDROPHANDLER_H
 
-#include "qgsmimedatautils.h"
 #include "qgis_gui.h"
+#include "qgsmimedatautils.h"
 
 class QgsMapCanvas;
 
@@ -48,7 +48,6 @@ class GUI_EXPORT QgsCustomDropHandler : public QObject
     Q_OBJECT
 
   public:
-
     /**
      * Type of custom URI recognized by the handler. This must match
      * the URI entry's providerKey in order for handleCustomUriDrop()
@@ -81,7 +80,7 @@ class GUI_EXPORT QgsCustomDropHandler : public QObject
      */
     virtual bool canHandleMimeData( const QMimeData *data );
 
-    // TODO QGIS 4.0 - return bool
+    // TODO QGIS 5.0 - return bool
 
     /**
      * Called when the specified mime \a data has been dropped onto QGIS.
@@ -97,7 +96,7 @@ class GUI_EXPORT QgsCustomDropHandler : public QObject
      * (For instance by copying the relevant parts of \a data and then handling
      * the data after a short timeout).
      *
-     * \deprecated since QGIS 3.10 - use handleMimeDataV2() instead.
+     * \deprecated QGIS 3.10. Use handleMimeDataV2() instead.
      */
     Q_DECL_DEPRECATED virtual void handleMimeData( const QMimeData *data ) SIP_DEPRECATED;
 

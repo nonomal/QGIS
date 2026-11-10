@@ -18,10 +18,11 @@
 #ifndef QGSCOLORUTILS_H
 #define QGSCOLORUTILS_H
 
+#include "qgis.h"
 #include "qgis_core.h"
 #include "qgis_sip.h"
-#include "qgis.h"
 
+#include <QColorSpace>
 #include <QDomDocument>
 #include <QDomElement>
 
@@ -36,7 +37,6 @@ class QgsReadWriteContext;
 class CORE_EXPORT QgsColorUtils
 {
   public:
-
     /**
      * Writes a \a color to an XML \a element, storing it under the specified \a identifier.
      *
@@ -51,8 +51,7 @@ class CORE_EXPORT QgsColorUtils
      *
      * \see readXml()
      */
-    static void writeXml( const QColor &color, const QString &identifier,
-                          QDomDocument &document, QDomElement &element, const QgsReadWriteContext &context );
+    static void writeXml( const QColor &color, const QString &identifier, QDomDocument &document, QDomElement &element, const QgsReadWriteContext &context );
 
     /**
      * Reads a color from an XML \a element, matching the specified \a identifier string.
@@ -94,6 +93,40 @@ class CORE_EXPORT QgsColorUtils
      */
     static QColor colorFromString( const QString &string );
 
+    /**
+     * Loads an ICC profile from \a iccProfileFilePath and returns associated color space.
+     * If an error occurred, an invalid color space is returned and \a errorMsg is updated with error
+     * message
+     *
+     * \param iccProfileFilePath ICC profile file path
+     * \param errorMsg Will be set to a user-friendly message if an error occurs while loading the ICC profile file
+     * \returns loaded color space
+     *
+     * \since QGIS 3.40
+     */
+    static QColorSpace iccProfile( const QString &iccProfileFilePath, QString &errorMsg SIP_OUT );
+
+    /**
+     * Save color space \a colorSpace to an ICC profile file \a iccProfileFilePath.
+     * \returns error message if an error occurred else empty string.
+     *
+     * \since QGIS 3.40
+     */
+    static QString saveIccProfile( const QColorSpace &colorSpace, const QString &iccProfileFilePath );
+
+
+#if QT_VERSION >= QT_VERSION_CHECK( 6, 8, 0 )
+
+    /**
+     * Convert and returns Qt \a colorModel to Qgis::ColorModel. \a ok is set to true if \a colorModel
+     * is a valid Qgis::ColorModel.
+     *
+     * \note Not available in Python bindings
+     * \since QGIS 3.40
+     */
+    static Qgis::ColorModel toColorModel( QColorSpace::ColorModel colorModel, bool *ok = nullptr ) SIP_SKIP;
+
+#endif
 };
 
 #endif // QGSCOLORUTILS_H

@@ -15,15 +15,49 @@
 
 #include "qgsannotationitemwidget.h"
 
+#include "qgsannotationlayer.h"
+#include "qgsmapcanvas.h"
+#include "qgsrenderedannotationitemdetails.h"
+#include "qgsrendereditemdetails.h"
+#include "qgsrendereditemresults.h"
+
+#include <QComboBox>
+
+#include "moc_qgsannotationitemwidget.cpp"
+
 QgsAnnotationItemBaseWidget::QgsAnnotationItemBaseWidget( QWidget *parent )
   : QgsPanelWidget( parent )
-{
-
-}
+{}
 
 bool QgsAnnotationItemBaseWidget::setItem( QgsAnnotationItem *item )
 {
   return setNewItem( item );
+}
+
+void QgsAnnotationItemBaseWidget::populateRotationModeComboBox( QComboBox *comboBox )
+{
+  comboBox->addItem( tr( "Ignore Map Rotation" ), QVariant::fromValue( Qgis::SymbolRotationMode::IgnoreMapRotation ) );
+  comboBox->addItem( tr( "Rotate With Map" ), QVariant::fromValue( Qgis::SymbolRotationMode::RespectMapRotation ) );
+}
+
+void QgsAnnotationItemBaseWidget::setLayer( QgsAnnotationLayer *layer )
+{
+  mLayer = layer;
+}
+
+QgsAnnotationLayer *QgsAnnotationItemBaseWidget::layer()
+{
+  return mLayer;
+}
+
+void QgsAnnotationItemBaseWidget::setItemId( const QString &id )
+{
+  mItemId = id;
+}
+
+QString QgsAnnotationItemBaseWidget::itemId() const
+{
+  return mItemId;
 }
 
 void QgsAnnotationItemBaseWidget::setContext( const QgsSymbolWidgetContext &context )
@@ -37,10 +71,46 @@ QgsSymbolWidgetContext QgsAnnotationItemBaseWidget::context() const
 }
 
 void QgsAnnotationItemBaseWidget::focusDefaultWidget()
-{
-}
+{}
 
 bool QgsAnnotationItemBaseWidget::setNewItem( QgsAnnotationItem * )
 {
   return false;
+}
+
+const QgsRenderedAnnotationItemDetails *QgsAnnotationItemBaseWidget::renderedItemDetails()
+{
+  QgsMapCanvas *canvas = mContext.mapCanvas();
+  if ( !canvas )
+    return nullptr;
+
+  QString layerId;
+  if ( const QgsAnnotationLayer *layer = mLayer.data() )
+  {
+    layerId = layer->id();
+  }
+  if ( layerId.isEmpty() )
+    return nullptr;
+
+  const QgsRenderedItemResults *renderedItemResults = canvas->renderedItemResults( false );
+  if ( !renderedItemResults )
+  {
+    return nullptr;
+  }
+
+  const QList<QgsRenderedItemDetails *> items = renderedItemResults->renderedItems();
+  const QString annotationId = mItemId;
+  auto it = std::find_if( items.begin(), items.end(), [layerId, annotationId]( const QgsRenderedItemDetails *item ) {
+    if ( const QgsRenderedAnnotationItemDetails *annotationItem = dynamic_cast<const QgsRenderedAnnotationItemDetails *>( item ) )
+    {
+      if ( annotationItem->itemId() == annotationId && annotationItem->layerId() == layerId )
+        return true;
+    }
+    return false;
+  } );
+  if ( it != items.end() )
+  {
+    return dynamic_cast<const QgsRenderedAnnotationItemDetails *>( *it );
+  }
+  return nullptr;
 }

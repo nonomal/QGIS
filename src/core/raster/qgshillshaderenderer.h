@@ -35,7 +35,6 @@ class QgsRasterInterface;
 class CORE_EXPORT QgsHillshadeRenderer : public QgsRasterRenderer
 {
   public:
-
     /**
      * \brief A renderer for generating live hillshade models.
      * \param input The input raster interface
@@ -54,7 +53,7 @@ class CORE_EXPORT QgsHillshadeRenderer : public QgsRasterRenderer
      * \param input The raster input interface.
      * \returns A new QgsHillshadeRenderer.
      */
-    static QgsRasterRenderer *create( const QDomElement &elem, QgsRasterInterface *input ) SIP_FACTORY;
+    static std::unique_ptr<QgsRasterRenderer> create( const QDomElement &elem, QgsRasterInterface *input );
 
     void writeXml( QDomDocument &doc, QDomElement &parentElem ) const override;
 
@@ -63,12 +62,13 @@ class CORE_EXPORT QgsHillshadeRenderer : public QgsRasterRenderer
     QList<int> usesBands() const override;
     int inputBand() const override;
 
-    void toSld( QDomDocument &doc, QDomElement &element, const QVariantMap &props = QVariantMap() ) const override;
+    Q_DECL_DEPRECATED void toSld( QDomDocument &doc, QDomElement &element, const QVariantMap &props = QVariantMap() ) const override SIP_DEPRECATED;
+    bool toSld( QDomDocument &doc, QDomElement &element, QgsSldExportContext &context ) const override;
 
     /**
      * Returns the band used by the renderer
      *
-     * \deprecated since QGIS 3.38 use inputBand() instead
+     * \deprecated QGIS 3.38. Use inputBand() instead.
      */
     Q_DECL_DEPRECATED int band() const SIP_DEPRECATED { return mBand; }
 
@@ -76,7 +76,7 @@ class CORE_EXPORT QgsHillshadeRenderer : public QgsRasterRenderer
      * Sets the band used by the renderer.
      * \see band
      *
-     * \deprecated since QGIS 3.38 use setInputBand() instead
+     * \deprecated QGIS 3.38. Use setInputBand() instead.
      */
     Q_DECL_DEPRECATED void setBand( int bandNo ) SIP_DEPRECATED;
     bool setInputBand( int band ) override;
@@ -91,13 +91,13 @@ class CORE_EXPORT QgsHillshadeRenderer : public QgsRasterRenderer
      * Returns the angle of the light source over the raster.
      * \see setAltitude()
      */
-    double altitude()  const { return mLightAngle; }
+    double altitude() const { return mLightAngle; }
 
     /**
      * Returns the Z scaling factor.
      * \see setZFactor()
      */
-    double zFactor()  const { return mZFactor; }
+    double zFactor() const { return mZFactor; }
 
     /**
      * Returns TRUE if the renderer is using multi-directional hillshading.
@@ -139,7 +139,6 @@ class CORE_EXPORT QgsHillshadeRenderer : public QgsRasterRenderer
     double mLightAngle = 45;
     double mLightAzimuth = 315;
     bool mMultiDirectional = false;
-
 };
 
 #endif // QGSHILLSHADERENDERER_H

@@ -18,11 +18,16 @@
 #ifndef QGSALGORITHMCONVEXHULL_H
 #define QGSALGORITHMCONVEXHULL_H
 
-#define SIP_NO_FILE
 
 #include "qgis_sip.h"
-#include "qgsprocessingalgorithm.h"
 #include "qgsapplication.h"
+#include "qgsprocessingalgorithm.h"
+
+#include <QString>
+
+#define SIP_NO_FILE
+
+using namespace Qt::StringLiterals;
 
 ///@cond PRIVATE
 
@@ -32,31 +37,27 @@
  */
 class QgsConvexHullAlgorithm : public QgsProcessingFeatureBasedAlgorithm
 {
-
   public:
-
     QgsConvexHullAlgorithm() = default;
-    QIcon icon() const override { return QgsApplication::getThemeIcon( QStringLiteral( "/algorithms/mAlgorithmConvexHull.svg" ) ); }
-    QString svgIconPath() const override { return QgsApplication::iconPath( QStringLiteral( "/algorithms/mAlgorithmConvexHull.svg" ) ); }
+    QIcon icon() const override { return QgsApplication::getThemeIcon( u"/algorithms/mAlgorithmConvexHull.svg"_s ); }
+    QString svgIconPath() const override { return QgsApplication::iconPath( u"/algorithms/mAlgorithmConvexHull.svg"_s ); }
     QString name() const override;
     QString displayName() const override;
     QStringList tags() const override;
     QString group() const override;
     QString groupId() const override;
     QString shortHelpString() const override;
+    QString shortDescription() const override;
     QgsConvexHullAlgorithm *createInstance() const override SIP_FACTORY;
 
   protected:
     QString outputName() const override;
     Qgis::WkbType outputWkbType( Qgis::WkbType ) const override { return Qgis::WkbType::Polygon; }
     QgsFields outputFields( const QgsFields &inputFields ) const override;
-    QgsFeatureList processFeature( const QgsFeature &feature,  QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
-
+    QgsFeatureList processFeature( const QgsFeature &feature, QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
 };
 
 
 ///@endcond PRIVATE
 
 #endif // QGSALGORITHMCONVEXHULL_H
-
-

@@ -15,12 +15,12 @@
 #ifndef QGSSPATIALITECONNECTION_H
 #define QGSSPATIALITECONNECTION_H
 
-#include <QStringList>
-#include <QObject>
-#include <QMutex>
-
 #include "qgsspatialiteutils.h"
 #include "qgsvectordataprovider.h"
+
+#include <QMutex>
+#include <QObject>
+#include <QStringList>
 
 extern "C"
 {
@@ -36,21 +36,21 @@ class QgsSpatiaLiteConnection : public QObject
     //! Construct a connection. Name can be either stored connection name or a path to the database file
     explicit QgsSpatiaLiteConnection( const QString &name );
 
-    QString path() { return mPath; }
+    QString path() const { return mPath; }
 
     static QStringList connectionList();
     static QString connectionPath( const QString &name );
 
     typedef struct TableEntry
     {
-      TableEntry( const QString &_tableName, const QString &_column, const QString &_type )
-        : tableName( _tableName )
-        , column( _column )
-        , type( _type )
-      {}
-      QString tableName;
-      QString column;
-      QString type;
+        TableEntry( const QString &_tableName, const QString &_column, const QString &_type )
+          : tableName( _tableName )
+          , column( _column )
+          , type( _type )
+        {}
+        QString tableName;
+        QString column;
+        QString type;
     } TableEntry;
 
     enum Error
@@ -72,10 +72,10 @@ class QgsSpatiaLiteConnection : public QObject
     Error fetchTables( bool loadGeometrylessTables );
 
     //! Returns list of tables. fetchTables() function has to be called before
-    QList<TableEntry> tables() { return mTables; }
+    QList<TableEntry> tables() const { return mTables; }
 
     //! Returns additional error message (if an error occurred before)
-    QString errorMessage() { return mErrorMsg; }
+    QString errorMessage() const { return mErrorMsg; }
 
     //! Updates the Internal Statistics
     bool updateStatistics();
@@ -144,30 +144,17 @@ class QgsSqliteHandle
     QgsSqliteHandle( spatialite_database_unique_ptr &&database, const QString &dbPath, bool shared )
       : ref( shared ? 1 : -1 )
       , mDbPath( dbPath )
-      , mIsValid( true )
     {
       mDatabase = std::move( database );
     }
 
-    sqlite3 *handle()
-    {
-      return mDatabase.get();
-    }
+    sqlite3 *handle() { return mDatabase.get(); }
 
-    QString dbPath() const
-    {
-      return mDbPath;
-    }
+    QString dbPath() const { return mDbPath; }
 
-    bool isValid() const
-    {
-      return mIsValid;
-    }
+    bool isValid() const { return mIsValid; }
 
-    void invalidate()
-    {
-      mIsValid = false;
-    }
+    void invalidate() { mIsValid = false; }
 
     /**
      * Returns a possibly cached SQLite DB object from \a path, if \a shared is FALSE
@@ -189,9 +176,9 @@ class QgsSqliteHandle
     int ref;
     spatialite_database_unique_ptr mDatabase;
     QString mDbPath;
-    bool mIsValid;
+    bool mIsValid = true;
 
-    static QMap < QString, QgsSqliteHandle * > sHandles;
+    static QMap<QString, QgsSqliteHandle *> sHandles;
     static QMutex sHandleMutex;
 };
 

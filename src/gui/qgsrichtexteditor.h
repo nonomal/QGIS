@@ -31,13 +31,16 @@
 #ifndef QGSRICHTEXTEDITOR_H
 #define QGSRICHTEXTEDITOR_H
 
+#include "ui_qgsrichtexteditorbase.h"
+
 #include "qgis_gui.h"
 #include "qgis_sip.h"
-#include "ui_qgsrichtexteditorbase.h"
+
 #include <QPointer>
 
 class QImage;
 class QComboBox;
+class QToolBar;
 class QgsColorButton;
 class QgsCodeEditorHTML;
 
@@ -55,15 +58,45 @@ class QgsCodeEditorHTML;
  *
  * \since QGIS 3.20
  */
-class GUI_EXPORT QgsRichTextEditor : public QWidget, protected Ui::QgsRichTextEditorBase
+class GUI_EXPORT QgsRichTextEditor : public QWidget, private Ui::QgsRichTextEditorBase
 {
     Q_OBJECT
   public:
+    /**
+     * Widget modes.
+     *
+     * \since QGIS 3.40
+    */
+    enum class Mode
+    {
+      QTextDocument,   //!< Default mode, exposes the Qt supported HTML/CSS subset
+      QgsTextRenderer, //!< QGIS text renderer mode, exposes the HTML/CSS subset supported by the QgsTextRenderer class
+      PlainText,       //!< Plain text mode
+    };
+    Q_ENUM( Mode )
 
     /**
      * Constructor for QgsRichTextEditor, with the specified \a parent widget.
      */
     QgsRichTextEditor( QWidget *parent = nullptr );
+
+    /**
+     * Returns the widget's mode, which defines which formatting options are exposed in the widget.
+     *
+     * \see setMode()
+     *
+     * \since QGIS 3.40
+     */
+    Mode mode() const { return mMode; }
+
+    /**
+     * Sets the widget's \a mode, which defines which formatting options are exposed in the widget.
+     *
+     * \see mode()
+     *
+     * \since QGIS 3.40
+     */
+    void setMode( Mode mode );
 
     /**
      * Returns the widget's content as a plain text string.
@@ -78,6 +111,23 @@ class GUI_EXPORT QgsRichTextEditor : public QWidget, protected Ui::QgsRichTextEd
      * \see toPlainText()
      */
     QString toHtml() const;
+
+    /**
+     * Returns the widget's QTextEditor control.
+     *
+     * \since QGIS 3.40
+     */
+    QTextEdit *textEdit() { return mTextEdit; }
+
+    /**
+     * Returns the widget's toolbar.
+     *
+     * Exposed so that embedders can adapt it to the space they have, e.g. by
+     * shrinking its icons or rehosting its actions.
+     *
+     * \since QGIS 4.4
+     */
+    QToolBar *toolBar() { return mToolBar; }
 
     /**
      * Returns a reference to the QTextDocument shown in the widget.
@@ -125,8 +175,6 @@ class GUI_EXPORT QgsRichTextEditor : public QWidget, protected Ui::QgsRichTextEd
     void focusInEvent( QFocusEvent *event ) override;
 
   private slots:
-    void setPlainText( const QString &text ) { mTextEdit->setPlainText( text ); }
-    void setHtml( const QString &text ) { mTextEdit->setHtml( text ); }
     void textRemoveFormat();
     void textRemoveAllFormat();
     void textBold();
@@ -146,6 +194,7 @@ class GUI_EXPORT QgsRichTextEditor : public QWidget, protected Ui::QgsRichTextEd
     void increaseIndentation();
     void decreaseIndentation();
     void insertImage();
+    void insertImageFromUrl();
     void editSource( bool enabled );
 
   private:
@@ -155,6 +204,8 @@ class GUI_EXPORT QgsRichTextEditor : public QWidget, protected Ui::QgsRichTextEd
     void bgColorChanged( const QColor &c );
     void list( bool checked, QTextListFormat::Style style );
     void indent( int delta );
+
+    Mode mMode = Mode::QTextDocument;
 
     int mFontSizeH1 = 18;
     int mFontSizeH2 = 16;
@@ -181,7 +232,6 @@ class GUI_EXPORT QgsRichTextEditor : public QWidget, protected Ui::QgsRichTextEd
     QPointer<QTextList> mLastBlockList;
     QString mMonospaceFontFamily;
 };
-
 
 
 #endif // QGSRICHTEXTEDITOR_H

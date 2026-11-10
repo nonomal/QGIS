@@ -18,20 +18,22 @@
 #ifndef QGSFILEUTILS_H
 #define QGSFILEUTILS_H
 
+#include "qgis.h"
 #include "qgis_core.h"
 #include "qgis_sip.h"
-#include "qgis.h"
+
 #include <QString>
 
 /**
  * \ingroup core
  * \class QgsFileUtils
- * \brief Class for file utilities.
+ * \brief Contains utilities for working with files.
  */
 class CORE_EXPORT QgsFileUtils
 {
-  public:
+    Q_GADGET
 
+  public:
     /**
      * Returns the human size from bytes
      */
@@ -40,16 +42,16 @@ class CORE_EXPORT QgsFileUtils
 
     /**
      * Returns a list of the extensions contained within a file \a filter string.
-     * E.g. a \a filter of "GeoTIFF Files (*.tiff *.tif)" would return a list
-     * containing "tiff", "tif". The initial '.' is stripped off the extension.
+     * E.g. a \a filter of ``GeoTIFF Files (*.tiff *.tif)`` would return a list
+     * containing ``tiff``, ``tif``. The initial '.' is stripped off the extension.
      * \see ensureFileNameHasExtension()
      * \see addExtensionFromFilter()
      */
     static QStringList extensionsFromFilter( const QString &filter );
 
     /**
-     * Given a \a filter string like "GeoTIFF Files (*.tiff *.tif)", extracts
-     * the wildcard portion of this filter (i.e. "*.tiff *.tif").
+     * Given a \a filter string like ``GeoTIFF Files (*.tiff *.tif)``, extracts
+     * the wildcard portion of this filter (i.e. ``*.tiff *.tif``).
      *
      * \since QGIS 3.18
      */
@@ -58,8 +60,8 @@ class CORE_EXPORT QgsFileUtils
     /**
      * Returns TRUE if the given \a fileName matches a file \a filter string.
      *
-     * E.g a filter of "GeoTIFF Files (*.tiff *.tif)" would return TRUE for a \a fileName
-     * of "/home/test.tif", or FALSE for "/home/test.jpg".
+     * E.g a filter of ``GeoTIFF Files (*.tiff *.tif)`` would return TRUE for a \a fileName
+     * of ``/home/test.tif``, or FALSE for ``/home/test.jpg``.
      *
      * \since QGIS 3.18
      */
@@ -69,9 +71,9 @@ class CORE_EXPORT QgsFileUtils
      * Ensures that a \a fileName ends with an extension from the provided list of
      * \a extensions.
      *
-     * E.g. if extensions contains "tif" and "tiff", then a \a fileName of
-     * "d:/my_file" will return "d:/my_file.tif". A \a fileName of
-     * "d:/my_file.TIFF" or "d:/my_file.TIF" will be returned unchanged.
+     * E.g. if extensions contains ``tif`` and ``tiff``, then a \a fileName of
+     * ``d:/my_file`` will return ``d:/my_file.tif``. A \a fileName of
+     * ``d:/my_file.TIFF`` or ``d:/my_file.TIF`` will be returned unchanged.
      *
      * \see extensionsFromFilter()
      * \see addExtensionFromFilter()
@@ -82,8 +84,8 @@ class CORE_EXPORT QgsFileUtils
      * Ensures that a \a fileName ends with an extension from the specified \a filter
      * string.
      *
-     * E.g. a \a fileName of "d:/my_file" with a filter of "GeoTIFF Files (*.tiff *.tif)"
-     * will return "d:/my_file.tif", where as \a fileName of "d:/my_file.TIFF" or "d:/my_file.TIF"
+     * E.g. a \a fileName of ``d:/my_file`` with a filter of ``GeoTIFF Files (*.tiff *.tif)``
+     * will return ``d:/my_file.tif``, where as \a fileName of ``d:/my_file.TIFF`` or ``d:/my_file.TIF``
      * will be returned unchanged.
      *
      * \see extensionsFromFilter()
@@ -100,8 +102,8 @@ class CORE_EXPORT QgsFileUtils
     static QString stringToSafeFilename( const QString &string );
 
     /**
-     * Returns the top-most existing folder from \a path. E.g. if \a path is "/home/user/projects/2018/P4343"
-     * and "/home/user/projects" exists but no "2018" subfolder exists, then the function will return "/home/user/projects".
+     * Returns the top-most existing folder from \a path. E.g. if \a path is ``/home/user/projects/2018/P4343``
+     * and ``/home/user/projects`` exists but no ``2018`` subfolder exists, then the function will return ``/home/user/projects``.
      *
      * \since QGIS 3.2
      */
@@ -177,7 +179,9 @@ class CORE_EXPORT QgsFileUtils
      *
      * \since QGIS 3.22
      */
-    static bool renameDataset( const QString &oldPath, const QString &newPath, QString &error SIP_OUT, Qgis::FileOperationFlags flags = Qgis::FileOperationFlag::IncludeMetadataFile | Qgis::FileOperationFlag::IncludeStyleFile );
+    static bool renameDataset(
+      const QString &oldPath, const QString &newPath, QString &error SIP_OUT, Qgis::FileOperationFlags flags = Qgis::FileOperationFlag::IncludeMetadataFile | Qgis::FileOperationFlag::IncludeStyleFile
+    );
 
     /**
      * Returns the limit of simultaneously opened files by the process.
@@ -217,25 +221,82 @@ class CORE_EXPORT QgsFileUtils
     /**
      * Given a file \a path, returns a list of all the components leading to that path.
      *
-     * E.g. if \a path is "/home/user/Pictures/test.png", the returned list will contain
-     * "/" , "home", "user", "Pictures", "test.png".
+     * E.g. if \a path is ``/home/user/Pictures/test.png``, the returned list will contain
+     * ``/`` , ``home``, ``user``, ``Pictures``, ``test.png``.
      *
      * \since QGIS 3.28
      */
     static QStringList splitPathToComponents( const QString &path );
 
     /**
-     * Creates a unique file path name from a desired path by appending "_<n>" (where "<n>" is an integer number) before the file suffix.
+     * Creates a unique file path name from a desired path by appending ``_<n>`` (where ``<n>`` is an integer number) before the file suffix.
      *
-     * E.g. if "/path/my_image.png" already exists "/path/my_image_2.png" (and "_3", "_4" etc.) will be checked until a file path that does not already exist is found.
+     * E.g. if ``/path/my_image.png`` already exists ``/path/my_image_2.png`` (and ``_3`, ``_4`` etc.) will be checked until a file path that does not already exist is found.
      *
      * \param path the desired path.
-     * \return the unmodified path if path is already unique or the new path with "_<n>" (where "<n>" is an integer number) appended to the file name before the suffix.
+     * \return the unmodified path if path is already unique or the new path with ``_<n>`` (where ``<n>`` is an integer number) appended to the file name before the suffix.
      * \note This function does not make any check on path validity and write permissions.
      * \since QGIS 3.30
      */
     static QString uniquePath( const QString &path );
 
+    /**
+     * Flags controlling behavior of file copy operations.
+     *
+     * \since QGIS 4.0.1
+     */
+    enum class CopyFlag : int SIP_ENUM_BASETYPE( IntFlag )
+    {
+      NoSymLinks = 1 << 0, //!< If present, indicates that symbolic links should be skipped during the copy
+    };
+    Q_ENUM( CopyFlag )
+
+    /**
+     * Flags controlling behavior of file copy operations.
+     *
+     * \since QGIS 4.0.1
+     */
+    Q_DECLARE_FLAGS( CopyFlags, CopyFlag )
+    Q_FLAG( CopyFlags )
+
+    /**
+     * Recursively copies a whole directory.
+     *
+     * Returns TRUE if the copy was successful and all files and folders were copied.
+     *
+     * \note If an error occurs while copying a file, this method still attempts to copy all remaining files and folders.
+     *
+     * Since QGIS 4.0.1 the \a flags argument can be used to specify flags controlling the
+     * behavior of the copy operation.
+     *
+     * Since QGIS 4.0.1 the \a excludePatterns argument can be used to specify a list of regular expressions. Any files or
+     * folders matching any of these patterns will be excluded from the copy.
+     *
+     * \since QGIS 4.0
+     */
+    static bool copyDirectory( const QString &source, const QString &destination, QgsFileUtils::CopyFlags flags = QgsFileUtils::CopyFlags(), const QStringList &excludePatterns = QStringList() );
+
+    /**
+     * Replaces all occurrences of a given string in a file.
+     *
+     * Returns TRUE if the replacement was successful and the file updated.
+     *
+     * Replacement is case-sensitive.
+     *
+     * \since QGIS 4.0
+     */
+    static bool replaceTextInFile( const QString &path, const QString &searchString, const QString &replacement );
+
+    /**
+     * Replaces all occurrences of a content found by \a regularExpression with \a replacement in a file located at \a path.
+     *
+     * Returns TRUE if the replacement was successful and the file updated.
+     *
+     * \since QGIS 4.4
+     */
+    static bool replaceInFile( const QString &path, const QRegularExpression &regularExpression, const QString &replacement );
 };
+
+Q_DECLARE_OPERATORS_FOR_FLAGS( QgsFileUtils::CopyFlags )
 
 #endif // QGSFILEUTILS_H

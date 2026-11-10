@@ -14,19 +14,21 @@
  ***************************************************************************/
 
 
+#include "editorwidgets/core/qgseditorwidgetwrapper.h"
+#include "editorwidgets/qgskeyvaluewidgetfactory.h"
+#include "qgsapplication.h"
+#include "qgskeyvaluewidget.h"
 #include "qgstest.h"
-#include <QSignalSpy>
 
-#include <editorwidgets/qgskeyvaluewidgetfactory.h>
-#include <qgskeyvaluewidget.h>
-#include <editorwidgets/core/qgseditorwidgetwrapper.h>
-#include <qgsapplication.h>
+#include <QSignalSpy>
+#include <QString>
+
+using namespace Qt::StringLiterals;
 
 class TestQgsKeyValueWidget : public QObject
 {
     Q_OBJECT
   public:
-
   private slots:
     void initTestCase() // will be called before the first testfunction is executed.
     {
@@ -41,21 +43,21 @@ class TestQgsKeyValueWidget : public QObject
 
     void testUpdate()
     {
-      const QgsKeyValueWidgetFactory factory( QStringLiteral( "testKeyValue" ) );
+      const QgsKeyValueWidgetFactory factory( u"testKeyValue"_s );
       QgsEditorWidgetWrapper *wrapper = factory.create( nullptr, 0, nullptr, nullptr );
       QVERIFY( wrapper );
       const QSignalSpy spy( wrapper, SIGNAL( valueChanged( const QVariant & ) ) );
 
-      QgsKeyValueWidget *widget = qobject_cast< QgsKeyValueWidget * >( wrapper->widget() );
+      QgsKeyValueWidget *widget = qobject_cast<QgsKeyValueWidget *>( wrapper->widget() );
       QVERIFY( widget );
 
       QVariantMap initial;
-      initial[QStringLiteral( "1" )] = "one";
-      initial[QStringLiteral( "2" )] = "two";
+      initial[u"1"_s] = "one";
+      initial[u"2"_s] = "two";
       wrapper->setValues( initial, QVariantList() );
 
       const QVariant value = wrapper->value();
-      QCOMPARE( int( value.type() ), int( QVariant::Map ) );
+      QCOMPARE( int( static_cast<QMetaType::Type>( value.userType() ) ), int( QMetaType::Type::QVariantMap ) );
       QCOMPARE( value.toMap(), initial );
       QCOMPARE( spy.count(), 0 );
 
@@ -64,9 +66,9 @@ class TestQgsKeyValueWidget : public QObject
       QCOMPARE( spy.count(), 1 );
 
       QVariantMap expected = initial;
-      expected[QStringLiteral( "1" )] = "hello";
+      expected[u"1"_s] = "hello";
       const QVariant eventValue = spy.at( 0 ).at( 0 ).value<QVariant>();
-      QCOMPARE( int( eventValue.type() ), int( QVariant::Map ) );
+      QCOMPARE( int( static_cast<QMetaType::Type>( eventValue.userType() ) ), int( QMetaType::Type::QVariantMap ) );
       QCOMPARE( eventValue.toMap(), expected );
       QCOMPARE( wrapper->value().toMap(), expected );
       QCOMPARE( spy.count(), 1 );
@@ -76,7 +78,41 @@ class TestQgsKeyValueWidget : public QObject
       QCOMPARE( rowSpy.count(), 1 );
       model->insertRow( 0, QModelIndex() );
       QCOMPARE( rowSpy.count(), 2 );
+    }
 
+    void testUpdateOnString()
+    {
+      const QgsKeyValueWidgetFactory factory( u"testKeyValue"_s );
+      QgsVectorLayer vl( u"Point?field=fld:string"_s, u"test"_s, u"memory"_s );
+      QgsEditorWidgetWrapper *wrapper = factory.create( &vl, 0, nullptr, nullptr );
+      QVERIFY( wrapper );
+      QCOMPARE( wrapper->field().type(), QMetaType::Type::QString );
+      const QSignalSpy spy( wrapper, SIGNAL( valueChanged( const QVariant & ) ) );
+
+      QgsKeyValueWidget *widget = qobject_cast<QgsKeyValueWidget *>( wrapper->widget() );
+      QVERIFY( widget );
+
+      QString initialString = "{\"1\":\"one\",\"2\":\"two\"}";
+      wrapper->setValues( initialString, QVariantList() );
+
+      QVariantMap expected;
+      expected[u"1"_s] = "one";
+      expected[u"2"_s] = "two";
+
+      const QVariant value = wrapper->value();
+      QCOMPARE( int( static_cast<QMetaType::Type>( value.userType() ) ), int( QMetaType::Type::QVariantMap ) );
+      QCOMPARE( value.toMap(), expected );
+      QCOMPARE( spy.count(), 0 );
+
+      QAbstractItemModel *model = widget->tableView->model();
+      model->setData( model->index( 0, 1 ), "hello" );
+      QCOMPARE( spy.count(), 1 );
+      expected[u"1"_s] = "hello";
+      const QVariant eventValue = spy.at( 0 ).at( 0 ).value<QVariant>();
+      QCOMPARE( int( static_cast<QMetaType::Type>( eventValue.userType() ) ), int( QMetaType::Type::QVariantMap ) );
+      QCOMPARE( eventValue.toMap(), expected );
+      QCOMPARE( wrapper->value().toMap(), expected );
+      QCOMPARE( spy.count(), 1 );
     }
 };
 

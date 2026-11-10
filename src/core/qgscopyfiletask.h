@@ -20,7 +20,7 @@
 
 /**
  * \ingroup core
- * \brief Task to copy a file on disk
+ * \brief Task to copy a file on disk.
  *
  * \since QGIS 3.22
  */
@@ -29,7 +29,6 @@ class CORE_EXPORT QgsCopyFileTask : public QgsTask
     Q_OBJECT
 
   public:
-
     /**
      * Creates a task that copy \a source file to \a destination
      */
@@ -38,7 +37,7 @@ class CORE_EXPORT QgsCopyFileTask : public QgsTask
     bool run() override;
 
     /**
-     * Returns errorString if an error occurred, else returns null QString
+     * Returns errorString if an error occurred, else returns an empty QString
      */
     const QString &errorString() const;
 
@@ -49,7 +48,6 @@ class CORE_EXPORT QgsCopyFileTask : public QgsTask
     const QString &destination() const;
 
   private:
-
     QString mSource;
     QString mDestination;
     QString mErrorString;

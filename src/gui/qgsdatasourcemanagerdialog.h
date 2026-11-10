@@ -17,14 +17,16 @@
 #ifndef QGSDATASOURCEMANAGERDIALOG_H
 #define QGSDATASOURCEMANAGERDIALOG_H
 
-#include <QList>
-#include <QDialog>
 #include "ui_qgsdatasourcemanagerdialog.h"
-#include "qgsoptionsdialogbase.h"
-#include "qgsguiutils.h"
-#include "qgsmimedatautils.h"
-#include "qgshelp.h"
+
 #include "qgis_gui.h"
+#include "qgsguiutils.h"
+#include "qgshelp.h"
+#include "qgsmimedatautils.h"
+#include "qgsoptionsdialogbase.h"
+
+#include <QDialog>
+#include <QList>
 
 #define SIP_NO_FILE
 
@@ -32,14 +34,13 @@ class QgsBrowserDockWidget;
 class QgsRasterLayer;
 class QgsMapCanvas;
 class QgsAbstractDataSourceWidget;
-class QgsLayerMetadataSearchWidget;
 class QgsBrowserGuiModel;
 class QgsMessageBar;
 
 /**
  * \ingroup gui
- * \brief The QgsDataSourceManagerDialog class embeds the browser panel and all
- * the provider dialogs.
+ * \brief A dialog which embeds the browser panel and all the provider source select widgets.
+ *
  * The dialog does not handle layer addition directly but emits signals that
  * need to be forwarded to the QGIS application to be handled.
  * \note not available in Python bindings
@@ -49,7 +50,6 @@ class GUI_EXPORT QgsDataSourceManagerDialog : public QgsOptionsDialogBase, priva
     Q_OBJECT
 
   public:
-
     /**
      * QgsDataSourceManagerDialog constructor
       * \param browserModel instance of the (shared) browser model
@@ -167,17 +167,15 @@ class GUI_EXPORT QgsDataSourceManagerDialog : public QgsOptionsDialogBase, priva
     void addProviderDialog( QgsAbstractDataSourceWidget *dlg, const QString &providerKey, const QString &providerName, const QString &text, const QIcon &icon, const QString &toolTip = QString() );
     void removeProviderDialog( const QString &providerName );
     void makeConnections( QgsAbstractDataSourceWidget *dlg, const QString &providerKey );
-    Ui::QgsDataSourceManagerDialog *ui = nullptr;
+    std::unique_ptr<Ui::QgsDataSourceManagerDialog> ui;
     QgsBrowserDockWidget *mBrowserWidget = nullptr;
-    QgsLayerMetadataSearchWidget *mLayerMetadataSearchWidget = nullptr;
-    int mPreviousRow;
+    int mPreviousRow = -1;
     QStringList mPageProviderKeys;
     QStringList mPageProviderNames;
     // Map canvas
     QgsMapCanvas *mMapCanvas = nullptr;
     QgsMessageBar *mMessageBar = nullptr;
     QgsBrowserGuiModel *mBrowserModel = nullptr;
-
 };
 
 #endif // QGSDATASOURCEMANAGERDIALOG_H

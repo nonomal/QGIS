@@ -22,6 +22,7 @@
 #include "qgis_sip.h"
 #include "qgsabstractgeometry.h"
 #include "qgsbox3d.h"
+
 #include <QPainterPath>
 
 class QgsLineString;
@@ -29,15 +30,11 @@ class QgsLineString;
 /**
  * \ingroup core
  * \class QgsCurve
- * \brief Abstract base class for curved geometry type
+ * \brief Abstract base class for curved geometry type.
  */
-class CORE_EXPORT QgsCurve: public QgsAbstractGeometry SIP_ABSTRACT
+class CORE_EXPORT QgsCurve : public QgsAbstractGeometry SIP_ABSTRACT
 {
   public:
-
-    /**
-     * Constructor for QgsCurve.
-     */
     QgsCurve() = default;
 
     /**
@@ -63,11 +60,20 @@ class CORE_EXPORT QgsCurve: public QgsAbstractGeometry SIP_ABSTRACT
     virtual QgsPoint endPoint() const = 0;
 
     /**
+     * This method returns TRUE for classes that can be cast to the QgsSimpleCurve class.
+     *
+     * \since QGIS 4.4
+     */
+    virtual bool isSimpleCurve() const = 0;
+
+    // clang-format off
+    /**
      * Returns TRUE if the curve is closed.
      *
      * \see isClosed2D()
      */
     virtual bool isClosed() const SIP_HOLDGIL;
+    // clang-format on
 
     /**
      * Returns true if the curve is closed.
@@ -119,6 +125,7 @@ class CORE_EXPORT QgsCurve: public QgsAbstractGeometry SIP_ABSTRACT
     virtual int numPoints() const = 0;
 
 #ifdef SIP_RUN
+// clang-format off
     int __len__() const;
     % Docstring
     Returns the number of points in the curve.
@@ -132,6 +139,7 @@ class CORE_EXPORT QgsCurve: public QgsAbstractGeometry SIP_ABSTRACT
     % MethodCode
     sipRes = true;
     % End
+// clang-format on
 #endif
 
     /**
@@ -139,13 +147,20 @@ class CORE_EXPORT QgsCurve: public QgsAbstractGeometry SIP_ABSTRACT
      */
     virtual void sumUpArea( double &sum SIP_OUT ) const = 0;
 
+    /**
+     * Sums up the 3d area of the curve by iterating over the vertices (shoelace formula).
+     *
+     * \since QGIS 4.0
+     */
+    virtual void sumUpArea3D( double &sum SIP_OUT ) const = 0;
+
     QgsCoordinateSequence coordinateSequence() const override;
     bool nextVertex( QgsVertexId &id, QgsPoint &vertex SIP_OUT ) const override;
     void adjacentVertices( QgsVertexId vertex, QgsVertexId &previousVertex SIP_OUT, QgsVertexId &nextVertex SIP_OUT ) const override;
     int vertexNumberFromVertexId( QgsVertexId id ) const override;
 
     /**
-     * Returns the point and vertex id of a point within the curve.
+     * Returns the point and vertex type of a point within the curve.
      * \param node node number, where the first node is 0
      * \param point will be set to point at corresponding node in the curve
      * \param type will be set to the vertex type of the node
@@ -185,6 +200,7 @@ class CORE_EXPORT QgsCurve: public QgsAbstractGeometry SIP_ABSTRACT
     int ringCount( int part = 0 ) const override;
     int partCount() const override;
     QgsPoint vertexAt( QgsVertexId id ) const override;
+    bool hasVertex( QgsVertexId position ) const override;
     QgsCurve *toCurveType() const override SIP_FACTORY;
     void normalize() final SIP_HOLDGIL;
 
@@ -295,13 +311,31 @@ class CORE_EXPORT QgsCurve: public QgsAbstractGeometry SIP_ABSTRACT
      */
     virtual void scroll( int firstVertexIndex ) = 0;
 
+    /**
+     * Returns the distance along the curve between two vertices.
+     *
+     * This method calculates the accumulated distance along the curve from one vertex to another.
+     * For circular strings, this includes following the arc path precisely.
+     *
+     * \note For 3D geometries, the distance calculation includes the Z coordinate component.
+     *
+     * \param fromVertex the starting vertex ID
+     * \param toVertex the ending vertex ID
+     * \returns distance along the curve between the vertices, or -1 if either vertex is invalid
+     *
+     * \since QGIS 4.00
+     */
+    virtual double distanceBetweenVertices( QgsVertexId fromVertex, QgsVertexId toVertex ) const = 0;
+
 #ifndef SIP_RUN
 
     /**
      * Cast the \a geom to a QgsCurve.
      * Should be used by qgsgeometry_cast<QgsCurve *>( geometry ).
      *
-     * \note Not available in Python. Objects will be automatically be converted to the appropriate target type.
+     * Objects will be automatically converted to the appropriate target type.
+     *
+     * \note Not available in Python.
      */
     inline static const QgsCurve *cast( const QgsAbstractGeometry *geom )
     {
@@ -317,8 +351,29 @@ class CORE_EXPORT QgsCurve: public QgsAbstractGeometry SIP_ABSTRACT
     }
 
     /**
+     * Cast the \a geom to a QgsCurve.
+     * Should be used by qgsgeometry_cast<QgsCurve *>( geometry ).
+     *
+     * Objects will be automatically converted to the appropriate target type.
+     *
+     * \note Not available in Python.
+     */
+    inline static QgsCurve *cast( QgsAbstractGeometry *geom )
+    {
+      if ( !geom )
+        return nullptr;
+
+      const Qgis::WkbType type = geom->wkbType();
+      if ( QgsWkbTypes::geometryType( type ) == Qgis::GeometryType::Line && QgsWkbTypes::isSingleType( type ) )
+      {
+        return static_cast<QgsCurve *>( geom );
+      }
+      return nullptr;
+    }
+
+    /**
      * Splits the curve at the specified vertex \a index, returning two curves which represent the portion of the
-     * curve up to an including the vertex at \a index, and the portion of the curve from the vertex at \a index (inclusive)
+     * curve up to including the vertex at \a index, and the portion of the curve from the vertex at \a index (inclusive)
      * to the end of the curve.
      *
      * \note The vertex \a index must correspond to a segment vertex, not a curve vertex.
@@ -345,7 +400,8 @@ class CORE_EXPORT QgsCurve: public QgsAbstractGeometry SIP_ABSTRACT
      */
     bool snapToGridPrivate( double hSpacing, double vSpacing, double dSpacing, double mSpacing,
                             const QVector<double> &srcX, const QVector<double> &srcY, const QVector<double> &srcZ, const QVector<double> &srcM,
-                            QVector<double> &outX, QVector<double> &outY, QVector<double> &outZ, QVector<double> &outM ) const;
+                            QVector<double> &outX, QVector<double> &outY, QVector<double> &outZ, QVector<double> &outM,
+                            bool removeRedundantPoints ) const;
 #endif
 
     /**
@@ -355,6 +411,8 @@ class CORE_EXPORT QgsCurve: public QgsAbstractGeometry SIP_ABSTRACT
 
     mutable bool mHasCachedSummedUpArea = false;
     mutable double mSummedUpArea = 0;
+    mutable bool mHasCachedSummedUpArea3D = false;
+    mutable double mSummedUpArea3D = 0;
 
   private:
 

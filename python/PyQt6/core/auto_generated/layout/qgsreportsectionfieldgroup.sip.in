@@ -3,8 +3,9 @@
  *                                                                      *
  * src/core/layout/qgsreportsectionfieldgroup.h                         *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/
+
 
 
 
@@ -13,7 +14,7 @@
 class QgsReportSectionFieldGroup : QgsAbstractReportSection
 {
 %Docstring(signature="appended")
-A report section consisting of a features
+A report section consisting of a features.
 
 .. warning::
 
@@ -25,7 +26,6 @@ A report section consisting of a features
 #include "qgsreportsectionfieldgroup.h"
 %End
   public:
-
     enum SectionVisibility /BaseType=IntEnum/
     {
       IncludeWhenFeaturesFound,
@@ -34,8 +34,9 @@ A report section consisting of a features
 
     QgsReportSectionFieldGroup( QgsAbstractReportSection *parentSection = 0 );
 %Docstring
-Constructor for QgsReportSectionFieldGroup, attached to the specified ``parent`` section.
-Note that ownership is not transferred to ``parent``.
+Constructor for QgsReportSectionFieldGroup, attached to the specified
+``parent`` section. Note that ownership is not transferred to
+``parent``.
 %End
 
     virtual QString type() const;
@@ -57,8 +58,8 @@ Returns the body layout for the section.
 
     void setBody( QgsLayout *body /Transfer/ );
 %Docstring
-Sets the ``body`` layout for the section. Ownership of ``body``
-is transferred to the report section.
+Sets the ``body`` layout for the section. Ownership of ``body`` is
+transferred to the report section.
 
 .. seealso:: :py:func:`body`
 
@@ -120,16 +121,16 @@ Sets the ``field`` associated with this section.
 
     bool sortAscending() const;
 %Docstring
-Returns ``True`` if the field values should be sorted ascending,
-or ``False`` for descending sort.
+Returns ``True`` if the field values should be sorted ascending, or
+``False`` for descending sort.
 
 .. seealso:: :py:func:`setSortAscending`
 %End
 
     void setSortAscending( bool sortAscending );
 %Docstring
-Sets whether the field values should be sorted ascending. Set to ``True`` to sort
-ascending, or ``False`` for descending sort.
+Sets whether the field values should be sorted ascending. Set to
+``True`` to sort ascending, or ``False`` for descending sort.
 
 .. seealso:: :py:func:`sortAscending`
 %End
@@ -180,7 +181,6 @@ Sets the visibility mode for the footer.
 
 
   protected:
-
     virtual bool writePropertiesToElement( QDomElement &element, QDomDocument &document, const QgsReadWriteContext &context ) const;
 
     virtual bool readPropertiesFromElement( const QDomElement &element, const QDomDocument &document, const QgsReadWriteContext &context );
@@ -195,5 +195,5 @@ Sets the visibility mode for the footer.
  *                                                                      *
  * src/core/layout/qgsreportsectionfieldgroup.h                         *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/

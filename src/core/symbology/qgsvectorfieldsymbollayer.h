@@ -18,9 +18,13 @@
 #ifndef QGSVECTORFIELDSYMBOLLAYER_H
 #define QGSVECTORFIELDSYMBOLLAYER_H
 
-#include "qgis_core.h"
 #include "qgis.h"
+#include "qgis_core.h"
 #include "qgssymbollayer.h"
+
+#include <QString>
+
+using namespace Qt::StringLiterals;
 
 class QgsLineSymbol;
 
@@ -28,7 +32,7 @@ class QgsLineSymbol;
  * \ingroup core
  * \brief A symbol layer class for displaying displacement arrows based on point layer attributes.
 */
-class CORE_EXPORT QgsVectorFieldSymbolLayer: public QgsMarkerSymbolLayer
+class CORE_EXPORT QgsVectorFieldSymbolLayer : public QgsMarkerSymbolLayer
 {
   public:
     enum VectorFieldType
@@ -54,10 +58,10 @@ class CORE_EXPORT QgsVectorFieldSymbolLayer: public QgsMarkerSymbolLayer
     ~QgsVectorFieldSymbolLayer() override;
 
     //! Creates the symbol layer
-    static QgsSymbolLayer *create( const QVariantMap &properties = QVariantMap() );
-    static QgsSymbolLayer *createFromSld( QDomElement &element );
+    static std::unique_ptr<QgsSymbolLayer> create( const QVariantMap &properties = QVariantMap() );
+    static std::unique_ptr<QgsSymbolLayer> createFromSld( QDomElement &element );
 
-    QString layerType() const override { return QStringLiteral( "VectorField" ); }
+    QString layerType() const override { return u"VectorField"_s; }
 
     bool setSubSymbol( QgsSymbol *symbol SIP_TRANSFER ) override;
     QgsSymbol *subSymbol() override;
@@ -72,8 +76,8 @@ class CORE_EXPORT QgsVectorFieldSymbolLayer: public QgsMarkerSymbolLayer
     QgsVectorFieldSymbolLayer *clone() const override SIP_FACTORY;
     QVariantMap properties() const override;
     bool usesMapUnits() const override;
-
-    void toSld( QDomDocument &doc, QDomElement &element, const QVariantMap &props ) const override;
+    Q_DECL_DEPRECATED void toSld( QDomDocument &doc, QDomElement &element, const QVariantMap &props ) const override SIP_DEPRECATED;
+    bool toSld( QDomDocument &doc, QDomElement &element, QgsSldExportContext &context ) const override;
 
     void drawPreviewIcon( QgsSymbolRenderContext &context, QSize size ) override;
 
@@ -144,5 +148,3 @@ class CORE_EXPORT QgsVectorFieldSymbolLayer: public QgsMarkerSymbolLayer
 };
 
 #endif // QGSVECTORFIELDSYMBOLLAYER_H
-
-

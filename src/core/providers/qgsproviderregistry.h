@@ -21,16 +21,15 @@
 
 #include <map>
 
+#include "qgis_core.h"
+#include "qgis_sip.h"
+#include "qgsdataprovider.h"
+
 #include <QDir>
 #include <QLibrary>
 #include <QString>
 
-#include "qgsdataprovider.h"
-#include "qgis_core.h"
-#include "qgis_sip.h"
-
-#include <vector>
-#include <memory>
+using namespace Qt::StringLiterals;
 
 class QgsProviderMetadata;
 class QgsVectorLayer;
@@ -42,6 +41,7 @@ class QgsTransaction;
 class QgsFields;
 class QgsProviderSublayerDetails;
 class QgsFeedback;
+class QgsEmptyLayerCreationResult;
 
 /**
  * \ingroup core
@@ -59,10 +59,8 @@ class QgsFeedback;
 */
 class CORE_EXPORT QgsProviderRegistry
 {
-
   public:
-
-    // TODO QGIS 4 - either move to QgsAbstractDataSourceWidget or remove altogether
+    // TODO QGIS 5 - either move to QgsAbstractDataSourceWidget or remove altogether
 
     /**
      * Different ways a source select dialog can be used
@@ -75,7 +73,7 @@ class CORE_EXPORT QgsProviderRegistry
        * as GUI for individual "Add XXX layer" buttons in the main window.
        * Likely not used in live code anymore.
        */
-      None,
+      Standalone,
 
       /**
        * Used for the data source manager dialog where the widget is embedded as the main content
@@ -92,7 +90,7 @@ class CORE_EXPORT QgsProviderRegistry
     };
 
     //! Means of accessing canonical single instance
-    static QgsProviderRegistry *instance( const QString &pluginPath = QString() );
+    static QgsProviderRegistry *instance( const QString &pluginPath = QString() ) SIP_DISALLOWNONE;
 
     ~QgsProviderRegistry();
 
@@ -102,7 +100,7 @@ class CORE_EXPORT QgsProviderRegistry
      * If the provider uses direct provider function pointers instead of a library an empty string will
      * be returned.
      *
-     * \deprecated QGIS 3.10 - providers may not need to be loaded from a library (empty string returned)
+     * \deprecated QGIS 3.10. Providers may not need to be loaded from a library (empty string returned).
      */
     Q_DECL_DEPRECATED QString library( const QString &providerKey ) const SIP_DEPRECATED;
 
@@ -144,24 +142,62 @@ class CORE_EXPORT QgsProviderRegistry
      *
      * \see createRasterDataProvider()
      */
-    QgsDataProvider *createProvider( const QString &providerKey,
-                                     const QString &dataSource,
-                                     const QgsDataProvider::ProviderOptions &options = QgsDataProvider::ProviderOptions(),
-                                     QgsDataProvider::ReadFlags flags = QgsDataProvider::ReadFlags() ) SIP_TRANSFERBACK;
+    QgsDataProvider *createProvider(
+      const QString &providerKey,
+      const QString &dataSource,
+      const QgsDataProvider::ProviderOptions &options = QgsDataProvider::ProviderOptions(),
+      Qgis::DataProviderReadFlags flags = Qgis::DataProviderReadFlags()
+    ) SIP_TRANSFERBACK;
 
     /**
      * Returns the provider capabilities
      * \param providerKey identifier of the provider
-     * \deprecated QGIS 3.10 (use instead capabilities() method of individual data item provider)
+     * \deprecated QGIS 3.10. Use instead capabilities() method of individual data item provider.
      */
     Q_DECL_DEPRECATED Qgis::DataItemProviderCapabilities providerCapabilities( const QString &providerKey ) const SIP_DEPRECATED;
+
+    /**
+     * Creates new empty vector layer.
+     *
+     * \param providerKey Destination provider key
+     * \param uri Destination for new layer
+     * \param fields New layer fields
+     * \param wkbType New layer geometry WKB type
+     * \param crs New layer coordinate reference system
+     * \param actionOnExisting Action to take when attempting to overwrite any existing layer in the same location
+     *
+     * \returns An object encapsulating the properties of the newly created layer.
+     *
+     * \since QGIS 4.2
+     */
+    QgsEmptyLayerCreationResult createEmptyLayer(
+      const QString &providerKey,
+      const QString &uri,
+      const QgsFields &fields,
+      Qgis::WkbType wkbType = Qgis::WkbType::NoGeometry,
+      const QgsCoordinateReferenceSystem &crs = QgsCoordinateReferenceSystem(),
+      Qgis::CreateLayerActionOnExisting actionOnExisting = Qgis::CreateLayerActionOnExisting::Abort
+    );
 
     /**
      * Creates new empty vector layer
      * \note not available in Python bindings
      * \since QGIS 3.10
      */
-    SIP_SKIP Qgis::VectorExportResult createEmptyLayer( const QString &providerKey, const QString &uri, const QgsFields &fields, Qgis::WkbType wkbType, const QgsCoordinateReferenceSystem &srs, bool overwrite, QMap<int, int> &oldToNewAttrIdxMap, QString &errorMessage, const QMap<QString, QVariant> *options );
+    SIP_SKIP Qgis::VectorExportResult createEmptyLayer(
+      const QString &providerKey,
+      const QString &uri,
+      const QgsFields &fields,
+      Qgis::WkbType wkbType,
+      const QgsCoordinateReferenceSystem &srs,
+      bool overwrite,
+      QMap<int, int> &oldToNewAttrIdxMap,
+      QString &errorMessage,
+      const QMap<QString, QVariant> *options,
+      QString &createdLayerName
+    );
+
+    // TODO QGIS 5.0: rename createOptions to creationOptions for consistency with GDAL
 
     /**
      * Creates new instance of raster data provider
@@ -175,10 +211,12 @@ class CORE_EXPORT QgsProviderRegistry
       const QString &format,
       int nBands,
       Qgis::DataType type,
-      int width, int height,
+      int width,
+      int height,
       double *geoTransform,
       const QgsCoordinateReferenceSystem &crs,
-      const QStringList &createOptions = QStringList() ) SIP_FACTORY;
+      const QStringList &createOptions = QStringList()
+    ) SIP_FACTORY;
 
     /**
      * Returns list of raster pyramid resampling methods
@@ -238,9 +276,11 @@ class CORE_EXPORT QgsProviderRegistry
      * Returns a new widget for selecting layers from a provider.
      * Either the \a parent widget must be set or the caller becomes
      * responsible for deleting the returned widget.
-     * \deprecated QGIS 3.10 - use QgsGui::sourceSelectProviderRegistry()->createDataSourceWidget() instead
+     * \deprecated QGIS 3.10. Use QgsGui::sourceSelectProviderRegistry()->createDataSourceWidget() instead.
      */
-    Q_DECL_DEPRECATED QWidget *createSelectionWidget( const QString &providerKey, QWidget *parent = nullptr, Qt::WindowFlags fl = Qt::WindowFlags(), QgsProviderRegistry::WidgetMode widgetMode = QgsProviderRegistry::WidgetMode::None ) SIP_DEPRECATED;
+    Q_DECL_DEPRECATED QWidget *createSelectionWidget(
+      const QString &providerKey, QWidget *parent = nullptr, Qt::WindowFlags fl = Qt::WindowFlags(), QgsProviderRegistry::WidgetMode widgetMode = QgsProviderRegistry::WidgetMode::Standalone
+    ) SIP_DEPRECATED;
 
     /**
      * Returns list of data item providers of the provider
@@ -251,15 +291,10 @@ class CORE_EXPORT QgsProviderRegistry
 
     /**
      * Lists stored layer styles in the provider defined by \a providerKey and \a uri
-     * \returns -1 if not implemented by provider, otherwise number of styles stored
+     * \returns ``-1`` if not implemented by provider, otherwise number of styles stored
      * \since QGIS 3.10
      */
-    int listStyles( const QString &providerKey,
-                    const QString &uri,
-                    QStringList &ids,
-                    QStringList &names,
-                    QStringList &descriptions,
-                    QString &errCause );
+    int listStyles( const QString &providerKey, const QString &uri, QStringList &ids, QStringList &names, QStringList &descriptions, QString &errCause );
 
     /**
      * Returns TRUE if a layer style with the specified \a styleId exists in the provider defined by \a providerKey and \a uri.
@@ -295,9 +330,17 @@ class CORE_EXPORT QgsProviderRegistry
      *
      * \since QGIS 3.10
      */
-    bool saveStyle( const QString &providerKey,  const QString &uri, const QString &qmlStyle, const QString &sldStyle,
-                    const QString &styleName, const QString &styleDescription,
-                    const QString &uiFileContent, bool useAsDefault, QString &errCause );
+    bool saveStyle(
+      const QString &providerKey,
+      const QString &uri,
+      const QString &qmlStyle,
+      const QString &sldStyle,
+      const QString &styleName,
+      const QString &styleDescription,
+      const QString &uiFileContent,
+      bool useAsDefault,
+      QString &errCause
+    );
 
     /**
      * Loads a layer style defined by \a uri
@@ -354,7 +397,7 @@ class CORE_EXPORT QgsProviderRegistry
      * \returns pointer to function or NULLPTR on error. If the provider uses direct provider
      * function pointers instead of a library NULLPTR will be returned.
      *
-     * \deprecated QGIS 3.10 - any provider functionality should be accessed through QgsProviderMetadata
+     * \deprecated QGIS 3.10. Any provider functionality should be accessed through QgsProviderMetadata.
      */
     Q_DECL_DEPRECATED QFunctionPointer function( const QString &providerKey, const QString &functionName ) const SIP_DEPRECATED;
 
@@ -365,7 +408,7 @@ class CORE_EXPORT QgsProviderRegistry
      * If the provider uses direct provider function pointers instead of a library NULLPTR will
      * be returned.
      *
-     * \deprecated QGIS 3.10 - providers may not need to be loaded from a library
+     * \deprecated QGIS 3.10. Providers may not need to be loaded from a library.
      */
     Q_DECL_DEPRECATED QLibrary *createProviderLibrary( const QString &providerKey ) const SIP_FACTORY SIP_DEPRECATED;
 
@@ -392,9 +435,7 @@ class CORE_EXPORT QgsProviderRegistry
      */
     class CORE_EXPORT ProviderCandidateDetails
     {
-
       public:
-
         /**
          * Constructor for ProviderCandidateDetails, with the specified provider \a metadata and valid candidate \a layerTypes.
          */
@@ -415,18 +456,22 @@ class CORE_EXPORT QgsProviderRegistry
         QList<Qgis::LayerType> layerTypes() const { return mLayerTypes; }
 
 #ifdef SIP_RUN
+        // clang-format off
         SIP_PYOBJECT __repr__();
         % MethodCode
-        QString str = QStringLiteral( "<QgsProviderRegistry.ProviderCandidateDetails: %1>" ).arg( sipCpp->metadata()->key() );
+        QString str = u"<QgsProviderRegistry.ProviderCandidateDetails: %1>"_s.arg( sipCpp->metadata()->key() );
         sipRes = PyUnicode_FromString( str.toUtf8().constData() );
         % End
+// clang-format on
 #endif
 
-      private:
-        QgsProviderMetadata *mMetadata = nullptr;
+        // clang-format off
+        private:
+        // clang-format on
+        QgsProviderMetadata *mMetadata
+        = nullptr;
 
         QList< Qgis::LayerType > mLayerTypes;
-
     };
 
     /**
@@ -461,7 +506,6 @@ class CORE_EXPORT QgsProviderRegistry
     class CORE_EXPORT UnusableUriDetails
     {
       public:
-
         /**
          * Constructor for UnusableUriDetails for the given \a uri, with the specified user-friendly, translated \a warning.
          *
@@ -496,13 +540,14 @@ class CORE_EXPORT QgsProviderRegistry
         QList<Qgis::LayerType> layerTypes;
 
 #ifdef SIP_RUN
+        // clang-format off
         SIP_PYOBJECT __repr__();
         % MethodCode
-        QString str = QStringLiteral( "<QgsProviderRegistry.UnusableUriDetails: %1>" ).arg( sipCpp->warning );
+        QString str = u"<QgsProviderRegistry.UnusableUriDetails: %1>"_s.arg( sipCpp->warning );
         sipRes = PyUnicode_FromString( str.toUtf8().constData() );
         % End
+// clang-format on
 #endif
-
     };
 
     /**
@@ -519,9 +564,7 @@ class CORE_EXPORT QgsProviderRegistry
      */
     class CORE_EXPORT UnusableUriHandlerInterface
     {
-
       public:
-
         virtual ~UnusableUriHandlerInterface() = default;
 
         /**
@@ -533,7 +576,6 @@ class CORE_EXPORT QgsProviderRegistry
          * Returns the details for advising the user why the \a uri is not usable.
          */
         virtual UnusableUriDetails details( const QString &uri ) const = 0;
-
     };
 
     /**
@@ -599,7 +641,7 @@ class CORE_EXPORT QgsProviderRegistry
      * for URIs which are known to be sidecar files only, such as ".aux.xml" files or ".shp.xml" files,
      * or the "ept-build.json" files which sit alongside Entwine "ept.json" point cloud sources.
      *
-     * This method tests whether any of the registered providers return TRUE for the their
+     * This method tests whether any of the registered providers return TRUE for their
      * QgsProviderMetadata::uriIsBlocklisted() implementation for the specified URI.
      *
      * \since QGIS 3.18
@@ -734,7 +776,7 @@ class CORE_EXPORT QgsProviderRegistry
     QString protocolDrivers() const;
 
     /**
-     * \deprecated since QGIS 3.10 - does nothing - use QgsGui::providerGuiRegistry()
+     * \deprecated QGIS 3.10. Does nothing - use QgsGui::providerGuiRegistry().
      */
     Q_DECL_DEPRECATED void registerGuis( QWidget *widget ) SIP_DEPRECATED;
 

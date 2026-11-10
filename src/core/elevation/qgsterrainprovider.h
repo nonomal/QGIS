@@ -18,39 +18,41 @@
 #define QGSTERRAINPROVIDER_H
 
 #include "qgis_core.h"
-#include "qgsrange.h"
-#include "qgsunittypes.h"
 #include "qgsmaplayerref.h"
-#include "qgsrasterlayer.h"
 #include "qgsmeshlayer.h"
+#include "qgsrange.h"
+#include "qgsrasterlayer.h"
 #include "qgstriangularmesh.h"
+#include "qgsunittypes.h"
 
 #include <QObject>
+#include <QString>
+
+using namespace Qt::StringLiterals;
 
 class QDomElement;
 class QgsReadWriteContext;
 class QDomDocument;
 
 /**
- * \brief Abstract base class for terrain providers
+ * \brief Abstract base class for terrain providers.
  *
  * \ingroup core
  * \since QGIS 3.26
  */
 class CORE_EXPORT QgsAbstractTerrainProvider
 {
-
 #ifdef SIP_RUN
     SIP_CONVERT_TO_SUBCLASS_CODE
-    if ( sipCpp->type().compare( QLatin1String( "flat" ) ) == 0 )
+    if ( sipCpp->type().compare( "flat"_L1 ) == 0 )
     {
       sipType = sipType_QgsFlatTerrainProvider;
     }
-    else if ( sipCpp->type().compare( QLatin1String( "raster" ) ) == 0 )
+    else if ( sipCpp->type().compare( "raster"_L1 ) == 0 )
     {
       sipType = sipType_QgsRasterDemTerrainProvider;
     }
-    else if ( sipCpp->type().compare( QLatin1String( "mesh" ) ) == 0 )
+    else if ( sipCpp->type().compare( "mesh"_L1 ) == 0 )
     {
       sipType = sipType_QgsMeshTerrainProvider;
     }
@@ -58,16 +60,13 @@ class CORE_EXPORT QgsAbstractTerrainProvider
     {
       sipType = 0;
     }
-    SIP_END
+  SIP_END
 #endif
 
   public:
 
     virtual ~QgsAbstractTerrainProvider();
 
-    /**
-     * QgsAbstractTerrainProvider cannot be assigned.
-     */
     QgsAbstractTerrainProvider &operator=( const QgsAbstractTerrainProvider &other ) = delete;
 
     /**
@@ -157,17 +156,9 @@ class CORE_EXPORT QgsAbstractTerrainProvider
     void setOffset( double offset ) { mOffset = offset; }
 
   protected:
-
-    /**
-     * Constructor for QgsAbstractTerrainProvider.
-     */
     QgsAbstractTerrainProvider() = default;
 
 #ifndef SIP_RUN
-
-    /**
-     * Copy constructor
-     */
     QgsAbstractTerrainProvider( const QgsAbstractTerrainProvider &other );
 #endif
 
@@ -188,11 +179,9 @@ class CORE_EXPORT QgsAbstractTerrainProvider
     double mOffset = 0.0;
 
   private:
-
 #ifdef SIP_RUN
     QgsAbstractTerrainProvider( const QgsAbstractTerrainProvider &other );
 #endif
-
 };
 
 
@@ -205,10 +194,6 @@ class CORE_EXPORT QgsAbstractTerrainProvider
 class CORE_EXPORT QgsFlatTerrainProvider : public QgsAbstractTerrainProvider
 {
   public:
-
-    /**
-     * Constructor for QgsFlatTerrainProvider.
-     */
     QgsFlatTerrainProvider() = default;
 
     QString type() const override;
@@ -230,14 +215,9 @@ class CORE_EXPORT QgsFlatTerrainProvider : public QgsAbstractTerrainProvider
 class CORE_EXPORT QgsRasterDemTerrainProvider : public QgsAbstractTerrainProvider
 {
   public:
-
-    /**
-     * Constructor for QgsRasterDemTerrainProvider.
-     */
     QgsRasterDemTerrainProvider() = default;
 
 #ifndef SIP_RUN
-    //! QgsRasterDemTerrainProvider cannot be assigned
     const QgsRasterDemTerrainProvider *operator=( const QgsRasterDemTerrainProvider &other ) = delete;
 #endif
 
@@ -271,7 +251,6 @@ class CORE_EXPORT QgsRasterDemTerrainProvider : public QgsAbstractTerrainProvide
 
     _LayerRef<QgsRasterLayer> mRasterLayer;
     std::unique_ptr< QgsRasterDataProvider > mRasterProvider;
-
 };
 
 
@@ -284,14 +263,9 @@ class CORE_EXPORT QgsRasterDemTerrainProvider : public QgsAbstractTerrainProvide
 class CORE_EXPORT QgsMeshTerrainProvider : public QgsAbstractTerrainProvider
 {
   public:
-
-    /**
-     * Constructor for QgsMeshTerrainProvider.
-     */
     QgsMeshTerrainProvider() = default;
 
 #ifndef SIP_RUN
-    //! QgsMeshTerrainProvider cannot be assigned
     const QgsMeshTerrainProvider *operator=( const QgsMeshTerrainProvider &other ) = delete;
 #endif
 

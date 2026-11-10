@@ -17,25 +17,25 @@
 #ifndef QGSAUTHSERVERSEDITOR_H
 #define QGSAUTHSERVERSEDITOR_H
 
-#include <QWidget>
-#include "qgis_sip.h"
-
 #include "ui_qgsauthserverseditor.h"
-#include "qgsauthmanager.h"
+
 #include "qgis_gui.h"
+#include "qgis_sip.h"
+#include "qgsauthmanager.h"
+
+#include <QWidget>
 
 class QgsMessageBar;
 
 /**
  * \ingroup gui
- * \brief Widget for viewing and editing servers in authentication database
+ * \brief Widget for viewing and editing servers in authentication database.
  */
 class GUI_EXPORT QgsAuthServersEditor : public QWidget, private Ui::QgsAuthServersEditor
 {
     Q_OBJECT
 
   public:
-
     /**
      * Widget for editing authentication configurations directly in database
      * \param parent Parent Widget
@@ -64,10 +64,9 @@ class GUI_EXPORT QgsAuthServersEditor : public QWidget, private Ui::QgsAuthServe
     void btnGroupByOrg_toggled( bool checked );
 
     //! Relay messages to widget's messagebar
-    void authMessageOut( const QString &message, const QString &authtag, QgsAuthManager::MessageLevel level );
+    void authMessageLog( const QString &message, const QString &authtag, Qgis::MessageLevel level );
 
   protected:
-
     void showEvent( QShowEvent *e ) override;
 
   private:
@@ -80,17 +79,11 @@ class GUI_EXPORT QgsAuthServersEditor : public QWidget, private Ui::QgsAuthServe
 
     void setupSslConfigsTree();
 
-    void populateSslConfigsSection( QTreeWidgetItem *item,
-                                    const QList<QgsAuthConfigSslServer> &configs,
-                                    QgsAuthServersEditor::ConfigType conftype );
+    void populateSslConfigsSection( QTreeWidgetItem *item, const QList<QgsAuthConfigSslServer> &configs, QgsAuthServersEditor::ConfigType conftype );
 
-    void appendSslConfigsToGroup( const QList<QgsAuthConfigSslServer> &configs,
-                                  QgsAuthServersEditor::ConfigType conftype,
-                                  QTreeWidgetItem *parent = nullptr );
+    void appendSslConfigsToGroup( const QList<QgsAuthConfigSslServer> &configs, QgsAuthServersEditor::ConfigType conftype, QTreeWidgetItem *parent = nullptr );
 
-    void appendSslConfigsToItem( const QList<QgsAuthConfigSslServer> &configs,
-                                 QgsAuthServersEditor::ConfigType conftype,
-                                 QTreeWidgetItem *parent = nullptr );
+    void appendSslConfigsToItem( const QList<QgsAuthConfigSslServer> &configs, QgsAuthServersEditor::ConfigType conftype, QTreeWidgetItem *parent = nullptr );
 
     QgsMessageBar *messageBar();
     int messageTimeout();

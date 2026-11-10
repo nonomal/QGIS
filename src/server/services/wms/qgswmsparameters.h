@@ -18,78 +18,82 @@
 #ifndef QGSWMSPARAMETERS_H
 #define QGSWMSPARAMETERS_H
 
+#include "qgslegendsettings.h"
+#include "qgsogcutils.h"
+#include "qgsprojectversion.h"
+#include "qgsrectangle.h"
+#include "qgsserverparameters.h"
+
+#include <QColor>
 #include <QMap>
 #include <QMetaEnum>
-#include <QColor>
-
-#include "qgsrectangle.h"
-#include "qgslegendsettings.h"
-#include "qgsprojectversion.h"
-#include "qgsogcutils.h"
-#include "qgsserverparameters.h"
 
 namespace QgsWms
 {
   struct QgsWmsParametersFilter
   {
-    //! Filter type
-    enum Type
-    {
-      UNKNOWN,
-      SQL,
-      OGC_FE
-    };
+      //! Filter type
+      enum Type
+      {
+        UNKNOWN,
+        SQL,
+        OGC_FE
+      };
 
-    QString mFilter;
-    QgsWmsParametersFilter::Type mType = QgsWmsParametersFilter::UNKNOWN;
-    QgsOgcUtils::FilterVersion mVersion = QgsOgcUtils::FILTER_OGC_1_0; // only if FE
+      QString mFilter;
+      QgsWmsParametersFilter::Type mType = QgsWmsParametersFilter::UNKNOWN;
+      QgsOgcUtils::FilterVersion mVersion = QgsOgcUtils::FILTER_OGC_1_0; // only if FE
   };
 
   struct QgsWmsParametersLayer
   {
-    QString mNickname; // name, id or short name
-    int mOpacity = -1;
-    QList<QgsWmsParametersFilter> mFilter; // list of filter
-    QStringList mSelection; // list of string fid
-    QString mStyle;
-    QString mExternalUri;
+      QString mNickname; // name, id or short name
+      int mOpacity = -1;
+      QList<QgsWmsParametersFilter> mFilter; // list of filter
+      QStringList mSelection;                // list of string fid
+      QString mStyle;
+      QString mExternalUri;
   };
 
   struct QgsWmsParametersExternalLayer
   {
-    QString mName;
-    QString mUri;
+      QString mName;
+      QString mUri;
   };
 
   struct QgsWmsParametersHighlightLayer
   {
-    QString mName;
-    QgsGeometry mGeom;
-    QString mSld;
-    QString mLabel;
-    QColor mColor;
-    int mSize = 0;
-    int mWeight = 0;
-    QString mFont;
-    float mBufferSize = 0;
-    QColor mBufferColor;
-    double mLabelRotation = 0;
-    double mLabelDistance = 2; //label distance from feature in mm
-    QString mHali; //horizontal alignment
-    QString mVali; //vertical alignment
+      QString mName;
+      QgsGeometry mGeom;
+      QString mSld;
+      QString mLabel;
+      QColor mColor;
+      int mSize = 0;
+      int mWeight = 0;
+      QString mFont;
+      float mBufferSize = 0;
+      QColor mBufferColor;
+      QColor mFrameBackgroundColor = Qt::white;
+      QColor mFrameOutlineColor = Qt::black;
+      double mFrameOutlineWidth = 0;
+      float mFrameSize = 0;
+      double mLabelRotation = 0;
+      double mLabelDistance = 2; //label distance from feature in mm
+      QString mHali;             //horizontal alignment
+      QString mVali;             //vertical alignment
   };
 
   struct QgsWmsParametersComposerMap
   {
-    int mId = 0; // composer map id
-    bool mHasExtent = false; // does the request contains extent for this composer map
-    QgsRectangle mExtent; // the request extent for this composer map
-    float mScale = -1;
-    float mRotation = 0;
-    float mGridX = 0;
-    float mGridY = 0;
-    QList<QgsWmsParametersLayer> mLayers; // list of layers for this composer map
-    QList<QgsWmsParametersHighlightLayer> mHighlightLayers; // list of highlight layers for this composer map
+      int mId = 0;             // composer map id
+      bool mHasExtent = false; // does the request contains extent for this composer map
+      QgsRectangle mExtent;    // the request extent for this composer map
+      float mScale = -1;
+      float mRotation = 0;
+      float mGridX = 0;
+      float mGridY = 0;
+      QList<QgsWmsParametersLayer> mLayers;                   // list of layers for this composer map
+      QList<QgsWmsParametersHighlightLayer> mHighlightLayers; // list of highlight layers for this composer map
   };
 
   /**
@@ -166,6 +170,10 @@ namespace QgsWms
         HIGHLIGHT_LABELCOLOR,
         HIGHLIGHT_LABELBUFFERCOLOR,
         HIGHLIGHT_LABELBUFFERSIZE,
+        HIGHLIGHT_LABELFRAMEBACKGROUNDCOLOR,
+        HIGHLIGHT_LABELFRAMEOUTLINECOLOR,
+        HIGHLIGHT_LABELFRAMEOUTLINEWIDTH,
+        HIGHLIGHT_LABELFRAMESIZE,
         HIGHLIGHT_LABEL_ROTATION,
         HIGHLIGHT_LABEL_DISTANCE,
         HIGHLIGHT_LABEL_HORIZONTAL_ALIGNMENT,
@@ -198,14 +206,12 @@ namespace QgsWms
        * \param type Type of the parameter
        * \param defaultValue Default value of the parameter
        */
-      QgsWmsParameter( const QgsWmsParameter::Name name = QgsWmsParameter::UNKNOWN,
-                       const QVariant::Type type = QVariant::String,
-                       const QVariant defaultValue = QVariant( "" ) );
+      QgsWmsParameter( const QgsWmsParameter::Name name = QgsWmsParameter::UNKNOWN, const QMetaType::Type type = QMetaType::Type::QString, const QVariant defaultValue = QVariant( "" ) );
 
       /**
        * Default destructor for QgsWmsParameter.
        */
-      virtual ~QgsWmsParameter() override = default;
+      ~QgsWmsParameter() override = default;
 
       /**
        * Returns TRUE if the parameter is valid, FALSE otherwise.
@@ -216,42 +222,47 @@ namespace QgsWms
        * Converts the parameter into a list of strings and keeps empty parts
        * Default style value is an empty string
        * \param delimiter The character used for delimiting
+       * \param skipEmptyParts for splitting
        * \returns A list of strings
        * \since QGIS 3.8
        */
-      QStringList toStyleList( const char delimiter = ',' ) const;
+      QStringList toStyleList( const char delimiter = ',', bool skipEmptyParts = false ) const;
 
       /**
        * Converts the parameter into a list of geometries.
        * \param delimiter The character delimiting string geometries
+       * \param skipEmptyParts for splitting
        * \returns A list of geometries
        * \throws QgsBadRequestException Invalid parameter exception
        */
-      QList<QgsGeometry> toGeomList( const char delimiter = ',' ) const;
+      QList<QgsGeometry> toGeomList( const char delimiter = ',', bool skipEmptyParts = true ) const;
 
       /**
        * Converts the parameter into a list of integers.
        * \param delimiter The character delimiting string integers
+       * \param skipEmptyParts for splitting
        * \returns A list of integers
        * \throws QgsBadRequestException Invalid parameter exception
        */
-      QList<int> toIntList( const char delimiter = ',' ) const;
+      QList<int> toIntList( const char delimiter = ',', bool skipEmptyParts = true ) const;
 
       /**
        * Converts the parameter into a list of doubles.
        * \param delimiter The character delimiting string doubles
+       * \param skipEmptyParts for splitting
        * \returns A list of doubles
        * \throws QgsBadRequestException Invalid parameter exception
        */
-      QList<double> toDoubleList( const char delimiter = ',' ) const;
+      QList<double> toDoubleList( const char delimiter = ',', bool skipEmptyParts = true ) const;
 
       /**
        * Converts the parameter into a list of colors.
        * \param delimiter The character delimiting string colors
+       * \param skipEmptyParts for splitting
        * \returns A list of colors
        * \throws QgsBadRequestException Invalid parameter exception
        */
-      QList<QColor> toColorList( const char delimiter = ',' ) const;
+      QList<QColor> toColorList( const char delimiter = ',', bool skipEmptyParts = true ) const;
 
       /**
        * Converts the parameter into a rectangle.
@@ -336,7 +347,6 @@ namespace QgsWms
       Q_GADGET
 
     public:
-
       //! Output format for the response
       enum Format
       {
@@ -362,7 +372,8 @@ namespace QgsWms
         USE_TITLE_AS_LAYERNAME,
         CODEC,
         NO_MTEXT,
-        FORCE_2D
+        FORCE_2D,
+        EXPORT_LINES_WITH_ZERO_WIDTH
       };
       Q_ENUM( DxfFormatOption )
 
@@ -396,7 +407,7 @@ namespace QgsWms
         */
       QgsWmsParameters();
 
-      virtual ~QgsWmsParameters() override = default;
+      ~QgsWmsParameters() override = default;
 
       /**
        * Returns the parameter corresponding to \a name.
@@ -1180,6 +1191,62 @@ namespace QgsWms
       QList<double> highlightLabelBufferSizeAsFloat() const;
 
       /**
+       * Returns HIGHLIGHT_LABELFRAMEBACKGROUNDCOLOR
+       * \returns highlight label frame background colors
+       */
+      QStringList highlightLabelFrameBackgroundColor() const;
+
+      /**
+       * Returns HIGHLIGHT_LABELFRAMEBACKGROUNDCOLOR as a list of colors. An exception is
+       * raised if an invalid color is found.
+       * \returns highlight label frame background colors
+       * \throws QgsBadRequestException
+       */
+      QList<QColor> highlightLabelFrameBackgroundColorAsColor() const;
+
+      /**
+       * Returns HIGHLIGHT_LABELFRAMEOUTLINECOLOR
+       * \returns highlight label frame outline colors
+       */
+      QStringList highlightLabelFrameOutlineColor() const;
+
+      /**
+       * Returns HIGHLIGHT_LABELFRAMEOUTLINECOLOR as a list of colors. An exception is
+       * raised if an invalid color is found.
+       * \returns highlight label frame outline colors
+       * \throws QgsBadRequestException
+       */
+      QList<QColor> highlightLabelFrameOutlineColorAsColor() const;
+
+      /**
+       * Returns HIGHLIGHT_LABELFRAMEOUTLINEWIDTH
+       * \returns highlight label frame outline width
+       */
+      QStringList highlightLabelFrameOutlineWidth() const;
+
+      /**
+       * Returns HIGHLIGHT_LABELFRAMEOUTLINEWIDTH as a list of widths. An exception is
+       * raised if an invalid width is found.
+       * \returns highlight label frame outline widths
+       * \throws QgsBadRequestException
+       */
+      QList<double> highlightLabelFrameOutlineWidthAsFloat() const;
+
+      /**
+       * Returns HIGHLIGHT_LABELFRAMESIZE
+       * \returns highlight label frame size
+       */
+      QStringList highlightLabelFrameSize() const;
+
+      /**
+       * Returns HIGHLIGHT_LABELFRAMESIZE as a list of float. An exception is
+       * raised if an invalid size is found.
+       * \returns highlight label frame size
+       * \throws QgsBadRequestException
+       */
+      QList<double> highlightLabelFrameSizeAsFloat() const;
+
+      /**
        * Returns HIGHLIGHT_LABELBUFFERCOLOR as a list of string.
        * \returns highlight label buffer color
        */
@@ -1410,10 +1477,17 @@ namespace QgsWms
       bool isForce2D() const;
 
       /**
-       * Returns if a GeoPDF shall be exported
+       * \returns true if the lines are export to dxf with minimal (hairline) width
+       *
+       * \since QGIS 3.38
+       */
+      bool exportLinesWithZeroWidth() const;
+
+      /**
+       * Returns if a geospatial PDF shall be exported
        * \since QGIS 3.32
        */
-      bool writeGeoPdf() const;
+      bool writeGeospatialPdf() const;
 
       /**
        * Returns if pdf should be exported as vector
@@ -1466,11 +1540,12 @@ namespace QgsWms
       /**
        * Returns true if OGC best practice georeferencing shall be used
        * \since QGIS 3.32
+       * \deprecated QGIS 3.42. Will always return false starting with 3.42. Only ISO 32000 georeferencing is handled.
        */
-      bool pdfUseOgcBestPracticeFormatGeoreferencing() const;
+      Q_DECL_DEPRECATED bool pdfUseOgcBestPracticeFormatGeoreferencing() const;
 
       /**
-       * Returns map themes for GeoPDF export
+       * Returns map themes for geospatial PDF export
        * \since QGIS 3.32
        */
       QStringList pdfExportMapThemes() const;
@@ -1490,7 +1565,7 @@ namespace QgsWms
        * \returns a key-value map
        * \since QGIS 3.32
        */
-      template<typename T> QMap< T, QString > formatOptions() const
+      template<typename T> QMap<T, QString> formatOptions() const
       {
         QMap<T, QString> options;
         const QMetaEnum metaEnum( QMetaEnum::fromType<T>() );
@@ -1507,7 +1582,7 @@ namespace QgsWms
             {
               continue; //option for a different format
             }
-            const T option = ( T )metaEnumVal;
+            const T option = ( T ) metaEnumVal;
             const QString value = it->right( it->length() - equalIdx - 1 );
             options.insert( option, value );
           }
@@ -1515,10 +1590,15 @@ namespace QgsWms
         return options;
       }
 
-    private:
-
+      /**
+       * Returns true if the layer is an external layer, false otherwise.
+       * \param name the layer name
+       * \returns true if the layer is an external layer
+       * \since QGIS 4.42
+       */
       static bool isExternalLayer( const QString &name );
 
+    private:
       bool loadParameter( const QString &name, const QString &value ) override;
 
       void save( const QgsWmsParameter &parameter, bool multi = false );
@@ -1526,7 +1606,7 @@ namespace QgsWms
       QgsWmsParameter idParameter( QgsWmsParameter::Name name, int id ) const;
 
       void raiseError( const QString &msg ) const;
-      void log( const QString &msg ) const;
+      void log( const QString &msg, const char *file = __builtin_FILE(), const char *function = __builtin_FUNCTION(), int line = __builtin_LINE() ) const;
 
       QgsWmsParametersExternalLayer externalLayerParameter( const QString &name ) const;
 
@@ -1534,9 +1614,9 @@ namespace QgsWms
 
 
       QMultiMap<QgsWmsParameter::Name, QgsWmsParameter> mWmsParameters;
-      QMap<QString, QMap<QString, QString> > mExternalWMSParameters;
+      QMap<QString, QMap<QString, QString>> mExternalWMSParameters;
       QList<QgsProjectVersion> mVersions;
   };
-}
+} // namespace QgsWms
 
 #endif

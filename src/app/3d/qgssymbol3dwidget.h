@@ -16,10 +16,14 @@
 #ifndef QGSSYMBOL3DWIDGET_H
 #define QGSSYMBOL3DWIDGET_H
 
-#include <QWidget>
 #include <memory>
+
+#include "qgspanelwidget.h"
 #include "qgsstyle.h"
 
+#include <QWidget>
+
+class QAction;
 class QLabel;
 class QStackedWidget;
 
@@ -34,7 +38,7 @@ class QgsVectorLayer;
 /**
  * Widget for selection of 3D symbol
  */
-class QgsSymbol3DWidget : public QWidget
+class QgsSymbol3DWidget : public QgsPanelWidget
 {
     Q_OBJECT
 
@@ -42,33 +46,42 @@ class QgsSymbol3DWidget : public QWidget
     QgsSymbol3DWidget( QgsVectorLayer *layer, QWidget *parent = nullptr );
 
     //! Returns a new symbol instance or NULLPTR
-    std::unique_ptr< QgsAbstract3DSymbol > symbol();
+    std::unique_ptr<QgsAbstract3DSymbol> symbol();
 
-    //! Sets symbol (does not take ownership)
+    //! Sets symbol and layer (does not take ownership)
     void setSymbol( const QgsAbstract3DSymbol *symbol, QgsVectorLayer *vlayer );
 
-  signals:
-    void widgetChanged();
+    void setDockMode( bool dockMode ) override;
+
+    /**
+     * Sets the widget \a mode, which controls whether the compact or full
+     * set of material settings controls are shown.
+     *
+     * \since QGIS 4.4
+     */
+    void setMode( Qgis::MaterialWidgetMode mode );
 
   private slots:
 
     void setSymbolFromStyle( const QString &name, QgsStyle::StyleEntity entity, const QString &stylePath );
     void saveSymbol();
+    void showAdvancedSymbolSettings();
+    void updateFrom2DSymbology();
 
   private:
-
     void updateSymbolWidget( const QgsAbstract3DSymbol *newSymbol );
 
     QStackedWidget *widgetStack = nullptr;
-    QgsLine3DSymbolWidget *widgetLine = nullptr;
-    QgsPoint3DSymbolWidget *widgetPoint = nullptr;
-    QgsPolygon3DSymbolWidget *widgetPolygon = nullptr;
     QLabel *widgetUnsupported = nullptr;
 
     QgsStyleItemsListWidget *mStyleWidget = nullptr;
 
     QgsVectorLayer *mLayer = nullptr;
 
+    QAction *mAdvancedMaterialSettingsAction = nullptr;
+    QAction *mUpdateFrom2DSymbologyAction = nullptr;
+
+    Qgis::MaterialWidgetMode mMode = Qgis::MaterialWidgetMode::Full;
 };
 
 

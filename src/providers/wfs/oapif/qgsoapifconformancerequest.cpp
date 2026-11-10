@@ -14,17 +14,23 @@
  ***************************************************************************/
 
 #include <nlohmann/json.hpp>
+
+#include <QString>
+
+using namespace Qt::StringLiterals;
+
 using namespace nlohmann;
 
 #include "qgslogger.h"
 #include "qgsoapifconformancerequest.h"
+#include "moc_qgsoapifconformancerequest.cpp"
 #include "qgsoapifutils.h"
 #include "qgswfsconstants.h"
 
 #include <QTextCodec>
 
-QgsOapifConformanceRequest::QgsOapifConformanceRequest( const QgsDataSourceUri &uri ):
-  QgsBaseNetworkRequest( QgsAuthorizationSettings( uri.username(), uri.password(), uri.authConfigId() ), "OAPIF" )
+QgsOapifConformanceRequest::QgsOapifConformanceRequest( const QgsDataSourceUri &uri )
+  : QgsBaseNetworkRequest( QgsAuthorizationSettings( uri.username(), uri.password(), QgsHttpHeaders(), uri.authConfigId() ), tr( "OAPIF" ), uri.hasParam( QgsWFSConstants::URI_PARAM_DISABLE_DECOMPRESSED_SAFETY_CHECK_THRESHOLD ) )
 {
   // Using Qt::DirectConnection since the download might be running on a different thread.
   // In this case, the request was sent from the main thread and is executed with the main
@@ -35,7 +41,7 @@ QgsOapifConformanceRequest::QgsOapifConformanceRequest( const QgsDataSourceUri &
 
 QStringList QgsOapifConformanceRequest::conformanceClasses( const QUrl &conformanceUrl )
 {
-  sendGET( conformanceUrl, QString( "application/json" ), /*synchronous=*/true, /*forceRefresh=*/false );
+  sendGET( conformanceUrl, QgsOapifUtils::MEDIA_TYPE_JSON, /*synchronous=*/true, /*forceRefresh=*/false );
   return mConformanceClasses;
 }
 
@@ -58,7 +64,7 @@ void QgsOapifConformanceRequest::processReply()
     return;
   }
 
-  QgsDebugMsgLevel( QStringLiteral( "parsing Conformance response: " ) + buffer, 4 );
+  QgsDebugMsgLevel( u"parsing Conformance response: "_s + buffer, 4 );
 
   QTextCodec::ConverterState state;
   QTextCodec *codec = QTextCodec::codecForName( "UTF-8" );

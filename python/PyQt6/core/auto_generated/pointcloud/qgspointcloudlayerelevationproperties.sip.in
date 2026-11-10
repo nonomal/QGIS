@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/pointcloud/qgspointcloudlayerelevationproperties.h          *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/
 
 
@@ -13,7 +13,8 @@
 class QgsPointCloudLayerElevationProperties : QgsMapLayerElevationProperties
 {
 %Docstring(signature="appended")
-Point cloud layer specific subclass of :py:class:`QgsMapLayerElevationProperties`.
+Point cloud layer specific subclass of
+:py:class:`QgsMapLayerElevationProperties`.
 
 .. versionadded:: 3.18
 %End
@@ -22,10 +23,10 @@ Point cloud layer specific subclass of :py:class:`QgsMapLayerElevationProperties
 #include "qgspointcloudlayerelevationproperties.h"
 %End
   public:
-
     QgsPointCloudLayerElevationProperties( QObject *parent /TransferThis/ );
 %Docstring
-Constructor for QgsPointCloudLayerElevationProperties, with the specified ``parent`` object.
+Constructor for QgsPointCloudLayerElevationProperties, with the
+specified ``parent`` object.
 %End
 
     virtual bool hasElevation() const;
@@ -42,16 +43,20 @@ Constructor for QgsPointCloudLayerElevationProperties, with the specified ``pare
 
     virtual QgsDoubleRange calculateZRange( QgsMapLayer *layer ) const;
 
+    virtual QList< double > significantZValues( QgsMapLayer *layer ) const;
+
     virtual bool showByDefaultInElevationProfilePlots() const;
 
 
     double maximumScreenError() const;
 %Docstring
-Returns the maximum screen error allowed when generating elevation profiles for the point cloud.
+Returns the maximum screen error allowed when generating elevation
+profiles for the point cloud.
 
 Larger values result in a faster generation with less points included.
 
-Units are retrieved via :py:func:`~QgsPointCloudLayerElevationProperties.maximumScreenErrorUnit`.
+Units are retrieved via
+:py:func:`~QgsPointCloudLayerElevationProperties.maximumScreenErrorUnit`.
 
 .. seealso:: :py:func:`setMaximumScreenError`
 
@@ -62,11 +67,13 @@ Units are retrieved via :py:func:`~QgsPointCloudLayerElevationProperties.maximum
 
     void setMaximumScreenError( double error );
 %Docstring
-Sets the maximum screen ``error`` allowed when generating elevation profiles for the point cloud.
+Sets the maximum screen ``error`` allowed when generating elevation
+profiles for the point cloud.
 
 Larger values result in a faster generation with less points included.
 
-Units are set via :py:func:`~QgsPointCloudLayerElevationProperties.setMaximumScreenErrorUnit`.
+Units are set via
+:py:func:`~QgsPointCloudLayerElevationProperties.setMaximumScreenErrorUnit`.
 
 .. seealso:: :py:func:`maximumScreenError`
 
@@ -77,7 +84,8 @@ Units are set via :py:func:`~QgsPointCloudLayerElevationProperties.setMaximumScr
 
     Qgis::RenderUnit maximumScreenErrorUnit() const;
 %Docstring
-Returns the unit for the maximum screen error allowed when generating elevation profiles for the point cloud.
+Returns the unit for the maximum screen error allowed when generating
+elevation profiles for the point cloud.
 
 .. seealso:: :py:func:`maximumScreenError`
 
@@ -88,7 +96,8 @@ Returns the unit for the maximum screen error allowed when generating elevation 
 
     void setMaximumScreenErrorUnit( Qgis::RenderUnit unit );
 %Docstring
-Sets the ``unit`` for the maximum screen error allowed when generating elevation profiles for the point cloud.
+Sets the ``unit`` for the maximum screen error allowed when generating
+elevation profiles for the point cloud.
 
 .. seealso:: :py:func:`setMaximumScreenError`
 
@@ -135,8 +144,9 @@ Sets the ``color`` used drawing points in elevation profile charts.
 
     bool applyOpacityByDistanceEffect() const;
 %Docstring
-Returns ``True`` if a reduced opacity by distance from profile curve effect should
-be applied when drawing points in elevation profile charts.
+Returns ``True`` if a reduced opacity by distance from profile curve
+effect should be applied when drawing points in elevation profile
+charts.
 
 .. seealso:: :py:func:`setApplyOpacityByDistanceEffect`
 
@@ -145,8 +155,8 @@ be applied when drawing points in elevation profile charts.
 
     void setApplyOpacityByDistanceEffect( bool apply );
 %Docstring
-Sets whether a reduced opacity by distance from profile curve effect should
-be applied when drawing points in elevation profile charts.
+Sets whether a reduced opacity by distance from profile curve effect
+should be applied when drawing points in elevation profile charts.
 
 .. seealso:: :py:func:`applyOpacityByDistanceEffect`
 
@@ -155,9 +165,11 @@ be applied when drawing points in elevation profile charts.
 
     void setPointSize( double size );
 %Docstring
-Sets the point ``size`` used for drawing points in elevation profile charts.
+Sets the point ``size`` used for drawing points in elevation profile
+charts.
 
-Point size units are specified via :py:func:`~QgsPointCloudLayerElevationProperties.setPointSizeUnit`.
+Point size units are specified via
+:py:func:`~QgsPointCloudLayerElevationProperties.setPointSizeUnit`.
 
 .. seealso:: :py:func:`pointSize`
 
@@ -168,9 +180,11 @@ Point size units are specified via :py:func:`~QgsPointCloudLayerElevationPropert
 
     double pointSize() const;
 %Docstring
-Returns the point size used for drawing points in elevation profile charts.
+Returns the point size used for drawing points in elevation profile
+charts.
 
-The point size units are retrieved by calling :py:func:`~QgsPointCloudLayerElevationProperties.pointSizeUnit`.
+The point size units are retrieved by calling
+:py:func:`~QgsPointCloudLayerElevationProperties.pointSizeUnit`.
 
 .. seealso:: :py:func:`setPointSize`
 
@@ -181,7 +195,8 @@ The point size units are retrieved by calling :py:func:`~QgsPointCloudLayerEleva
 
     void setPointSizeUnit( const Qgis::RenderUnit units );
 %Docstring
-Sets the ``units`` used for the point size used for drawing points in elevation profile charts.
+Sets the ``units`` used for the point size used for drawing points in
+elevation profile charts.
 
 .. seealso:: :py:func:`setPointSize`
 
@@ -192,7 +207,8 @@ Sets the ``units`` used for the point size used for drawing points in elevation 
 
     Qgis::RenderUnit pointSizeUnit() const;
 %Docstring
-Returns the units used for the point size used for drawing points in elevation profile charts.
+Returns the units used for the point size used for drawing points in
+elevation profile charts.
 
 .. seealso:: :py:func:`setPointSizeUnit`
 
@@ -203,16 +219,163 @@ Returns the units used for the point size used for drawing points in elevation p
 
     bool respectLayerColors() const;
 %Docstring
-Returns ``True`` if layer coloring should be respected when rendering elevation profile plots.
+Returns ``True`` if layer coloring should be respected when rendering
+elevation profile plots.
 
 .. seealso:: :py:func:`setRespectLayerColors`
 %End
 
     void setRespectLayerColors( bool enabled );
 %Docstring
-Sets whether layer coloring should be respected when rendering elevation profile plots.
+Sets whether layer coloring should be respected when rendering elevation
+profile plots.
 
 .. seealso:: :py:func:`respectLayerColors`
+%End
+
+    void setType( Qgis::PointCloudProfileType type );
+%Docstring
+Sets the profile ``type`` used when generating elevation profile plots.
+
+.. seealso:: :py:func:`type`
+
+.. versionadded:: 4.0
+%End
+
+    Qgis::PointCloudProfileType type() const;
+%Docstring
+Returns the profile type used when generating elevation profile plots.
+
+.. seealso:: :py:func:`setType`
+
+.. versionadded:: 4.0
+%End
+
+    QgsLineSymbol *profileLineSymbol() const;
+%Docstring
+Returns the symbol used to render lines for the layer in elevation
+profile plots.
+
+.. note::
+
+   This setting is only used when :py:func:`~QgsPointCloudLayerElevationProperties.type` is :py:class:`Qgis`.PointCloudProfileType.TriangulatedSurface.
+
+.. seealso:: :py:func:`setProfileLineSymbol`
+
+.. versionadded:: 4.0
+%End
+
+    void setProfileLineSymbol( QgsLineSymbol *symbol /Transfer/ );
+%Docstring
+Sets the line ``symbol`` used to render lines for the layer in elevation
+profile plots.
+
+Ownership of ``symbol`` is transferred to the plot.
+
+.. note::
+
+   This setting is only used when :py:func:`~QgsPointCloudLayerElevationProperties.type` is :py:class:`Qgis`.PointCloudProfileType.TriangulatedSurface.
+
+.. seealso:: :py:func:`profileLineSymbol`
+
+.. versionadded:: 4.0
+%End
+
+    QgsFillSymbol *profileFillSymbol() const;
+%Docstring
+Returns the symbol used to render polygons for the layer in elevation
+profile plots.
+
+.. note::
+
+   This setting is only used when :py:func:`~QgsPointCloudLayerElevationProperties.type` is :py:class:`Qgis`.PointCloudProfileType.TriangulatedSurface.
+
+.. seealso:: :py:func:`setProfileFillSymbol`
+
+.. versionadded:: 4.0
+%End
+
+    void setProfileFillSymbol( QgsFillSymbol *symbol /Transfer/ );
+%Docstring
+Sets the fill ``symbol`` used to render polygons for the layer in
+elevation profile plots.
+
+Ownership of ``symbol`` is transferred to the plot.
+
+.. note::
+
+   This setting is only used when :py:func:`~QgsPointCloudLayerElevationProperties.type` is :py:class:`Qgis`.PointCloudProfileType.TriangulatedSurface.
+
+.. seealso:: :py:func:`profileFillSymbol`
+
+.. versionadded:: 4.0
+%End
+
+    Qgis::ProfileSurfaceSymbology profileSymbology() const;
+%Docstring
+Returns the symbology option used to render the point cloud profile in
+elevation profile plots.
+
+.. note::
+
+   This setting is only used when :py:func:`~QgsPointCloudLayerElevationProperties.type` is :py:class:`Qgis`.PointCloudProfileType.TriangulatedSurface.
+
+.. seealso:: :py:func:`setProfileSymbology`
+
+.. versionadded:: 4.0
+%End
+
+    void setProfileSymbology( Qgis::ProfileSurfaceSymbology symbology );
+%Docstring
+Sets the ``symbology`` option used to render the point cloud profile in
+elevation profile plots.
+
+.. note::
+
+   This setting is only used when :py:func:`~QgsPointCloudLayerElevationProperties.type` is :py:class:`Qgis`.PointCloudProfileType.TriangulatedSurface.
+
+.. seealso:: :py:func:`setProfileSymbology`
+
+.. versionadded:: 4.0
+%End
+
+    double elevationLimit() const;
+%Docstring
+Returns the elevation limit, which is used when
+:py:func:`~QgsPointCloudLayerElevationProperties.profileSymbology` is
+:py:class:`Qgis`.ProfileSurfaceSymbology.FillBelow or
+:py:class:`Qgis`.ProfileSurfaceSymbology.FillAbove to limit the fill to
+a specific elevation range.
+
+By default this is NaN, which indicates that there is no elevation
+limit.
+
+.. note::
+
+   This setting is only used when :py:func:`~QgsPointCloudLayerElevationProperties.type` is :py:class:`Qgis`.PointCloudProfileType.TriangulatedSurface.
+
+.. seealso:: :py:func:`setElevationLimit`
+
+.. versionadded:: 4.0
+%End
+
+    void setElevationLimit( double limit );
+%Docstring
+Sets the elevation ``limit``, which is used when
+:py:func:`~QgsPointCloudLayerElevationProperties.profileSymbology` is
+:py:class:`Qgis`.ProfileSurfaceSymbology.FillBelow or
+:py:class:`Qgis`.ProfileSurfaceSymbology.FillAbove to limit the fill to
+a specific elevation range.
+
+Set to NaN to indicate that there is no elevation limit.
+
+.. note::
+
+   This setting is only used when :py:func:`~QgsPointCloudLayerElevationProperties.type` is :py:class:`Qgis`.PointCloudProfileType.TriangulatedSurface.
+
+.. seealso:: :py:func:`elevationLimit`
+
+.. versionadded:: 4.0
 %End
 
 };
@@ -222,5 +385,5 @@ Sets whether layer coloring should be respected when rendering elevation profile
  *                                                                      *
  * src/core/pointcloud/qgspointcloudlayerelevationproperties.h          *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/

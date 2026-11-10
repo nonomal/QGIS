@@ -15,17 +15,19 @@
 #ifndef QGSVALIDITYCHECKREGISTRY_H
 #define QGSVALIDITYCHECKREGISTRY_H
 
+#include <memory>
+#include <vector>
+
 #include "qgis_core.h"
 #include "qgis_sip.h"
 #include "qgsabstractvaliditycheck.h"
+
 #include <QList>
-#include <memory>
-#include <vector>
 
 /**
  * \class QgsValidityCheckRegistry
  * \ingroup gui
- * \brief This class keeps a list of QgsAbstractValidityCheck checks which can be used when
+ * \brief A registry that keeps a list of QgsAbstractValidityCheck checks which can be used when
  * performing validity checks.
  *
  * QgsValidityCheckRegistry is not usually directly created, but rather accessed through
@@ -35,16 +37,12 @@
  */
 class CORE_EXPORT QgsValidityCheckRegistry
 {
-
   public:
-
     QgsValidityCheckRegistry();
 
     ~QgsValidityCheckRegistry();
 
-    //! QgsValidityCheckRegistry cannot be copied.
     QgsValidityCheckRegistry( const QgsValidityCheckRegistry &rh ) = delete;
-    //! QgsValidityCheckRegistry cannot be copied.
     QgsValidityCheckRegistry &operator=( const QgsValidityCheckRegistry &rh ) = delete;
 
     /**
@@ -86,7 +84,6 @@ class CORE_EXPORT QgsValidityCheckRegistry
     QList< QgsValidityCheckResult > runChecks( int type, const QgsValidityCheckContext *context, QgsFeedback *feedback ) const;
 
   private:
-
 #ifdef SIP_RUN
     QgsValidityCheckRegistry( const QgsValidityCheckRegistry &rh );
 #endif
@@ -98,7 +95,6 @@ class CORE_EXPORT QgsValidityCheckRegistry
 
     //! Available checks, owned by this class
     QList< QgsAbstractValidityCheck * > mChecks;
-
 };
 
 #endif // QGSVALIDITYCHECKREGISTRY_H

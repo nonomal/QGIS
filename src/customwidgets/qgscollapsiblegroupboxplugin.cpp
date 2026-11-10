@@ -13,16 +13,17 @@
 *                                                                         *
 ***************************************************************************/
 
-#include "qgiscustomwidgets.h"
-#include "qgscollapsiblegroupbox.h"
 #include "qgscollapsiblegroupboxplugin.h"
 
+#include "qgiscustomwidgets.h"
+#include "qgscollapsiblegroupbox.h"
+
+#include "moc_qgscollapsiblegroupboxplugin.cpp"
 
 QgsCollapsibleGroupBoxPlugin::QgsCollapsibleGroupBoxPlugin( QObject *parent )
   : QObject( parent )
   , mInitialized( false )
-{
-}
+{}
 
 
 QString QgsCollapsibleGroupBoxPlugin::name() const
@@ -81,17 +82,19 @@ QString QgsCollapsibleGroupBoxPlugin::whatsThis() const
 
 QString QgsCollapsibleGroupBoxPlugin::domXml() const
 {
-  return QString( "<ui language=\"c++\">\n"
-                  " <widget class=\"%1\" name=\"mGroupBox\">\n"
-                  "  <property name=\"geometry\">\n"
-                  "   <rect>\n"
-                  "    <x>0</x>\n"
-                  "    <y>0</y>\n"
-                  "    <width>300</width>\n"
-                  "    <height>100</height>\n"
-                  "   </rect>\n"
-                  "  </property>\n"
-                  " </widget>\n"
-                  "</ui>\n" )
-         .arg( name() );
+  return QString(
+           "<ui language=\"c++\">\n"
+           " <widget class=\"%1\" name=\"mGroupBox\">\n"
+           "  <property name=\"geometry\">\n"
+           "   <rect>\n"
+           "    <x>0</x>\n"
+           "    <y>0</y>\n"
+           "    <width>300</width>\n"
+           "    <height>100</height>\n"
+           "   </rect>\n"
+           "  </property>\n"
+           " </widget>\n"
+           "</ui>\n"
+  )
+    .arg( name() );
 }

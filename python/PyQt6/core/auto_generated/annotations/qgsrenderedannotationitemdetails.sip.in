@@ -3,8 +3,10 @@
  *                                                                      *
  * src/core/annotations/qgsrenderedannotationitemdetails.h              *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/
+
+
 
 
 
@@ -21,7 +23,6 @@ Contains information about a rendered annotation item.
 #include "qgsrenderedannotationitemdetails.h"
 %End
   public:
-
     QgsRenderedAnnotationItemDetails( const QString &layerId, const QString &itemId );
 %Docstring
 Constructor for QgsRenderedAnnotationItemDetails.
@@ -33,7 +34,7 @@ Constructor for QgsRenderedAnnotationItemDetails.
     sipRes = PyUnicode_FromString( str.toUtf8().constData() );
 %End
 
-    QString itemId() const;
+        QString itemId() const;
 %Docstring
 Returns the item ID of the associated annotation item.
 %End
@@ -45,5 +46,5 @@ Returns the item ID of the associated annotation item.
  *                                                                      *
  * src/core/annotations/qgsrenderedannotationitemdetails.h              *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/

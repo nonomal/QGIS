@@ -13,21 +13,29 @@
  *                                                                         *
  ***************************************************************************/
 
+#include "qgstransformsettingsdialog.h"
+
+#include "qgscoordinatereferencesystem.h"
+#include "qgsfilewidget.h"
+#include "qgsgui.h"
+#include "qgshelp.h"
+#include "qgssettingsentryimpl.h"
+#include "qgsvectorfilewriter.h"
+
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QMessageBox>
+#include <QString>
 
-#include "qgsfilewidget.h"
-#include "qgstransformsettingsdialog.h"
-#include "qgscoordinatereferencesystem.h"
-#include "qgsgui.h"
-#include "qgshelp.h"
-#include "qgsvectorfilewriter.h"
-#include "qgssettingsentryimpl.h"
+#include "moc_qgstransformsettingsdialog.cpp"
 
-const QgsSettingsEntryString *QgsTransformSettingsDialog::settingLastDestinationFolder = new QgsSettingsEntryString( QStringLiteral( "last-destination-folder" ), QgsGeoreferencerMainWindow::sTreeGeoreferencer, QString(), QObject::tr( "Last used folder for georeferencer destination files" ) );
+using namespace Qt::StringLiterals;
 
-const QgsSettingsEntryString *QgsTransformSettingsDialog::settingLastPdfFolder = new QgsSettingsEntryString( QStringLiteral( "last-pdf-folder" ), QgsGeoreferencerMainWindow::sTreeGeoreferencer, QString(), QObject::tr( "Last used folder for georeferencer PDF report files" ) );
+const QgsSettingsEntryString *QgsTransformSettingsDialog::settingLastDestinationFolder
+  = new QgsSettingsEntryString( u"last-destination-folder"_s, QgsGeoreferencerMainWindow::sTreeGeoreferencer, QString(), QObject::tr( "Last used folder for georeferencer destination files" ) );
+
+const QgsSettingsEntryString *QgsTransformSettingsDialog::settingLastPdfFolder
+  = new QgsSettingsEntryString( u"last-pdf-folder"_s, QgsGeoreferencerMainWindow::sTreeGeoreferencer, QString(), QObject::tr( "Last used folder for georeferencer PDF report files" ) );
 
 QgsTransformSettingsDialog::QgsTransformSettingsDialog( Qgis::LayerType type, const QString &source, const QString &output, QWidget *parent )
   : QDialog( parent )
@@ -75,29 +83,20 @@ QgsTransformSettingsDialog::QgsTransformSettingsDialog( Qgis::LayerType type, co
   outputFile->setDialogTitle( tr( "Destination File" ) );
   const QString lastDestinationFolder = settingLastDestinationFolder->value();
   outputFile->setDefaultRoot( lastDestinationFolder.isEmpty() ? QDir::homePath() : lastDestinationFolder );
-  connect( outputFile, &QgsFileWidget::fileChanged, this, [ = ]
-  {
-    settingLastDestinationFolder->setValue( QFileInfo( outputFile->filePath() ).absolutePath() );
-  } );
+  connect( outputFile, &QgsFileWidget::fileChanged, this, [outputFile] { settingLastDestinationFolder->setValue( QFileInfo( outputFile->filePath() ).absolutePath() ); } );
 
   mPdfMap->setStorageMode( QgsFileWidget::SaveFile );
   mPdfMap->setFilter( tr( "PDF files" ) + " (*.pdf *.PDF)" );
   mPdfMap->setDialogTitle( tr( "Save Map File As" ) );
   const QString lastPdfFolder = settingLastPdfFolder->value();
   mPdfMap->setDefaultRoot( lastPdfFolder.isEmpty() ? QDir::homePath() : lastPdfFolder );
-  connect( mPdfMap, &QgsFileWidget::fileChanged, this, [ = ]
-  {
-    settingLastPdfFolder->setValue( QFileInfo( mPdfMap->filePath() ).absolutePath() );
-  } );
+  connect( mPdfMap, &QgsFileWidget::fileChanged, this, [this] { settingLastPdfFolder->setValue( QFileInfo( mPdfMap->filePath() ).absolutePath() ); } );
 
   mPdfReport->setStorageMode( QgsFileWidget::SaveFile );
   mPdfReport->setFilter( tr( "PDF files" ) + " (*.pdf *.PDF)" );
   mPdfReport->setDialogTitle( tr( "Save Report File As" ) );
   mPdfReport->setDefaultRoot( lastPdfFolder.isEmpty() ? QDir::homePath() : lastPdfFolder );
-  connect( mPdfReport, &QgsFileWidget::fileChanged, this, [ = ]
-  {
-    settingLastPdfFolder->setValue( QFileInfo( mPdfMap->filePath() ).absolutePath() );
-  } );
+  connect( mPdfReport, &QgsFileWidget::fileChanged, this, [this] { settingLastPdfFolder->setValue( QFileInfo( mPdfMap->filePath() ).absolutePath() ); } );
 
   connect( cmbTransformType, &QComboBox::currentTextChanged, this, &QgsTransformSettingsDialog::cmbTransformType_currentIndexChanged );
   connect( mWorldFileCheckBox, &QCheckBox::stateChanged, this, &QgsTransformSettingsDialog::mWorldFileCheckBox_stateChanged );
@@ -110,17 +109,13 @@ QgsTransformSettingsDialog::QgsTransformSettingsDialog( Qgis::LayerType type, co
   cmbTransformType->addItem( tr( "Thin Plate Spline" ), static_cast<int>( QgsGcpTransformerInterface::TransformMethod::ThinPlateSpline ) );
   cmbTransformType->addItem( tr( "Projective" ), static_cast<int>( QgsGcpTransformerInterface::TransformMethod::Projective ) );
 
-  // Populate CompressionComboBox
-  cmbCompressionComboBox->addItem( tr( "None" ), QStringLiteral( "None" ) );
-  cmbCompressionComboBox->addItem( tr( "LZW" ), QStringLiteral( "LZW" ) );
-  cmbCompressionComboBox->addItem( tr( "PACKBITS" ), QStringLiteral( "PACKBITS" ) );
-  cmbCompressionComboBox->addItem( tr( "DEFLATE" ), QStringLiteral( "DEFLATE" ) );
+  mCreationOptionsWidget->setFormat( "GTiff" );
 
-  cmbResampling->addItem( tr( "Nearest Neighbour" ), static_cast< int >( QgsImageWarper::ResamplingMethod::NearestNeighbour ) );
-  cmbResampling->addItem( tr( "Bilinear (2x2 Kernel)" ), static_cast< int >( QgsImageWarper::ResamplingMethod::Bilinear ) );
-  cmbResampling->addItem( tr( "Cubic (4x4 Kernel)" ), static_cast< int >( QgsImageWarper::ResamplingMethod::Cubic ) );
-  cmbResampling->addItem( tr( "Cubic B-Spline (4x4 Kernel)" ), static_cast< int >( QgsImageWarper::ResamplingMethod::CubicSpline ) );
-  cmbResampling->addItem( tr( "Lanczos (6x6 Kernel)" ), static_cast< int >( QgsImageWarper::ResamplingMethod::Lanczos ) );
+  cmbResampling->addItem( tr( "Nearest Neighbour" ), static_cast<int>( QgsImageWarper::ResamplingMethod::NearestNeighbour ) );
+  cmbResampling->addItem( tr( "Bilinear (2x2 Kernel)" ), static_cast<int>( QgsImageWarper::ResamplingMethod::Bilinear ) );
+  cmbResampling->addItem( tr( "Cubic (4x4 Kernel)" ), static_cast<int>( QgsImageWarper::ResamplingMethod::Cubic ) );
+  cmbResampling->addItem( tr( "Cubic B-Spline (4x4 Kernel)" ), static_cast<int>( QgsImageWarper::ResamplingMethod::CubicSpline ) );
+  cmbResampling->addItem( tr( "Lanczos (6x6 Kernel)" ), static_cast<int>( QgsImageWarper::ResamplingMethod::Lanczos ) );
 
   connect( buttonBox, &QDialogButtonBox::helpRequested, this, &QgsTransformSettingsDialog::showHelp );
 }
@@ -151,7 +146,7 @@ QgsGcpTransformerInterface::TransformMethod QgsTransformSettingsDialog::transfor
   if ( cmbTransformType->currentIndex() == -1 )
     return QgsGcpTransformerInterface::TransformMethod::InvalidTransform;
   else
-    return static_cast< QgsGcpTransformerInterface::TransformMethod >( cmbTransformType->currentData().toInt() );
+    return static_cast<QgsGcpTransformerInterface::TransformMethod>( cmbTransformType->currentData().toInt() );
 }
 
 void QgsTransformSettingsDialog::setTransformMethod( QgsGcpTransformerInterface::TransformMethod method )
@@ -159,27 +154,27 @@ void QgsTransformSettingsDialog::setTransformMethod( QgsGcpTransformerInterface:
   if ( method == QgsGcpTransformerInterface::TransformMethod::InvalidTransform )
     cmbTransformType->setCurrentIndex( 0 );
   else
-    cmbTransformType->setCurrentIndex( cmbTransformType->findData( static_cast< int >( method ) ) );
+    cmbTransformType->setCurrentIndex( cmbTransformType->findData( static_cast<int>( method ) ) );
 }
 
 QgsImageWarper::ResamplingMethod QgsTransformSettingsDialog::resamplingMethod() const
 {
-  return static_cast< QgsImageWarper::ResamplingMethod >( cmbResampling->currentData().toInt() );
+  return static_cast<QgsImageWarper::ResamplingMethod>( cmbResampling->currentData().toInt() );
 }
 
 void QgsTransformSettingsDialog::setResamplingMethod( QgsImageWarper::ResamplingMethod method )
 {
-  cmbResampling->setCurrentIndex( cmbResampling->findData( static_cast< int >( method ) ) );
+  cmbResampling->setCurrentIndex( cmbResampling->findData( static_cast<int>( method ) ) );
 }
 
-QString QgsTransformSettingsDialog::compressionMethod() const
+QStringList QgsTransformSettingsDialog::creationOptions() const
 {
-  return cmbCompressionComboBox->currentData().toString();
+  return mCreationOptionsGroupBox->isChecked() ? mCreationOptionsWidget->options() : QStringList();
 }
 
-void QgsTransformSettingsDialog::setCompressionMethod( const QString &method )
+void QgsTransformSettingsDialog::setCreationOptions( const QString &options )
 {
-  cmbCompressionComboBox->setCurrentIndex( cmbCompressionComboBox->findData( method ) );
+  mCreationOptionsWidget->setOptions( options );
 }
 
 QString QgsTransformSettingsDialog::destinationFilename() const
@@ -238,8 +233,7 @@ void QgsTransformSettingsDialog::setLoadInProject( bool enabled )
   cbxLoadInProjectsWhenDone->setChecked( enabled );
 }
 
-void QgsTransformSettingsDialog::outputResolution(
-  double &resX, double &resY )
+void QgsTransformSettingsDialog::outputResolution( double &resX, double &resY )
 {
   resX = 0.0;
   resY = 0.0;
@@ -281,14 +275,20 @@ void QgsTransformSettingsDialog::accept()
     outputFile->setFilePath( outputFileInfo.absoluteFilePath() );
   }
 
+  const QString message = mCreationOptionsWidget->validateOptions( false );
+  if ( !message.isNull() )
+  {
+    QMessageBox::warning( this, tr( "Creation Options" ), tr( "Invalid creation options:\n%1" ).arg( message ) );
+    return;
+  }
+
   QDialog::accept();
 }
 
 void QgsTransformSettingsDialog::cmbTransformType_currentIndexChanged( const QString & )
 {
   if ( cmbTransformType->currentIndex() != -1
-       && ( static_cast< QgsGcpTransformerInterface::TransformMethod >( cmbTransformType->currentData().toInt() ) == QgsGcpTransformerInterface::TransformMethod::Linear
-            || static_cast< QgsGcpTransformerInterface::TransformMethod >( cmbTransformType->currentData().toInt() ) == QgsGcpTransformerInterface::TransformMethod::Helmert ) )
+       && ( static_cast<QgsGcpTransformerInterface::TransformMethod>( cmbTransformType->currentData().toInt() ) == QgsGcpTransformerInterface::TransformMethod::Linear || static_cast<QgsGcpTransformerInterface::TransformMethod>( cmbTransformType->currentData().toInt() ) == QgsGcpTransformerInterface::TransformMethod::Helmert ) )
   {
     mWorldFileCheckBox->setEnabled( true );
   }
@@ -328,10 +328,10 @@ QString QgsTransformSettingsDialog::generateModifiedFileName( const QString &fil
   switch ( mType )
   {
     case Qgis::LayerType::Vector:
-      modifiedFileName.replace( pos, modifiedFileName.size(), QStringLiteral( "gpkg" ) );
+      modifiedFileName.replace( pos, modifiedFileName.size(), u"gpkg"_s );
       break;
     case Qgis::LayerType::Raster:
-      modifiedFileName.replace( pos, modifiedFileName.size(), QStringLiteral( "tif" ) );
+      modifiedFileName.replace( pos, modifiedFileName.size(), u"tif"_s );
       break;
     case Qgis::LayerType::Plugin:
     case Qgis::LayerType::Mesh:
@@ -349,5 +349,5 @@ QString QgsTransformSettingsDialog::generateModifiedFileName( const QString &fil
 
 void QgsTransformSettingsDialog::showHelp()
 {
-  QgsHelp::openHelp( QStringLiteral( "working_with_raster/georeferencer.html#defining-the-transformation-settings" ) );
+  QgsHelp::openHelp( u"working_with_raster/georeferencer.html#defining-the-transformation-settings"_s );
 }

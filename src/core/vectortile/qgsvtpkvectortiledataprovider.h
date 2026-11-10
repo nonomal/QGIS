@@ -18,8 +18,8 @@
 
 #include "qgis_core.h"
 #include "qgis_sip.h"
-#include "qgsvectortiledataprovider.h"
 #include "qgsprovidermetadata.h"
+#include "qgsvectortiledataprovider.h"
 #include "qgsvectortilematrixset.h"
 
 #include <QImage>
@@ -35,14 +35,9 @@ class CORE_EXPORT QgsVtpkVectorTileDataProvider : public QgsVectorTileDataProvid
     Q_OBJECT
 
   public:
-    QgsVtpkVectorTileDataProvider( const QString &uri,
-                                   const QgsDataProvider::ProviderOptions &providerOptions,
-                                   QgsDataProvider::ReadFlags flags );
+    QgsVtpkVectorTileDataProvider( const QString &uri, const QgsDataProvider::ProviderOptions &providerOptions, Qgis::DataProviderReadFlags flags );
     QgsVtpkVectorTileDataProvider( const QgsVtpkVectorTileDataProvider &other );
 
-    /**
-     * QgsVtpkVectorTileDataProvider cannot be assigned.
-     */
     QgsVtpkVectorTileDataProvider &operator=( const QgsVtpkVectorTileDataProvider &other ) = delete;
 
     Qgis::DataProviderFlags flags() const override;
@@ -68,7 +63,6 @@ class CORE_EXPORT QgsVtpkVectorTileDataProvider : public QgsVectorTileDataProvid
     static QString DATA_PROVIDER_DESCRIPTION;
 
   private:
-
     //! Returns raw tile data for a single tile loaded from VTPK file
     static QgsVectorTileRawData loadFromVtpk( QgsVtpkTiles &vtpkTileReader, const QgsTileXYZ &id, QgsFeedback *feedback = nullptr );
     bool mIsValid = false;
@@ -79,7 +73,6 @@ class CORE_EXPORT QgsVtpkVectorTileDataProvider : public QgsVectorTileDataProvid
     QVariantMap mStyleDefinition;
     QVariantMap mSpriteDefinition;
     QImage mSpriteImage;
-
 };
 
 
@@ -89,7 +82,7 @@ class QgsVtpkVectorTileDataProviderMetadata : public QgsProviderMetadata
   public:
     QgsVtpkVectorTileDataProviderMetadata();
     QgsProviderMetadata::ProviderMetadataCapabilities capabilities() const override;
-    QgsVtpkVectorTileDataProvider *createProvider( const QString &uri, const QgsDataProvider::ProviderOptions &options, QgsDataProvider::ReadFlags flags = QgsDataProvider::ReadFlags() ) override;
+    QgsVtpkVectorTileDataProvider *createProvider( const QString &uri, const QgsDataProvider::ProviderOptions &options, Qgis::DataProviderReadFlags flags = Qgis::DataProviderReadFlags() ) override;
     QIcon icon() const override;
     ProviderCapabilities providerCapabilities() const override;
     QString filters( Qgis::FileFilterType type ) override;

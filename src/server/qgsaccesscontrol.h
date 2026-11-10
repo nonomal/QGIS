@@ -18,11 +18,10 @@
 #ifndef QGSACCESSCONTROL_H
 #define QGSACCESSCONTROL_H
 
-#include "qgsfeaturefilterprovider.h"
-#include "qgsaccesscontrolfilter.h"
-
 #include "qgis_server.h"
 #include "qgis_sip.h"
+#include "qgsaccesscontrolfilter.h"
+#include "qgsfeaturefilterprovider.h"
 
 SIP_IF_MODULE( HAVE_SERVER_PYTHON_PLUGINS )
 
@@ -42,36 +41,38 @@ class SERVER_EXPORT QgsAccessControl : public QgsFeatureFilterProvider
     //! Constructor
     QgsAccessControl()
     {
-      mPluginsAccessControls = new QgsAccessControlFilterMap();
+      mPluginsAccessControls = std::make_unique<QgsAccessControlFilterMap>();
       mResolved = false;
     }
 
-    //! Constructor
     QgsAccessControl( const QgsAccessControl &copy )
     {
-      mPluginsAccessControls = new QgsAccessControlFilterMap( *copy.mPluginsAccessControls );
+      mPluginsAccessControls = std::make_unique<QgsAccessControlFilterMap>( *copy.mPluginsAccessControls );
       mFilterFeaturesExpressions = copy.mFilterFeaturesExpressions;
       mResolved = copy.mResolved;
     }
 
 
-    ~QgsAccessControl() override
-    {
-      delete mPluginsAccessControls;
-    }
+    ~QgsAccessControl() override {}
 
-    //! Assignment operator
-    QgsAccessControl &operator= ( const QgsAccessControl &other )
+    QgsAccessControl &operator=( const QgsAccessControl &other )
     {
       if ( this != &other )
       {
-        delete mPluginsAccessControls;
-        mPluginsAccessControls = new QgsAccessControlFilterMap( *other.mPluginsAccessControls );
+        mPluginsAccessControls = std::make_unique<QgsAccessControlFilterMap>( *other.mPluginsAccessControls );
+
         mFilterFeaturesExpressions = other.mFilterFeaturesExpressions;
         mResolved = other.mResolved;
       }
       return *this;
     }
+
+    bool isFilterThreadSafe() const override { return false; }
+
+    using QgsFeatureFilterProvider::filterFeatures;
+    void filterFeatures( const QgsVectorLayer *layer, QgsFeatureRequest &filterFeatures ) const override;
+    QStringList layerAttributes( const QgsVectorLayer *layer, const QStringList &attributes ) const override;
+    QgsAccessControl *clone() const override SIP_FACTORY;
 
     /**
      * Resolve features' filter of layers
@@ -88,19 +89,6 @@ class SERVER_EXPORT QgsAccessControl : public QgsFeatureFilterProvider
      *  Clear expression's cache computed from `resolveFilterFeatures`
      */
     void unresolveFilterFeatures();
-
-    /**
-     * Filter the features of the layer
-     * \param layer the layer to control
-     * \param filterFeatures the request to fill
-     */
-    void filterFeatures( const QgsVectorLayer *layer, QgsFeatureRequest &filterFeatures ) const override;
-
-    /**
-     * Returns a clone of the object
-     * \returns A clone
-     */
-    QgsFeatureFilterProvider *clone() const override SIP_FACTORY;
 
     /**
      * Returns an additional subset string (typically SQL) filter
@@ -138,14 +126,6 @@ class SERVER_EXPORT QgsAccessControl : public QgsFeatureFilterProvider
     bool layerDeletePermission( const QgsVectorLayer *layer ) const;
 
     /**
-     * Returns the authorized layer attributes
-     * \param layer the layer to control
-     * \param attributes the list of attribute
-     * \returns the list of visible attributes
-     */
-    QStringList layerAttributes( const QgsVectorLayer *layer, const QStringList &attributes ) const override;
-
-    /**
      * Are we authorized to modify the following geometry
      * \param layer the layer to control
      * \param feature the concerned feature
@@ -170,11 +150,10 @@ class SERVER_EXPORT QgsAccessControl : public QgsFeatureFilterProvider
     QString resolveFilterFeatures( const QgsVectorLayer *layer ) const;
 
     //! The AccessControl plugins registry
-    QgsAccessControlFilterMap *mPluginsAccessControls = nullptr;
+    std::unique_ptr<QgsAccessControlFilterMap> mPluginsAccessControls;
 
     QMap<QString, QString> mFilterFeaturesExpressions;
     bool mResolved;
-
 };
 
 #endif

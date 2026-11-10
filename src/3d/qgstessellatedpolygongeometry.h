@@ -18,38 +18,23 @@
 
 #include "qgsfeatureid.h"
 
-#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
-#include <Qt3DRender/QGeometry>
-#else
 #include <Qt3DCore/QGeometry>
-#endif
+
+#define SIP_NO_FILE
 
 class Qgs3DSceneExporter;
 class QgsPolygon;
 class QgsPointXY;
 
-namespace QgsRayCastingUtils
-{
-  class Ray3D;
-}
-
-#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
-namespace Qt3DRender
-{
-  class QBuffer;
-}
-#else
 namespace Qt3DCore
 {
   class QBuffer;
 }
-#endif
 
-#define SIP_NO_FILE
 
 /**
- * \ingroup 3d
- * \brief Class derived from Qt3DRender::QGeometry that represents polygons tessellated into 3D geometry.
+ * \ingroup qgis_3d
+ * \brief Qt3DRender::QGeometry subclass that represents polygons tessellated into 3D geometry.
  *
  * Takes a list of polygons as input, internally it does tessellation and writes output to the internal
  * vertex buffer. Optionally it can add "walls" if the extrusion height is non-zero.
@@ -57,16 +42,12 @@ namespace Qt3DCore
  * \note Not available in Python bindings
  *
  */
-#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
-class QgsTessellatedPolygonGeometry : public Qt3DRender::QGeometry
-#else
 class QgsTessellatedPolygonGeometry : public Qt3DCore::QGeometry
-#endif
 {
     Q_OBJECT
   public:
     //! Constructor
-    QgsTessellatedPolygonGeometry( bool _withNormals = true, bool invertNormals = false, bool addBackFaces = false, bool addTextureCoords = false, QNode *parent = nullptr );
+    QgsTessellatedPolygonGeometry( bool _withNormals = true, bool invertNormals = false, bool addBackFaces = false, bool addTextureCoords = false, bool withTangents = false, QNode *parent = nullptr );
 
     //! Returns whether the normals of triangles will be inverted (useful for fixing clockwise / counter-clockwise face vertex orders)
     bool invertNormals() const { return mInvertNormals; }
@@ -91,15 +72,18 @@ class QgsTessellatedPolygonGeometry : public Qt3DCore::QGeometry
      */
     void setAddTextureCoords( bool add ) { mAddTextureCoords = add; }
 
-    //! Initializes vertex buffer from given polygons. Takes ownership of passed polygon geometries
-    void setPolygons( const QList<QgsPolygon *> &polygons, const QList<QgsFeatureId> &featureIds, const QgsPointXY &origin, float extrusionHeight, const QList<float> &extrusionHeightPerPolygon = QList<float>() );
-
     /**
      * Initializes vertex buffer (and other members) from data that were already tessellated.
      * This is an alternative to setPolygons() - this method does not do any expensive work in the body.
      * \since QGIS 3.12
      */
-    void setData( const QByteArray &vertexBufferData, int vertexCount, const QVector<QgsFeatureId> &triangleIndexFids, const QVector<uint> &triangleIndexStartingIndices );
+    void setVertexBufferData( const QByteArray &vertexBufferData, int vertexCount, const QVector<QgsFeatureId> &triangleIndexFids, const QVector<uint> &triangleIndexStartingIndices );
+
+    /**
+     * Sets index buffer data
+     * \since QGIS 4.0
+     */
+    void setIndexBufferData( const QByteArray &indexBufferData, size_t indexCount );
 
     /**
      * Returns ID of the feature to which given triangle index belongs (used for picking).
@@ -114,19 +98,15 @@ class QgsTessellatedPolygonGeometry : public Qt3DCore::QGeometry
     QVector<uint> triangleIndexStartingIndices() const { return mTriangleIndexStartingIndices; }
 
     friend class Qgs3DSceneExporter;
-  private:
 
-#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
-    Qt3DRender::QAttribute *mPositionAttribute = nullptr;
-    Qt3DRender::QAttribute *mNormalAttribute = nullptr;
-    Qt3DRender::QAttribute *mTextureCoordsAttribute = nullptr;
-    Qt3DRender::QBuffer *mVertexBuffer = nullptr;
-#else
+  private:
     Qt3DCore::QAttribute *mPositionAttribute = nullptr;
     Qt3DCore::QAttribute *mNormalAttribute = nullptr;
+    Qt3DCore::QAttribute *mTangentAttribute = nullptr;
     Qt3DCore::QAttribute *mTextureCoordsAttribute = nullptr;
     Qt3DCore::QBuffer *mVertexBuffer = nullptr;
-#endif
+    Qt3DCore::QBuffer *mIndexBuffer = nullptr;
+    Qt3DCore::QAttribute *mIndexAttribute = nullptr;
 
     QVector<QgsFeatureId> mTriangleIndexFids;
     QVector<uint> mTriangleIndexStartingIndices;
@@ -135,6 +115,7 @@ class QgsTessellatedPolygonGeometry : public Qt3DCore::QGeometry
     bool mInvertNormals = false;
     bool mAddBackFaces = false;
     bool mAddTextureCoords = false;
+    bool mWithTangents = false;
 };
 
 #endif // QGSTESSELLATEDPOLYGONGEOMETRY_H

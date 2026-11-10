@@ -18,12 +18,14 @@
 #define MATHUTILS_H
 
 #include <cmath>
+
 #include "qgis_analysis.h"
+
+#define SIP_NO_FILE
 
 class QgsPoint;
 class Vector3D;
 
-#define SIP_NO_FILE
 
 namespace MathUtils
 {
@@ -76,6 +78,6 @@ namespace MathUtils
   double ANALYSIS_EXPORT planeTest( QgsPoint *test, QgsPoint *pt1, QgsPoint *pt2, QgsPoint *pt3 );
   //! Calculates the angle between two segments (in 2 dimension, z-values are ignored)
   double ANALYSIS_EXPORT angle( QgsPoint *p1, QgsPoint *p2, QgsPoint *p3, QgsPoint *p4 );
-}
+} // namespace MathUtils
 
 #endif

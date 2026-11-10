@@ -3,8 +3,9 @@
  *                                                                      *
  * src/core/pointcloud/qgspointcloudrenderer.h                          *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/
+
 
 
 
@@ -14,8 +15,8 @@
 class QgsPointCloudRenderContext
 {
 %Docstring(signature="appended")
-
-Encapsulates the render context for a 2D point cloud rendering operation.
+Encapsulates the render context for a 2D point cloud rendering
+operation.
 
 .. versionadded:: 3.18
 %End
@@ -24,22 +25,19 @@ Encapsulates the render context for a 2D point cloud rendering operation.
 #include "qgspointcloudrenderer.h"
 %End
   public:
-
-    QgsPointCloudRenderContext( QgsRenderContext &context, const QgsVector3D &scale, const QgsVector3D &offset,
-                                double zValueScale, double zValueFixedOffset, QgsFeedback *feedback = 0 );
+    QgsPointCloudRenderContext( QgsRenderContext &context, const QgsVector3D &scale, const QgsVector3D &offset, double zValueScale, double zValueFixedOffset, QgsFeedback *feedback = 0 );
 %Docstring
 Constructor for QgsPointCloudRenderContext.
 
-The ``scale`` and ``offset`` arguments specify the scale and offset of the layer's int32 coordinates
-compared to CRS coordinates respectively.
+The ``scale`` and ``offset`` arguments specify the scale and offset of
+the layer's int32 coordinates compared to CRS coordinates respectively.
 
-The ``zValueScale`` argument specifies any constant scaling factor which must be applied to z values
-taken from the point cloud index.
+The ``zValueScale`` argument specifies any constant scaling factor which
+must be applied to z values taken from the point cloud index.
 
-The ``zValueFixedOffset`` argument specifies any constant offset value which must be added to z values
-taken from the point cloud index.
+The ``zValueFixedOffset`` argument specifies any constant offset value
+which must be added to z values taken from the point cloud index.
 %End
-
 
 
     QgsRenderContext &renderContext();
@@ -50,7 +48,8 @@ Returns a reference to the context's render context.
 
     QgsVector3D scale() const;
 %Docstring
-Returns the scale of the layer's int32 coordinates compared to CRS coords.
+Returns the scale of the layer's int32 coordinates compared to CRS
+coords.
 %End
 
     void setScale( const QgsVector3D &scale );
@@ -62,7 +61,8 @@ Sets the scale of the layer's int32 coordinates compared to CRS coords.
 
     QgsVector3D offset() const;
 %Docstring
-Returns the offset of the layer's int32 coordinates compared to CRS coords.
+Returns the offset of the layer's int32 coordinates compared to CRS
+coords.
 %End
 
     void setOffset( const QgsVector3D &offset );
@@ -81,8 +81,8 @@ Returns the total number of points rendered.
 %Docstring
 Increments the count of points rendered by the specified amount.
 
-It is a point cloud renderer's responsibility to correctly call this after
-rendering a block of points.
+It is a point cloud renderer's responsibility to correctly call this
+after rendering a block of points.
 %End
 
     QgsPointCloudAttributeCollection attributes() const;
@@ -133,7 +133,8 @@ Returns the offset for the y value in a point record.
 
     double zValueScale() const;
 %Docstring
-Returns any constant scaling factor which must be applied to z values taken from the point cloud index.
+Returns any constant scaling factor which must be applied to z values
+taken from the point cloud index.
 
 .. note::
 
@@ -142,7 +143,8 @@ Returns any constant scaling factor which must be applied to z values taken from
 
     double zValueFixedOffset() const;
 %Docstring
-Returns any constant offset which must be applied to z values taken from the point cloud index.
+Returns any constant offset which must be applied to z values taken from
+the point cloud index.
 
 .. note::
 
@@ -156,6 +158,28 @@ Returns the feedback object used to cancel rendering
 .. versionadded:: 3.20
 %End
 
+    void setMapCrsZFilter( const QgsDoubleRange &range );
+%Docstring
+Sets the allowed range of Z values.
+
+Points which Z value is not in ``range`` after transformation will be
+discarded from rendering. If both bounds are set to infinite, no
+filtering is applied.
+
+.. seealso:: :py:func:`mapCrsZFilter`
+
+.. versionadded:: 4.4
+%End
+
+    QgsDoubleRange mapCrsZFilter() const;
+%Docstring
+Returns the allowable range of z values in the map (destination) CRS.
+
+.. seealso:: :py:func:`setMapCrsZFilter`
+
+.. versionadded:: 4.4
+%End
+
 
 
   private:
@@ -167,7 +191,6 @@ Returns the feedback object used to cancel rendering
 class QgsPointCloudRenderer
 {
 %Docstring(signature="appended")
-
 Abstract base class for 2d point cloud renderers.
 
 .. versionadded:: 3.18
@@ -193,10 +216,12 @@ Abstract base class for 2d point cloud renderers.
 %End
   public:
 
+    enum class Property /BaseType=IntEnum/
+    {
+      Color,
+    };
+
     QgsPointCloudRenderer();
-%Docstring
-Constructor for QgsPointCloudRenderer.
-%End
 
     virtual ~QgsPointCloudRenderer();
 
@@ -207,26 +232,27 @@ Returns the identifier of the renderer type.
 
     virtual QgsPointCloudRenderer *clone() const = 0 /Factory/;
 %Docstring
-Create a deep copy of this renderer. Should be implemented by all subclasses
-and generate a proper subclass.
+Create a deep copy of this renderer. Should be implemented by all
+subclasses and generate a proper subclass.
 %End
 
 
 
     virtual void renderBlock( const QgsPointCloudBlock *block, QgsPointCloudRenderContext &context ) = 0;
 %Docstring
-Renders a ``block`` of point cloud data using the specified render ``context``.
+Renders a ``block`` of point cloud data using the specified render
+``context``.
 %End
 
 
     virtual bool willRenderPoint( const QMap<QString, QVariant> &pointAttributes );
 %Docstring
-Checks whether the point holding ``pointAttributes`` attributes will be rendered
-By default if not overridden in the subclass renderer will return true
-( the renderer is responsible for the filtering behavior )
+Checks whether the point holding ``pointAttributes`` attributes will be
+rendered By default if not overridden in the subclass renderer will
+return true ( the renderer is responsible for the filtering behavior )
 %End
 
-    static QgsPointCloudRenderer *load( QDomElement &element, const QgsReadWriteContext &context ) /Factory/;
+    static std::unique_ptr<QgsPointCloudRenderer> load( QDomElement &element, const QgsReadWriteContext &context );
 %Docstring
 Creates a renderer from an XML ``element``.
 
@@ -244,8 +270,8 @@ Saves the renderer configuration to an XML element.
 
     virtual QSet< QString > usedAttributes( const QgsPointCloudRenderContext &context ) const;
 %Docstring
-Returns a list of attributes required by this renderer. Attributes not listed in here may
-not be requested from the provider at rendering time.
+Returns a list of attributes required by this renderer. Attributes not
+listed in here may not be requested from the provider at rendering time.
 
 .. note::
 
@@ -256,8 +282,10 @@ not be requested from the provider at rendering time.
 
     virtual void startRender( QgsPointCloudRenderContext &context );
 %Docstring
-Must be called when a new render cycle is started. A call to :py:func:`~QgsPointCloudRenderer.startRender` must always
-be followed by a corresponding call to :py:func:`~QgsPointCloudRenderer.stopRender` after all features have been rendered.
+Must be called when a new render cycle is started. A call to
+:py:func:`~QgsPointCloudRenderer.startRender` must always be followed by
+a corresponding call to :py:func:`~QgsPointCloudRenderer.stopRender`
+after all features have been rendered.
 
 .. seealso:: :py:func:`stopRender`
 
@@ -269,9 +297,11 @@ be followed by a corresponding call to :py:func:`~QgsPointCloudRenderer.stopRend
 
     virtual void stopRender( QgsPointCloudRenderContext &context );
 %Docstring
-Must be called when a render cycle has finished, to allow the renderer to clean up.
+Must be called when a render cycle has finished, to allow the renderer
+to clean up.
 
-Calls to :py:func:`~QgsPointCloudRenderer.stopRender` must always be preceded by a call to :py:func:`~QgsPointCloudRenderer.startRender`.
+Calls to :py:func:`~QgsPointCloudRenderer.stopRender` must always be
+preceded by a call to :py:func:`~QgsPointCloudRenderer.startRender`.
 
 .. warning::
 
@@ -283,21 +313,24 @@ Calls to :py:func:`~QgsPointCloudRenderer.stopRender` must always be preceded by
 
     virtual bool legendItemChecked( const QString &key );
 %Docstring
-Returns ``True`` if the legend item with the specified ``key`` is checked.
+Returns ``True`` if the legend item with the specified ``key`` is
+checked.
 
 .. seealso:: :py:func:`checkLegendItem`
 %End
 
     virtual void checkLegendItem( const QString &key, bool state = true );
 %Docstring
-Called when the check state of the legend item with the specified ``key`` is changed.
+Called when the check state of the legend item with the specified
+``key`` is changed.
 
 .. seealso:: :py:func:`legendItemChecked`
 %End
 
     void setPointSize( double size );
 %Docstring
-Sets the point ``size``. Point size units are specified via :py:func:`~QgsPointCloudRenderer.setPointSizeUnit`.
+Sets the point ``size``. Point size units are specified via
+:py:func:`~QgsPointCloudRenderer.setPointSizeUnit`.
 
 .. seealso:: :py:func:`pointSize`
 
@@ -310,7 +343,8 @@ Sets the point ``size``. Point size units are specified via :py:func:`~QgsPointC
 %Docstring
 Returns the point size.
 
-The point size units are retrieved by calling :py:func:`~QgsPointCloudRenderer.pointSizeUnit`.
+The point size units are retrieved by calling
+:py:func:`~QgsPointCloudRenderer.pointSizeUnit`.
 
 .. seealso:: :py:func:`setPointSize`
 
@@ -401,7 +435,8 @@ Returns the maximum screen error allowed when rendering the point cloud.
 
 Larger values result in a faster render with less points rendered.
 
-Units are retrieved via :py:func:`~QgsPointCloudRenderer.maximumScreenErrorUnit`.
+Units are retrieved via
+:py:func:`~QgsPointCloudRenderer.maximumScreenErrorUnit`.
 
 .. seealso:: :py:func:`setMaximumScreenError`
 
@@ -410,11 +445,13 @@ Units are retrieved via :py:func:`~QgsPointCloudRenderer.maximumScreenErrorUnit`
 
     void setMaximumScreenError( double error );
 %Docstring
-Sets the maximum screen ``error`` allowed when rendering the point cloud.
+Sets the maximum screen ``error`` allowed when rendering the point
+cloud.
 
 Larger values result in a faster render with less points rendered.
 
-Units are set via :py:func:`~QgsPointCloudRenderer.setMaximumScreenErrorUnit`.
+Units are set via
+:py:func:`~QgsPointCloudRenderer.setMaximumScreenErrorUnit`.
 
 .. seealso:: :py:func:`maximumScreenError`
 
@@ -423,7 +460,8 @@ Units are set via :py:func:`~QgsPointCloudRenderer.setMaximumScreenErrorUnit`.
 
     Qgis::RenderUnit maximumScreenErrorUnit() const;
 %Docstring
-Returns the unit for the maximum screen error allowed when rendering the point cloud.
+Returns the unit for the maximum screen error allowed when rendering the
+point cloud.
 
 .. seealso:: :py:func:`maximumScreenError`
 
@@ -432,7 +470,8 @@ Returns the unit for the maximum screen error allowed when rendering the point c
 
     void setMaximumScreenErrorUnit( Qgis::RenderUnit unit );
 %Docstring
-Sets the ``unit`` for the maximum screen error allowed when rendering the point cloud.
+Sets the ``unit`` for the maximum screen error allowed when rendering
+the point cloud.
 
 .. seealso:: :py:func:`setMaximumScreenError`
 
@@ -455,9 +494,12 @@ Sets whether points are triangulated to render solid surface
 
     bool horizontalTriangleFilter() const;
 %Docstring
-Returns whether large triangles will get rendered. This only applies when :py:func:`~QgsPointCloudRenderer.renderAsTriangles`
-is enabled. When the triangle filtering is enabled, triangles where at least one side is
-horizontally longer than the threshold in :py:func:`~QgsPointCloudRenderer.horizontalTriangleFilterThreshold` do not get rendered.
+Returns whether large triangles will get rendered. This only applies
+when :py:func:`~QgsPointCloudRenderer.renderAsTriangles` is enabled.
+When the triangle filtering is enabled, triangles where at least one
+side is horizontally longer than the threshold in
+:py:func:`~QgsPointCloudRenderer.horizontalTriangleFilterThreshold` do
+not get rendered.
 
 .. seealso:: :py:func:`horizontalTriangleFilterThreshold`
 
@@ -470,9 +512,12 @@ horizontally longer than the threshold in :py:func:`~QgsPointCloudRenderer.horiz
 
     void setHorizontalTriangleFilter( bool enabled );
 %Docstring
-Sets whether large triangles will get rendered. This only applies when :py:func:`~QgsPointCloudRenderer.renderAsTriangles`
-is enabled. When the triangle filtering is enabled, triangles where at least one side is
-horizontally longer than the threshold in :py:func:`~QgsPointCloudRenderer.horizontalTriangleFilterThreshold` do not get rendered.
+Sets whether large triangles will get rendered. This only applies when
+:py:func:`~QgsPointCloudRenderer.renderAsTriangles` is enabled. When the
+triangle filtering is enabled, triangles where at least one side is
+horizontally longer than the threshold in
+:py:func:`~QgsPointCloudRenderer.horizontalTriangleFilterThreshold` do
+not get rendered.
 
 .. seealso:: :py:func:`setHorizontalTriangleFilterThreshold`
 
@@ -485,10 +530,13 @@ horizontally longer than the threshold in :py:func:`~QgsPointCloudRenderer.horiz
 
     double horizontalTriangleFilterThreshold() const;
 %Docstring
-Returns threshold for filtering of triangles. This only applies when :py:func:`~QgsPointCloudRenderer.renderAsTriangles` and
-:py:func:`~QgsPointCloudRenderer.horizontalTriangleFilter` are both enabled. If any edge of a triangle is horizontally longer
-than the threshold, such triangle will not get rendered. Units of the threshold value are
-given by :py:func:`~QgsPointCloudRenderer.horizontalTriangleFilterUnits`.
+Returns threshold for filtering of triangles. This only applies when
+:py:func:`~QgsPointCloudRenderer.renderAsTriangles` and
+:py:func:`~QgsPointCloudRenderer.horizontalTriangleFilter` are both
+enabled. If any edge of a triangle is horizontally longer than the
+threshold, such triangle will not get rendered. Units of the threshold
+value are given by
+:py:func:`~QgsPointCloudRenderer.horizontalTriangleFilterUnits`.
 
 .. seealso:: :py:func:`horizontalTriangleFilter`
 
@@ -501,10 +549,13 @@ given by :py:func:`~QgsPointCloudRenderer.horizontalTriangleFilterUnits`.
 
     void setHorizontalTriangleFilterThreshold( double threshold );
 %Docstring
-Sets threshold for filtering of triangles. This only applies when :py:func:`~QgsPointCloudRenderer.renderAsTriangles` and
-:py:func:`~QgsPointCloudRenderer.horizontalTriangleFilter` are both enabled. If any edge of a triangle is horizontally longer
-than the threshold, such triangle will not get rendered. Units of the threshold value are
-given by :py:func:`~QgsPointCloudRenderer.horizontalTriangleFilterUnits`.
+Sets threshold for filtering of triangles. This only applies when
+:py:func:`~QgsPointCloudRenderer.renderAsTriangles` and
+:py:func:`~QgsPointCloudRenderer.horizontalTriangleFilter` are both
+enabled. If any edge of a triangle is horizontally longer than the
+threshold, such triangle will not get rendered. Units of the threshold
+value are given by
+:py:func:`~QgsPointCloudRenderer.horizontalTriangleFilterUnits`.
 
 .. seealso:: :py:func:`horizontalTriangleFilter`
 
@@ -517,8 +568,10 @@ given by :py:func:`~QgsPointCloudRenderer.horizontalTriangleFilterUnits`.
 
     Qgis::RenderUnit horizontalTriangleFilterUnit() const;
 %Docstring
-Returns units of the threshold for filtering of triangles. This only applies when :py:func:`~QgsPointCloudRenderer.renderAsTriangles` and
-:py:func:`~QgsPointCloudRenderer.horizontalTriangleFilter` are both enabled.
+Returns units of the threshold for filtering of triangles. This only
+applies when :py:func:`~QgsPointCloudRenderer.renderAsTriangles` and
+:py:func:`~QgsPointCloudRenderer.horizontalTriangleFilter` are both
+enabled.
 
 .. seealso:: :py:func:`horizontalTriangleFilter`
 
@@ -531,8 +584,10 @@ Returns units of the threshold for filtering of triangles. This only applies whe
 
     void setHorizontalTriangleFilterUnit( Qgis::RenderUnit unit );
 %Docstring
-Sets units of the threshold for filtering of triangles. This only applies when :py:func:`~QgsPointCloudRenderer.renderAsTriangles` and
-:py:func:`~QgsPointCloudRenderer.horizontalTriangleFilter` are both enabled.
+Sets units of the threshold for filtering of triangles. This only
+applies when :py:func:`~QgsPointCloudRenderer.renderAsTriangles` and
+:py:func:`~QgsPointCloudRenderer.horizontalTriangleFilter` are both
+enabled.
 
 .. seealso:: :py:func:`horizontalTriangleFilter`
 
@@ -550,11 +605,123 @@ Creates a set of legend nodes representing the renderer.
 
     virtual QStringList legendRuleKeys() const;
 %Docstring
-Returns a list of all rule keys for legend nodes created by the renderer.
+Returns a list of all rule keys for legend nodes created by the
+renderer.
+%End
+
+    void setShowLabels( const bool show );
+%Docstring
+Set whether the renderer should also render file labels inside extent
+
+.. versionadded:: 3.42
+%End
+
+    bool showLabels() const;
+%Docstring
+Returns whether the renderer shows file labels inside the extent
+rectangle
+
+.. versionadded:: 3.42
+%End
+
+    void setLabelTextFormat( const QgsTextFormat &textFormat );
+%Docstring
+Sets the text format renderers should use for rendering labels
+
+.. versionadded:: 3.42
+%End
+
+    QgsTextFormat labelTextFormat() const;
+%Docstring
+Returns the text format renderer is using for rendering labels
+
+.. versionadded:: 3.42
+%End
+
+    void setZoomOutBehavior( const Qgis::PointCloudZoomOutRenderBehavior behavior );
+%Docstring
+Sets the renderer behavior when zoomed out
+
+.. versionadded:: 3.42
+%End
+
+    Qgis::PointCloudZoomOutRenderBehavior zoomOutBehavior() const;
+%Docstring
+Returns the renderer behavior when zoomed out
+
+.. versionadded:: 3.42
+%End
+
+    void setOverviewSwitchingScale( const double value );
+%Docstring
+Sets the overview switching scale
+
+Point clouds whose extents intersect the map extent are considered
+visible. When zoomed out beyond the overview switching scale (render
+extent exceeds average point cloud dimensions by the scale factor), and
+overview zoom-out behavior is enabled, the overview is rendered instead
+of an individual point cloud.
+
+.. versionadded:: 4.0
+%End
+
+    double overviewSwitchingScale() const;
+%Docstring
+Returns the overview switching scale
+
+.. versionadded:: 4.0
+%End
+
+    QgsElevationShadingRenderer elevationShadingRenderer() const;
+%Docstring
+Returns the shading renderer used to render shading on the layer.
+
+.. seealso:: :py:func:`setElevationShadingRenderer`
+
+.. versionadded:: 4.2
+%End
+
+    void setElevationShadingRenderer( const QgsElevationShadingRenderer &renderer );
+%Docstring
+Sets the shading ``renderer`` used to render shading on the layer.
+
+.. seealso:: :py:func:`elevationShadingRenderer`
+
+.. versionadded:: 4.2
+%End
+
+    static const QgsPropertiesDefinition &propertyDefinitions();
+%Docstring
+Returns the property definitions for data defined properties used by the
+renderer.
+
+.. versionadded:: 4.2
+%End
+
+    const QgsPropertyCollection &dataDefinedProperties() const;
+%Docstring
+Returns the renderer's property collection, used for data defined
+overrides.
+
+.. seealso:: :py:func:`setDataDefinedProperties`
+
+.. versionadded:: 4.2
+%End
+
+    void setDataDefinedProperties( const QgsPropertyCollection &collection );
+%Docstring
+Sets the renderer's property collection, used for data defined
+overrides.
+
+:param collection: property collection. Existing properties will be
+                   replaced.
+
+.. seealso:: :py:func:`dataDefinedProperties`
+
+.. versionadded:: 4.2
 %End
 
   protected:
-
     static void pointXY( QgsPointCloudRenderContext &context, const char *ptr, int i, double &x, double &y );
 %Docstring
 Retrieves the x and y coordinate for the point at index ``i``.
@@ -567,12 +734,14 @@ Retrieves the z value for the point at index ``i``.
 
     void drawPoint( double x, double y, const QColor &color, QgsPointCloudRenderContext &context ) const;
 %Docstring
-Draws a point using a ``color`` at the specified ``x`` and ``y`` (in map coordinates).
+Draws a point using a ``color`` at the specified ``x`` and ``y`` (in map
+coordinates).
 %End
 
     void drawPoint( double x, double y, const QColor &color, int width, QgsPointCloudRenderContext &context ) const;
 %Docstring
-Draws a point using a ``color`` and painter ``width`` at the specified ``x`` and ``y`` (in map coordinates).
+Draws a point using a ``color`` and painter ``width`` at the specified
+``x`` and ``y`` (in map coordinates).
 
 .. versionadded:: 3.36
 %End
@@ -580,31 +749,34 @@ Draws a point using a ``color`` and painter ``width`` at the specified ``x`` and
 
     void addPointToTriangulation( double x, double y, double z, const QColor &color, QgsPointCloudRenderContext &context );
 %Docstring
-Adds a point to the list of points to be triangulated (only used when :py:func:`~QgsPointCloudRenderer.renderAsTriangles` is enabled)
+Adds a point to the list of points to be triangulated (only used when
+:py:func:`~QgsPointCloudRenderer.renderAsTriangles` is enabled)
 
 .. versionadded:: 3.36
 %End
 
     void copyCommonProperties( QgsPointCloudRenderer *destination ) const;
 %Docstring
-Copies common point cloud properties (such as point size and screen error) to the ``destination`` renderer.
+Copies common point cloud properties (such as point size and screen
+error) to the ``destination`` renderer.
 %End
 
     void restoreCommonProperties( const QDomElement &element, const QgsReadWriteContext &context );
 %Docstring
-Restores common renderer properties (such as point size and screen error) from the
-specified DOM ``element``.
+Restores common renderer properties (such as point size and screen
+error) from the specified DOM ``element``.
 
 .. seealso:: :py:func:`saveCommonProperties`
 %End
 
     void saveCommonProperties( QDomElement &element, const QgsReadWriteContext &context ) const;
 %Docstring
-Saves common renderer properties (such as point size and screen error) to the
-specified DOM ``element``.
+Saves common renderer properties (such as point size and screen error)
+to the specified DOM ``element``.
 
 .. seealso:: :py:func:`restoreCommonProperties`
 %End
+
 
   private:
     QgsPointCloudRenderer( const QgsPointCloudRenderer &other );
@@ -615,5 +787,5 @@ specified DOM ``element``.
  *                                                                      *
  * src/core/pointcloud/qgspointcloudrenderer.h                          *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/

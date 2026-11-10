@@ -18,12 +18,12 @@
 #ifndef QGSFILTERRESTORER_H
 #define QGSFILTERRESTORER_H
 
-#define SIP_NO_FILE
-
 
 #include "qgis_server.h"
 
 #include <QHash>
+
+#define SIP_NO_FILE
 
 class QgsMapLayer;
 class QgsAccessControl;
@@ -35,21 +35,15 @@ class QgsAccessControl;
 class SERVER_EXPORT QgsOWSServerFilterRestorer
 {
   public:
-
     /**
      * Default constructor for QgsOWSServerFilterRestorer.
      */
     QgsOWSServerFilterRestorer() = default;
 
     //! Destructor. When object is destroyed all original layer filters will be restored.
-    ~QgsOWSServerFilterRestorer()
-    {
-      restoreLayerFilters( mOriginalLayerFilters );
-    }
+    ~QgsOWSServerFilterRestorer() { restoreLayerFilters( mOriginalLayerFilters ); }
 
-    //! QgsOWSServerFilterRestorer cannot be copied
     QgsOWSServerFilterRestorer( const QgsOWSServerFilterRestorer &rh ) = delete;
-    //! QgsOWSServerFilterRestorer cannot be copied
     QgsOWSServerFilterRestorer &operator=( const QgsOWSServerFilterRestorer &rh ) = delete;
 
     void restoreLayerFilters( const QHash<QgsMapLayer *, QString> &filterMap );
@@ -62,8 +56,7 @@ class SERVER_EXPORT QgsOWSServerFilterRestorer
 
     //! Apply filter from AccessControl
     //XXX May be this method should be owned QgsAccessControl
-    static void applyAccessControlLayerFilters( const QgsAccessControl *accessControl, QgsMapLayer *mapLayer,
-        QHash<QgsMapLayer *, QString> &originalLayerFilters );
+    static void applyAccessControlLayerFilters( const QgsAccessControl *accessControl, QgsMapLayer *mapLayer, QHash<QgsMapLayer *, QString> &originalLayerFilters );
 
     /**
      * Applies filters from access control on layer.
@@ -74,8 +67,6 @@ class SERVER_EXPORT QgsOWSServerFilterRestorer
 
   private:
     QHash<QgsMapLayer *, QString> mOriginalLayerFilters;
-
 };
 
 #endif // QGSFILTERRESTORER_H
-

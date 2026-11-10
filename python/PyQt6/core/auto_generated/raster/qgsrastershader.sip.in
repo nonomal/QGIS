@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/raster/qgsrastershader.h                                    *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/
 
 
@@ -46,49 +46,45 @@ Returns the minimum value for the raster shader.
     QgsRasterShaderFunction *rasterShaderFunction();
 
 
-    bool shade( double value,
-                int *returnRedValue /Out/,
-                int *returnGreenValue /Out/,
-                int *returnBlueValue /Out/,
-                int *returnAlpha /Out/ );
+    bool shade( double value, int *returnRedValue /Out/, int *returnGreenValue /Out/, int *returnBlueValue /Out/, int *returnAlpha /Out/ ) const;
 %Docstring
 Generates a new RGBA value based on one input ``value``.
 
 :param value: The original value to base a new RGBA value on
-:param returnRedValue: The red component of the new RGBA value
-:param returnGreenValue: The green component of the new RGBA value
-:param returnBlueValue: The blue component of the new RGBA value
 
 :return: - ``True`` if the return values are valid otherwise ``False``
+         - returnRedValue: The red component of the new RGBA value
+         - returnGreenValue: The green component of the new RGBA value
+         - returnBlueValue: The blue component of the new RGBA value
          - returnAlpha: The alpha component of the new RGBA value
 %End
 
-    bool shade( double redValue,
-                double greenValue,
-                double blueValue,
-                double alphaValue,
-                int *returnRedValue /Out/,
-                int *returnGreenValue /Out/,
-                int *returnBlueValue /Out/,
-                int *returnAlpha /Out/ );
+    bool shade(
+      double redValue, double greenValue, double blueValue, double alphaValue, int *returnRedValue /Out/, int *returnGreenValue /Out/, int *returnBlueValue /Out/, int *returnAlpha /Out/
+    ) const;
 %Docstring
 Generates a new RGBA value based on an original RGBA value.
 
-:param redValue: The red component of the original value to base a new RGBA value on
-:param greenValue: The green component of the original value to base a new RGBA value on
-:param blueValue: The blue component of the original value to base a new RGBA value on
-:param alphaValue: The alpha component of the original value to base a new RGBA value on
-:param returnRedValue: The red component of the new RGBA value
-:param returnGreenValue: The green component of the new RGBA value
-:param returnBlueValue: The blue component of the new RGBA value
+:param redValue: The red component of the original value to base a new
+                 RGBA value on
+:param greenValue: The green component of the original value to base a
+                   new RGBA value on
+:param blueValue: The blue component of the original value to base a new
+                  RGBA value on
+:param alphaValue: The alpha component of the original value to base a
+                   new RGBA value on
 
 :return: - ``True`` if the return values are valid otherwise ``False``
+         - returnRedValue: The red component of the new RGBA value
+         - returnGreenValue: The green component of the new RGBA value
+         - returnBlueValue: The blue component of the new RGBA value
          - returnAlpha: The alpha component of the new RGBA value
 %End
 
     void setRasterShaderFunction( QgsRasterShaderFunction *function /Transfer/ );
 %Docstring
-A public method that allows the user to set their own shader ``function``.
+A public method that allows the user to set their own shader
+``function``.
 
 .. note::
 
@@ -131,5 +127,5 @@ Reads shader state from an XML element.
  *                                                                      *
  * src/core/raster/qgsrastershader.h                                    *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/

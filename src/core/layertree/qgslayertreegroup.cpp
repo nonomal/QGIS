@@ -15,19 +15,25 @@
 
 #include "qgslayertreegroup.h"
 
+#include "qgsgrouplayer.h"
 #include "qgslayertree.h"
 #include "qgslayertreeutils.h"
 #include "qgsmaplayer.h"
-#include "qgsgrouplayer.h"
-#include "qgspainting.h"
+#include "qgsstringutils.h"
 
 #include <QDomElement>
+#include <QString>
 #include <QStringList>
 
+#include "moc_qgslayertreegroup.cpp"
+
+using namespace Qt::StringLiterals;
 
 QgsLayerTreeGroup::QgsLayerTreeGroup( const QString &name, bool checked )
   : QgsLayerTreeNode( NodeGroup, checked )
   , mName( name )
+  , mId( QgsStringUtils::createUniqueId( u"group"_s ) )
+  , mServerProperties( std::make_unique<QgsMapLayerServerProperties>() )
 {
   init();
 }
@@ -35,11 +41,16 @@ QgsLayerTreeGroup::QgsLayerTreeGroup( const QString &name, bool checked )
 QgsLayerTreeGroup::QgsLayerTreeGroup( const QgsLayerTreeGroup &other )
   : QgsLayerTreeNode( other )
   , mName( other.mName )
+  , mId( other.mId )
   , mChangingChildVisibility( other.mChangingChildVisibility )
   , mMutuallyExclusive( other.mMutuallyExclusive )
   , mMutuallyExclusiveChildIndex( other.mMutuallyExclusiveChildIndex )
   , mGroupLayer( other.mGroupLayer )
+  , mServerProperties( std::make_unique<QgsMapLayerServerProperties>() )
+  , mWmsGroupRequestMode( other.mWmsGroupRequestMode )
 {
+  other.serverProperties()->copyTo( mServerProperties.get() );
+
   init();
 }
 
@@ -63,6 +74,11 @@ void QgsLayerTreeGroup::setName( const QString &n )
 
   mName = n;
   emit nameChanged( this, n );
+}
+
+void QgsLayerTreeGroup::setId( const QString &id )
+{
+  mId = id;
 }
 
 
@@ -102,6 +118,50 @@ QgsLayerTreeLayer *QgsLayerTreeGroup::addLayer( QgsMapLayer *layer )
 
   updateGroupLayers();
   return ll;
+}
+
+QgsLayerTreeCustomNode *QgsLayerTreeGroup::insertCustomNode( int index, const QString &id, const QString &name )
+{
+  if ( id.trimmed().isEmpty() )
+    return nullptr;
+
+  // Avoid registering two custom nodes with the same id
+  const QStringList customNodeIds = findCustomNodeIds();
+  if ( customNodeIds.contains( id ) )
+    return nullptr;
+
+  QgsLayerTreeCustomNode *customNode = new QgsLayerTreeCustomNode( id, name );
+  insertChildNode( index, customNode );
+  return customNode;
+}
+
+QgsLayerTreeCustomNode *QgsLayerTreeGroup::insertCustomNode( int index, QgsLayerTreeCustomNode *node SIP_TRANSFER )
+{
+  if ( node->id().trimmed().isEmpty() )
+    return nullptr;
+
+  // Avoid registering two custom nodes with the same id
+  const QStringList customNodeIds = findCustomNodeIds();
+  if ( customNodeIds.contains( node->id() ) )
+    return nullptr;
+
+  insertChildNode( index, node );
+  return node;
+}
+
+QgsLayerTreeCustomNode *QgsLayerTreeGroup::addCustomNode( const QString &id, const QString &name )
+{
+  if ( id.trimmed().isEmpty() )
+    return nullptr;
+
+  // Avoid registering two custom nodes with the same id
+  const QStringList customNodeIds = findCustomNodeIds();
+  if ( customNodeIds.contains( id ) )
+    return nullptr;
+
+  QgsLayerTreeCustomNode *customNode = new QgsLayerTreeCustomNode( id, name );
+  addChildNode( customNode );
+  return customNode;
 }
 
 void QgsLayerTreeGroup::insertChildNode( int index, QgsLayerTreeNode *node )
@@ -165,6 +225,24 @@ void QgsLayerTreeGroup::removeLayer( QgsMapLayer *layer )
     {
       QgsLayerTreeLayer *childLayer = QgsLayerTree::toLayer( child );
       if ( childLayer->layer() == layer )
+      {
+        removeChildren( mChildren.indexOf( child ), 1 );
+        break;
+      }
+    }
+  }
+
+  updateGroupLayers();
+}
+
+void QgsLayerTreeGroup::removeCustomNode( QgsLayerTreeCustomNode *customNode )
+{
+  for ( QgsLayerTreeNode *child : std::as_const( mChildren ) )
+  {
+    if ( QgsLayerTree::isCustomNode( child ) )
+    {
+      QgsLayerTreeCustomNode *childCustom = QgsLayerTree::toCustomNode( child );
+      if ( childCustom->id() == customNode->id() )
       {
         removeChildren( mChildren.indexOf( child ), 1 );
         break;
@@ -260,6 +338,39 @@ QList<QgsLayerTreeLayer *> QgsLayerTreeGroup::findLayers() const
   return list;
 }
 
+QgsLayerTreeCustomNode *QgsLayerTreeGroup::findCustomNode( const QString &id ) const
+{
+  for ( QgsLayerTreeNode *child : std::as_const( mChildren ) )
+  {
+    if ( QgsLayerTree::isCustomNode( child ) )
+    {
+      QgsLayerTreeCustomNode *childCustom = QgsLayerTree::toCustomNode( child );
+      if ( childCustom->id() == id )
+        return childCustom;
+    }
+    else if ( QgsLayerTree::isGroup( child ) )
+    {
+      QgsLayerTreeCustomNode *res = QgsLayerTree::toGroup( child )->findCustomNode( id );
+      if ( res )
+        return res;
+    }
+  }
+  return nullptr;
+}
+
+QList<QgsLayerTreeNode *> QgsLayerTreeGroup::findLayersAndCustomNodes() const
+{
+  QList<QgsLayerTreeNode *> list;
+  for ( QgsLayerTreeNode *child : std::as_const( mChildren ) )
+  {
+    if ( QgsLayerTree::isLayer( child ) || QgsLayerTree::isCustomNode( child ) )
+      list << child;
+    else if ( QgsLayerTree::isGroup( child ) )
+      list << QgsLayerTree::toGroup( child )->findLayersAndCustomNodes();
+  }
+  return list;
+}
+
 void QgsLayerTreeGroup::reorderGroupLayers( const QList<QgsMapLayer *> &order )
 {
   const QList< QgsLayerTreeLayer * > childLayers = findLayers();
@@ -273,6 +384,26 @@ void QgsLayerTreeGroup::reorderGroupLayers( const QList<QgsMapLayer *> &order )
         QgsLayerTreeLayer *cloned = layerNode->clone();
         insertChildNode( targetIndex, cloned );
         removeChildNode( layerNode );
+        targetIndex++;
+        break;
+      }
+    }
+  }
+}
+
+void QgsLayerTreeGroup::reorderGroupLayersAndCustomNodes( const QList<QgsLayerTreeNode *> &order )
+{
+  const QList< QgsLayerTreeNode * > childNodes = findLayersAndCustomNodes();
+  int targetIndex = 0;
+  for ( QgsLayerTreeNode *targetNode : order )
+  {
+    for ( QgsLayerTreeNode *childNode : childNodes )
+    {
+      if ( childNode == targetNode )
+      {
+        QgsLayerTreeNode *cloned = childNode->clone();
+        insertChildNode( targetIndex, cloned );
+        removeChildNode( childNode );
         targetIndex++;
         break;
       }
@@ -302,6 +433,38 @@ QList<QgsMapLayer *> QgsLayerTreeGroup::layerOrderRespectingGroupLayers() const
       else
       {
         list << group->layerOrderRespectingGroupLayers();
+      }
+    }
+  }
+  return list;
+}
+
+QList<QgsLayerTreeNode *> QgsLayerTreeGroup::layerAndCustomNodeOrderRespectingGroupLayers() const
+{
+  QList<QgsLayerTreeNode *> list;
+  for ( QgsLayerTreeNode *child : std::as_const( mChildren ) )
+  {
+    if ( QgsLayerTree::isLayer( child ) )
+    {
+      QgsMapLayer *layer = QgsLayerTree::toLayer( child )->layer();
+      if ( !layer || !layer->isSpatial() )
+        continue;
+      list << child;
+    }
+    else if ( QgsLayerTree::isCustomNode( child ) )
+    {
+      list << child;
+    }
+    else if ( QgsLayerTree::isGroup( child ) )
+    {
+      QgsLayerTreeGroup *group = QgsLayerTree::toGroup( child );
+      if ( group->groupLayer() )
+      {
+        list << group;
+      }
+      else
+      {
+        list << group->layerAndCustomNodeOrderRespectingGroupLayers();
       }
     }
   }
@@ -345,18 +508,22 @@ QList<QgsLayerTreeGroup *> QgsLayerTreeGroup::findGroups( bool recursive ) const
   return list;
 }
 
-QgsLayerTreeGroup *QgsLayerTreeGroup::readXml( QDomElement &element, const QgsReadWriteContext &context )
+QgsLayerTreeGroup *QgsLayerTreeGroup::readXml( const QDomElement &element, const QgsReadWriteContext &context ) // cppcheck-suppress duplInheritedMember
 {
-  if ( element.tagName() != QLatin1String( "layer-tree-group" ) )
+  if ( element.tagName() != "layer-tree-group"_L1 )
     return nullptr;
 
-  QString name =  context.projectTranslator()->translate( QStringLiteral( "project:layergroups" ), element.attribute( QStringLiteral( "name" ) ) );
-  bool isExpanded = ( element.attribute( QStringLiteral( "expanded" ), QStringLiteral( "1" ) ) == QLatin1String( "1" ) );
-  bool checked = QgsLayerTreeUtils::checkStateFromXml( element.attribute( QStringLiteral( "checked" ) ) ) != Qt::Unchecked;
-  bool isMutuallyExclusive = element.attribute( QStringLiteral( "mutually-exclusive" ), QStringLiteral( "0" ) ) == QLatin1String( "1" );
-  int mutuallyExclusiveChildIndex = element.attribute( QStringLiteral( "mutually-exclusive-child" ), QStringLiteral( "-1" ) ).toInt();
+  QString name = context.projectTranslator()->translate( u"project:layergroups"_s, element.attribute( u"name"_s ) );
+  bool isExpanded = ( element.attribute( u"expanded"_s, u"1"_s ) == "1"_L1 );
+  bool checked = QgsLayerTreeUtils::checkStateFromXml( element.attribute( u"checked"_s ) ) != Qt::Unchecked;
+  bool isMutuallyExclusive = element.attribute( u"mutually-exclusive"_s, u"0"_s ) == "1"_L1;
+  int mutuallyExclusiveChildIndex = element.attribute( u"mutually-exclusive-child"_s, u"-1"_s ).toInt();
 
   QgsLayerTreeGroup *groupNode = new QgsLayerTreeGroup( name, checked );
+  // maintains backwards compatibility
+  const QString id = element.attribute( u"id"_s );
+  if ( !id.isEmpty() )
+    groupNode->mId = id;
   groupNode->setExpanded( isExpanded );
 
   groupNode->readCommonXml( element );
@@ -365,34 +532,82 @@ QgsLayerTreeGroup *QgsLayerTreeGroup::readXml( QDomElement &element, const QgsRe
 
   groupNode->setIsMutuallyExclusive( isMutuallyExclusive, mutuallyExclusiveChildIndex );
 
-  groupNode->mGroupLayer = QgsMapLayerRef( element.attribute( QStringLiteral( "groupLayer" ) ) );
+  groupNode->mWmsGroupRequestMode = { qgsEnumKeyToValue( element.attribute( u"wms-group-request-mode"_s ), Qgis::WmsGroupRequestMode::Normal ) };
+
+  groupNode->mGroupLayer = QgsMapLayerRef( element.attribute( u"groupLayer"_s ) );
+
+  readLegacyServerProperties( groupNode );
+
+  groupNode->serverProperties()->readXml( element );
+
+  // legacy boolean now defined as a WmsDimensionInfo in server properties.
+  // It needs to be done after server properties read because it resets dimensions
+  if ( element.attribute( u"wms-has-time-dimension"_s, u"0"_s ) == "1"_L1 )
+  {
+    Q_NOWARN_DEPRECATED_PUSH
+    groupNode->setHasWmsTimeDimension( true );
+    Q_NOWARN_DEPRECATED_POP
+  }
 
   return groupNode;
 }
 
-QgsLayerTreeGroup *QgsLayerTreeGroup::readXml( QDomElement &element, const QgsProject *project, const QgsReadWriteContext &context )
+void QgsLayerTreeGroup::readLegacyServerProperties( QgsLayerTreeGroup *groupNode )
+{
+  const QVariant wmsShortName = groupNode->customProperty( u"wmsShortName"_s );
+  if ( wmsShortName.isValid() )
+  {
+    groupNode->serverProperties()->setShortName( wmsShortName.toString() );
+    groupNode->removeCustomProperty( u"wmsShortName"_s );
+  }
+
+  const QVariant wmsTitle = groupNode->customProperty( u"wmsTitle"_s );
+  if ( wmsTitle.isValid() )
+  {
+    groupNode->serverProperties()->setTitle( wmsTitle.toString() );
+    groupNode->removeCustomProperty( u"wmsTitle"_s );
+  }
+
+  const QVariant wmsAbstract = groupNode->customProperty( u"wmsAbstract"_s );
+  if ( wmsAbstract.isValid() )
+  {
+    groupNode->serverProperties()->setAbstract( wmsAbstract.toString() );
+    groupNode->removeCustomProperty( u"wmsAbstract"_s );
+  }
+}
+
+QgsLayerTreeGroup *QgsLayerTreeGroup::readXml( const QDomElement &element, const QgsProject *project, const QgsReadWriteContext &context )
 {
   QgsLayerTreeGroup *node = readXml( element, context );
-  if ( node )
-    node->resolveReferences( project );
+  if ( !node )
+    return nullptr;
+
+  node->resolveReferences( project );
+
   return node;
 }
 
 void QgsLayerTreeGroup::writeXml( QDomElement &parentElement, const QgsReadWriteContext &context )
 {
   QDomDocument doc = parentElement.ownerDocument();
-  QDomElement elem = doc.createElement( QStringLiteral( "layer-tree-group" ) );
-  elem.setAttribute( QStringLiteral( "name" ), mName );
-  elem.setAttribute( QStringLiteral( "expanded" ), mExpanded ? QStringLiteral( "1" ) : QStringLiteral( "0" ) );
-  elem.setAttribute( QStringLiteral( "checked" ), mChecked ? QStringLiteral( "Qt::Checked" ) : QStringLiteral( "Qt::Unchecked" ) );
+  QDomElement elem = doc.createElement( u"layer-tree-group"_s );
+  elem.setAttribute( u"name"_s, mName );
+  elem.setAttribute( u"id"_s, mId );
+  elem.setAttribute( u"expanded"_s, mExpanded ? u"1"_s : u"0"_s );
+  elem.setAttribute( u"checked"_s, mChecked ? u"Qt::Checked"_s : u"Qt::Unchecked"_s );
   if ( mMutuallyExclusive )
   {
-    elem.setAttribute( QStringLiteral( "mutually-exclusive" ), QStringLiteral( "1" ) );
-    elem.setAttribute( QStringLiteral( "mutually-exclusive-child" ), mMutuallyExclusiveChildIndex );
+    elem.setAttribute( u"mutually-exclusive"_s, u"1"_s );
+    elem.setAttribute( u"mutually-exclusive-child"_s, mMutuallyExclusiveChildIndex );
   }
-  elem.setAttribute( QStringLiteral( "groupLayer" ), mGroupLayer.layerId );
+
+  elem.setAttribute( u"wms-group-request-mode"_s, qgsEnumValueToKey( mWmsGroupRequestMode ) );
+
+  elem.setAttribute( u"groupLayer"_s, mGroupLayer.layerId );
 
   writeCommonXml( elem );
+
+  serverProperties()->writeXml( elem, doc );
 
   for ( QgsLayerTreeNode *node : std::as_const( mChildren ) )
     node->writeXml( elem, context );
@@ -400,7 +615,7 @@ void QgsLayerTreeGroup::writeXml( QDomElement &parentElement, const QgsReadWrite
   parentElement.appendChild( elem );
 }
 
-void QgsLayerTreeGroup::readChildrenFromXml( QDomElement &element, const QgsReadWriteContext &context )
+void QgsLayerTreeGroup::readChildrenFromXml( const QDomElement &element, const QgsReadWriteContext &context )
 {
   QList<QgsLayerTreeNode *> nodes;
   QDomElement childElem = element.firstChildElement();
@@ -418,7 +633,7 @@ void QgsLayerTreeGroup::readChildrenFromXml( QDomElement &element, const QgsRead
 
 QString QgsLayerTreeGroup::dump() const
 {
-  QString header = QStringLiteral( "GROUP: %1 checked=%2 expanded=%3\n" ).arg( name() ).arg( mChecked ).arg( mExpanded );
+  QString header = u"GROUP: %1 checked=%2 expanded=%3\n"_s.arg( name() ).arg( mChecked ).arg( mExpanded );
   QStringList childrenDump;
   for ( QgsLayerTreeNode *node : std::as_const( mChildren ) )
     childrenDump << node->dump().split( '\n' );
@@ -502,7 +717,7 @@ QgsGroupLayer *QgsLayerTreeGroup::convertToGroupLayer( const QgsGroupLayer::Laye
   if ( !mGroupLayer.layerId.isEmpty() )
     return nullptr;
 
-  std::unique_ptr< QgsGroupLayer > res = std::make_unique< QgsGroupLayer >( name(), options );
+  auto res = std::make_unique< QgsGroupLayer >( name(), options );
 
   mGroupLayer.setLayer( res.get() );
   updateGroupLayers();
@@ -532,6 +747,19 @@ QStringList QgsLayerTreeGroup::findLayerIds() const
       lst << QgsLayerTree::toGroup( child )->findLayerIds();
     else if ( QgsLayerTree::isLayer( child ) )
       lst << QgsLayerTree::toLayer( child )->layerId();
+  }
+  return lst;
+}
+
+QStringList QgsLayerTreeGroup::findCustomNodeIds() const
+{
+  QStringList lst;
+  for ( QgsLayerTreeNode *child : std::as_const( mChildren ) )
+  {
+    if ( QgsLayerTree::isGroup( child ) )
+      lst << QgsLayerTree::toGroup( child )->findCustomNodeIds();
+    else if ( QgsLayerTree::isCustomNode( child ) )
+      lst << QgsLayerTree::toCustomNode( child )->id();
   }
   return lst;
 }
@@ -594,8 +822,7 @@ void QgsLayerTreeGroup::updateGroupLayers()
   QList< QgsMapLayer * > layers;
 
   std::function< void( QgsLayerTreeGroup * ) > findGroupLayerChildren;
-  findGroupLayerChildren = [&layers, &findGroupLayerChildren]( QgsLayerTreeGroup * group )
-  {
+  findGroupLayerChildren = [&layers, &findGroupLayerChildren]( QgsLayerTreeGroup *group ) {
     for ( auto it = group->mChildren.crbegin(); it != group->mChildren.crend(); ++it )
     {
       if ( QgsLayerTreeLayer *layerTreeLayer = qobject_cast< QgsLayerTreeLayer * >( *it ) )
@@ -637,4 +864,53 @@ void QgsLayerTreeGroup::setItemVisibilityCheckedRecursive( bool checked )
   mChangingChildVisibility = false;
 
   updateGroupLayers();
+}
+
+QgsMapLayerServerProperties *QgsLayerTreeGroup::serverProperties()
+{
+  return mServerProperties.get();
+}
+
+const QgsMapLayerServerProperties *QgsLayerTreeGroup::serverProperties() const
+{
+  return mServerProperties.get();
+}
+
+void QgsLayerTreeGroup::setHasWmsTimeDimension( const bool hasTimeDimension )
+{
+  if ( !mServerProperties )
+    return;
+
+  const bool lHasTimeDimension = hasWmsTimeDimension();
+
+  if ( !lHasTimeDimension && hasTimeDimension )
+  {
+    mServerProperties->addWmsDimension( QgsServerWmsDimensionProperties::WmsDimensionInfo( QgsServerWmsDimensionProperties::TIME_DIMENSION_NAME ) );
+  }
+  else if ( lHasTimeDimension && !hasTimeDimension )
+  {
+    mServerProperties->removeWmsDimension( QgsServerWmsDimensionProperties::TIME_DIMENSION_NAME );
+  }
+}
+
+bool QgsLayerTreeGroup::hasWmsTimeDimension() const
+{
+  if ( !mServerProperties )
+    return false;
+
+  auto it = std::find_if( mServerProperties->wmsDimensions().constBegin(), mServerProperties->wmsDimensions().constEnd(), []( const QgsMapLayerServerProperties::WmsDimensionInfo &dim ) {
+    return dim.name == QgsServerWmsDimensionProperties::TIME_DIMENSION_NAME;
+  } );
+
+  return it != mServerProperties->wmsDimensions().constEnd();
+}
+
+Qgis::WmsGroupRequestMode QgsLayerTreeGroup::wmsGroupRequestMode() const
+{
+  return mWmsGroupRequestMode;
+}
+
+void QgsLayerTreeGroup::setWmsGroupRequestMode( Qgis::WmsGroupRequestMode groupRequestMode )
+{
+  mWmsGroupRequestMode = groupRequestMode;
 }

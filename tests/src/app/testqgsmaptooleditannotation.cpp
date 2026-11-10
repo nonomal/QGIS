@@ -12,26 +12,28 @@
  *   (at your option) any later version.                                   *
  *                                                                         *
  ***************************************************************************/
-#include <QCoreApplication>
-
-#include "qgstest.h"
-#include "qgsguiutils.h"
-#include "qgsmaptooledit.h"
-#include "qgsapplication.h"
-#include "qgsmapcanvas.h"
-#include "qgslogger.h"
+#include "qgsadvanceddigitizingdockwidget.h"
 #include "qgsannotationlayer.h"
 #include "qgsannotationpolygonitem.h"
-#include "qgsproject.h"
-#include "testqgsmaptoolutils.h"
-#include "qgsmapmouseevent.h"
-#include "qgspolygon.h"
+#include "qgsapplication.h"
+#include "qgsguiutils.h"
 #include "qgslinestring.h"
+#include "qgslogger.h"
+#include "qgsmapcanvas.h"
+#include "qgsmapmouseevent.h"
+#include "qgsmaptooledit.h"
 #include "qgsmaptoolmodifyannotation.h"
-#include "qgsadvanceddigitizingdockwidget.h"
+#include "qgspolygon.h"
+#include "qgsproject.h"
 #include "qgsrendereditemresults.h"
+#include "qgstest.h"
+#include "testqgsmaptoolutils.h"
 
+#include <QCoreApplication>
 #include <QSignalSpy>
+#include <QString>
+
+using namespace Qt::StringLiterals;
 
 class TestQgsMapToolEditAnnotation : public QObject
 {
@@ -40,10 +42,10 @@ class TestQgsMapToolEditAnnotation : public QObject
     TestQgsMapToolEditAnnotation() = default;
 
   private slots:
-    void initTestCase(); // will be called before the first testfunction is executed.
+    void initTestCase();    // will be called before the first testfunction is executed.
     void cleanupTestCase(); // will be called after the last testfunction was executed.
-    void init(); // will be called before each testfunction is executed.
-    void cleanup(); // will be called after every testfunction.
+    void init();            // will be called before each testfunction is executed.
+    void cleanup();         // will be called after every testfunction.
 
     void testSelectItem();
     void testDeleteItem();
@@ -51,7 +53,6 @@ class TestQgsMapToolEditAnnotation : public QObject
     void testMoveNode();
     void testDeleteNode();
     void testAddNode();
-
 };
 
 void TestQgsMapToolEditAnnotation::initTestCase()
@@ -67,43 +68,47 @@ void TestQgsMapToolEditAnnotation::cleanupTestCase()
 }
 
 void TestQgsMapToolEditAnnotation::init()
-{
-}
+{}
 
 void TestQgsMapToolEditAnnotation::cleanup()
-{
-}
+{}
 
 void TestQgsMapToolEditAnnotation::testSelectItem()
 {
   QgsProject::instance()->clear();
   QgsMapCanvas canvas;
-  canvas.setDestinationCrs( QgsCoordinateReferenceSystem( QStringLiteral( "EPSG:4326" ) ) );
+  canvas.setDestinationCrs( QgsCoordinateReferenceSystem( u"EPSG:4326"_s ) );
   canvas.setFrameStyle( QFrame::NoFrame );
   canvas.resize( 600, 600 );
   canvas.setExtent( QgsRectangle( 0, 0, 10, 10 ) );
   canvas.show(); // to make the canvas resize
 
-  QgsAnnotationLayer *layer = new QgsAnnotationLayer( QStringLiteral( "test" ), QgsAnnotationLayer::LayerOptions( QgsProject::instance()->transformContext() ) );
+  QgsAnnotationLayer *layer = new QgsAnnotationLayer( u"test"_s, QgsAnnotationLayer::LayerOptions( QgsProject::instance()->transformContext() ) );
   QVERIFY( layer->isValid() );
-  QgsAnnotationLayer *layer2 = new QgsAnnotationLayer( QStringLiteral( "test" ), QgsAnnotationLayer::LayerOptions( QgsProject::instance()->transformContext() ) );
+  QgsAnnotationLayer *layer2 = new QgsAnnotationLayer( u"test"_s, QgsAnnotationLayer::LayerOptions( QgsProject::instance()->transformContext() ) );
   QVERIFY( layer2->isValid() );
   QgsProject::instance()->addMapLayers( { layer, layer2 } );
 
-  QgsAnnotationPolygonItem *item1 = new QgsAnnotationPolygonItem( new QgsPolygon( new QgsLineString( QVector<QgsPoint> { QgsPoint( 1, 1 ), QgsPoint( 5, 1 ), QgsPoint( 5, 5 ), QgsPoint( 1, 5 ), QgsPoint( 1, 1 ) } ) ) );
+  QgsAnnotationPolygonItem *item1 = new QgsAnnotationPolygonItem(
+    new QgsPolygon( new QgsLineString( QVector<QgsPoint> { QgsPoint( 1, 1 ), QgsPoint( 5, 1 ), QgsPoint( 5, 5 ), QgsPoint( 1, 5 ), QgsPoint( 1, 1 ) } ) )
+  );
   item1->setZIndex( 1 );
   const QString i1id = layer->addItem( item1 );
 
-  QgsAnnotationPolygonItem *item2 = new QgsAnnotationPolygonItem( new QgsPolygon( new QgsLineString( QVector<QgsPoint> { QgsPoint( 1, 4 ), QgsPoint( 5, 4 ), QgsPoint( 5, 9 ), QgsPoint( 1, 9 ), QgsPoint( 1, 4 ) } ) ) );
-  item2->setZIndex( 2 );
+  QgsAnnotationPolygonItem *item2 = new QgsAnnotationPolygonItem(
+    new QgsPolygon( new QgsLineString( QVector<QgsPoint> { QgsPoint( 1, 4 ), QgsPoint( 1.6, 4 ), QgsPoint( 1.6, 4.6 ), QgsPoint( 1, 4.6 ), QgsPoint( 1, 4 ) } ) )
+  );
+  item2->setZIndex( 0 );
   const QString i2id = layer->addItem( item2 );
 
-  QgsAnnotationPolygonItem *item3 = new QgsAnnotationPolygonItem( new QgsPolygon( new QgsLineString( QVector<QgsPoint> { QgsPoint( 7, 1 ), QgsPoint( 8, 1 ), QgsPoint( 8, 2 ), QgsPoint( 7, 2 ), QgsPoint( 7, 1 ) } ) ) );
+  QgsAnnotationPolygonItem *item3 = new QgsAnnotationPolygonItem(
+    new QgsPolygon( new QgsLineString( QVector<QgsPoint> { QgsPoint( 7, 1 ), QgsPoint( 8, 1 ), QgsPoint( 8, 2 ), QgsPoint( 7, 2 ), QgsPoint( 7, 1 ) } ) )
+  );
   item3->setZIndex( 3 );
   const QString i3id = layer2->addItem( item3 );
 
-  layer->setCrs( QgsCoordinateReferenceSystem( QStringLiteral( "EPSG:4326" ) ) );
-  layer2->setCrs( QgsCoordinateReferenceSystem( QStringLiteral( "EPSG:4326" ) ) );
+  layer->setCrs( QgsCoordinateReferenceSystem( u"EPSG:4326"_s ) );
+  layer2->setCrs( QgsCoordinateReferenceSystem( u"EPSG:4326"_s ) );
 
   canvas.setLayers( { layer, layer2 } );
   while ( !canvas.isDrawing() )
@@ -131,7 +136,7 @@ void TestQgsMapToolEditAnnotation::testSelectItem()
   QCOMPARE( spy.count(), 1 );
   QCOMPARE( spy.at( 0 ).at( 1 ).toString(), i1id );
 
-  // overlapping items, highest z order should be selected
+  // overlapping items, smallest area item should be selected
   utils.mouseMove( 1.5, 4.5 );
   utils.mouseClick( 1.5, 4.5, Qt::LeftButton, Qt::KeyboardModifiers(), true );
   QCOMPARE( spy.count(), 2 );
@@ -154,29 +159,35 @@ void TestQgsMapToolEditAnnotation::testDeleteItem()
 {
   QgsProject::instance()->clear();
   QgsMapCanvas canvas;
-  canvas.setDestinationCrs( QgsCoordinateReferenceSystem( QStringLiteral( "EPSG:4326" ) ) );
+  canvas.setDestinationCrs( QgsCoordinateReferenceSystem( u"EPSG:4326"_s ) );
   canvas.setFrameStyle( QFrame::NoFrame );
   canvas.resize( 600, 600 );
   canvas.setExtent( QgsRectangle( 0, 0, 10, 10 ) );
   canvas.show(); // to make the canvas resize
 
-  QgsAnnotationLayer *layer = new QgsAnnotationLayer( QStringLiteral( "test" ), QgsAnnotationLayer::LayerOptions( QgsProject::instance()->transformContext() ) );
+  QgsAnnotationLayer *layer = new QgsAnnotationLayer( u"test"_s, QgsAnnotationLayer::LayerOptions( QgsProject::instance()->transformContext() ) );
   QVERIFY( layer->isValid() );
   QgsProject::instance()->addMapLayers( { layer } );
 
-  QgsAnnotationPolygonItem *item1 = new QgsAnnotationPolygonItem( new QgsPolygon( new QgsLineString( QVector<QgsPoint> { QgsPoint( 1, 1 ), QgsPoint( 5, 1 ), QgsPoint( 5, 5 ), QgsPoint( 1, 5 ), QgsPoint( 1, 1 ) } ) ) );
+  QgsAnnotationPolygonItem *item1 = new QgsAnnotationPolygonItem(
+    new QgsPolygon( new QgsLineString( QVector<QgsPoint> { QgsPoint( 1, 1 ), QgsPoint( 5, 1 ), QgsPoint( 5, 5 ), QgsPoint( 1, 5 ), QgsPoint( 1, 1 ) } ) )
+  );
   item1->setZIndex( 1 );
   const QString i1id = layer->addItem( item1 );
 
-  QgsAnnotationPolygonItem *item2 = new QgsAnnotationPolygonItem( new QgsPolygon( new QgsLineString( QVector<QgsPoint> { QgsPoint( 1, 4 ), QgsPoint( 5, 4 ), QgsPoint( 5, 9 ), QgsPoint( 1, 9 ), QgsPoint( 1, 4 ) } ) ) );
+  QgsAnnotationPolygonItem *item2 = new QgsAnnotationPolygonItem(
+    new QgsPolygon( new QgsLineString( QVector<QgsPoint> { QgsPoint( 1, 4 ), QgsPoint( 5, 4 ), QgsPoint( 5, 9 ), QgsPoint( 1, 9 ), QgsPoint( 1, 4 ) } ) )
+  );
   item2->setZIndex( 2 );
   const QString i2id = layer->addItem( item2 );
 
-  QgsAnnotationPolygonItem *item3 = new QgsAnnotationPolygonItem( new QgsPolygon( new QgsLineString( QVector<QgsPoint> { QgsPoint( 7, 1 ), QgsPoint( 8, 1 ), QgsPoint( 8, 2 ), QgsPoint( 7, 2 ), QgsPoint( 7, 1 ) } ) ) );
+  QgsAnnotationPolygonItem *item3 = new QgsAnnotationPolygonItem(
+    new QgsPolygon( new QgsLineString( QVector<QgsPoint> { QgsPoint( 7, 1 ), QgsPoint( 8, 1 ), QgsPoint( 8, 2 ), QgsPoint( 7, 2 ), QgsPoint( 7, 1 ) } ) )
+  );
   item3->setZIndex( 3 );
   const QString i3id = layer->addItem( item3 );
 
-  layer->setCrs( QgsCoordinateReferenceSystem( QStringLiteral( "EPSG:4326" ) ) );
+  layer->setCrs( QgsCoordinateReferenceSystem( u"EPSG:4326"_s ) );
 
   canvas.setLayers( { layer } );
   while ( !canvas.isDrawing() )
@@ -196,13 +207,13 @@ void TestQgsMapToolEditAnnotation::testDeleteItem()
   utils.mouseMove( 9, 9 );
   utils.mouseClick( 9, 9, Qt::LeftButton, Qt::KeyboardModifiers(), true );
   utils.keyClick( Qt::Key_Delete );
-  QCOMPARE( qgis::listToSet( layer->items().keys() ), QSet< QString >( { i1id, i2id, i3id } ) );
+  QCOMPARE( qgis::listToSet( layer->items().keys() ), QSet<QString>( { i1id, i2id, i3id } ) );
 
   // with selected item
   utils.mouseMove( 1.5, 1.5 );
   utils.mouseClick( 1.5, 1.5, Qt::LeftButton, Qt::KeyboardModifiers(), true );
   utils.keyClick( Qt::Key_Delete );
-  QCOMPARE( qgis::listToSet( layer->items().keys() ), QSet< QString >( { i2id, i3id } ) );
+  QCOMPARE( qgis::listToSet( layer->items().keys() ), QSet<QString>( { i2id, i3id } ) );
   while ( !canvas.isDrawing() )
   {
     QgsApplication::processEvents();
@@ -212,29 +223,31 @@ void TestQgsMapToolEditAnnotation::testDeleteItem()
   utils.mouseMove( 1.5, 4.5 );
   utils.mouseClick( 1.5, 4.5, Qt::LeftButton, Qt::KeyboardModifiers(), true );
   utils.keyClick( Qt::Key_Delete );
-  QCOMPARE( qgis::listToSet( layer->items().keys() ), QSet< QString >( { i3id } ) );
+  QCOMPARE( qgis::listToSet( layer->items().keys() ), QSet<QString>( { i3id } ) );
 }
 
 void TestQgsMapToolEditAnnotation::testMoveItem()
 {
   QgsProject::instance()->clear();
   QgsMapCanvas canvas;
-  canvas.setDestinationCrs( QgsCoordinateReferenceSystem( QStringLiteral( "EPSG:4326" ) ) );
+  canvas.setDestinationCrs( QgsCoordinateReferenceSystem( u"EPSG:4326"_s ) );
   canvas.setFrameStyle( QFrame::NoFrame );
   canvas.resize( 600, 600 );
   canvas.setExtent( QgsRectangle( 0, 0, 10, 10 ) );
   canvas.show(); // to make the canvas resize
 
-  QgsAnnotationLayer *layer = new QgsAnnotationLayer( QStringLiteral( "test" ), QgsAnnotationLayer::LayerOptions( QgsProject::instance()->transformContext() ) );
+  QgsAnnotationLayer *layer = new QgsAnnotationLayer( u"test"_s, QgsAnnotationLayer::LayerOptions( QgsProject::instance()->transformContext() ) );
   QVERIFY( layer->isValid() );
   QgsProject::instance()->addMapLayers( { layer } );
 
-  QgsAnnotationPolygonItem *item1 = new QgsAnnotationPolygonItem( new QgsPolygon( new QgsLineString( QVector<QgsPoint> { QgsPoint( 1, 1 ), QgsPoint( 5, 1 ), QgsPoint( 5, 5 ), QgsPoint( 1, 5 ), QgsPoint( 1, 1 ) } ) ) );
+  QgsAnnotationPolygonItem *item1 = new QgsAnnotationPolygonItem(
+    new QgsPolygon( new QgsLineString( QVector<QgsPoint> { QgsPoint( 1, 1 ), QgsPoint( 5, 1 ), QgsPoint( 5, 5 ), QgsPoint( 1, 5 ), QgsPoint( 1, 1 ) } ) )
+  );
   item1->setZIndex( 1 );
   const QString i1id = layer->addItem( item1 );
-  QCOMPARE( qgis::down_cast< QgsAnnotationPolygonItem * >( layer->item( i1id ) )->geometry()->asWkt(), QStringLiteral( "Polygon ((1 1, 5 1, 5 5, 1 5, 1 1))" ) );
+  QCOMPARE( qgis::down_cast<QgsAnnotationPolygonItem *>( layer->item( i1id ) )->geometry()->asWkt(), u"Polygon ((1 1, 5 1, 5 5, 1 5, 1 1))"_s );
 
-  layer->setCrs( QgsCoordinateReferenceSystem( QStringLiteral( "EPSG:4326" ) ) );
+  layer->setCrs( QgsCoordinateReferenceSystem( u"EPSG:4326"_s ) );
 
   canvas.setLayers( { layer } );
   while ( !canvas.isDrawing() )
@@ -273,7 +286,7 @@ void TestQgsMapToolEditAnnotation::testMoveItem()
   QCOMPARE( canvas.renderedItemResults()->renderedItems().size(), 1 );
 
   // check that item was moved
-  QCOMPARE( qgis::down_cast< QgsAnnotationPolygonItem * >( layer->item( i1id ) )->geometry()->asWkt(), QStringLiteral( "Polygon ((4 4, 8 4, 8 8, 4 8, 4 4))" ) );
+  QCOMPARE( qgis::down_cast<QgsAnnotationPolygonItem *>( layer->item( i1id ) )->geometry()->asWkt(), u"Polygon ((4 4, 8 4, 8 8, 4 8, 4 4))"_s );
 
   // start a new move
   // click on item -- it should already be selected, so this will start a new move, not emit the itemSelected signal
@@ -291,7 +304,7 @@ void TestQgsMapToolEditAnnotation::testMoveItem()
   QCOMPARE( canvas.renderedItemResults()->renderedItems().size(), 1 );
 
   // check that item was moved
-  QCOMPARE( qgis::down_cast< QgsAnnotationPolygonItem * >( layer->item( i1id ) )->geometry()->asWkt( 1 ), QStringLiteral( "Polygon ((0.9 1, 4.9 1, 4.9 5, 0.9 5, 0.9 1))" ) );
+  QCOMPARE( qgis::down_cast<QgsAnnotationPolygonItem *>( layer->item( i1id ) )->geometry()->asWkt( 1 ), u"Polygon ((0.9 1, 4.9 1, 4.9 5, 0.9 5, 0.9 1))"_s );
 
   // start a move then cancel it via right click
   utils.mouseMove( 1.6, 1.6 );
@@ -301,7 +314,7 @@ void TestQgsMapToolEditAnnotation::testMoveItem()
   utils.mouseMove( 4.5, 4.5 );
   utils.mouseClick( 4.5, 4.5, Qt::RightButton, Qt::KeyboardModifiers(), true );
   // check that item was NOT moved
-  QCOMPARE( qgis::down_cast< QgsAnnotationPolygonItem * >( layer->item( i1id ) )->geometry()->asWkt( 1 ), QStringLiteral( "Polygon ((0.9 1, 4.9 1, 4.9 5, 0.9 5, 0.9 1))" ) );
+  QCOMPARE( qgis::down_cast<QgsAnnotationPolygonItem *>( layer->item( i1id ) )->geometry()->asWkt( 1 ), u"Polygon ((0.9 1, 4.9 1, 4.9 5, 0.9 5, 0.9 1))"_s );
 
   // cancel a move via escape key
   utils.mouseMove( 1.6, 1.6 );
@@ -314,29 +327,31 @@ void TestQgsMapToolEditAnnotation::testMoveItem()
   //... so next click is not "finish move", but "clear selection"
   utils.mouseClick( 4.5, 4.5, Qt::LeftButton, Qt::KeyboardModifiers(), true );
   // check that item was NOT moved
-  QCOMPARE( qgis::down_cast< QgsAnnotationPolygonItem * >( layer->item( i1id ) )->geometry()->asWkt( 1 ), QStringLiteral( "Polygon ((0.9 1, 4.9 1, 4.9 5, 0.9 5, 0.9 1))" ) );
+  QCOMPARE( qgis::down_cast<QgsAnnotationPolygonItem *>( layer->item( i1id ) )->geometry()->asWkt( 1 ), u"Polygon ((0.9 1, 4.9 1, 4.9 5, 0.9 5, 0.9 1))"_s );
 }
 
 void TestQgsMapToolEditAnnotation::testMoveNode()
 {
   QgsProject::instance()->clear();
   QgsMapCanvas canvas;
-  canvas.setDestinationCrs( QgsCoordinateReferenceSystem( QStringLiteral( "EPSG:4326" ) ) );
+  canvas.setDestinationCrs( QgsCoordinateReferenceSystem( u"EPSG:4326"_s ) );
   canvas.setFrameStyle( QFrame::NoFrame );
   canvas.resize( 600, 600 );
   canvas.setExtent( QgsRectangle( 0, 0, 10, 10 ) );
   canvas.show(); // to make the canvas resize
 
-  QgsAnnotationLayer *layer = new QgsAnnotationLayer( QStringLiteral( "test" ), QgsAnnotationLayer::LayerOptions( QgsProject::instance()->transformContext() ) );
+  QgsAnnotationLayer *layer = new QgsAnnotationLayer( u"test"_s, QgsAnnotationLayer::LayerOptions( QgsProject::instance()->transformContext() ) );
   QVERIFY( layer->isValid() );
   QgsProject::instance()->addMapLayers( { layer } );
 
-  QgsAnnotationPolygonItem *item1 = new QgsAnnotationPolygonItem( new QgsPolygon( new QgsLineString( QVector<QgsPoint> { QgsPoint( 1, 1 ), QgsPoint( 5, 1 ), QgsPoint( 5, 5 ), QgsPoint( 1, 5 ), QgsPoint( 1, 1 ) } ) ) );
+  QgsAnnotationPolygonItem *item1 = new QgsAnnotationPolygonItem(
+    new QgsPolygon( new QgsLineString( QVector<QgsPoint> { QgsPoint( 1, 1 ), QgsPoint( 5, 1 ), QgsPoint( 5, 5 ), QgsPoint( 1, 5 ), QgsPoint( 1, 1 ) } ) )
+  );
   item1->setZIndex( 1 );
   const QString i1id = layer->addItem( item1 );
-  QCOMPARE( qgis::down_cast< QgsAnnotationPolygonItem * >( layer->item( i1id ) )->geometry()->asWkt(), QStringLiteral( "Polygon ((1 1, 5 1, 5 5, 1 5, 1 1))" ) );
+  QCOMPARE( qgis::down_cast<QgsAnnotationPolygonItem *>( layer->item( i1id ) )->geometry()->asWkt(), u"Polygon ((1 1, 5 1, 5 5, 1 5, 1 1))"_s );
 
-  layer->setCrs( QgsCoordinateReferenceSystem( QStringLiteral( "EPSG:4326" ) ) );
+  layer->setCrs( QgsCoordinateReferenceSystem( u"EPSG:4326"_s ) );
 
   canvas.setLayers( { layer } );
   while ( !canvas.isDrawing() )
@@ -376,7 +391,7 @@ void TestQgsMapToolEditAnnotation::testMoveNode()
   QCOMPARE( canvas.renderedItemResults()->renderedItems().size(), 1 );
 
   // check that item was moved
-  QCOMPARE( qgis::down_cast< QgsAnnotationPolygonItem * >( layer->item( i1id ) )->geometry()->asWkt(), QStringLiteral( "Polygon ((1 1, 5 1, 4.5 4.5, 1 5, 1 1))" ) );
+  QCOMPARE( qgis::down_cast<QgsAnnotationPolygonItem *>( layer->item( i1id ) )->geometry()->asWkt(), u"Polygon ((1 1, 5 1, 4.5 4.5, 1 5, 1 1))"_s );
 
   // start a new move node
   // click on item -- it should already be selected, so this will start a new move, not emit the itemSelected signal
@@ -394,7 +409,7 @@ void TestQgsMapToolEditAnnotation::testMoveNode()
   QCOMPARE( canvas.renderedItemResults()->renderedItems().size(), 1 );
 
   // check that item was moved
-  QCOMPARE( qgis::down_cast< QgsAnnotationPolygonItem * >( layer->item( i1id ) )->geometry()->asWkt( 1 ), QStringLiteral( "Polygon ((1 1, 5.5 1.5, 4.5 4.5, 1 5, 1 1))" ) );
+  QCOMPARE( qgis::down_cast<QgsAnnotationPolygonItem *>( layer->item( i1id ) )->geometry()->asWkt( 1 ), u"Polygon ((1 1, 5.5 1.5, 4.5 4.5, 1 5, 1 1))"_s );
 
   // start a move then cancel it via right click
   utils.mouseMove( 4.5, 4.5 );
@@ -404,7 +419,7 @@ void TestQgsMapToolEditAnnotation::testMoveNode()
   utils.mouseMove( 4.9, 4.9 );
   utils.mouseClick( 4.9, 4.9, Qt::RightButton, Qt::KeyboardModifiers(), true );
   // check that node was NOT moved
-  QCOMPARE( qgis::down_cast< QgsAnnotationPolygonItem * >( layer->item( i1id ) )->geometry()->asWkt( 1 ), QStringLiteral( "Polygon ((1 1, 5.5 1.5, 4.5 4.5, 1 5, 1 1))" ) );
+  QCOMPARE( qgis::down_cast<QgsAnnotationPolygonItem *>( layer->item( i1id ) )->geometry()->asWkt( 1 ), u"Polygon ((1 1, 5.5 1.5, 4.5 4.5, 1 5, 1 1))"_s );
 
   // cancel a move via escape key
   utils.mouseMove( 4.5, 4.5 );
@@ -417,29 +432,31 @@ void TestQgsMapToolEditAnnotation::testMoveNode()
   //... so next click is not "finish move", but "clear selection"
   utils.mouseClick( 6.5, 6.5, Qt::LeftButton, Qt::KeyboardModifiers(), true );
   // check that node was NOT moved
-  QCOMPARE( qgis::down_cast< QgsAnnotationPolygonItem * >( layer->item( i1id ) )->geometry()->asWkt( 1 ), QStringLiteral( "Polygon ((1 1, 5.5 1.5, 4.5 4.5, 1 5, 1 1))" ) );
+  QCOMPARE( qgis::down_cast<QgsAnnotationPolygonItem *>( layer->item( i1id ) )->geometry()->asWkt( 1 ), u"Polygon ((1 1, 5.5 1.5, 4.5 4.5, 1 5, 1 1))"_s );
 }
 
 void TestQgsMapToolEditAnnotation::testDeleteNode()
 {
   QgsProject::instance()->clear();
   QgsMapCanvas canvas;
-  canvas.setDestinationCrs( QgsCoordinateReferenceSystem( QStringLiteral( "EPSG:4326" ) ) );
+  canvas.setDestinationCrs( QgsCoordinateReferenceSystem( u"EPSG:4326"_s ) );
   canvas.setFrameStyle( QFrame::NoFrame );
   canvas.resize( 600, 600 );
   canvas.setExtent( QgsRectangle( 0, 0, 10, 10 ) );
   canvas.show(); // to make the canvas resize
 
-  QgsAnnotationLayer *layer = new QgsAnnotationLayer( QStringLiteral( "test" ), QgsAnnotationLayer::LayerOptions( QgsProject::instance()->transformContext() ) );
+  QgsAnnotationLayer *layer = new QgsAnnotationLayer( u"test"_s, QgsAnnotationLayer::LayerOptions( QgsProject::instance()->transformContext() ) );
   QVERIFY( layer->isValid() );
   QgsProject::instance()->addMapLayers( { layer } );
 
-  QgsAnnotationPolygonItem *item1 = new QgsAnnotationPolygonItem( new QgsPolygon( new QgsLineString( QVector<QgsPoint> { QgsPoint( 1, 1 ), QgsPoint( 5, 1 ), QgsPoint( 5, 5 ), QgsPoint( 1, 5 ), QgsPoint( 1, 1 ) } ) ) );
+  QgsAnnotationPolygonItem *item1 = new QgsAnnotationPolygonItem(
+    new QgsPolygon( new QgsLineString( QVector<QgsPoint> { QgsPoint( 1, 1 ), QgsPoint( 5, 1 ), QgsPoint( 5, 5 ), QgsPoint( 1, 5 ), QgsPoint( 1, 1 ) } ) )
+  );
   item1->setZIndex( 1 );
   const QString i1id = layer->addItem( item1 );
-  QCOMPARE( qgis::down_cast< QgsAnnotationPolygonItem * >( layer->item( i1id ) )->geometry()->asWkt(), QStringLiteral( "Polygon ((1 1, 5 1, 5 5, 1 5, 1 1))" ) );
+  QCOMPARE( qgis::down_cast<QgsAnnotationPolygonItem *>( layer->item( i1id ) )->geometry()->asWkt(), u"Polygon ((1 1, 5 1, 5 5, 1 5, 1 1))"_s );
 
-  layer->setCrs( QgsCoordinateReferenceSystem( QStringLiteral( "EPSG:4326" ) ) );
+  layer->setCrs( QgsCoordinateReferenceSystem( u"EPSG:4326"_s ) );
 
   canvas.setLayers( { layer } );
   while ( !canvas.isDrawing() )
@@ -478,7 +495,7 @@ void TestQgsMapToolEditAnnotation::testDeleteNode()
   QCOMPARE( canvas.renderedItemResults()->renderedItems().size(), 1 );
 
   // check that node was deleted
-  QCOMPARE( qgis::down_cast< QgsAnnotationPolygonItem * >( layer->item( i1id ) )->geometry()->asWkt(), QStringLiteral( "Polygon ((1 1, 5 1, 1 5, 1 1))" ) );
+  QCOMPARE( qgis::down_cast<QgsAnnotationPolygonItem *>( layer->item( i1id ) )->geometry()->asWkt(), u"Polygon ((1 1, 5 1, 1 5, 1 1))"_s );
 
   // start a new delete node
   // click on item -- it should already be selected, so this will start a new move, not emit the itemSelected signal
@@ -502,22 +519,24 @@ void TestQgsMapToolEditAnnotation::testAddNode()
 {
   QgsProject::instance()->clear();
   QgsMapCanvas canvas;
-  canvas.setDestinationCrs( QgsCoordinateReferenceSystem( QStringLiteral( "EPSG:4326" ) ) );
+  canvas.setDestinationCrs( QgsCoordinateReferenceSystem( u"EPSG:4326"_s ) );
   canvas.setFrameStyle( QFrame::NoFrame );
   canvas.resize( 600, 600 );
   canvas.setExtent( QgsRectangle( 0, 0, 10, 10 ) );
   canvas.show(); // to make the canvas resize
 
-  QgsAnnotationLayer *layer = new QgsAnnotationLayer( QStringLiteral( "test" ), QgsAnnotationLayer::LayerOptions( QgsProject::instance()->transformContext() ) );
+  QgsAnnotationLayer *layer = new QgsAnnotationLayer( u"test"_s, QgsAnnotationLayer::LayerOptions( QgsProject::instance()->transformContext() ) );
   QVERIFY( layer->isValid() );
   QgsProject::instance()->addMapLayers( { layer } );
 
-  QgsAnnotationPolygonItem *item1 = new QgsAnnotationPolygonItem( new QgsPolygon( new QgsLineString( QVector<QgsPoint> { QgsPoint( 1, 1 ), QgsPoint( 5, 1 ), QgsPoint( 5, 5 ), QgsPoint( 1, 5 ), QgsPoint( 1, 1 ) } ) ) );
+  QgsAnnotationPolygonItem *item1 = new QgsAnnotationPolygonItem(
+    new QgsPolygon( new QgsLineString( QVector<QgsPoint> { QgsPoint( 1, 1 ), QgsPoint( 5, 1 ), QgsPoint( 5, 5 ), QgsPoint( 1, 5 ), QgsPoint( 1, 1 ) } ) )
+  );
   item1->setZIndex( 1 );
   const QString i1id = layer->addItem( item1 );
-  QCOMPARE( qgis::down_cast< QgsAnnotationPolygonItem * >( layer->item( i1id ) )->geometry()->asWkt(), QStringLiteral( "Polygon ((1 1, 5 1, 5 5, 1 5, 1 1))" ) );
+  QCOMPARE( qgis::down_cast<QgsAnnotationPolygonItem *>( layer->item( i1id ) )->geometry()->asWkt(), u"Polygon ((1 1, 5 1, 5 5, 1 5, 1 1))"_s );
 
-  layer->setCrs( QgsCoordinateReferenceSystem( QStringLiteral( "EPSG:4326" ) ) );
+  layer->setCrs( QgsCoordinateReferenceSystem( u"EPSG:4326"_s ) );
 
   canvas.setLayers( { layer } );
   while ( !canvas.isDrawing() )
@@ -553,7 +572,7 @@ void TestQgsMapToolEditAnnotation::testAddNode()
   QCOMPARE( canvas.renderedItemResults()->renderedItems().size(), 1 );
 
   // check that node was added
-  QCOMPARE( qgis::down_cast< QgsAnnotationPolygonItem * >( layer->item( i1id ) )->geometry()->asWkt(), QStringLiteral( "Polygon ((1 1, 5 1, 5 3, 5 5, 1 5, 1 1))" ) );
+  QCOMPARE( qgis::down_cast<QgsAnnotationPolygonItem *>( layer->item( i1id ) )->geometry()->asWkt(), u"Polygon ((1 1, 5 1, 5 3, 5 5, 1 5, 1 1))"_s );
 }
 
 

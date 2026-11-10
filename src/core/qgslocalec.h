@@ -18,14 +18,16 @@
 #ifndef QGSLOCALENUMC_H
 #define QGSLOCALENUMC_H
 
-#define SIP_NO_FILE
-
-#include <QMutex>
 
 #include "qgis_core.h"
 
+#include <QMutex>
+
+#define SIP_NO_FILE
+
 /**
  * \ingroup core
+ * \brief Sets the current locale to the c locale for the lifetime of the object.
  */
 class CORE_EXPORT QgsLocaleNumC
 {
@@ -36,11 +38,8 @@ class CORE_EXPORT QgsLocaleNumC
     QgsLocaleNumC();
     ~QgsLocaleNumC();
 
-    //! QgsLocaleNumC cannot be copied
     QgsLocaleNumC( const QgsLocaleNumC &rh ) = delete;
-    //! QgsLocaleNumC cannot be copied
     QgsLocaleNumC &operator=( const QgsLocaleNumC &rh ) = delete;
-
 };
 
 #endif // QGSLOCALENUMC_H

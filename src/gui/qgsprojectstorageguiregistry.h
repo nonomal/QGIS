@@ -20,12 +20,12 @@
 
 #include <map>
 
-#include <QString>
-#include <QList>
-#include <QHash>
-
 #include "qgis_gui.h"
 #include "qgis_sip.h"
+
+#include <QHash>
+#include <QList>
+#include <QString>
 
 class QgsProjectStorageGuiProvider;
 class QgsProviderGuiRegistry;
@@ -47,9 +47,7 @@ class GUI_EXPORT QgsProjectStorageGuiRegistry
     QgsProjectStorageGuiRegistry();
     ~QgsProjectStorageGuiRegistry();
 
-    //! QgsProjectStorageGuiRegistry cannot be copied.
     QgsProjectStorageGuiRegistry( const QgsProjectStorageGuiRegistry &rh ) = delete;
-    //! QgsProjectStorageGuiRegistry cannot be copied.
     QgsProjectStorageGuiRegistry &operator=( const QgsProjectStorageGuiRegistry &rh ) = delete;
 
     //! Returns storage implementation if the storage type matches one. Returns NULLPTR otherwise (it is a normal file)

@@ -14,37 +14,41 @@
  *                                                                         *
  ***************************************************************************/
 
+#include "qgsgrassprovider.h"
+
+#include <cfloat>
 #include <cstring>
 #include <vector>
-#include <cfloat>
-
-#include <QString>
-#include <QDateTime>
-#include <QElapsedTimer>
 
 #include "qgis.h"
+#include "qgscoordinatereferencesystem.h"
 #include "qgsdataprovider.h"
 #include "qgsfeature.h"
 #include "qgsfields.h"
+#include "qgsgrass.h"
+#include "qgsgrassfeatureiterator.h"
+#include "qgsgrassundocommand.h"
 #include "qgslinestring.h"
+#include "qgslogger.h"
 #include "qgspoint.h"
 #include "qgspolygon.h"
 #include "qgsrectangle.h"
 #include "qgsvectorlayer.h"
 #include "qgsvectorlayereditbuffer.h"
-#include "qgsgrass.h"
-#include "qgsgrassprovider.h"
-#include "qgsgrassfeatureiterator.h"
-#include "qgsgrassundocommand.h"
-#include "qgscoordinatereferencesystem.h"
-#include "qgslogger.h"
 
 #include <QByteArray>
+#include <QDateTime>
 #include <QDir>
+#include <QElapsedTimer>
 #include <QFile>
 #include <QFileInfo>
 #include <QMessageBox>
+#include <QString>
 #include <QTextCodec>
+
+#include "moc_qgsgrassprovider.cpp"
+
+using namespace Qt::StringLiterals;
 
 #ifdef _MSC_VER
 // enable grass prototypes
@@ -54,7 +58,7 @@
 extern "C"
 {
 #include <grass/version.h>
-#if defined(_MSC_VER) && defined(M_PI_4)
+#if defined( _MSC_VER ) && defined( M_PI_4 )
 #undef M_PI_4 //avoid redefinition warning
 #endif
 #include <grass/gprojects.h>
@@ -78,9 +82,9 @@ extern "C"
 #ifdef Q_OS_WIN
 typedef qint64 grass_off_t;
 #else
-#if defined(GRASS_OFF_T_SIZE) && GRASS_OFF_T_SIZE == 4
+#if defined( GRASS_OFF_T_SIZE ) && GRASS_OFF_T_SIZE == 4
 typedef qint32 grass_off_t;
-#elif defined(GRASS_OFF_T_SIZE) && GRASS_OFF_T_SIZE == 8
+#elif defined( GRASS_OFF_T_SIZE ) && GRASS_OFF_T_SIZE == 8
 typedef qint64 grass_off_t;
 #else
 typedef off_t grass_off_t; // GRASS_OFF_T_SIZE undefined, default to off_t
@@ -88,10 +92,10 @@ typedef off_t grass_off_t; // GRASS_OFF_T_SIZE undefined, default to off_t
 #endif
 typedef grass_off_t Vect_rewrite_line_function_type( struct Map_info *, grass_off_t, int, const struct line_pnts *, const struct line_cats * );
 typedef int Vect_delete_line_function_type( struct Map_info *, grass_off_t );
-Vect_rewrite_line_function_type *Vect_rewrite_line_function_pointer = ( Vect_rewrite_line_function_type * )Vect_rewrite_line;
-Vect_delete_line_function_type *Vect_delete_line_function_pointer = ( Vect_delete_line_function_type * )Vect_delete_line;
+Vect_rewrite_line_function_type *Vect_rewrite_line_function_pointer = ( Vect_rewrite_line_function_type * ) Vect_rewrite_line;
+Vect_delete_line_function_type *Vect_delete_line_function_pointer = ( Vect_delete_line_function_type * ) Vect_delete_line;
 
-static QString GRASS_KEY = QStringLiteral( "grass" );
+static QString GRASS_KEY = u"grass"_s;
 
 int QgsGrassProvider::sLastType = -9999;
 int QgsGrassProvider::sEditedCount = 0;
@@ -115,8 +119,8 @@ QgsGrassProvider::QgsGrassProvider( const QString &uri )
   mCats = Vect_new_cats_struct();
 
   // Parse URI
-  QDir dir( uri );   // it is not a directory in fact
-  QString myURI = dir.path();  // no dupl '/'
+  QDir dir( uri );            // it is not a directory in fact
+  QString myURI = dir.path(); // no dupl '/'
 
   mLayerName = dir.dirName();
   myURI = myURI.left( dir.path().lastIndexOf( '/' ) );
@@ -135,27 +139,27 @@ QgsGrassProvider::QgsGrassProvider( const QString &uri )
   /* Parse Layer, supported layers <field>_point, <field>_line, <field>_area
   *  Layer is opened even if it is empty (has no features)
   */
-  if ( mLayerName.compare( QLatin1String( "boundary" ) ) == 0 ) // currently not used
+  if ( mLayerName.compare( "boundary"_L1 ) == 0 ) // currently not used
   {
     mLayerType = Boundary;
     mGrassType = GV_BOUNDARY;
   }
-  else if ( mLayerName.compare( QLatin1String( "centroid" ) ) == 0 ) // currently not used
+  else if ( mLayerName.compare( "centroid"_L1 ) == 0 ) // currently not used
   {
     mLayerType = Centroid;
     mGrassType = GV_CENTROID;
   }
-  else if ( mLayerName == QLatin1String( "topo_point" ) )
+  else if ( mLayerName == "topo_point"_L1 )
   {
     mLayerType = TopoPoint;
     mGrassType = GV_POINTS;
   }
-  else if ( mLayerName == QLatin1String( "topo_line" ) )
+  else if ( mLayerName == "topo_line"_L1 )
   {
     mLayerType = TopoLine;
     mGrassType = GV_LINES;
   }
-  else if ( mLayerName == QLatin1String( "topo_node" ) )
+  else if ( mLayerName == "topo_node"_L1 )
   {
     mLayerType = TopoNode;
     mGrassType = 0;
@@ -165,7 +169,7 @@ QgsGrassProvider::QgsGrassProvider( const QString &uri )
     mLayerField = grassLayer( mLayerName );
     if ( mLayerField == -1 )
     {
-      QgsDebugError( QString( "Invalid layer name, no underscore found: %1" ).arg( mLayerName ) );
+      QgsDebugError( QString( "Invalid layer name, no underscore found: \"%1\"" ).arg( mLayerName ) );
       return;
     }
 
@@ -192,7 +196,6 @@ QgsGrassProvider::QgsGrassProvider( const QString &uri )
       QgsDebugError( QString( "Invalid layer name, wrong type: %1" ).arg( mLayerName ) );
       return;
     }
-
   }
   QgsDebugMsgLevel( QString( "mLayerField: %1" ).arg( mLayerField ), 2 );
   QgsDebugMsgLevel( QString( "mLayerType: %1" ).arg( mLayerType ), 2 );
@@ -232,21 +235,21 @@ QgsGrassProvider::QgsGrassProvider( const QString &uri )
   loadMapInfo();
   setTopoFields();
 
-  connect( mLayer->map(),
-           &QgsGrassVectorMap::dataChanged, this, &QgsGrassProvider::onDataChanged );
+  connect( mLayer->map(), &QgsGrassVectorMap::dataChanged, this, &QgsGrassProvider::onDataChanged );
 
   // TODO: types according to database
-  setNativeTypes( QList<NativeType>()
-                  << QgsVectorDataProvider::NativeType( tr( "Whole number (integer)" ), QStringLiteral( "integer" ), QVariant::Int, -1, -1, -1, -1 )
-                  << QgsVectorDataProvider::NativeType( tr( "Decimal number (real)" ), QStringLiteral( "double precision" ), QVariant::Double, -1, -1, -1, -1 )
-                  << QgsVectorDataProvider::NativeType( tr( "Text" ), QStringLiteral( "text" ), QVariant::String )
-                  // TODO:
-                  // << QgsVectorDataProvider::NativeType( tr( "Date" ), "date", QVariant::Date, 8, 8 );
-                );
+  setNativeTypes(
+    QList<NativeType>()
+    << QgsVectorDataProvider::NativeType( tr( "Whole number (integer)" ), u"integer"_s, QMetaType::Type::Int, -1, -1, -1, -1 )
+    << QgsVectorDataProvider::NativeType( tr( "Decimal number (real)" ), u"double precision"_s, QMetaType::Type::Double, -1, -1, -1, -1 )
+    << QgsVectorDataProvider::NativeType( tr( "Text" ), u"text"_s, QMetaType::Type::QString )
+    // TODO:
+    // << QgsVectorDataProvider::NativeType( tr( "Date" ), "date", QVariant::Date, 8, 8 );
+  );
 
   // Assign default encoding
   if ( !textEncoding() )
-    QgsVectorDataProvider::setEncoding( QStringLiteral( "UTF-8" ) );
+    QgsVectorDataProvider::setEncoding( u"UTF-8"_s );
 
   mValid = true;
 
@@ -269,22 +272,27 @@ QgsGrassProvider::~QgsGrassProvider()
   }
 }
 
-QgsVectorDataProvider::Capabilities QgsGrassProvider::capabilities() const
+Qgis::VectorProviderCapabilities QgsGrassProvider::capabilities() const
 {
   // Because of bug in GRASS https://trac.osgeo.org/grass/ticket/2775 it is not possible
   // close db drivers in random order on Unix and probably Mac -> disable editing if another layer is edited
 #ifndef Q_OS_WIN
   if ( sEditedCount > 0 && !mEditBuffer )
   {
-    return QgsVectorDataProvider::Capabilities();
+    return Qgis::VectorProviderCapabilities();
   }
 #endif
   // for now, only one map may be edited at time
   if ( mEditBuffer || ( mLayer && mLayer->map() && !mLayer->map()->isEdited() ) )
   {
-    return AddFeatures | DeleteFeatures | ChangeGeometries | AddAttributes | DeleteAttributes | ChangeAttributeValues;
+    return Qgis::VectorProviderCapability::AddFeatures
+           | Qgis::VectorProviderCapability::DeleteFeatures
+           | Qgis::VectorProviderCapability::ChangeGeometries
+           | Qgis::VectorProviderCapability::AddAttributes
+           | Qgis::VectorProviderCapability::DeleteAttributes
+           | Qgis::VectorProviderCapability::ChangeAttributeValues;
   }
-  return QgsVectorDataProvider::Capabilities();
+  return Qgis::VectorProviderCapabilities();
 }
 
 bool QgsGrassProvider::openLayer()
@@ -356,7 +364,6 @@ void QgsGrassProvider::loadMapInfo()
 
 void QgsGrassProvider::update()
 {
-
   mValid = false;
 
   if ( mLayer )
@@ -385,9 +392,8 @@ QgsAbstractFeatureSource *QgsGrassProvider::featureSource() const
 
 QString QgsGrassProvider::storageType() const
 {
-  return QStringLiteral( "GRASS (Geographic Resources Analysis and Support System) file" );
+  return u"GRASS (Geographic Resources Analysis and Support System) file"_s;
 }
-
 
 
 QgsFeatureIterator QgsGrassProvider::getFeatures( const QgsFeatureRequest &request ) const
@@ -450,7 +456,7 @@ QgsFields QgsGrassProvider::fields() const
   return QgsFields();
 }
 
-int QgsGrassProvider::keyField()
+int QgsGrassProvider::keyField() const
 {
   return mLayer ? mLayer->keyColumn() : -1;
 }
@@ -487,7 +493,7 @@ QgsCoordinateReferenceSystem QgsGrassProvider::crs() const
   return QgsGrass::crs( mGrassObject.gisdbase(), mGrassObject.location(), error );
 }
 
-int QgsGrassProvider::grassLayer()
+int QgsGrassProvider::grassLayer() const
 {
   return mLayerField;
 }
@@ -515,19 +521,19 @@ int QgsGrassProvider::grassLayerType( const QString &name )
   }
 
   QString ts = name.right( name.length() - pos - 1 );
-  if ( ts.compare( QLatin1String( "point" ) ) == 0 )
+  if ( ts.compare( "point"_L1 ) == 0 )
   {
     return GV_POINT; // ?! centroids may be points
   }
-  else if ( ts.compare( QLatin1String( "line" ) ) == 0 )
+  else if ( ts.compare( "line"_L1 ) == 0 )
   {
     return GV_LINES;
   }
-  else if ( ts.compare( QLatin1String( "face" ) ) == 0 )
+  else if ( ts.compare( "face"_L1 ) == 0 )
   {
     return GV_FACE;
   }
-  else if ( ts.compare( QLatin1String( "polygon" ) ) == 0 )
+  else if ( ts.compare( "polygon"_L1 ) == 0 )
   {
     return GV_AREA;
   }
@@ -545,7 +551,6 @@ void QgsGrassProvider::onDataChanged()
 
 bool QgsGrassProvider::isGrassEditable( void )
 {
-
   if ( !isValid() )
     return false;
 
@@ -566,7 +571,6 @@ bool QgsGrassProvider::isEdited( void )
 
 void QgsGrassProvider::freeze()
 {
-
   if ( !isValid() )
   {
     return;
@@ -584,7 +588,6 @@ void QgsGrassProvider::freeze()
 
 void QgsGrassProvider::thaw()
 {
-
   if ( !openLayer() )
   {
     QgsDebugError( "Cannot open layer" );
@@ -598,7 +601,6 @@ void QgsGrassProvider::thaw()
 
 bool QgsGrassProvider::closeEdit( bool newMap, QgsVectorLayer *vectorLayer )
 {
-
   if ( !isValid() )
   {
     QgsDebugError( "not valid" );
@@ -768,8 +770,7 @@ int QgsGrassProvider::rewriteLine( int oldLid, int type, struct line_pnts *Point
       oldestLid = mLayer->map()->oldLids().value( oldLid );
     }
 
-    QgsDebugMsgLevel( QString( "oldLid = %1 oldestLid = %2 newLine = %3 numLines = %4" )
-                      .arg( oldLid ).arg( oldestLid ).arg( newLid ).arg( mLayer->map()->numLines() ), 2 );
+    QgsDebugMsgLevel( QString( "oldLid = %1 oldestLid = %2 newLine = %3 numLines = %4" ).arg( oldLid ).arg( oldestLid ).arg( newLid ).arg( mLayer->map()->numLines() ), 2 );
     QgsDebugMsgLevel( QString( "oldLids : %1 -> %2" ).arg( newLid ).arg( oldestLid ), 2 );
     mLayer->map()->oldLids()[newLid] = oldestLid;
     QgsDebugMsgLevel( QString( "newLids : %1 -> %2" ).arg( oldestLid ).arg( newLid ), 2 );
@@ -785,7 +786,6 @@ int QgsGrassProvider::rewriteLine( int oldLid, int type, struct line_pnts *Point
 
 int QgsGrassProvider::deleteLine( int line )
 {
-
   if ( !isEdited() )
     return -1;
 
@@ -933,7 +933,7 @@ QgsAttributeMap *QgsGrassProvider::attributes( int field, int cat )
 
   QgsAttributeMap *att = new QgsAttributeMap;
 
-  struct  field_info *fi = Vect_get_field( map(), field ); // should work also with field = 0
+  struct field_info *fi = Vect_get_field( map(), field ); // should work also with field = 0
 
   // Read attributes
   if ( !fi )
@@ -956,7 +956,7 @@ QgsAttributeMap *QgsGrassProvider::attributes( int field, int cat )
 
   dbString dbstr;
   db_init_string( &dbstr );
-  QString query = QStringLiteral( "select * from %1 where %2=%3" ).arg( fi->table, fi->key ).arg( cat );
+  QString query = u"select * from %1 where %2=%3"_s.arg( fi->table, fi->key ).arg( cat );
   db_set_string( &dbstr, query.toUtf8().constData() );
 
   QgsDebugMsgLevel( QString( "SQL: %1" ).arg( db_get_string( &dbstr ) ), 2 );
@@ -979,7 +979,7 @@ QgsAttributeMap *QgsGrassProvider::attributes( int field, int cat )
     return att;
   }
 
-  dbTable  *databaseTable = db_get_cursor_table( &databaseCursor );
+  dbTable *databaseTable = db_get_cursor_table( &databaseCursor );
   int nColumns = db_get_table_number_of_columns( databaseTable );
 
   int more;
@@ -1009,17 +1009,14 @@ QgsAttributeMap *QgsGrassProvider::attributes( int field, int cat )
 }
 
 
-
 int QgsGrassProvider::numDbLinks( void )
 {
-
   return ( Vect_get_num_dblinks( map() ) );
 }
 
 int QgsGrassProvider::dbLinkField( int link )
 {
-
-  struct  field_info *fi = Vect_get_dblink( map(), link );
+  struct field_info *fi = Vect_get_dblink( map(), link );
 
   if ( !fi )
     return 0;
@@ -1039,30 +1036,30 @@ bool QgsGrassProvider::isTopoType( int layerType )
 
 void QgsGrassProvider::setTopoFields()
 {
-  mTopoFields.append( QgsField( QStringLiteral( "id" ), QVariant::Int ) );
+  mTopoFields.append( QgsField( u"id"_s, QMetaType::Type::Int ) );
 
   if ( mLayerType == TopoPoint )
   {
-    mTopoFields.append( QgsField( QStringLiteral( "type" ), QVariant::String ) );
-    mTopoFields.append( QgsField( QStringLiteral( "node" ), QVariant::Int ) );
+    mTopoFields.append( QgsField( u"type"_s, QMetaType::Type::QString ) );
+    mTopoFields.append( QgsField( u"node"_s, QMetaType::Type::Int ) );
   }
   else if ( mLayerType == TopoLine )
   {
-    mTopoFields.append( QgsField( QStringLiteral( "type" ), QVariant::String ) );
-    mTopoFields.append( QgsField( QStringLiteral( "node1" ), QVariant::Int ) );
-    mTopoFields.append( QgsField( QStringLiteral( "node2" ), QVariant::Int ) );
-    mTopoFields.append( QgsField( QStringLiteral( "left" ), QVariant::Int ) );
-    mTopoFields.append( QgsField( QStringLiteral( "right" ), QVariant::Int ) );
+    mTopoFields.append( QgsField( u"type"_s, QMetaType::Type::QString ) );
+    mTopoFields.append( QgsField( u"node1"_s, QMetaType::Type::Int ) );
+    mTopoFields.append( QgsField( u"node2"_s, QMetaType::Type::Int ) );
+    mTopoFields.append( QgsField( u"left"_s, QMetaType::Type::Int ) );
+    mTopoFields.append( QgsField( u"right"_s, QMetaType::Type::Int ) );
   }
   else if ( mLayerType == TopoNode )
   {
-    mTopoFields.append( QgsField( QStringLiteral( "lines" ), QVariant::String ) );
+    mTopoFields.append( QgsField( u"lines"_s, QMetaType::Type::QString ) );
   }
 }
 
 void QgsGrassProvider::startEditing( QgsVectorLayer *vectorLayer )
 {
-  QgsDebugMsgLevel( "uri = " +  dataSourceUri(), 2 );
+  QgsDebugMsgLevel( "uri = " + dataSourceUri(), 2 );
   if ( !vectorLayer || !vectorLayer->editBuffer() )
   {
     QgsDebugError( "vector or buffer is null" );
@@ -1398,8 +1395,7 @@ void QgsGrassProvider::onFeatureAdded( QgsFeatureId fid )
     {
       realCat = mLayer->map()->newCats().value( fid );
     }
-    QgsDebugMsgLevel( QString( "fid = %1 lid = %2 realLine = %3 cat = %4 realCat = %5 layerField = %6" )
-                      .arg( fid ).arg( lid ).arg( realLine ).arg( cat ).arg( realCat ).arg( layerField ), 2 );
+    QgsDebugMsgLevel( QString( "fid = %1 lid = %2 realLine = %3 cat = %4 realCat = %5 layerField = %6" ).arg( fid ).arg( lid ).arg( realLine ).arg( cat ).arg( realCat ).arg( layerField ), 2 );
 
     if ( realLine > 0 )
     {
@@ -1505,8 +1501,7 @@ void QgsGrassProvider::onFeatureAdded( QgsFeatureId fid )
 
     setAddedFeaturesSymbol();
   }
-  QgsDebugMsgLevel( QString( "mLayer->cidxFieldIndex() = %1 cidxFieldNumCats() = %2" )
-                    .arg( mLayer->cidxFieldIndex() ).arg( mLayer->cidxFieldNumCats() ), 2 );
+  QgsDebugMsgLevel( QString( "mLayer->cidxFieldIndex() = %1 cidxFieldNumCats() = %2" ).arg( mLayer->cidxFieldIndex() ).arg( mLayer->cidxFieldNumCats() ), 2 );
 }
 
 void QgsGrassProvider::onFeatureDeleted( QgsFeatureId fid )
@@ -1539,8 +1534,7 @@ void QgsGrassProvider::onFeatureDeleted( QgsFeatureId fid )
     realCat = mLayer->map()->newCats().value( fid );
   }
 
-  QgsDebugMsgLevel( QString( "fid = %1 oldLid = %2 realLine = %3 cat = %4 realCat = %5 layerField = %6" )
-                    .arg( fid ).arg( oldLid ).arg( realLine ).arg( cat ).arg( realCat ).arg( layerField ), 2 );
+  QgsDebugMsgLevel( QString( "fid = %1 oldLid = %2 realLine = %3 cat = %4 realCat = %5 layerField = %6" ).arg( fid ).arg( oldLid ).arg( realLine ).arg( cat ).arg( realCat ).arg( layerField ), 2 );
 
   int type = 0;
   mLayer->map()->lockReadWrite();
@@ -1739,8 +1733,7 @@ void QgsGrassProvider::onAttributeValueChanged( QgsFeatureId fid, int idx, const
   {
     realCat = mLayer->map()->newCats().value( fid );
   }
-  QgsDebugMsgLevel( QString( "fid = %1 oldLid = %2 realLine = %3 cat = %4 realCat = %5" )
-                    .arg( fid ).arg( oldLid ).arg( realLine ).arg( cat ).arg( realCat ), 2 );
+  QgsDebugMsgLevel( QString( "fid = %1 oldLid = %2 realLine = %3 cat = %4 realCat = %5" ).arg( fid ).arg( oldLid ).arg( realLine ).arg( cat ).arg( realCat ), 2 );
 
   // index is for current fields
   if ( idx < 0 || idx > mEditLayer->fields().size() )
@@ -1813,8 +1806,7 @@ void QgsGrassProvider::onAttributeValueChanged( QgsFeatureId fid, int idx, const
       }
       if ( !recordExists )
       {
-        mLayer->map()->undoCommands()[undoIndex]
-            << new QgsGrassUndoCommandChangeAttribute( this, fid, realLine, mLayerField, realCat, false, true );
+        mLayer->map()->undoCommands()[undoIndex] << new QgsGrassUndoCommandChangeAttribute( this, fid, realLine, mLayerField, realCat, false, true );
       }
     }
     else
@@ -1848,8 +1840,7 @@ void QgsGrassProvider::onAttributeValueChanged( QgsFeatureId fid, int idx, const
           QgsGrass::warning( error );
         }
 
-        mLayer->map()->undoCommands()[undoIndex]
-            << new QgsGrassUndoCommandChangeAttribute( this, fid, newLid, mLayerField, newCat, true, !recordExists );
+        mLayer->map()->undoCommands()[undoIndex] << new QgsGrassUndoCommandChangeAttribute( this, fid, newLid, mLayerField, newCat, true, !recordExists );
 
         mLayer->map()->unlockReadWrite();
       }
@@ -2003,8 +1994,7 @@ void QgsGrassProvider::onBeforeCommitChanges()
 }
 
 void QgsGrassProvider::onBeforeRollBack()
-{
-}
+{}
 
 void QgsGrassProvider::onEditingStopped()
 {
@@ -2123,4 +2113,3 @@ QString QgsGrassProvider::description() const
 {
   return tr( "GRASS %1 vector provider" ).arg( GRASS_VERSION_MAJOR );
 }
-

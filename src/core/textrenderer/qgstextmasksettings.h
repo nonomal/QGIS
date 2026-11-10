@@ -16,13 +16,13 @@
 #ifndef QGSTEXTMASKSETTINGS_H
 #define QGSTEXTMASKSETTINGS_H
 
-#include "qgis_sip.h"
-#include "qgis_core.h"
 #include "qgis.h"
+#include "qgis_core.h"
+#include "qgis_sip.h"
 #include "qgsmapunitscale.h"
 
-#include <QSharedDataPointer>
 #include <QDomElement>
+#include <QSharedDataPointer>
 
 class QgsTextMaskSettingsPrivate;
 class QgsPaintEffect;
@@ -33,6 +33,7 @@ class QgsSymbolLayerReference;
  * \class QgsTextMaskSettings
   * \ingroup core
   * \brief Container for settings relating to a selective masking around a text.
+  *
   * A selective masking only makes sense in contexts where the text is rendered over some other map layers, especially for labeling.
   * \note QgsTextMaskSettings objects are implicitly shared.
   * \since QGIS 3.12
@@ -41,7 +42,6 @@ class QgsSymbolLayerReference;
 class CORE_EXPORT QgsTextMaskSettings
 {
   public:
-
     /**
      * Mask shape types.
      */
@@ -52,17 +52,10 @@ class CORE_EXPORT QgsTextMaskSettings
 
     QgsTextMaskSettings();
 
-    /**
-     * Copy constructor.
-     * \param other source settings
-     */
     QgsTextMaskSettings( const QgsTextMaskSettings &other );
-
-    /**
-     * Copy constructor.
-     * \param other source QgsTextMaskSettings
-     */
+    SIP_SKIP QgsTextMaskSettings( QgsTextMaskSettings &&other );
     QgsTextMaskSettings &operator=( const QgsTextMaskSettings &other );
+    QgsTextMaskSettings &operator=( QgsTextMaskSettings &&other );
 
     ~QgsTextMaskSettings();
 
@@ -219,7 +212,6 @@ class CORE_EXPORT QgsTextMaskSettings
     QSet<QString> referencedFields( const QgsRenderContext &context ) const;
 
   private:
-
     QSharedDataPointer<QgsTextMaskSettingsPrivate> d;
 };
 

@@ -15,10 +15,11 @@
 
 #include "qgsquickutils.h"
 
+#include "moc_qgsquickutils.cpp"
+
 QgsQuickUtils::QgsQuickUtils( QObject *parent )
   : QObject( parent )
-{
-}
+{}
 
 QgsPoint QgsQuickUtils::toQgsPoint( const QPointF &point )
 {

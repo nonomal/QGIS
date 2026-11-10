@@ -20,9 +20,10 @@
 
 #include "qgsconfig.h"
 
-#include <QObject>
 #include <QList>
+#include <QObject>
 #include <QPair>
+
 #if defined( HAVE_QTSERIALPORT )
 #include <QSerialPort>
 #endif
@@ -32,8 +33,7 @@
 #include "qgis_sip.h"
 
 #ifndef SIP_RUN
-template<class T>
-class QgsSettingsEntryEnumFlag;
+template<class T> class QgsSettingsEntryEnumFlag;
 #endif
 
 class QgsGpsConnection;
@@ -42,14 +42,13 @@ class QTimer;
 
 /**
  * \ingroup core
- * \brief Class to detect the GPS port
+ * \brief Detects connected GPS device ports.
  */
 class CORE_EXPORT QgsGpsDetector : public QObject
 {
     Q_OBJECT
   public:
-
-    // TODO QGIS 4.0 -- remove useUnsafeSignals option
+    // TODO QGIS 5.0 -- remove useUnsafeSignals option
 
     /**
      * Constructor for QgsGpsDetector.
@@ -110,7 +109,7 @@ class CORE_EXPORT QgsGpsDetector : public QObject
      * Emitted when the GPS connection has been detected. A single connection must listen for this signal and
      * immediately take ownership of the \a connection object.
      *
-     * \deprecated This signal is dangerous and extremely unsafe! It is recommended to instead set the \a useUnsafeSignals parameter to FALSE in the QgsGpsDetector constructor and use the safe connectionDetected() signal instead.
+     * \deprecated QGIS 3.40. This signal is dangerous and extremely unsafe! It is recommended to instead set the \a useUnsafeSignals parameter to FALSE in the QgsGpsDetector constructor and use the safe connectionDetected() signal instead.
      */
     Q_DECL_DEPRECATED void detected( QgsGpsConnection *connection ) SIP_DEPRECATED;
 

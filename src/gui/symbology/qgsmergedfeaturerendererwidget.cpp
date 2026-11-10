@@ -13,10 +13,19 @@
  *                                                                         *
  ***************************************************************************/
 #include "qgsmergedfeaturerendererwidget.h"
+
+#include <memory>
+
+#include "qgsapplication.h"
 #include "qgsmergedfeaturerenderer.h"
 #include "qgsrendererregistry.h"
 #include "qgsvectorlayer.h"
-#include "qgsapplication.h"
+
+#include <QString>
+
+#include "moc_qgsmergedfeaturerendererwidget.cpp"
+
+using namespace Qt::StringLiterals;
 
 QgsRendererWidget *QgsMergedFeatureRendererWidget::create( QgsVectorLayer *layer, QgsStyle *style, QgsFeatureRenderer *renderer )
 {
@@ -39,9 +48,14 @@ QgsMergedFeatureRendererWidget::QgsMergedFeatureRendererWidget( QgsVectorLayer *
     //setup blank dialog
     mRenderer.reset( nullptr );
     QGridLayout *layout = new QGridLayout( this );
-    QLabel *label = new QLabel( tr( "The merged feature renderer only applies to line and polygon layers. \n"
-                                    "'%1' is not a line or polygon layer and then cannot be displayed" )
-                                .arg( layer->name() ), this );
+    QLabel *label = new QLabel(
+      tr(
+        "The merged feature renderer only applies to line and polygon layers. \n"
+        "'%1' is not a line or polygon layer and then cannot be displayed"
+      )
+        .arg( layer->name() ),
+      this
+    );
     this->setLayout( layout );
     layout->addWidget( label );
     return;
@@ -53,26 +67,27 @@ QgsMergedFeatureRendererWidget::QgsMergedFeatureRendererWidget( QgsVectorLayer *
   // (null renderer means "no previous renderer")
   if ( renderer )
   {
-    mRenderer.reset( QgsMergedFeatureRenderer::convertFromRenderer( renderer ) );
+    mRenderer = QgsMergedFeatureRenderer::convertFromRenderer( renderer );
   }
-  if ( ! mRenderer )
+  if ( !mRenderer )
   {
     // use default embedded renderer
-    mRenderer.reset( new QgsMergedFeatureRenderer( QgsFeatureRenderer::defaultRenderer( type ) ) );
+    mRenderer = std::make_unique<QgsMergedFeatureRenderer>( QgsFeatureRenderer::defaultRenderer( type ).release() );
     if ( renderer )
       renderer->copyRendererData( mRenderer.get() );
   }
 
   int currentEmbeddedIdx = 0;
   //insert possible renderer types
-  const QStringList rendererList = QgsApplication::rendererRegistry()->renderersList( type == Qgis::GeometryType::Polygon ? QgsRendererAbstractMetadata::PolygonLayer :  QgsRendererAbstractMetadata::LineLayer );
+  const QStringList rendererList = QgsApplication::rendererRegistry()->renderersList(
+    type == Qgis::GeometryType::Polygon ? QgsRendererAbstractMetadata::PolygonLayer : QgsRendererAbstractMetadata::LineLayer
+  );
   QStringList::const_iterator it = rendererList.constBegin();
   int idx = 0;
   mRendererComboBox->blockSignals( true );
   for ( ; it != rendererList.constEnd(); ++it, ++idx )
   {
-    if ( *it != QLatin1String( "mergedFeatureRenderer" )
-         && *it != QLatin1String( "invertedPolygonRenderer" ) ) //< an merged renderer cannot contain another merged or inverted renderer
+    if ( *it != "mergedFeatureRenderer"_L1 && *it != "invertedPolygonRenderer"_L1 ) //< an merged renderer cannot contain another merged or inverted renderer
     {
       QgsRendererAbstractMetadata *m = QgsApplication::rendererRegistry()->rendererMetadata( *it );
       mRendererComboBox->addItem( m->icon(), m->visibleName(), /* data */ *it );
@@ -130,9 +145,9 @@ void QgsMergedFeatureRendererWidget::mRendererComboBox_currentIndexChanged( int 
   QgsRendererAbstractMetadata *m = QgsApplication::rendererRegistry()->rendererMetadata( rendererId );
   if ( m )
   {
-    const std::unique_ptr< QgsFeatureRenderer > oldRenderer( mRenderer->embeddedRenderer()->clone() );
+    const std::unique_ptr<QgsFeatureRenderer> oldRenderer( mRenderer->embeddedRenderer()->clone() );
     mEmbeddedRendererWidget.reset( m->createRendererWidget( mLayer, mStyle, oldRenderer.get() ) );
-    connect( mEmbeddedRendererWidget.get(), &QgsRendererWidget::widgetChanged, this, &QgsMergedFeatureRendererWidget::widgetChanged );
+    connect( mEmbeddedRendererWidget.get(), &QgsRendererWidget::changed, this, &QgsMergedFeatureRendererWidget::changed );
     mEmbeddedRendererWidget->setContext( mContext );
     mEmbeddedRendererWidget->disableSymbolLevels();
     mEmbeddedRendererWidget->setDockMode( this->dockMode() );

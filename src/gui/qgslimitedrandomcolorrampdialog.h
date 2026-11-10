@@ -16,12 +16,14 @@
 #ifndef QGsLIMITEDRANDOMCOLORRAMPDIALOG_H
 #define QGsLIMITEDRANDOMCOLORRAMPDIALOG_H
 
-#include <QDialog>
-#include "qgis_sip.h"
-#include "qgspanelwidget.h"
-#include "qgscolorrampimpl.h"
 #include "ui_qgslimitedrandomcolorrampwidgetbase.h"
+
 #include "qgis_gui.h"
+#include "qgis_sip.h"
+#include "qgscolorrampimpl.h"
+#include "qgspanelwidget.h"
+
+#include <QDialog>
 
 class QDialogButtonBox;
 
@@ -36,7 +38,6 @@ class GUI_EXPORT QgsLimitedRandomColorRampWidget : public QgsPanelWidget, privat
     Q_PROPERTY( QgsLimitedRandomColorRamp ramp READ ramp WRITE setRamp )
 
   public:
-
     /**
      * Constructor for QgsLimitedRandomColorRampWidget.
      * \param ramp initial ramp to show in dialog
@@ -57,11 +58,6 @@ class GUI_EXPORT QgsLimitedRandomColorRampWidget : public QgsPanelWidget, privat
      */
     void setRamp( const QgsLimitedRandomColorRamp &ramp );
 
-  signals:
-
-    //! Emitted when the dialog settings change
-    void changed();
-
   public slots:
 
     //! Sets the number of colors to create in the ramp
@@ -80,7 +76,6 @@ class GUI_EXPORT QgsLimitedRandomColorRampWidget : public QgsPanelWidget, privat
     void setVal2( int val );
 
   private:
-
     void updatePreview();
     void updateUi();
 
@@ -99,7 +94,6 @@ class GUI_EXPORT QgsLimitedRandomColorRampDialog : public QDialog
     Q_PROPERTY( QgsLimitedRandomColorRamp ramp READ ramp WRITE setRamp )
 
   public:
-
     /**
      * Constructor for QgsLimitedRandomColorRampDialog.
      * \param ramp initial ramp to show in dialog
@@ -132,14 +126,12 @@ class GUI_EXPORT QgsLimitedRandomColorRampDialog : public QDialog
     void changed();
 
   private:
-
     QgsLimitedRandomColorRampWidget *mWidget = nullptr;
     QDialogButtonBox *mButtonBox = nullptr;
 
   private slots:
 
     void showHelp();
-
 };
 
 #endif

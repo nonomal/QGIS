@@ -18,10 +18,11 @@
 #ifndef QGSALGORITHMSMOOTH_H
 #define QGSALGORITHMSMOOTH_H
 
-#define SIP_NO_FILE
 
 #include "qgis_sip.h"
 #include "qgsprocessingalgorithm.h"
+
+#define SIP_NO_FILE
 
 ///@cond PRIVATE
 
@@ -30,9 +31,7 @@
  */
 class QgsSmoothAlgorithm : public QgsProcessingFeatureBasedAlgorithm
 {
-
   public:
-
     QgsSmoothAlgorithm() = default;
     QString name() const override;
     QString displayName() const override;
@@ -40,6 +39,7 @@ class QgsSmoothAlgorithm : public QgsProcessingFeatureBasedAlgorithm
     QString group() const override;
     QString groupId() const override;
     QString shortHelpString() const override;
+    QString shortDescription() const override;
     QgsSmoothAlgorithm *createInstance() const override SIP_FACTORY;
     QList<int> inputLayerTypes() const override;
     void initParameters( const QVariantMap &configuration = QVariantMap() ) override;
@@ -47,7 +47,7 @@ class QgsSmoothAlgorithm : public QgsProcessingFeatureBasedAlgorithm
   protected:
     QString outputName() const override;
     bool prepareAlgorithm( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
-    QgsFeatureList processFeature( const QgsFeature &feature,  QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
+    QgsFeatureList processFeature( const QgsFeature &feature, QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
     Qgis::ProcessingFeatureSourceFlags sourceFlags() const override;
 
   private:
@@ -67,5 +67,3 @@ class QgsSmoothAlgorithm : public QgsProcessingFeatureBasedAlgorithm
 ///@endcond PRIVATE
 
 #endif // QGSALGORITHMSMOOTH_H
-
-

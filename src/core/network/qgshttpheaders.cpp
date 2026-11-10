@@ -19,13 +19,16 @@
  ***************************************************************************/
 
 #include "qgshttpheaders.h"
+
 #include "qgssettings.h"
 
-
 #include <QDir>
-#include <QNetworkRequest>
-#include <QUrlQuery>
 #include <QDomElement>
+#include <QNetworkRequest>
+#include <QString>
+#include <QUrlQuery>
+
+using namespace Qt::StringLiterals;
 
 //
 // QgsHttpHeaders
@@ -73,7 +76,7 @@ bool QgsHttpHeaders::updateUrlQuery( QUrlQuery &uri ) const
 {
   for ( auto ite = mHeaders.constBegin(); ite != mHeaders.constEnd(); ++ite )
   {
-    uri.addQueryItem( QgsHttpHeaders::PARAM_PREFIX + ite.key().toUtf8(), ite.value().toString().toUtf8() );
+    uri.addQueryItem( QgsHttpHeaders::PARAM_PREFIX + ite.key().toUtf8(), QUrl::toPercentEncoding( ite.value().toString() ) );
   }
   return true;
 }
@@ -88,7 +91,7 @@ bool QgsHttpHeaders::updateSettings( QgsSettings &settings, const QString &key )
   settings.remove( keyHH ); // cleanup
   for ( auto ite = mHeaders.constBegin(); ite != mHeaders.constEnd(); ++ite )
   {
-    settings.setValue( keyHH  + ite.key(), ite.value() );
+    settings.setValue( keyHH + ite.key(), ite.value() );
   }
 
   if ( !mHeaders[QgsHttpHeaders::KEY_REFERER].toString().isEmpty() && settings.contains( keyFixed + QgsHttpHeaders::KEY_REFERER ) ) // backward comptibility
@@ -123,8 +126,18 @@ bool QgsHttpHeaders::updateMap( QVariantMap &map ) const
 
 bool QgsHttpHeaders::updateDomElement( QDomElement &el ) const
 {
+  QMap<QString, QString> namespaceDeclarations;
+  return updateDomElement( el, namespaceDeclarations );
+}
+
+bool QgsHttpHeaders::updateDomElement( QDomElement &el, QMap<QString, QString> &namespaceDeclarations ) const
+{
+  QString httpHeaderURIPrefix( QgsHttpHeaders::PARAM_PREFIX );
+  httpHeaderURIPrefix.chop( 1 );
+
   for ( auto ite = mHeaders.constBegin(); ite != mHeaders.constEnd(); ++ite )
   {
+    namespaceDeclarations.insert( httpHeaderURIPrefix, u"https://qgis.org/"_s + httpHeaderURIPrefix );
     el.setAttribute( QgsHttpHeaders::PARAM_PREFIX + ite.key().toUtf8(), ite.value().toString() );
   }
 
@@ -184,6 +197,10 @@ void QgsHttpHeaders::setFromUrlQuery( const QUrlQuery &uri )
       QString name = key.right( key.size() - QgsHttpHeaders::PARAM_PREFIX.size() );
       mHeaders[sanitizeKey( name )] = item.second;
     }
+    else if ( key == QgsHttpHeaders::KEY_REFERER ) // backward comptibility
+    {
+      mHeaders[QgsHttpHeaders::KEY_REFERER] = item.second;
+    }
   }
 }
 
@@ -195,13 +212,13 @@ void QgsHttpHeaders::setFromMap( const QVariantMap &map )
     if ( key.startsWith( QgsHttpHeaders::PARAM_PREFIX ) )
     {
       QString name = key.right( key.size() - QgsHttpHeaders::PARAM_PREFIX.size() );
-      mHeaders[sanitizeKey( name )] = map [key].toString();
+      mHeaders[sanitizeKey( name )] = map[key].toString();
     }
   }
 
   if ( map.contains( QgsHttpHeaders::KEY_REFERER ) ) // backward comptibility
   {
-    mHeaders[QgsHttpHeaders::KEY_REFERER] = map [QgsHttpHeaders::KEY_REFERER].toString();
+    mHeaders[QgsHttpHeaders::KEY_REFERER] = map[QgsHttpHeaders::KEY_REFERER].toString();
   }
 }
 
@@ -225,7 +242,6 @@ void QgsHttpHeaders::setFromDomElement( const QDomElement &el )
   {
     mHeaders[QgsHttpHeaders::KEY_REFERER] = attribs.namedItem( QgsHttpHeaders::KEY_REFERER ).nodeValue();
   }
-
 }
 
 QString QgsHttpHeaders::toSpacedString() const
@@ -233,15 +249,14 @@ QString QgsHttpHeaders::toSpacedString() const
   QString out;
   for ( auto ite = mHeaders.constBegin(); ite != mHeaders.constEnd(); ++ite )
   {
-    out += QStringLiteral( " %1%2='%3'" ).arg( QgsHttpHeaders::PARAM_PREFIX, ite.key(), ite.value().toString() );
+    out += u" %1%2='%3'"_s.arg( QgsHttpHeaders::PARAM_PREFIX, ite.key(), ite.value().toString() );
   }
 
-  if ( !mHeaders [ QgsHttpHeaders::KEY_REFERER ].toString().isEmpty() )
-    out += QStringLiteral( " %1='%2'" ).arg( QgsHttpHeaders::KEY_REFERER, mHeaders [QgsHttpHeaders::KEY_REFERER].toString() );
+  if ( !mHeaders[QgsHttpHeaders::KEY_REFERER].toString().isEmpty() )
+    out += u" %1='%2'"_s.arg( QgsHttpHeaders::KEY_REFERER, mHeaders[QgsHttpHeaders::KEY_REFERER].toString() );
 
   return out;
 }
-
 
 
 // To clean the path
@@ -262,7 +277,7 @@ const QVariant QgsHttpHeaders::operator[]( const QString &key ) const
   return mHeaders[sanitizeKey( key )];
 }
 
-QgsHttpHeaders &QgsHttpHeaders::operator = ( const QMap<QString, QVariant> &headers )
+QgsHttpHeaders &QgsHttpHeaders::operator=( const QMap<QString, QVariant> &headers )
 {
   mHeaders = headers;
   return *this;
@@ -283,4 +298,14 @@ void QgsHttpHeaders::insert( const QString &key, const QVariant &val )
     k2 = k2.right( k2.length() - QgsHttpHeaders::PARAM_PREFIX.length() );
   }
   mHeaders.insert( k2, val );
+}
+
+bool QgsHttpHeaders::operator==( const QgsHttpHeaders &other ) const
+{
+  return mHeaders == other.mHeaders;
+}
+
+bool QgsHttpHeaders::operator!=( const QgsHttpHeaders &other ) const
+{
+  return !( *this == other );
 }

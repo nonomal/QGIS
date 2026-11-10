@@ -16,9 +16,9 @@
 #ifndef QGSVARIANTUTILS_H
 #define QGSVARIANTUTILS_H
 
+#include "qgis.h"
 #include "qgis_core.h"
 #include "qgis_sip.h"
-#include "qgis.h"
 
 /**
  * \ingroup core
@@ -31,13 +31,20 @@
 class CORE_EXPORT QgsVariantUtils
 {
   public:
-
     /**
      * Returns a user-friendly translated string representing a QVariant \a type.
      *
      * The optional \a subType can be used to specify the type of variant list or map values.
      */
-    static QString typeToDisplayString( QVariant::Type type, QVariant::Type subType = QVariant::Type::Invalid );
+    static QString typeToDisplayString( QMetaType::Type type, QMetaType::Type subType = QMetaType::Type::UnknownType );
+
+    /**
+     * Returns a user-friendly translated string representing a QVariant \a type.
+     *
+     * The optional \a subType can be used to specify the type of variant list or map values.
+     * \deprecated QGIS 3.38. Use the method with a QMetaType::Type argument instead.
+     */
+    Q_DECL_DEPRECATED static QString typeToDisplayString( QVariant::Type type, QVariant::Type subType = QVariant::Type::Invalid ) SIP_DEPRECATED;
 
     /**
      * Returns TRUE if the specified \a variant should be considered a NULL value.
@@ -48,6 +55,12 @@ class CORE_EXPORT QgsVariantUtils
      * \since QGIS 3.28
      */
     static bool isNull( const QVariant &variant, bool silenceNullWarnings SIP_PYARGREMOVE = false );
+
+    /**
+     * Returns TRUE if the specified \a metaType is a numeric type.
+     * \since QGIS 3.40
+     */
+    static bool isNumericType( QMetaType::Type metaType );
 
     /**
      * Converts a QVariant::Type to a QMetaType::Type.
@@ -70,6 +83,44 @@ class CORE_EXPORT QgsVariantUtils
      */
     static QVariant::Type metaTypeToVariantType( QMetaType::Type metaType ) SIP_SKIP;
 
+    /**
+     *  Check if the \a variant is a QgsUnsetAttributeValue
+     *  \note Not available in Python bindings
+     *  \since QGIS 3.44
+     */
+    static bool isUnsetAttributeValue( const QVariant &variant ) SIP_SKIP;
+
+    // TODO QGIS 5 remove this method
+
+    /**
+     * Helper method to properly create a null QVariant from a \a metaType
+     * Returns the created QVariant
+     */
+    static QVariant createNullVariant( QMetaType::Type metaType ) SIP_SKIP;
+
+    /**
+     * Returns a localized representation of \a value with the given \a precision,
+     * if precision is -1 then precision is guessed from the default QVariant::toString
+     * output.
+     *
+     * The current localization settings are applied.
+     *
+     * For strings, the input text is returned unchanged.
+     * For lists, a single string is generated with elements separated by ‘;’.
+     *
+     * \note Precision is ignored for integers.
+     *
+     * \since QGIS 4.0
+     */
+    static QString displayString( const QVariant &variant, int precision = -1 );
+
+    /**
+     * Exports a variant map to a HTML formatted representation.
+     *
+     * \note Not available in Python bindings
+     * \since QGIS 4.2
+     */
+    static QString variantToHtml( const QVariantMap &variant, const QString &title ) SIP_SKIP;
 };
 
 #endif // QGSVARIANTUTILS_H

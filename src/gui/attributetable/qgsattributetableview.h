@@ -16,12 +16,12 @@
 #ifndef QGSATTRIBUTETABLEVIEW_H
 #define QGSATTRIBUTETABLEVIEW_H
 
-#include <QAction>
+#include "qgis_gui.h"
+#include "qgsattributetableconfig.h"
 #include "qgsfeatureid.h"
 #include "qgstableview.h"
 
-#include "qgis_gui.h"
-#include "qgsattributetableconfig.h"
+#include <QAction>
 
 class QgsAttributeTableDelegate;
 class QgsAttributeTableFilterModel;
@@ -50,7 +50,6 @@ class GUI_EXPORT QgsAttributeTableView : public QgsTableView
     Q_OBJECT
 
   public:
-
     //! Constructor for QgsAttributeTableView
     QgsAttributeTableView( QWidget *parent SIP_TRANSFERTHIS = nullptr );
 
@@ -109,8 +108,8 @@ class GUI_EXPORT QgsAttributeTableView : public QgsTableView
      * \since QGIS 3.30
      */
     void closeCurrentEditor();
-  protected:
 
+  protected:
     /**
      * Called for mouse press events on a table cell.
      * Disables selection change for these events.
@@ -161,7 +160,6 @@ class GUI_EXPORT QgsAttributeTableView : public QgsTableView
   signals:
 
     /**
-     * \brief
      * Emitted in order to provide a hook to add additional* menu entries to the context menu.
      *
      * \param menu     If additional QMenuItems are added, they will show up in the context menu.
@@ -172,12 +170,22 @@ class GUI_EXPORT QgsAttributeTableView : public QgsTableView
 
     /**
      * Emitted when a column in the view has been resized.
-     * \param column column index (starts at 0)
+     * \param column visual column index (starts at 0)
      * \param width new width in pixel
      */
     void columnResized( int column, int width );
 
-    void finished();
+    /**
+     * \deprecated QGIS 3.40. No longer used.
+     */
+    Q_DECL_DEPRECATED void finished() SIP_DEPRECATED;
+
+    /**
+     * Emitted when a row header is double-clicked.
+     * \param fid the feature ID of the double-clicked row.
+     * \since QGIS 4.0
+     */
+    void rowHeaderDoubleClicked( QgsFeatureId fid );
 
   public slots:
     void repaintRequested( const QModelIndexList &indexes );
@@ -207,9 +215,10 @@ class GUI_EXPORT QgsAttributeTableView : public QgsTableView
     QMenu *mActionPopup = nullptr;
     int mRowSectionAnchor = 0;
     QItemSelectionModel::SelectionFlag mCtrlDragSelectionFlag = QItemSelectionModel::Select;
-    QMap< QModelIndex, QWidget * > mActionWidgets;
+    QMap<QModelIndex, QWidget *> mActionWidgets;
     QgsAttributeTableConfig mConfig;
     QString mSortExpression;
+    int mBlockColumnUpdates = 0;
 };
 
 #endif

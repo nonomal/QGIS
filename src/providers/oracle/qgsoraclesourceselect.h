@@ -17,16 +17,16 @@
 #ifndef QGSORACLESOURCESELECT_H
 #define QGSORACLESOURCESELECT_H
 
+#include "qgsabstractdbsourceselect.h"
 #include "qgsguiutils.h"
 #include "qgshelp.h"
 #include "qgsoracleconnpool.h"
 #include "qgsproviderregistry.h"
-#include "qgsabstractdbsourceselect.h"
 
-#include <QMap>
-#include <QPair>
 #include <QIcon>
 #include <QItemDelegate>
+#include <QMap>
+#include <QPair>
 
 class QPushButton;
 class QgsOracleColumnTypeTask;
@@ -43,10 +43,7 @@ class QgsOracleSourceSelectDelegate : public QItemDelegate
       : QItemDelegate( parent )
     {}
 
-    ~QgsOracleSourceSelectDelegate() override
-    {
-      setConn( nullptr );
-    }
+    ~QgsOracleSourceSelectDelegate() override { setConn( nullptr ); }
 
     QWidget *createEditor( QWidget *parent, const QStyleOptionViewItem &option, const QModelIndex &index ) const override;
     void setModelData( QWidget *editor, QAbstractItemModel *model, const QModelIndex &index ) const override;
@@ -55,7 +52,12 @@ class QgsOracleSourceSelectDelegate : public QItemDelegate
     void setConnectionInfo( const QgsDataSourceUri &connInfo ) { mConnInfo = connInfo; }
 
   protected:
-    void setConn( QgsOracleConn *conn ) const { if ( mConn ) QgsOracleConnPool::instance()->releaseConnection( mConn ); mConn = conn; }
+    void setConn( QgsOracleConn *conn ) const
+    {
+      if ( mConn )
+        QgsOracleConnPool::instance()->releaseConnection( mConn );
+      mConn = conn;
+    }
 
     QgsOracleConn *conn() const
     {
@@ -85,7 +87,7 @@ class QgsOracleSourceSelect : public QgsAbstractDbSourceSelect
 
   public:
     //! Constructor
-    QgsOracleSourceSelect( QWidget *parent = nullptr, Qt::WindowFlags fl = QgsGuiUtils::ModalDialogFlags, QgsProviderRegistry::WidgetMode widgetMode = QgsProviderRegistry::WidgetMode::None );
+    QgsOracleSourceSelect( QWidget *parent = nullptr, Qt::WindowFlags fl = QgsGuiUtils::ModalDialogFlags, QgsProviderRegistry::WidgetMode widgetMode = QgsProviderRegistry::WidgetMode::Standalone );
     //! Destructor
     ~QgsOracleSourceSelect() override;
     //! Populate the connection list combo box
@@ -148,7 +150,7 @@ class QgsOracleSourceSelect : public QgsAbstractDbSourceSelect
     QgsDataSourceUri mConnInfo;
     QStringList mSelectedTables;
     // Storage for the range of layer type icons
-    QMap<QString, QPair<QString, QIcon> > mLayerIcons;
+    QMap<QString, QPair<QString, QIcon>> mLayerIcons;
 
     //! Model that acts as datasource for mTableTreeWidget
     QgsOracleTableModel *mTableModel = nullptr;
@@ -160,7 +162,6 @@ class QgsOracleSourceSelect : public QgsAbstractDbSourceSelect
     bool mIsConnected = false;
 
     void showHelp();
-
 };
 
 #endif // QGSORACLESOURCESELECT_H

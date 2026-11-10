@@ -18,16 +18,23 @@
 
 #include "qgisapp.h"
 #include "qgsappgpsconnection.h"
+#include "qgsappgpsdigitizing.h"
+#include "qgsappgpssettingsmenu.h"
+#include "qgscoordinateutils.h"
+#include "qgsgpsconnection.h"
+#include "qgsmapcanvas.h"
 #include "qgsmaptooladdfeature.h"
 #include "qgspointxy.h"
 #include "qgsproject.h"
 #include "qgssettings.h"
+#include "qgssettingsregistrycore.h"
 #include "qgsstatusbar.h"
-#include "qgsmapcanvas.h"
-#include "qgsgpsconnection.h"
-#include "qgscoordinateutils.h"
-#include "qgsappgpssettingsmenu.h"
-#include "qgsappgpsdigitizing.h"
+
+#include <QString>
+
+#include "moc_qgsgpsinformationwidget.cpp"
+
+using namespace Qt::StringLiterals;
 
 // QWT Charting widget
 
@@ -36,13 +43,12 @@
 #include <qwt_plot.h>
 #include <qwt_plot_grid.h>
 
-#ifdef WITH_QWTPOLAR
 // QWT Polar plot add on
 #include <qwt_symbol.h>
 #include <qwt_polar_grid.h>
 #include <qwt_polar_curve.h>
 #include <qwt_scale_engine.h>
-#endif
+// #include <qwt_symbol.h>
 
 #include <QMessageBox>
 #include <QFileInfo>
@@ -53,8 +59,7 @@
 #include <QTimeZone>
 
 
-QgsGpsInformationWidget::QgsGpsInformationWidget( QgsAppGpsConnection *connection,
-    QgsMapCanvas *mapCanvas, QgsAppGpsDigitizing *digitizing, QWidget *parent )
+QgsGpsInformationWidget::QgsGpsInformationWidget( QgsAppGpsConnection *connection, QgsMapCanvas *mapCanvas, QgsAppGpsDigitizing *digitizing, QWidget *parent )
   : QgsPanelWidget( parent )
   , mConnection( connection )
   , mMapCanvas( mapCanvas )
@@ -74,26 +79,24 @@ QgsGpsInformationWidget::QgsGpsInformationWidget( QgsAppGpsConnection *connectio
   mBtnPopupOptions->setPopupMode( QToolButton::InstantPopup );
 
   QWidget *mpHistogramWidget = mStackedWidget->widget( 1 );
-#ifndef WITH_QWTPOLAR
   mBtnSatellites->setVisible( false );
-#endif
   //
   // Set up the graph for signal strength
   //
   mPlot = new QwtPlot( mpHistogramWidget );
-  mPlot->setAutoReplot( false );   // plot on demand
-  //mPlot->setTitle(QObject::tr("Signal Status"));
-  //mPlot->insertLegend(new QwtLegend(), QwtPlot::BottomLegend);
+  mPlot->setAutoReplot( false ); // plot on demand
+  // mPlot->setTitle(QObject::tr("Signal Status"));
+  // mPlot->insertLegend(new QwtLegend(), QwtPlot::BottomLegend);
   // Set axis titles
-  //mPlot->setAxisTitle(QwtPlot::xBottom, QObject::tr("Satellite"));
-  //mPlot->setAxisTitle(QwtPlot::yLeft, QObject::tr("Value"));
+  // mPlot->setAxisTitle(QwtPlot::xBottom, QObject::tr("Satellite"));
+  // mPlot->setAxisTitle(QwtPlot::yLeft, QObject::tr("Value"));
   mPlot->setAxisScale( QwtPlot::xBottom, 0, 20 );
-  mPlot->setAxisScale( QwtPlot::yLeft, 0, 60 );  // max is 50dB SNR, I believe - SLM
+  mPlot->setAxisScale( QwtPlot::yLeft, 0, 60 ); // max is 50dB SNR, I believe - SLM
   // add a grid
   QwtPlotGrid *mGrid = new QwtPlotGrid();
   mGrid->enableX( false );
   mGrid->attach( mPlot );
-  //display satellites first
+  // display satellites first
   mCurve = new QwtPlotCurve();
   mCurve->setRenderHint( QwtPlotItem::RenderAntialiased );
   mCurve->setPen( QPen( Qt::blue ) );
@@ -101,7 +104,7 @@ QgsGpsInformationWidget::QgsGpsInformationWidget( QgsAppGpsConnection *connectio
   mPlot->enableAxis( QwtPlot::yLeft, true );
   mPlot->enableAxis( QwtPlot::xBottom, false );
   mCurve->attach( mPlot );
-  //ensure all children get removed
+  // ensure all children get removed
   mPlot->setAutoDelete( true );
   QVBoxLayout *mpHistogramLayout = new QVBoxLayout( mpHistogramWidget );
   mpHistogramLayout->setContentsMargins( 0, 0, 0, 0 );
@@ -111,52 +114,53 @@ QgsGpsInformationWidget::QgsGpsInformationWidget( QgsAppGpsConnection *connectio
   //
   // Set up the polar graph for satellite pos
   //
-#ifdef WITH_QWTPOLAR
   QWidget *mpPolarWidget = mStackedWidget->widget( 2 );
-  mpSatellitesWidget = new QwtPolarPlot( /*QwtText( tr( "Satellite View" ), QwtText::PlainText ),*/ mpPolarWidget );  // possible title for graph removed for now as it is too large in small windows
-  mpSatellitesWidget->setAutoReplot( false );   // plot on demand (after all data has been handled)
+  mpSatellitesWidget = new QwtPolarPlot( /*QwtText( tr( "Satellite View" ), QwtText::PlainText ),*/ mpPolarWidget ); // possible title for graph removed for now as it is too large in small windows
+  mpSatellitesWidget->setAutoReplot( false );                                                                        // plot on demand (after all data has been handled)
   mpSatellitesWidget->setPlotBackground( Qt::white );
   // scales
-  mpSatellitesWidget->setScale( QwtPolar::ScaleAzimuth,
-                                360, //min - reverse the min/max values to get compass orientation - increasing clockwise
-                                0, //max
-                                90 //interval - just show cardinal and intermediate (NE, N, NW, etc.) compass points (in degrees)
-                              );
-  mpSatellitesWidget->setAzimuthOrigin( M_PI_2 );    // to get compass orientation - need to rotate 90 deg. ccw; this is in Radians (not indicated in QwtPolarPlot docs)
+  mpSatellitesWidget->setScale(
+    QwtPolar::ScaleAzimuth,
+    360, // min - reverse the min/max values to get compass orientation - increasing clockwise
+    0,   // max
+    90   // interval - just show cardinal and intermediate (NE, N, NW, etc.) compass points (in degrees)
+  );
+  mpSatellitesWidget->setAzimuthOrigin( M_PI_2 ); // to get compass orientation - need to rotate 90 deg. ccw; this is in Radians (not indicated in QwtPolarPlot docs)
 
-//  mpSatellitesWidget->setScaleMaxMinor( QwtPolar::ScaleRadius, 2 );  // seems unnecessary
-  mpSatellitesWidget->setScale( QwtPolar::ScaleRadius,
-                                90, //min - reverse the min/max to get 0 at edge, 90 at center
-                                0, //max
-                                45 //interval
-                              );
+  // mpSatellitesWidget->setScaleMaxMinor( QwtPolar::ScaleRadius, 2 );  // seems unnecessary
+  mpSatellitesWidget->setScale(
+    QwtPolar::ScaleRadius,
+    90, // min - reverse the min/max to get 0 at edge, 90 at center
+    0,  // max
+    45  // interval
+  );
 
   // grids, axes
   mpSatellitesGrid = new QwtPolarGrid();
-  mpSatellitesGrid->setGridAttribute( QwtPolarGrid::AutoScaling, false );   // This fixes the issue of autoscaling on the Radius grid. It is ON by default AND is separate from the scaleData.doAutoScale in QwtPolarPlot::setScale(), etc. THIS IS VERY TRICKY!
+  mpSatellitesGrid->setGridAttribute( QwtPolarGrid::AutoScaling, false ); // This fixes the issue of autoscaling on the Radius grid. It is ON by default AND is separate from the scaleData.doAutoScale in QwtPolarPlot::setScale(), etc. THIS IS VERY TRICKY!
   mpSatellitesGrid->setPen( QPen( Qt::black ) );
-  QPen minorPen( Qt::gray );  // moved outside of for loop; NOTE setting the minor pen isn't necessary if the minor grids aren't shown
+  QPen minorPen( Qt::gray ); // moved outside of for loop; NOTE setting the minor pen isn't necessary if the minor grids aren't shown
   for ( int scaleId = 0; scaleId < QwtPolar::ScaleCount; scaleId++ )
   {
-    //mpSatellitesGrid->showGrid( scaleId );
-    //mpSatellitesGrid->showMinorGrid(scaleId);
+    // mpSatellitesGrid->showGrid( scaleId );
+    // mpSatellitesGrid->showMinorGrid(scaleId);
     mpSatellitesGrid->setMinorGridPen( scaleId, minorPen );
   }
-//  mpSatellitesGrid->setAxisPen( QwtPolar::AxisAzimuth, QPen( Qt::black ) );
+  // mpSatellitesGrid->setAxisPen( QwtPolar::AxisAzimuth, QPen( Qt::black ) );
 
   mpSatellitesGrid->showAxis( QwtPolar::AxisAzimuth, true );
-  mpSatellitesGrid->showAxis( QwtPolar::AxisLeft, false ); //alt axis
-  mpSatellitesGrid->showAxis( QwtPolar::AxisRight, false );//alt axis
-  mpSatellitesGrid->showAxis( QwtPolar::AxisTop, false );//alt axis
-  mpSatellitesGrid->showAxis( QwtPolar::AxisBottom, false );//alt axis
+  mpSatellitesGrid->showAxis( QwtPolar::AxisLeft, false );     // alt axis
+  mpSatellitesGrid->showAxis( QwtPolar::AxisRight, false );    // alt axis
+  mpSatellitesGrid->showAxis( QwtPolar::AxisTop, false );      // alt axis
+  mpSatellitesGrid->showAxis( QwtPolar::AxisBottom, false );   // alt axis
   mpSatellitesGrid->showGrid( QwtPolar::ScaleAzimuth, false ); // hide the grid; just show ticks at edge
   mpSatellitesGrid->showGrid( QwtPolar::ScaleRadius, true );
-//  mpSatellitesGrid->showMinorGrid( QwtPolar::ScaleAzimuth, true );
-  mpSatellitesGrid->showMinorGrid( QwtPolar::ScaleRadius, true );   // for 22.5, 67.5 degree circles
+  // mpSatellitesGrid->showMinorGrid( QwtPolar::ScaleAzimuth, true );
+  mpSatellitesGrid->showMinorGrid( QwtPolar::ScaleRadius, true ); // for 22.5, 67.5 degree circles
   mpSatellitesGrid->attach( mpSatellitesWidget );
 
-  //QwtLegend *legend = new QwtLegend;
-  //mpSatellitesWidget->insertLegend(legend, QwtPolarPlot::BottomLegend);
+  // QwtLegend *legend = new QwtLegend;
+  // mpSatellitesWidget->insertLegend(legend, QwtPolarPlot::BottomLegend);
   QVBoxLayout *mpPolarLayout = new QVBoxLayout( mpPolarWidget );
   mpPolarLayout->setContentsMargins( 0, 0, 0, 0 );
   mpPolarLayout->addWidget( mpSatellitesWidget );
@@ -164,15 +168,14 @@ QgsGpsInformationWidget::QgsGpsInformationWidget( QgsAppGpsConnection *connectio
 
   // replot on command
   mpSatellitesWidget->replot();
-#endif
   mPlot->replot();
 
   const QgsSettings mySettings;
 
   // Restore state
-  mDateTimeFormat = mySettings.value( QStringLiteral( "dateTimeFormat" ), "", QgsSettings::Gps ).toString(); // zero-length string signifies default format
+  mDateTimeFormat = mySettings.value( u"dateTimeFormat"_s, "", QgsSettings::Gps ).toString(); // zero-length string signifies default format
 
-  mBtnDebug->setVisible( mySettings.value( QStringLiteral( "showDebug" ), "false", QgsSettings::Gps ).toBool() );  // use a registry setting to control - power users/devs could set it
+  mBtnDebug->setVisible( mySettings.value( u"showDebug"_s, "false", QgsSettings::Gps ).toBool() ); // use a registry setting to control - power users/devs could set it
 
   // status = unknown
   setStatusIndicator( Qgis::GpsFixStatus::NoData );
@@ -187,8 +190,7 @@ QgsGpsInformationWidget::QgsGpsInformationWidget( QgsAppGpsConnection *connectio
   connect( mConnection, &QgsAppGpsConnection::stateChanged, this, &QgsGpsInformationWidget::displayGPSInformation );
   connect( mConnection, &QgsAppGpsConnection::fixStatusChanged, this, &QgsGpsInformationWidget::setStatusIndicator );
 
-  connect( mConnection, &QgsAppGpsConnection::statusChanged, this, [ = ]( Qgis::DeviceConnectionStatus status )
-  {
+  connect( mConnection, &QgsAppGpsConnection::statusChanged, this, [this]( Qgis::DeviceConnectionStatus status ) {
     switch ( status )
     {
       case Qgis::DeviceConnectionStatus::Disconnected:
@@ -212,6 +214,9 @@ QgsGpsInformationWidget::QgsGpsInformationWidget( QgsAppGpsConnection *connectio
   connect( mDigitizing, &QgsAppGpsDigitizing::trackVertexAdded, this, &QgsGpsInformationWidget::updateTrackInformation );
   connect( mDigitizing, &QgsAppGpsDigitizing::trackReset, this, &QgsGpsInformationWidget::updateTrackInformation );
   connect( mDigitizing, &QgsAppGpsDigitizing::distanceAreaChanged, this, &QgsGpsInformationWidget::updateTrackInformation );
+
+  connect( mMapCanvas, &QgsMapCanvas::destinationCrsChanged, this, &QgsGpsInformationWidget::onCanvasCrsChanged );
+  onCanvasCrsChanged();
 }
 
 QgsGpsInformationWidget::~QgsGpsInformationWidget()
@@ -221,9 +226,7 @@ QgsGpsInformationWidget::~QgsGpsInformationWidget()
     gpsDisconnected();
   }
 
-#ifdef WITH_QWTPOLAR
   delete mpSatellitesGrid;
-#endif
 }
 
 void QgsGpsInformationWidget::mBtnPosition_clicked()
@@ -306,8 +309,8 @@ void QgsGpsInformationWidget::updateTrackInformation()
   const double directTrackLength = mDigitizing->trackDistanceFromStart();
 
   const QgsSettings settings;
-  const bool keepBaseUnit = settings.value( QStringLiteral( "qgis/measure/keepbaseunit" ), true ).toBool();
-  const int decimalPlaces = settings.value( QStringLiteral( "qgis/measure/decimalplaces" ), 3 ).toInt();
+  const bool keepBaseUnit = QgsSettingsRegistryCore::settingsMeasureKeepBaseUnit->value();
+  const int decimalPlaces = QgsSettingsRegistryCore::settingsMeasureDecimalPlaces->value();
 
   if ( totalTrackLength > 0 )
   {
@@ -367,72 +370,93 @@ void QgsGpsInformationWidget::displayGPSInformation( const QgsGpsInformation &in
 {
   QVector<QPointF> data;
 
-  if ( mStackedWidget->currentIndex() == 1 && info.satInfoComplete ) //signal
-  {
-    mPlot->setAxisScale( QwtPlot::xBottom, 0, info.satellitesInView.size() );
-  } //signal
-#ifdef WITH_QWTPOLAR
-  if ( mStackedWidget->currentIndex() == 2 && info.satInfoComplete ) //satellites
+  if ( mStackedWidget->currentIndex() == 2 && info.satInfoComplete ) // satellites
   {
     while ( !mMarkerList.isEmpty() )
     {
       delete mMarkerList.takeFirst();
     }
-  } //satellites
-#endif
-  if ( mStackedWidget->currentIndex() == 3 ) //debug
+  } // satellites
+
+  if ( mStackedWidget->currentIndex() == 3 ) // debug
   {
     mGPSPlainTextEdit->clear();
-  } //debug
+  } // debug
 
-  for ( int i = 0; i < info.satellitesInView.size(); ++i ) //satellite processing loop
+  for ( int i = 0; i < info.satellitesInView.size(); ++i ) // satellite processing loop
   {
     const QgsSatelliteInfo currentInfo = info.satellitesInView.at( i );
 
-    if ( mStackedWidget->currentIndex() == 1 && info.satInfoComplete ) //signal
+    if ( mStackedWidget->currentIndex() == 1 && info.satInfoComplete ) // signal
     {
       data << QPointF( i, 0 );
       data << QPointF( i, currentInfo.signal );
       data << QPointF( i + 1, currentInfo.signal );
       data << QPointF( i + 1, 0 );
-    } //signal
+    } // signal
 
-    if ( mStackedWidget->currentIndex() == 2 && info.satInfoComplete ) //satellites
+    if ( mStackedWidget->currentIndex() == 2 && info.satInfoComplete ) // satellites
     {
       QColor bg( Qt::white ); // moved several items outside of the following if block to minimize loop time
       bg.setAlpha( 200 );
-      QColor myColor;
 
       // Add a marker to the polar plot
-      if ( currentInfo.id > 0 )       // don't show satellite if id=0 (no satellite indication)
+      if ( currentInfo.id > 0 ) // don't show satellite if id=0 (no satellite indication)
       {
-#ifdef WITH_QWTPOLAR
         QwtPolarMarker *mypMarker = new QwtPolarMarker();
-#if (QWT_POLAR_VERSION<0x010000)
-        mypMarker->setPosition( QwtPolarPoint( currentInfo.azimuth, currentInfo.elevation ) );
-#else
         mypMarker->setPosition( QwtPointPolar( currentInfo.azimuth, currentInfo.elevation ) );
-#endif
-#endif
-        if ( currentInfo.signal < 30 ) //weak signal
+
+        // QBrush symbolBrush( Qt::black );
+        QSize markerSize( 10, 10 );
+        QBrush textBgBrush( bg );
+        QBrush symbolBrush;
+        QColor myColor( Qt::black );
+        QColor penColor( Qt::black );
+
+        QwtSymbol::Style symbolStyle;
+        if ( currentInfo.satType == 'P' )
         {
-          myColor = Qt::red;
+          symbolStyle = QwtSymbol::Ellipse; // GPS
+          myColor = QColor( 50, 205, 20 );  // limegreen
+        }
+        else if ( currentInfo.satType == 'L' )
+        {
+          symbolStyle = QwtSymbol::Rect;   // GLONASS
+          myColor = QColor( 255, 165, 0 ); // orange
+        }
+        else if ( currentInfo.satType == 'B' )
+        {
+          symbolStyle = QwtSymbol::Diamond; // BEIDOU
+          myColor = QColor( 128, 0, 128 );  // purple
+        }
+        else if ( currentInfo.satType == 'A' )
+        {
+          symbolStyle = QwtSymbol::Triangle; // GALILEO
+          myColor = QColor( 0, 0, 255 );     // blue
+        }
+        else if ( currentInfo.satType == 'Q' )
+        {
+          symbolStyle = QwtSymbol::Cross;  // QZSS
+          myColor = QColor( 255, 0, 255 ); // magenta
         }
         else
         {
-          myColor = Qt::black; //strong signal
+          symbolStyle = QwtSymbol::Ellipse;  // N, S
+          myColor = QColor( 128, 128, 128 ); // gray
         }
-#ifdef WITH_QWTPOLAR
-        QBrush symbolBrush( Qt::black );
-        QSize markerSize( 9, 9 );
-        QBrush textBgBrush( bg );
-#if (QWT_POLAR_VERSION<0x010000)
-        mypMarker->setSymbol( QwtSymbol( QwtSymbol::Ellipse,
-                                         symbolBrush, QPen( myColor ), markerSize ) );
-#else
-        mypMarker->setSymbol( new QwtSymbol( QwtSymbol::Ellipse,
-                                             symbolBrush, QPen( myColor ), markerSize ) );
-#endif
+        penColor = myColor;
+        symbolBrush = QBrush( myColor );
+
+        if ( currentInfo.signal < 30 ) // weak signal
+        {
+          penColor = Qt::red; // red border
+        }
+        if ( currentInfo.inUse )
+        {
+          penColor = Qt::black; // black border
+        }
+
+        mypMarker->setSymbol( new QwtSymbol( symbolStyle, symbolBrush, QPen( penColor ), markerSize ) );
 
         mypMarker->setLabelAlignment( Qt::AlignHCenter | Qt::AlignTop );
         QwtText text( QString::number( currentInfo.id ) );
@@ -441,22 +465,21 @@ void QgsGpsInformationWidget::displayGPSInformation( const QgsGpsInformation &in
         mypMarker->setLabel( text );
         mypMarker->attach( mpSatellitesWidget );
         mMarkerList << mypMarker;
-#endif
       } // currentInfo.id > 0
-    } //satellites
-  } //satellite processing loop
+    } // satellites
+  } // satellite processing loop
 
-  if ( mStackedWidget->currentIndex() == 1 && info.satInfoComplete ) //signal
+  if ( mStackedWidget->currentIndex() == 1 && info.satInfoComplete ) // signal
   {
+    mPlot->setAxisScale( QwtPlot::xBottom, 0, info.satellitesInView.size() );
     mCurve->setSamples( data );
     mPlot->replot();
-  } //signal
-#ifdef WITH_QWTPOLAR
-  if ( mStackedWidget->currentIndex() == 2 && info.satInfoComplete ) //satellites
+  } // signal
+
+  if ( mStackedWidget->currentIndex() == 2 && info.satInfoComplete ) // satellites
   {
     mpSatellitesWidget->replot();
-  } //satellites
-#endif
+  } // satellites
 
   const bool validFlag = info.isValid();
   QgsPointXY myNewCenter;
@@ -469,15 +492,14 @@ void QgsGpsInformationWidget::displayGPSInformation( const QgsGpsInformation &in
     myNewCenter = mLastGpsPosition;
   }
 
-  if ( mStackedWidget->currentIndex() == 0 ) //position
+  if ( mStackedWidget->currentIndex() == 0 ) // position
   {
     QString formattedX;
     QString formattedY;
-    QgsCoordinateUtils::formatCoordinatePartsForProject( QgsProject::instance(), QgsPointXY( info.longitude, info.latitude ),
-        QgsCoordinateReferenceSystem(), 8, formattedX, formattedY );
+    QgsCoordinateUtils::formatCoordinatePartsForProject( QgsProject::instance(), QgsPointXY( info.longitude, info.latitude ), QgsCoordinateReferenceSystem(), 8, formattedX, formattedY );
 
-    mTxtLatitude->setText( formattedX );
-    mTxtLongitude->setText( formattedY );
+    mTxtLatitude->setText( formattedY );
+    mTxtLongitude->setText( formattedX );
 
     mTxtAltitude->setText( tr( "%1 m" ).arg( info.elevation, 0, 'f', 3 ) );
     mTxtAltitudeDiff->setText( tr( "%1 m" ).arg( info.elevation_diff, 0, 'f', 3 ) );
@@ -485,11 +507,11 @@ void QgsGpsInformationWidget::displayGPSInformation( const QgsGpsInformation &in
 
     if ( mDateTimeFormat.isEmpty() )
     {
-      mTxtDateTime->setText( info.utcDateTime.toString( Qt::TextDate ) );  // default format
+      mTxtDateTime->setText( info.utcDateTime.toString( Qt::TextDate ) ); // default format
     }
     else
     {
-      mTxtDateTime->setText( info.utcDateTime.toString( mDateTimeFormat ) );  //user specified format string for testing the millisecond part of time
+      mTxtDateTime->setText( info.utcDateTime.toString( mDateTimeFormat ) ); // user specified format string for testing the millisecond part of time
     }
     if ( std::isfinite( info.speed ) )
     {
@@ -504,7 +526,7 @@ void QgsGpsInformationWidget::displayGPSInformation( const QgsGpsInformation &in
     if ( std::isfinite( info.direction ) )
     {
       mTxtDirection->setEnabled( true );
-      mTxtDirection->setText( QString::number( info.direction, 'f', 3 ) + QStringLiteral( "°" ) );
+      mTxtDirection->setText( QString::number( info.direction, 'f', 3 ) + u"°"_s );
     }
     else
     {
@@ -545,10 +567,15 @@ void QgsGpsInformationWidget::displayGPSInformation( const QgsGpsInformation &in
       mTxt3Dacc->setText( tr( "Not available" ) );
     }
     mTxtFixMode->setText( info.fixMode == 'A' ? tr( "Automatic" ) : info.fixMode == 'M' ? tr( "Manual" ) : QString() ); // A=automatic 2d/3d, M=manual; allowing for anything else
-    mTxtFixType->setText( info.fixType == 3 ? tr( "3D" ) : info.fixType == 2 ? tr( "2D" ) : info.fixType == 1 ? tr( "No fix" ) : QString::number( info.fixType ) ); // 1=no fix, 2=2D, 3=3D; allowing for anything else
+    mTxtFixType->setText(
+      info.fixType == 3   ? tr( "3D" )
+      : info.fixType == 2 ? tr( "2D" )
+      : info.fixType == 1 ? tr( "No fix" )
+                          : QString::number( info.fixType )
+    ); // 1=no fix, 2=2D, 3=3D; allowing for anything else
     mTxtQuality->setText( info.qualityDescription() );
     mTxtSatellitesUsed->setText( tr( "%1 used (%2 in view)" ).arg( info.satellitesUsed ).arg( info.satellitesInView.size() ) );
-    mTxtStatus->setText( info.status == 'A' ? tr( "Valid" ) : info.status == 'V' ? tr( "Invalid" ) : QString() );
+    mTxtStatus->setText( info.status == 'A' ? tr( "Valid" ) : info.status == 'V' ? tr( "Invalid" ) : tr( "Other (%1)" ).arg( info.status ) );
   }
 
   if ( mLastGpsPosition != myNewCenter )
@@ -581,4 +608,9 @@ void QgsGpsInformationWidget::setStatusIndicator( Qgis::GpsFixStatus statusValue
 void QgsGpsInformationWidget::showStatusBarMessage( const QString &msg )
 {
   QgisApp::instance()->statusBarIface()->showMessage( msg );
+}
+
+void QgsGpsInformationWidget::onCanvasCrsChanged()
+{
+  setEnabled( mMapCanvas->mapSettings().destinationCrs().isEarthCrs() );
 }

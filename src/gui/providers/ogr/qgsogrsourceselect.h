@@ -27,18 +27,22 @@
 #ifndef QGSOGRSOURCESELECT_H
 #define QGSOGRSOURCESELECT_H
 
-#include <QDialog>
+#include "ui_qgsogrsourceselectbase.h"
+
 #include <vector>
 
-#include "ui_qgsogrsourceselectbase.h"
-#include "qgshelp.h"
-#include "qgsproviderregistry.h"
-#include "qgsabstractdatasourcewidget.h"
 #include "qgis_gui.h"
 #include "qgis_sip.h"
+#include "qgsabstractdatasourcewidget.h"
+#include "qgsproviderregistry.h"
+
+#include <QDialog>
+
+#define SIP_NO_FILE
 
 ///@cond PRIVATE
-#define SIP_NO_FILE
+
+class QgsGdalCredentialOptionsWidget;
 
 /**
  *  Class for a  dialog to select the type and source for ogr vectors, supports
@@ -50,19 +54,17 @@ class QgsOgrSourceSelect : public QgsAbstractDataSourceWidget, private Ui::QgsOg
     Q_OBJECT
 
   public:
-    QgsOgrSourceSelect( QWidget *parent = nullptr, Qt::WindowFlags fl = Qt::WindowFlags(), QgsProviderRegistry::WidgetMode widgetMode = QgsProviderRegistry::WidgetMode::None );
+    QgsOgrSourceSelect( QWidget *parent = nullptr, Qt::WindowFlags fl = Qt::WindowFlags(), QgsProviderRegistry::WidgetMode widgetMode = QgsProviderRegistry::WidgetMode::Standalone );
     //! Opens a dialog to select a file datasource
     QStringList openFile();
     //! Opens a dialog to select a directory datasource
     QString openDirectory();
     //! Returns a list of selected datasources
-    QStringList dataSources();
+    QStringList dataSources() const;
     //! Returns the encoding selected for user
-    QString encoding();
+    QString encoding() const;
     //! Returns the connection type
-    QString dataSourceType();
-    //! Returns whether the protocol is a cloud type
-    bool isProtocolCloudType();
+    QString dataSourceType() const;
 
   private:
     //! Stores the file vector filters
@@ -74,7 +76,7 @@ class QgsOgrSourceSelect : public QgsAbstractDataSourceWidget, private Ui::QgsOg
     //! Stores the datasource type
     QString mDataSourceType;
     //! Embedded dialog (do not call parent's accept) and emit signals
-    QgsProviderRegistry::WidgetMode mWidgetMode = QgsProviderRegistry::WidgetMode::None;
+    QgsProviderRegistry::WidgetMode mWidgetMode = QgsProviderRegistry::WidgetMode::Standalone;
 
   public slots:
     void addButtonClicked() override;
@@ -112,17 +114,18 @@ class QgsOgrSourceSelect : public QgsAbstractDataSourceWidget, private Ui::QgsOg
     void cmbProtocolTypes_currentIndexChanged( const QString &text );
     void showHelp();
     bool configureFromUri( const QString &uri ) override;
+    void updateProtocolOptions();
+    void credentialOptionsChanged();
 
   private:
-
     void computeDataSources( bool interactive );
     void clearOpenOptions();
     void fillOpenOptions();
     std::vector<QWidget *> mOpenOptionsWidgets;
+    QgsGdalCredentialOptionsWidget *mCredentialsWidget = nullptr;
     bool mIsOgcApi = false;
+    QVariantMap mCredentialOptions;
     QString mVectorPath;
-
-
 };
 
 ///@endcond

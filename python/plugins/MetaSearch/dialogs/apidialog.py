@@ -24,17 +24,12 @@
 
 import json
 
-from qgis.PyQt.QtWidgets import (
-    QDialog,
-    QVBoxLayout
-)
-from qgis.gui import (
-    QgsCodeEditorJson,
-    QgsCodeEditorHTML
-)
+from qgis.gui import QgsCodeEditorHTML, QgsCodeEditorJson
+from qgis.PyQt.QtWidgets import QDialog, QVBoxLayout
+
 from MetaSearch.util import get_ui_class, prettify_xml
 
-BASE_CLASS = get_ui_class('apidialog.ui')
+BASE_CLASS = get_ui_class("apidialog.ui")
 
 
 class APIRequestResponseDialog(QDialog, BASE_CLASS):
@@ -46,7 +41,7 @@ class APIRequestResponseDialog(QDialog, BASE_CLASS):
 
         self.setupUi(self)
 
-        if mime_type == 'json':
+        if mime_type == "json":
             self.txtbrAPIRequest = QgsCodeEditorJson()
             self.txtbrAPIResponse = QgsCodeEditorJson()
             self.txtbrAPIRequest.setText(json.dumps(request, indent=4))

@@ -20,11 +20,12 @@
 
 #include "qgis_core.h"
 #include "qgis_sip.h"
-#include "qgslayoutmultiframe.h"
 #include "qgsconditionalstyle.h"
+#include "qgslayoutmultiframe.h"
 #include "qgstextformat.h"
-#include <QFont>
+
 #include <QColor>
+#include <QFont>
 #include <QPair>
 
 class QgsLayoutTableColumn;
@@ -62,18 +63,14 @@ typedef QVector<QgsLayoutTableColumn> QgsLayoutTableColumns;
 typedef QVector<QgsLayoutTableColumn> QgsLayoutTableSortColumns;
 
 
-
 /**
  * \ingroup core
  *  \class QgsLayoutTableStyle
- *  \brief Styling option for a layout table cell
+ *  \brief Styling option for a layout table cell.
  */
-
 class CORE_EXPORT QgsLayoutTableStyle
 {
   public:
-
-    //! Constructor for QgsLayoutTableStyle
     QgsLayoutTableStyle() = default;
 
     //! Whether the styling option is enabled
@@ -96,29 +93,27 @@ class CORE_EXPORT QgsLayoutTableStyle
      * \see writeXml
      */
     bool readXml( const QDomElement &styleElem );
-
 };
 
 /**
- * \brief A class to display a table in the print layout, and allow
- * the table to span over multiple frames
+ * \brief Displays a table in the print layout, and allows
+ * the table to span over multiple frames.
  * \ingroup core
  */
-class CORE_EXPORT QgsLayoutTable: public QgsLayoutMultiFrame
+class CORE_EXPORT QgsLayoutTable : public QgsLayoutMultiFrame
 {
     Q_OBJECT
 
   public:
-
     /**
      * Controls how headers are horizontally aligned in a table
      */
     enum HeaderHAlignment
     {
       FollowColumn, //!< Header uses the same alignment as the column
-      HeaderLeft, //!< Align headers left
+      HeaderLeft,   //!< Align headers left
       HeaderCenter, //!< Align headers to center
-      HeaderRight //!< Align headers right
+      HeaderRight   //!< Align headers right
     };
 
     /**
@@ -127,8 +122,8 @@ class CORE_EXPORT QgsLayoutTable: public QgsLayoutMultiFrame
     enum HeaderMode
     {
       FirstFrame = 0, //!< Header shown on first frame only
-      AllFrames, //!< Headers shown on all frames
-      NoHeaders //!< No headers shown for table
+      AllFrames,      //!< Headers shown on all frames
+      NoHeaders       //!< No headers shown for table
     };
 
     /**
@@ -137,8 +132,8 @@ class CORE_EXPORT QgsLayoutTable: public QgsLayoutMultiFrame
     enum EmptyTableMode
     {
       HeadersOnly = 0, //!< Show header rows only
-      HideTable, //!< Hides entire table if empty
-      ShowMessage //!< Shows preset message instead of table contents
+      HideTable,       //!< Hides entire table if empty
+      ShowMessage      //!< Shows preset message instead of table contents
     };
 
     /**
@@ -147,7 +142,7 @@ class CORE_EXPORT QgsLayoutTable: public QgsLayoutMultiFrame
     enum WrapBehavior
     {
       TruncateText = 0, //!< Text which doesn't fit inside the cell is truncated
-      WrapText //!< Text which doesn't fit inside the cell is wrapped. Note that this only applies to text in columns with a fixed width.
+      WrapText          //!< Text which doesn't fit inside the cell is wrapped. Note that this only applies to text in columns with a fixed width.
     };
 
     /**
@@ -155,15 +150,15 @@ class CORE_EXPORT QgsLayoutTable: public QgsLayoutMultiFrame
      */
     enum CellStyleGroup
     {
-      OddColumns, //!< Style odd numbered columns
+      OddColumns,  //!< Style odd numbered columns
       EvenColumns, //!< Style even numbered columns
-      OddRows, //!< Style odd numbered rows
-      EvenRows, //!< Style even numbered rows
+      OddRows,     //!< Style odd numbered rows
+      EvenRows,    //!< Style even numbered rows
       FirstColumn, //!< Style first column only
-      LastColumn, //!< Style last column only
-      HeaderRow, //!< Style header row
-      FirstRow, //!< Style first row only
-      LastRow //!< Style last row only
+      LastColumn,  //!< Style last column only
+      HeaderRow,   //!< Style header row
+      FirstRow,    //!< Style first row only
+      LastRow      //!< Style last row only
     };
 
     /**
@@ -233,7 +228,7 @@ class CORE_EXPORT QgsLayoutTable: public QgsLayoutMultiFrame
      * Sets the \a font used to draw header text in the table.
      * \see headerFont()
      * \see setContentFont()
-     * \deprecated use setHeaderTextFormat() instead
+     * \deprecated QGIS 3.40. Use setHeaderTextFormat() instead.
      */
     Q_DECL_DEPRECATED void setHeaderFont( const QFont &font ) SIP_DEPRECATED;
 
@@ -241,7 +236,7 @@ class CORE_EXPORT QgsLayoutTable: public QgsLayoutMultiFrame
      * Returns the font used to draw header text in the table.
      * \see setHeaderFont()
      * \see contentFont()
-     * \deprecated use headerTextFormat() instead
+     * \deprecated QGIS 3.40. Use headerTextFormat() instead.
      */
     Q_DECL_DEPRECATED QFont headerFont() const SIP_DEPRECATED;
 
@@ -250,7 +245,7 @@ class CORE_EXPORT QgsLayoutTable: public QgsLayoutMultiFrame
      * \see headerFontColor()
      * \see setHeaderFont()
      * \see setContentFontColor()
-     * \deprecated use setHeaderTextFormat() instead
+     * \deprecated QGIS 3.40. Use setHeaderTextFormat() instead.
      */
     Q_DECL_DEPRECATED void setHeaderFontColor( const QColor &color ) SIP_DEPRECATED;
 
@@ -259,7 +254,7 @@ class CORE_EXPORT QgsLayoutTable: public QgsLayoutMultiFrame
      * \see setHeaderFontColor()
      * \see headerFont()
      * \see contentFontColor()
-     * \deprecated use headerTextFormat() instead
+     * \deprecated QGIS 3.40. Use headerTextFormat() instead.
      */
     Q_DECL_DEPRECATED QColor headerFontColor() const SIP_DEPRECATED;
 
@@ -309,7 +304,7 @@ class CORE_EXPORT QgsLayoutTable: public QgsLayoutMultiFrame
      * Sets the \a font used to draw text in table body cells.
      * \see contentFont()
      * \see setHeaderFont()
-     * \deprecated use setContentTextFormat() instead
+     * \deprecated QGIS 3.40. Use setContentTextFormat() instead.
      */
     Q_DECL_DEPRECATED void setContentFont( const QFont &font ) SIP_DEPRECATED;
 
@@ -317,7 +312,7 @@ class CORE_EXPORT QgsLayoutTable: public QgsLayoutMultiFrame
      * Returns the font used to draw text in table body cells.
      * \see setContentFont()
      * \see headerFont()
-     * \deprecated use contextTextFormat() instead
+     * \deprecated QGIS 3.40. Use contextTextFormat() instead.
      */
     Q_DECL_DEPRECATED QFont contentFont() const SIP_DEPRECATED;
 
@@ -326,7 +321,7 @@ class CORE_EXPORT QgsLayoutTable: public QgsLayoutMultiFrame
      * \see contentFontColor()
      * \see setContentFont()
      * \see setHeaderFontColor()
-     * \deprecated use setContentTextFormat() instead
+     * \deprecated QGIS 3.40. Use setContentTextFormat() instead.
      */
     Q_DECL_DEPRECATED void setContentFontColor( const QColor &color ) SIP_DEPRECATED;
 
@@ -335,7 +330,7 @@ class CORE_EXPORT QgsLayoutTable: public QgsLayoutMultiFrame
      * \see setContentFontColor()
      * \see contentFont()
      * \see headerFontColor()
-     * \deprecated use contextTextFormat() instead
+     * \deprecated QGIS 3.40. Use contextTextFormat() instead.
      */
     Q_DECL_DEPRECATED QColor contentFontColor() const SIP_DEPRECATED;
 
@@ -547,6 +542,22 @@ class CORE_EXPORT QgsLayoutTable: public QgsLayoutMultiFrame
      * \since QGIS 3.16
      */
     virtual QgsExpressionContextScope *scopeForCell( int row, int column ) const SIP_FACTORY;
+
+    /**
+     * Returns the row span for the cell a \a row, \a column.
+     *
+     * \see columnSpan()
+     * \since QGIS 3.40
+     */
+    virtual int rowSpan( int row, int column ) const;
+
+    /**
+     * Returns the column span for the cell a \a row, \a column.
+     *
+     * \see rowSpan()
+     * \since QGIS 3.40
+     */
+    virtual int columnSpan( int row, int column ) const;
 
     /**
      * Returns the current contents of the table. Excludes header cells.
@@ -769,7 +780,6 @@ class CORE_EXPORT QgsLayoutTable: public QgsLayoutMultiFrame
     virtual Qt::Alignment verticalAlignmentForCell( int row, int column ) const;
 
   private:
-
     QMap< CellStyleGroup, QString > mCellStyleNames;
 
     //! Initializes cell style map
@@ -779,9 +789,11 @@ class CORE_EXPORT QgsLayoutTable: public QgsLayoutMultiFrame
      * Returns the calculated background color for a row and column combination.
      * \param row row number, where -1 is the header row, and 0 is the first body row
      * \param column column number, where 0 is the first column
+     * \param rowSpan number of rows spanned by cell
+     * \param columnSpan number of columns spanned by cell
      * \returns background color, or invalid QColor if no background should be drawn
      */
-    QColor backgroundColor( int row, int column ) const;
+    QColor backgroundColor( int row, int column, int rowSpan = 1, int columnSpan = 1 ) const;
 
     friend class TestQgsLayoutTable;
     friend class TestQgsLayoutManualTable;

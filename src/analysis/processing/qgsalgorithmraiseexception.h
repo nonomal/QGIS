@@ -18,11 +18,12 @@
 #ifndef QGSALGORITHMRAISEEXCEPTION_H
 #define QGSALGORITHMRAISEEXCEPTION_H
 
-#define SIP_NO_FILE
 
 #include "qgis_sip.h"
-#include "qgsprocessingalgorithm.h"
 #include "qgsapplication.h"
+#include "qgsprocessingalgorithm.h"
+
+#define SIP_NO_FILE
 
 ///@cond PRIVATE
 
@@ -45,10 +46,7 @@ class QgsRaiseExceptionAlgorithm : public QgsProcessingAlgorithm
     QgsRaiseExceptionAlgorithm *createInstance() const override SIP_FACTORY;
 
   protected:
-
-    QVariantMap processAlgorithm( const QVariantMap &parameters,
-                                  QgsProcessingContext &context, QgsProcessingFeedback * ) override;
-
+    QVariantMap processAlgorithm( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback * ) override;
 };
 
 /**
@@ -70,10 +68,7 @@ class QgsRaiseWarningAlgorithm : public QgsProcessingAlgorithm
     QgsRaiseWarningAlgorithm *createInstance() const override SIP_FACTORY;
 
   protected:
-
-    QVariantMap processAlgorithm( const QVariantMap &parameters,
-                                  QgsProcessingContext &context, QgsProcessingFeedback * ) override;
-
+    QVariantMap processAlgorithm( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback * ) override;
 };
 
 /**
@@ -95,10 +90,7 @@ class QgsRaiseMessageAlgorithm : public QgsProcessingAlgorithm
     QgsRaiseMessageAlgorithm *createInstance() const override SIP_FACTORY;
 
   protected:
-
-    QVariantMap processAlgorithm( const QVariantMap &parameters,
-                                  QgsProcessingContext &context, QgsProcessingFeedback * ) override;
-
+    QVariantMap processAlgorithm( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback * ) override;
 };
 
 ///@endcond PRIVATE

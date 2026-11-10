@@ -23,8 +23,10 @@
 #ifndef QGSWMSUTILS_H
 #define QGSWMSUTILS_H
 
+#include "qgslayertreegroup.h"
 #include "qgsmodule.h"
 #include "qgsserversettings.h"
+#include "qgswmslayerinfos.h"
 
 class QgsRectangle;
 
@@ -40,12 +42,12 @@ namespace QgsWms
   enum class ImageOutputFormat
   {
     Unknown, //!< Unknown/invalid format
-    PNG, //!< PNG format
-    PNG8, //!< PNG8 format
-    PNG16, //!< PNG16 format
-    PNG1, //!< PNG1 format
-    JPEG, //!< JPEG format
-    WEBP, //!< WEBP format
+    PNG,     //!< PNG format
+    PNG8,    //!< PNG8 format
+    PNG16,   //!< PNG16 format
+    PNG1,    //!< PNG1 format
+    JPEG,    //!< JPEG format
+    WEBP,    //!< WEBP format
   };
 
   /**
@@ -68,8 +70,23 @@ namespace QgsWms
   /**
    * Write image response
    */
-  void writeImage( QgsServerResponse &response, QImage &img, const QString &formatStr,
-                   int imageQuality = -1 );
+  void writeImage( QgsServerResponse &response, QImage &img, const QString &formatStr, int imageQuality = -1 );
+
+  /**
+   * Collects the \a acceptableLayersAndRequestNames, a hash of all the layers that can be rendered and for each a list of the layer names requesting it.
+   * It needs the \a project for properties and the layer tree root to start with parsing. Also the \a requestedLayerNames.
+   * If no \a requestedLayerNames are passed, you will receive back all the layers except the ones hidden in an opaque group.
+   * When an opaque group is in the \a requestedLayerNames, the children of this opaque group are passed back as well.
+   */
+  void collectAcceptableLayersAndRequestNames( QHash<const QgsMapLayer *, QStringList> &acceptableLayersAndRequestNames, const QgsProject &project, const QStringList &requestedLayerNames = QStringList() );
+
+  /**
+   * Update recursively \a dateRanges with all \a layerTreeGroup children date ranges.
+   * Won't return a date range for layers not published in \a wmsLayerInfos or for groups which appear in \a restrictedLayers
+   * \since QGIS 4.4
+   */
+  void getChildRanges( const QgsLayerTreeGroup *layerTreeGroup, const QMap<QString, QgsWmsLayerInfos> &wmsLayerInfos, const QStringList &restrictedLayers, QList<QgsDateTimeRange> &dateRanges );
+
 } // namespace QgsWms
 
 #endif

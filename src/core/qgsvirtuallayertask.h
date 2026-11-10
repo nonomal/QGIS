@@ -18,15 +18,15 @@
 #ifndef QGSVIRTUALLAYERTASK_H
 #define QGSVIRTUALLAYERTASK_H
 
-#include "qgsvirtuallayerdefinition.h"
 #include "qgstaskmanager.h"
 #include "qgsvectorlayer.h"
+#include "qgsvirtuallayerdefinition.h"
 
 /**
  * \ingroup core
  *
  * \brief Initializes a virtual layer with postpone mode activated and reloads the
- * data in a separated thread.
+ * data in a separate thread.
  *
  * \since QGIS 3.2
  */
@@ -35,7 +35,6 @@ class CORE_EXPORT QgsVirtualLayerTask : public QgsTask
     Q_OBJECT
 
   public:
-
     /**
      * Constructor.
      * \param definition The definition to use for initializing the virtual layer

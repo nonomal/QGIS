@@ -1,0 +1,46 @@
+/************************************************************************
+ * This file has been generated automatically from                      *
+ *                                                                      *
+ * src/gui/processing/qgsprocessingguiutils.h                           *
+ *                                                                      *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ ************************************************************************/
+
+
+
+
+class QgsProcessingGuiUtils
+{
+%Docstring(signature="appended")
+Contains utility functions relating to Processing GUI components.
+
+.. warning::
+
+   This is not considered stable API, and is exposed to Python for internal use only.
+
+.. versionadded:: 3.44
+%End
+
+%TypeHeaderCode
+#include "qgsprocessingguiutils.h"
+%End
+  public:
+    static QMap< int, QStringList > defaultProcessingMenuEntries();
+%Docstring
+Returns the map of Processing menus to a list of algorithm IDs to
+include by default in that menu.
+
+Map keys correspond to :py:class:`Qgis`.ProcessingMenu values.
+
+.. versionadded:: 4.4
+%End
+};
+
+
+/************************************************************************
+ * This file has been generated automatically from                      *
+ *                                                                      *
+ * src/gui/processing/qgsprocessingguiutils.h                           *
+ *                                                                      *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ ************************************************************************/

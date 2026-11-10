@@ -21,6 +21,7 @@ QgsProviderMetadata.PriorityForUri = QgsProviderMetadata.ProviderMetadataCapabil
 QgsProviderMetadata.LayerTypesForUri = QgsProviderMetadata.ProviderMetadataCapability.LayerTypesForUri
 QgsProviderMetadata.QuerySublayers = QgsProviderMetadata.ProviderMetadataCapability.QuerySublayers
 QgsProviderMetadata.CreateDatabase = QgsProviderMetadata.ProviderMetadataCapability.CreateDatabase
+QgsProviderMetadata.UrisReferToSame = QgsProviderMetadata.ProviderMetadataCapability.UrisReferToSame
 QgsProviderMetadata.ProviderMetadataCapabilities = lambda flags=0: QgsProviderMetadata.ProviderMetadataCapability(flags)
 QgsProviderMetadata.FileBasedUris = QgsProviderMetadata.ProviderCapability.FileBasedUris
 QgsProviderMetadata.SaveLayerMetadata = QgsProviderMetadata.ProviderCapability.SaveLayerMetadata
@@ -34,3 +35,18 @@ QgsProviderMetadata.ProviderCapability.__bool__ = lambda flag: bool(_force_int(f
 QgsProviderMetadata.ProviderCapability.__eq__ = lambda flag1, flag2: _force_int(flag1) == _force_int(flag2)
 QgsProviderMetadata.ProviderCapability.__and__ = lambda flag1, flag2: _force_int(flag1) & _force_int(flag2)
 QgsProviderMetadata.ProviderCapability.__or__ = lambda flag1, flag2: QgsProviderMetadata.ProviderCapability(_force_int(flag1) | _force_int(flag2))
+try:
+    QgsProviderMetadata.setBoolParameter = staticmethod(QgsProviderMetadata.setBoolParameter)
+    QgsProviderMetadata.boolParameter = staticmethod(QgsProviderMetadata.boolParameter)
+    QgsProviderMetadata.__virtual_methods__ = ['icon', 'capabilities', 'providerCapabilities', 'initProvider', 'cleanupProvider', 'filters', 'meshDriversMetadata', 'priorityForUri', 'validLayerTypesForUri', 'uriIsBlocklisted', 'sidecarFilesForUri', 'querySublayers', 'suggestGroupNameForUri', 'createProvider', 'createEmptyLayer', 'createDatabase', 'createRasterDataProvider', 'createMeshData', 'pyramidResamplingMethods', 'decodeUri', 'encodeUri', 'absoluteToRelativeUri', 'relativeToAbsoluteUri', 'cleanUri', 'urisReferToSame', 'dataItemProviders', 'listStyles', 'styleExists', 'getStyleById', 'deleteStyleById', 'saveStyle', 'loadStyle', 'loadStoredStyle', 'saveLayerMetadata', 'createDb', 'createTransaction', 'connections', 'createConnection', 'deleteConnection', 'saveConnection']
+    QgsProviderMetadata.__group__ = ['providers']
+except (NameError, AttributeError):
+    pass
+try:
+    QgsMeshDriverMetadata.__group__ = ['providers']
+except (NameError, AttributeError):
+    pass
+try:
+    QgsEmptyLayerCreationResult.__group__ = ['providers']
+except (NameError, AttributeError):
+    pass

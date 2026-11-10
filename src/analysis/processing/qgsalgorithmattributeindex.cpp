@@ -16,14 +16,19 @@
  ***************************************************************************/
 
 #include "qgsalgorithmattributeindex.h"
-#include "qgsvectorlayer.h"
+
 #include "qgsvectordataprovider.h"
+#include "qgsvectorlayer.h"
+
+#include <QString>
+
+using namespace Qt::StringLiterals;
 
 ///@cond PRIVATE
 
 QString QgsAttributeIndexAlgorithm::name() const
 {
-  return QStringLiteral( "createattributeindex" );
+  return u"createattributeindex"_s;
 }
 
 QString QgsAttributeIndexAlgorithm::displayName() const
@@ -43,7 +48,7 @@ QString QgsAttributeIndexAlgorithm::group() const
 
 QString QgsAttributeIndexAlgorithm::groupId() const
 {
-  return QStringLiteral( "vectorgeneral" );
+  return u"vectorgeneral"_s;
 }
 
 Qgis::ProcessingAlgorithmFlags QgsAttributeIndexAlgorithm::flags() const
@@ -54,9 +59,16 @@ Qgis::ProcessingAlgorithmFlags QgsAttributeIndexAlgorithm::flags() const
 
 QString QgsAttributeIndexAlgorithm::shortHelpString() const
 {
-  return QObject::tr( "Creates an index to speed up queries made against "
-                      "a field in a table. Support for index creation is "
-                      "dependent on the layer's data provider and the field type." );
+  return QObject::tr(
+    "This algorithm creates an index to speed up queries made against "
+    "a field in a table. Support for index creation is "
+    "dependent on the layer's data provider and the field type."
+  );
+}
+
+QString QgsAttributeIndexAlgorithm::shortDescription() const
+{
+  return QObject::tr( "Creates an index to speed up queries made against a field in a table." );
 }
 
 QgsAttributeIndexAlgorithm *QgsAttributeIndexAlgorithm::createInstance() const
@@ -66,32 +78,34 @@ QgsAttributeIndexAlgorithm *QgsAttributeIndexAlgorithm::createInstance() const
 
 void QgsAttributeIndexAlgorithm::initAlgorithm( const QVariantMap & )
 {
-  addParameter( new QgsProcessingParameterVectorLayer( QStringLiteral( "INPUT" ), QObject::tr( "Input layer" ), QList<int> { static_cast< int >( Qgis::ProcessingSourceType::Vector ) } ) );
-  addParameter( new QgsProcessingParameterField( QStringLiteral( "FIELD" ), QObject::tr( "Attribute to index" ), QVariant(), QStringLiteral( "INPUT" ) ) );
+  addParameter( new QgsProcessingParameterVectorLayer( u"INPUT"_s, QObject::tr( "Input layer" ), QList<int> { static_cast<int>( Qgis::ProcessingSourceType::Vector ) } ) );
+  addParameter( new QgsProcessingParameterField( u"FIELD"_s, QObject::tr( "Attribute to index" ), QVariant(), u"INPUT"_s ) );
 
-  addOutput( new QgsProcessingOutputVectorLayer( QStringLiteral( "OUTPUT" ), QObject::tr( "Indexed layer" ) ) );
+  addOutput( new QgsProcessingOutputVectorLayer( u"OUTPUT"_s, QObject::tr( "Indexed layer" ) ) );
 }
 
 QVariantMap QgsAttributeIndexAlgorithm::processAlgorithm( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback )
 {
-  QgsVectorLayer *layer = parameterAsVectorLayer( parameters, QStringLiteral( "INPUT" ), context );
+  QGS_MARK_ALGORITHM_SOURCE
+
+  QgsVectorLayer *layer = parameterAsVectorLayer( parameters, u"INPUT"_s, context );
 
   if ( !layer )
-    throw QgsProcessingException( QObject::tr( "Could not load source layer for %1." ).arg( QLatin1String( "INPUT" ) ) );
+    throw QgsProcessingException( QObject::tr( "Could not load source layer for %1." ).arg( "INPUT"_L1 ) );
 
-  const QString field = parameterAsString( parameters, QStringLiteral( "FIELD" ), context );
+  const QString field = parameterAsString( parameters, u"FIELD"_s, context );
 
   QgsVectorDataProvider *provider = layer->dataProvider();
 
   const int fieldIndex = layer->fields().lookupField( field );
-  if ( fieldIndex < 0 || layer->fields().fieldOrigin( fieldIndex ) != QgsFields::OriginProvider )
+  if ( fieldIndex < 0 || layer->fields().fieldOrigin( fieldIndex ) != Qgis::FieldOrigin::Provider )
   {
     feedback->pushInfo( QObject::tr( "Can not create attribute index on %1" ).arg( field ) );
   }
   else
   {
     const int providerIndex = layer->fields().fieldOriginIndex( fieldIndex );
-    if ( provider->capabilities() & QgsVectorDataProvider::CreateAttributeIndex )
+    if ( provider->capabilities() & Qgis::VectorProviderCapability::CreateAttributeIndex )
     {
       if ( !provider->createAttributeIndex( providerIndex ) )
       {
@@ -105,7 +119,7 @@ QVariantMap QgsAttributeIndexAlgorithm::processAlgorithm( const QVariantMap &par
   }
 
   QVariantMap outputs;
-  outputs.insert( QStringLiteral( "OUTPUT" ), layer->id() );
+  outputs.insert( u"OUTPUT"_s, layer->id() );
   return outputs;
 }
 

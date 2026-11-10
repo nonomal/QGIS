@@ -18,22 +18,26 @@
 #ifndef QGS_LANDINGPAGE_HANDLERS_H
 #define QGS_LANDINGPAGE_HANDLERS_H
 
-#include "qgsserversettings.h"
-#include "qgsserverogcapihandler.h"
 #include "qgsfields.h"
+#include "qgsserverogcapihandler.h"
 #include "qgsserverrequest.h"
+#include "qgsserversettings.h"
+
+#include <QString>
+
+using namespace Qt::StringLiterals;
 
 class QgsFeatureRequest;
 class QgsServerOgcApi;
 class QgsFeature;
+class QgsServerInterface;
 
 /**
  * The QgsLandingPageHandler implements the landing page handler.
  */
-class QgsLandingPageHandler: public QgsServerOgcApiHandler
+class QgsLandingPageHandler : public QgsServerOgcApiHandler
 {
   public:
-
     QgsLandingPageHandler( const QgsServerSettings *settings );
 
     void handleRequest( const QgsServerApiContext &context ) const override;
@@ -41,15 +45,9 @@ class QgsLandingPageHandler: public QgsServerOgcApiHandler
     // QgsServerOgcApiHandler interface
     QRegularExpression path() const override;
     std::string operationId() const override { return "getLandingPage"; }
-    QStringList tags() const override { return { QStringLiteral( "Catalog" ) }; }
-    std::string summary() const override
-    {
-      return "Server Landing Page";
-    }
-    std::string description() const override
-    {
-      return "The landing page provides information about available projects and services.";
-    }
+    QStringList tags() const override { return { u"Catalog"_s }; }
+    std::string summary() const override { return "Server Landing Page"; }
+    std::string description() const override { return "The landing page provides information about available projects and services."; }
     std::string linkTitle() const override { return "Landing page"; }
     QgsServerOgcApi::Rel linkType() const override { return QgsServerOgcApi::Rel::self; }
     const QString templatePath( const QgsServerApiContext &context ) const override;
@@ -62,9 +60,7 @@ class QgsLandingPageHandler: public QgsServerOgcApiHandler
 
 
   private:
-
-
-    json projectsData( const QgsServerRequest &request ) const;
+    json projectsData( const QgsServerRequest &request, QgsServerInterface *serverInterface ) const;
 
     const QgsServerSettings *mSettings = nullptr;
 };
@@ -73,10 +69,9 @@ class QgsLandingPageHandler: public QgsServerOgcApiHandler
 /**
  * The QgsLandingPageMapHandler implements the landing page map handler (JSON only).
  */
-class QgsLandingPageMapHandler: public QgsServerOgcApiHandler
+class QgsLandingPageMapHandler : public QgsServerOgcApiHandler
 {
   public:
-
     QgsLandingPageMapHandler( const QgsServerSettings *settings );
 
     void handleRequest( const QgsServerApiContext &context ) const override;
@@ -84,20 +79,14 @@ class QgsLandingPageMapHandler: public QgsServerOgcApiHandler
     // QgsServerOgcApiHandler interface
     QRegularExpression path() const override;
     std::string operationId() const override { return "getMap"; }
-    QStringList tags() const override { return { QStringLiteral( "Catalog" ), QStringLiteral( "Map Viewer" ) }; }
-    std::string summary() const override
-    {
-      return "Server Map Viewer";
-    }
-    std::string description() const override
-    {
-      return "Shows a map";
-    }
+    QStringList tags() const override { return { u"Catalog"_s, u"Map Viewer"_s }; }
+    std::string summary() const override { return "Server Map Viewer"; }
+    std::string description() const override { return "Shows a map"; }
     std::string linkTitle() const override { return "Map Viewer"; }
     QgsServerOgcApi::Rel linkType() const override { return QgsServerOgcApi::Rel::self; }
+    const QString templatePath( const QgsServerApiContext &context ) const override;
 
   private:
-
     const QgsServerSettings *mSettings = nullptr;
 };
 

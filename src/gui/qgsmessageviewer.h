@@ -18,24 +18,24 @@
 #define QGSMESSAGEVIEWER_H
 
 #include "ui_qgsmessageviewer.h"
+
+#include "qgis_gui.h"
 #include "qgsguiutils.h"
 #include "qgsmessageoutput.h"
-#include "qgis_gui.h"
 
 #include <QString>
-
 
 /**
  * \ingroup gui
  * \brief A generic message view for displaying QGIS messages.
  */
-class GUI_EXPORT QgsMessageViewer: public QDialog, public QgsMessageOutput, private Ui::QgsMessageViewer
+class GUI_EXPORT QgsMessageViewer : public QDialog, public QgsMessageOutput, private Ui::QgsMessageViewer
 {
     Q_OBJECT
   public:
     QgsMessageViewer( QWidget *parent SIP_TRANSFERTHIS = nullptr, Qt::WindowFlags fl = QgsGuiUtils::ModalDialogFlags, bool deleteOnClose = true );
 
-    void setMessage( const QString &message, MessageType msgType ) override;
+    void setMessage( const QString &message, Qgis::StringFormat format ) override;
 
     void appendMessage( const QString &message ) override;
 

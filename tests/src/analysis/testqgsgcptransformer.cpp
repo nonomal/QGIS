@@ -13,16 +13,18 @@
  *                                                                         *
  ***************************************************************************/
 
-#include "qgstest.h"
+#include <gdal.h>
 
-#include "qgsgcptransformer.h"
 #include "qgsapplication.h"
 #include "qgsgcpgeometrytransformer.h"
+#include "qgsgcptransformer.h"
 #include "qgsgeometry.h"
+#include "qgstest.h"
 
 #include <QDir>
+#include <QString>
 
-#include <gdal.h>
+using namespace Qt::StringLiterals;
 
 class TestQgsGcpTransformer : public QgsTest
 {
@@ -30,7 +32,7 @@ class TestQgsGcpTransformer : public QgsTest
 
   public:
     TestQgsGcpTransformer()
-      : QgsTest( QStringLiteral( "GCP Transformer Tests" ) )
+      : QgsTest( u"GCP Transformer Tests"_s )
     {}
 
     QString SRC_FILE;
@@ -45,22 +47,15 @@ class TestQgsGcpTransformer : public QgsTest
       QgsApplication::init(); // needed for CRS database
     }
 
-    void cleanupTestCase()
-    {
-      QgsApplication::exitQgis();
-    }
+    void cleanupTestCase() { QgsApplication::exitQgis(); }
 
     void testLinear()
     {
       QgsLinearGeorefTransform transform;
-      transform.updateParametersFromGcps( QVector< QgsPointXY >() << QgsPointXY( 288, 1126 )
-                                          << QgsPointXY( 2352, 716 )
-                                          << QgsPointXY( 2067, 2398 )
-                                          << QgsPointXY( 1102, 2209 ),
-                                          QVector< QgsPointXY >() << QgsPointXY( 321210, 130280 )
-                                          << QgsPointXY( 322698, 129979 )
-                                          << QgsPointXY( 322501, 192061 )
-                                          << QgsPointXY( 321803, 192198 ) );
+      transform.updateParametersFromGcps(
+        QVector<QgsPointXY>() << QgsPointXY( 288, 1126 ) << QgsPointXY( 2352, 716 ) << QgsPointXY( 2067, 2398 ) << QgsPointXY( 1102, 2209 ),
+        QVector<QgsPointXY>() << QgsPointXY( 321210, 130280 ) << QgsPointXY( 322698, 129979 ) << QgsPointXY( 322501, 192061 ) << QgsPointXY( 321803, 192198 )
+      );
 
       double x = 288;
       double y = 1000;
@@ -102,14 +97,11 @@ class TestQgsGcpTransformer : public QgsTest
     void testLinearRasterYAxis()
     {
       QgsLinearGeorefTransform transform;
-      transform.updateParametersFromGcps( QVector< QgsPointXY >() << QgsPointXY( 288, -716 )
-                                          << QgsPointXY( 2352, -1126 )
-                                          << QgsPointXY( 2067, -2398 )
-                                          << QgsPointXY( 1102, -2209 ),
-                                          QVector< QgsPointXY >() << QgsPointXY( 321210, 130280 )
-                                          << QgsPointXY( 322698, 129979 )
-                                          << QgsPointXY( 322501, 192061 )
-                                          << QgsPointXY( 321803, 192198 ), true );
+      transform.updateParametersFromGcps(
+        QVector<QgsPointXY>() << QgsPointXY( 288, -716 ) << QgsPointXY( 2352, -1126 ) << QgsPointXY( 2067, -2398 ) << QgsPointXY( 1102, -2209 ),
+        QVector<QgsPointXY>() << QgsPointXY( 321210, 130280 ) << QgsPointXY( 322698, 129979 ) << QgsPointXY( 322501, 192061 ) << QgsPointXY( 321803, 192198 ),
+        true
+      );
 
       double x = 288;
       double y = -716;
@@ -152,14 +144,10 @@ class TestQgsGcpTransformer : public QgsTest
     {
       QgsLinearGeorefTransform transform;
       //this is a identity transform!
-      transform.updateParametersFromGcps( QVector< QgsPointXY >() << QgsPointXY( 321210, 130280 )
-                                          << QgsPointXY( 322698, 129979 )
-                                          << QgsPointXY( 322501, 192061 )
-                                          << QgsPointXY( 321803, 192198 ),
-                                          QVector< QgsPointXY >() << QgsPointXY( 321210, 130280 )
-                                          << QgsPointXY( 322698, 129979 )
-                                          << QgsPointXY( 322501, 192061 )
-                                          << QgsPointXY( 321803, 192198 ) );
+      transform.updateParametersFromGcps(
+        QVector<QgsPointXY>() << QgsPointXY( 321210, 130280 ) << QgsPointXY( 322698, 129979 ) << QgsPointXY( 322501, 192061 ) << QgsPointXY( 321803, 192198 ),
+        QVector<QgsPointXY>() << QgsPointXY( 321210, 130280 ) << QgsPointXY( 322698, 129979 ) << QgsPointXY( 322501, 192061 ) << QgsPointXY( 321803, 192198 )
+      );
 
       double x = 321212;
       double y = 123003;
@@ -202,14 +190,11 @@ class TestQgsGcpTransformer : public QgsTest
     {
       QgsLinearGeorefTransform transform;
       //this is a identity transform!
-      transform.updateParametersFromGcps( QVector< QgsPointXY >() << QgsPointXY( 321210, 130280 )
-                                          << QgsPointXY( 322698, 129979 )
-                                          << QgsPointXY( 322501, 192061 )
-                                          << QgsPointXY( 321803, 192198 ),
-                                          QVector< QgsPointXY >() << QgsPointXY( 321210, 130280 )
-                                          << QgsPointXY( 322698, 129979 )
-                                          << QgsPointXY( 322501, 192061 )
-                                          << QgsPointXY( 321803, 192198 ), true );
+      transform.updateParametersFromGcps(
+        QVector<QgsPointXY>() << QgsPointXY( 321210, 130280 ) << QgsPointXY( 322698, 129979 ) << QgsPointXY( 322501, 192061 ) << QgsPointXY( 321803, 192198 ),
+        QVector<QgsPointXY>() << QgsPointXY( 321210, 130280 ) << QgsPointXY( 322698, 129979 ) << QgsPointXY( 322501, 192061 ) << QgsPointXY( 321803, 192198 ),
+        true
+      );
 
       double x = 321212;
       double y = 123003;
@@ -256,14 +241,10 @@ class TestQgsGcpTransformer : public QgsTest
     void testHelmert()
     {
       QgsHelmertGeorefTransform transform;
-      transform.updateParametersFromGcps( QVector< QgsPointXY >() << QgsPointXY( 288, 1126 )
-                                          << QgsPointXY( 2352, 716 )
-                                          << QgsPointXY( 2067, 2398 )
-                                          << QgsPointXY( 1102, 2209 ),
-                                          QVector< QgsPointXY >() << QgsPointXY( 321210, 130280 )
-                                          << QgsPointXY( 322698, 129979 )
-                                          << QgsPointXY( 322501, 192061 )
-                                          << QgsPointXY( 321803, 192198 ) );
+      transform.updateParametersFromGcps(
+        QVector<QgsPointXY>() << QgsPointXY( 288, 1126 ) << QgsPointXY( 2352, 716 ) << QgsPointXY( 2067, 2398 ) << QgsPointXY( 1102, 2209 ),
+        QVector<QgsPointXY>() << QgsPointXY( 321210, 130280 ) << QgsPointXY( 322698, 129979 ) << QgsPointXY( 322501, 192061 ) << QgsPointXY( 321803, 192198 )
+      );
 
       double x = 288;
       double y = 1000;
@@ -305,14 +286,11 @@ class TestQgsGcpTransformer : public QgsTest
     void testHelmertRasterYAxis()
     {
       QgsHelmertGeorefTransform transform;
-      transform.updateParametersFromGcps( QVector< QgsPointXY >() << QgsPointXY( 288, -716 )
-                                          << QgsPointXY( 2352, -1126 )
-                                          << QgsPointXY( 2067, -2398 )
-                                          << QgsPointXY( 1102, -2209 ),
-                                          QVector< QgsPointXY >() << QgsPointXY( 321210, 130280 )
-                                          << QgsPointXY( 322698, 129979 )
-                                          << QgsPointXY( 322501, 192061 )
-                                          << QgsPointXY( 321803, 192198 ), true );
+      transform.updateParametersFromGcps(
+        QVector<QgsPointXY>() << QgsPointXY( 288, -716 ) << QgsPointXY( 2352, -1126 ) << QgsPointXY( 2067, -2398 ) << QgsPointXY( 1102, -2209 ),
+        QVector<QgsPointXY>() << QgsPointXY( 321210, 130280 ) << QgsPointXY( 322698, 129979 ) << QgsPointXY( 322501, 192061 ) << QgsPointXY( 321803, 192198 ),
+        true
+      );
 
       double x = 288;
       double y = -716;
@@ -355,14 +333,10 @@ class TestQgsGcpTransformer : public QgsTest
     {
       QgsHelmertGeorefTransform transform;
       //this is a identity transform!
-      transform.updateParametersFromGcps( QVector< QgsPointXY >() << QgsPointXY( 321210, 130280 )
-                                          << QgsPointXY( 322698, 129979 )
-                                          << QgsPointXY( 322501, 192061 )
-                                          << QgsPointXY( 321803, 192198 ),
-                                          QVector< QgsPointXY >() << QgsPointXY( 321210, 130280 )
-                                          << QgsPointXY( 322698, 129979 )
-                                          << QgsPointXY( 322501, 192061 )
-                                          << QgsPointXY( 321803, 192198 ) );
+      transform.updateParametersFromGcps(
+        QVector<QgsPointXY>() << QgsPointXY( 321210, 130280 ) << QgsPointXY( 322698, 129979 ) << QgsPointXY( 322501, 192061 ) << QgsPointXY( 321803, 192198 ),
+        QVector<QgsPointXY>() << QgsPointXY( 321210, 130280 ) << QgsPointXY( 322698, 129979 ) << QgsPointXY( 322501, 192061 ) << QgsPointXY( 321803, 192198 )
+      );
 
       double x = 321212;
       double y = 123003;
@@ -405,14 +379,11 @@ class TestQgsGcpTransformer : public QgsTest
     {
       QgsHelmertGeorefTransform transform;
       //this is a identity transform!
-      transform.updateParametersFromGcps( QVector< QgsPointXY >() << QgsPointXY( 321210, 130280 )
-                                          << QgsPointXY( 322698, 129979 )
-                                          << QgsPointXY( 322501, 192061 )
-                                          << QgsPointXY( 321803, 192198 ),
-                                          QVector< QgsPointXY >() << QgsPointXY( 321210, 130280 )
-                                          << QgsPointXY( 322698, 129979 )
-                                          << QgsPointXY( 322501, 192061 )
-                                          << QgsPointXY( 321803, 192198 ), true );
+      transform.updateParametersFromGcps(
+        QVector<QgsPointXY>() << QgsPointXY( 321210, 130280 ) << QgsPointXY( 322698, 129979 ) << QgsPointXY( 322501, 192061 ) << QgsPointXY( 321803, 192198 ),
+        QVector<QgsPointXY>() << QgsPointXY( 321210, 130280 ) << QgsPointXY( 322698, 129979 ) << QgsPointXY( 322501, 192061 ) << QgsPointXY( 321803, 192198 ),
+        true
+      );
 
       double x = 321212;
       double y = 123003;
@@ -452,7 +423,6 @@ class TestQgsGcpTransformer : public QgsTest
     }
 
 
-
     //
     // Polynomial order 1
     //
@@ -460,14 +430,10 @@ class TestQgsGcpTransformer : public QgsTest
     void testPolyOrder1()
     {
       QgsGDALGeorefTransform transform( false, 1 );
-      transform.updateParametersFromGcps( QVector< QgsPointXY >() << QgsPointXY( 288, 1126 )
-                                          << QgsPointXY( 2352, 716 )
-                                          << QgsPointXY( 2067, 2398 )
-                                          << QgsPointXY( 1102, 2209 ),
-                                          QVector< QgsPointXY >() << QgsPointXY( 321210, 130280 )
-                                          << QgsPointXY( 322698, 129979 )
-                                          << QgsPointXY( 322501, 192061 )
-                                          << QgsPointXY( 321803, 192198 ) );
+      transform.updateParametersFromGcps(
+        QVector<QgsPointXY>() << QgsPointXY( 288, 1126 ) << QgsPointXY( 2352, 716 ) << QgsPointXY( 2067, 2398 ) << QgsPointXY( 1102, 2209 ),
+        QVector<QgsPointXY>() << QgsPointXY( 321210, 130280 ) << QgsPointXY( 322698, 129979 ) << QgsPointXY( 322501, 192061 ) << QgsPointXY( 321803, 192198 )
+      );
 
       double x = 288;
       double y = 1000;
@@ -509,14 +475,11 @@ class TestQgsGcpTransformer : public QgsTest
     void testPolyOrder1RasterYAxis()
     {
       QgsGDALGeorefTransform transform( false, 1 );
-      transform.updateParametersFromGcps( QVector< QgsPointXY >() << QgsPointXY( 288, -716 )
-                                          << QgsPointXY( 2352, -1126 )
-                                          << QgsPointXY( 2067, -2398 )
-                                          << QgsPointXY( 1102, -2209 ),
-                                          QVector< QgsPointXY >() << QgsPointXY( 321210, 130280 )
-                                          << QgsPointXY( 322698, 129979 )
-                                          << QgsPointXY( 322501, 192061 )
-                                          << QgsPointXY( 321803, 192198 ), true );
+      transform.updateParametersFromGcps(
+        QVector<QgsPointXY>() << QgsPointXY( 288, -716 ) << QgsPointXY( 2352, -1126 ) << QgsPointXY( 2067, -2398 ) << QgsPointXY( 1102, -2209 ),
+        QVector<QgsPointXY>() << QgsPointXY( 321210, 130280 ) << QgsPointXY( 322698, 129979 ) << QgsPointXY( 322501, 192061 ) << QgsPointXY( 321803, 192198 ),
+        true
+      );
 
       double x = 288;
       double y = -716;
@@ -559,14 +522,10 @@ class TestQgsGcpTransformer : public QgsTest
     {
       QgsGDALGeorefTransform transform( false, 1 );
       //this is a identity transform!
-      transform.updateParametersFromGcps( QVector< QgsPointXY >() << QgsPointXY( 321210, 130280 )
-                                          << QgsPointXY( 322698, 129979 )
-                                          << QgsPointXY( 322501, 192061 )
-                                          << QgsPointXY( 321803, 192198 ),
-                                          QVector< QgsPointXY >() << QgsPointXY( 321210, 130280 )
-                                          << QgsPointXY( 322698, 129979 )
-                                          << QgsPointXY( 322501, 192061 )
-                                          << QgsPointXY( 321803, 192198 ) );
+      transform.updateParametersFromGcps(
+        QVector<QgsPointXY>() << QgsPointXY( 321210, 130280 ) << QgsPointXY( 322698, 129979 ) << QgsPointXY( 322501, 192061 ) << QgsPointXY( 321803, 192198 ),
+        QVector<QgsPointXY>() << QgsPointXY( 321210, 130280 ) << QgsPointXY( 322698, 129979 ) << QgsPointXY( 322501, 192061 ) << QgsPointXY( 321803, 192198 )
+      );
 
       double x = 321212;
       double y = 123003;
@@ -609,14 +568,11 @@ class TestQgsGcpTransformer : public QgsTest
     {
       QgsGDALGeorefTransform transform( false, 1 );
       //this is a identity transform!
-      transform.updateParametersFromGcps( QVector< QgsPointXY >() << QgsPointXY( 321210, 130280 )
-                                          << QgsPointXY( 322698, 129979 )
-                                          << QgsPointXY( 322501, 192061 )
-                                          << QgsPointXY( 321803, 192198 ),
-                                          QVector< QgsPointXY >() << QgsPointXY( 321210, 130280 )
-                                          << QgsPointXY( 322698, 129979 )
-                                          << QgsPointXY( 322501, 192061 )
-                                          << QgsPointXY( 321803, 192198 ), true );
+      transform.updateParametersFromGcps(
+        QVector<QgsPointXY>() << QgsPointXY( 321210, 130280 ) << QgsPointXY( 322698, 129979 ) << QgsPointXY( 322501, 192061 ) << QgsPointXY( 321803, 192198 ),
+        QVector<QgsPointXY>() << QgsPointXY( 321210, 130280 ) << QgsPointXY( 322698, 129979 ) << QgsPointXY( 322501, 192061 ) << QgsPointXY( 321803, 192198 ),
+        true
+      );
 
       double x = 321212;
       double y = 123003;
@@ -663,18 +619,16 @@ class TestQgsGcpTransformer : public QgsTest
     void testPolyOrder2()
     {
       QgsGDALGeorefTransform transform( false, 2 );
-      transform.updateParametersFromGcps( QVector< QgsPointXY >() << QgsPointXY( 288, 1126 )
-                                          << QgsPointXY( 2352, 716 )
-                                          << QgsPointXY( 2067, 2398 )
-                                          << QgsPointXY( 2100, 1500 )
-                                          << QgsPointXY( 1102, 2209 )
-                                          << QgsPointXY( 300, 1550 ),
-                                          QVector< QgsPointXY >() << QgsPointXY( 321210, 130280 )
-                                          << QgsPointXY( 322698, 129979 )
-                                          << QgsPointXY( 322501, 192061 )
-                                          << QgsPointXY( 322550, 149979 )
-                                          << QgsPointXY( 321803, 192198 )
-                                          << QgsPointXY( 321310, 145979 ) );
+      transform.updateParametersFromGcps(
+        QVector<QgsPointXY>() << QgsPointXY( 288, 1126 ) << QgsPointXY( 2352, 716 ) << QgsPointXY( 2067, 2398 ) << QgsPointXY( 2100, 1500 ) << QgsPointXY( 1102, 2209 ) << QgsPointXY( 300, 1550 ),
+        QVector<QgsPointXY>()
+          << QgsPointXY( 321210, 130280 )
+          << QgsPointXY( 322698, 129979 )
+          << QgsPointXY( 322501, 192061 )
+          << QgsPointXY( 322550, 149979 )
+          << QgsPointXY( 321803, 192198 )
+          << QgsPointXY( 321310, 145979 )
+      );
 
       double x = 288;
       double y = 1000;
@@ -716,18 +670,17 @@ class TestQgsGcpTransformer : public QgsTest
     void testPolyOrder2RasterYAxis()
     {
       QgsGDALGeorefTransform transform( false, 2 );
-      transform.updateParametersFromGcps( QVector< QgsPointXY >() << QgsPointXY( 288, -1126 )
-                                          << QgsPointXY( 2352, -716 )
-                                          << QgsPointXY( 2067, -2398 )
-                                          << QgsPointXY( 2100, -1500 )
-                                          << QgsPointXY( 1102, -2209 )
-                                          << QgsPointXY( 300, -1550 ),
-                                          QVector< QgsPointXY >() << QgsPointXY( 321210, 130280 )
-                                          << QgsPointXY( 322698, 129979 )
-                                          << QgsPointXY( 322501, 192061 )
-                                          << QgsPointXY( 322550, 149979 )
-                                          << QgsPointXY( 321803, 192198 )
-                                          << QgsPointXY( 321310, 145979 ), true );
+      transform.updateParametersFromGcps(
+        QVector<QgsPointXY>() << QgsPointXY( 288, -1126 ) << QgsPointXY( 2352, -716 ) << QgsPointXY( 2067, -2398 ) << QgsPointXY( 2100, -1500 ) << QgsPointXY( 1102, -2209 ) << QgsPointXY( 300, -1550 ),
+        QVector<QgsPointXY>()
+          << QgsPointXY( 321210, 130280 )
+          << QgsPointXY( 322698, 129979 )
+          << QgsPointXY( 322501, 192061 )
+          << QgsPointXY( 322550, 149979 )
+          << QgsPointXY( 321803, 192198 )
+          << QgsPointXY( 321310, 145979 ),
+        true
+      );
 
       double x = 288;
       double y = -716;
@@ -770,18 +723,22 @@ class TestQgsGcpTransformer : public QgsTest
     {
       QgsGDALGeorefTransform transform( false, 2 );
       //this is a identity transform!
-      transform.updateParametersFromGcps( QVector< QgsPointXY >() << QgsPointXY( 321210, 130280 )
-                                          << QgsPointXY( 322698, 129979 )
-                                          << QgsPointXY( 322501, 192061 )
-                                          << QgsPointXY( 322501, 152061 )
-                                          << QgsPointXY( 321803, 192198 )
-                                          << QgsPointXY( 321210, 152061 ),
-                                          QVector< QgsPointXY >() << QgsPointXY( 321210, 130280 )
-                                          << QgsPointXY( 322698, 129979 )
-                                          << QgsPointXY( 322501, 192061 )
-                                          << QgsPointXY( 322501, 152061 )
-                                          << QgsPointXY( 321803, 192198 )
-                                          << QgsPointXY( 321210, 152061 ) );
+      transform.updateParametersFromGcps(
+        QVector<QgsPointXY>()
+          << QgsPointXY( 321210, 130280 )
+          << QgsPointXY( 322698, 129979 )
+          << QgsPointXY( 322501, 192061 )
+          << QgsPointXY( 322501, 152061 )
+          << QgsPointXY( 321803, 192198 )
+          << QgsPointXY( 321210, 152061 ),
+        QVector<QgsPointXY>()
+          << QgsPointXY( 321210, 130280 )
+          << QgsPointXY( 322698, 129979 )
+          << QgsPointXY( 322501, 192061 )
+          << QgsPointXY( 322501, 152061 )
+          << QgsPointXY( 321803, 192198 )
+          << QgsPointXY( 321210, 152061 )
+      );
 
       double x = 321212;
       double y = 123003;
@@ -824,18 +781,23 @@ class TestQgsGcpTransformer : public QgsTest
     {
       QgsGDALGeorefTransform transform( false, 2 );
       //this is a identity transform!
-      transform.updateParametersFromGcps( QVector< QgsPointXY >() << QgsPointXY( 321210, 130280 )
-                                          << QgsPointXY( 322698, 129979 )
-                                          << QgsPointXY( 322501, 192061 )
-                                          << QgsPointXY( 322501, 152061 )
-                                          << QgsPointXY( 321803, 192198 )
-                                          << QgsPointXY( 321210, 152061 ),
-                                          QVector< QgsPointXY >() << QgsPointXY( 321210, 130280 )
-                                          << QgsPointXY( 322698, 129979 )
-                                          << QgsPointXY( 322501, 192061 )
-                                          << QgsPointXY( 322501, 152061 )
-                                          << QgsPointXY( 321803, 192198 )
-                                          << QgsPointXY( 321210, 152061 ), true );
+      transform.updateParametersFromGcps(
+        QVector<QgsPointXY>()
+          << QgsPointXY( 321210, 130280 )
+          << QgsPointXY( 322698, 129979 )
+          << QgsPointXY( 322501, 192061 )
+          << QgsPointXY( 322501, 152061 )
+          << QgsPointXY( 321803, 192198 )
+          << QgsPointXY( 321210, 152061 ),
+        QVector<QgsPointXY>()
+          << QgsPointXY( 321210, 130280 )
+          << QgsPointXY( 322698, 129979 )
+          << QgsPointXY( 322501, 192061 )
+          << QgsPointXY( 322501, 152061 )
+          << QgsPointXY( 321803, 192198 )
+          << QgsPointXY( 321210, 152061 ),
+        true
+      );
 
       double x = 321212;
       double y = 123003;
@@ -882,27 +844,30 @@ class TestQgsGcpTransformer : public QgsTest
     void testPolyOrder3()
     {
       QgsGDALGeorefTransform transform( false, 3 );
-      transform.updateParametersFromGcps( QVector< QgsPointXY >() << QgsPointXY( 288, 1126 )
-                                          << QgsPointXY( 2352, 716 )
-                                          << QgsPointXY( 2067, 2398 )
-                                          << QgsPointXY( 2100, 1500 )
-                                          << QgsPointXY( 1102, 2209 )
-                                          << QgsPointXY( 300, 1550 )
-                                          << QgsPointXY( 300, 850 )
-                                          << QgsPointXY( 1000, 830 )
-                                          << QgsPointXY( 900, 1450 )
-                                          << QgsPointXY( 700, 1550 ),
-                                          QVector< QgsPointXY >() << QgsPointXY( 321210, 130280 )
-                                          << QgsPointXY( 322698, 129979 )
-                                          << QgsPointXY( 322501, 192061 )
-                                          << QgsPointXY( 322550, 149979 )
-                                          << QgsPointXY( 321803, 192198 )
-                                          << QgsPointXY( 321310, 145979 )
-                                          << QgsPointXY( 321310, 131979 )
-                                          << QgsPointXY( 321703, 131579 )
-                                          << QgsPointXY( 321603, 145979 )
-                                          << QgsPointXY( 321003, 146179 )
-                                        );
+      transform.updateParametersFromGcps(
+        QVector<QgsPointXY>()
+          << QgsPointXY( 288, 1126 )
+          << QgsPointXY( 2352, 716 )
+          << QgsPointXY( 2067, 2398 )
+          << QgsPointXY( 2100, 1500 )
+          << QgsPointXY( 1102, 2209 )
+          << QgsPointXY( 300, 1550 )
+          << QgsPointXY( 300, 850 )
+          << QgsPointXY( 1000, 830 )
+          << QgsPointXY( 900, 1450 )
+          << QgsPointXY( 700, 1550 ),
+        QVector<QgsPointXY>()
+          << QgsPointXY( 321210, 130280 )
+          << QgsPointXY( 322698, 129979 )
+          << QgsPointXY( 322501, 192061 )
+          << QgsPointXY( 322550, 149979 )
+          << QgsPointXY( 321803, 192198 )
+          << QgsPointXY( 321310, 145979 )
+          << QgsPointXY( 321310, 131979 )
+          << QgsPointXY( 321703, 131579 )
+          << QgsPointXY( 321603, 145979 )
+          << QgsPointXY( 321003, 146179 )
+      );
 
       double x = 288;
       double y = 1000;
@@ -944,26 +909,31 @@ class TestQgsGcpTransformer : public QgsTest
     void testPolyOrder3RasterYAxis()
     {
       QgsGDALGeorefTransform transform( false, 3 );
-      transform.updateParametersFromGcps( QVector< QgsPointXY >() << QgsPointXY( 288, -1126 )
-                                          << QgsPointXY( 2352, -716 )
-                                          << QgsPointXY( 2067, -2398 )
-                                          << QgsPointXY( 2100, -1500 )
-                                          << QgsPointXY( 1102, -2209 )
-                                          << QgsPointXY( 300, -1550 )
-                                          << QgsPointXY( 300, -850 )
-                                          << QgsPointXY( 1000, -830 )
-                                          << QgsPointXY( 900, -1450 )
-                                          << QgsPointXY( 700, -1550 ),
-                                          QVector< QgsPointXY >() << QgsPointXY( 321210, 130280 )
-                                          << QgsPointXY( 322698, 129979 )
-                                          << QgsPointXY( 322501, 192061 )
-                                          << QgsPointXY( 322550, 149979 )
-                                          << QgsPointXY( 321803, 192198 )
-                                          << QgsPointXY( 321310, 145979 )
-                                          << QgsPointXY( 321310, 131979 )
-                                          << QgsPointXY( 321703, 131579 )
-                                          << QgsPointXY( 321603, 145979 )
-                                          << QgsPointXY( 321003, 146179 ), true );
+      transform.updateParametersFromGcps(
+        QVector<QgsPointXY>()
+          << QgsPointXY( 288, -1126 )
+          << QgsPointXY( 2352, -716 )
+          << QgsPointXY( 2067, -2398 )
+          << QgsPointXY( 2100, -1500 )
+          << QgsPointXY( 1102, -2209 )
+          << QgsPointXY( 300, -1550 )
+          << QgsPointXY( 300, -850 )
+          << QgsPointXY( 1000, -830 )
+          << QgsPointXY( 900, -1450 )
+          << QgsPointXY( 700, -1550 ),
+        QVector<QgsPointXY>()
+          << QgsPointXY( 321210, 130280 )
+          << QgsPointXY( 322698, 129979 )
+          << QgsPointXY( 322501, 192061 )
+          << QgsPointXY( 322550, 149979 )
+          << QgsPointXY( 321803, 192198 )
+          << QgsPointXY( 321310, 145979 )
+          << QgsPointXY( 321310, 131979 )
+          << QgsPointXY( 321703, 131579 )
+          << QgsPointXY( 321603, 145979 )
+          << QgsPointXY( 321003, 146179 ),
+        true
+      );
 
       // these values look like nonsense... I can't verify them, except to say that at the time
       // these tests were written the raster georeferencer worked correctly with polynomial order 3, so I can
@@ -1009,26 +979,30 @@ class TestQgsGcpTransformer : public QgsTest
     {
       QgsGDALGeorefTransform transform( false, 3 );
       //this is a identity transform!
-      transform.updateParametersFromGcps( QVector< QgsPointXY >() << QgsPointXY( 321210, 130280 )
-                                          << QgsPointXY( 322698, 129979 )
-                                          << QgsPointXY( 322501, 192061 )
-                                          << QgsPointXY( 322501, 152061 )
-                                          << QgsPointXY( 321803, 192198 )
-                                          << QgsPointXY( 321210, 152061 )
-                                          << QgsPointXY( 322010, 182061 )
-                                          << QgsPointXY( 322010, 132061 )
-                                          << QgsPointXY( 321050, 162061 )
-                                          << QgsPointXY( 321050, 172061 ),
-                                          QVector< QgsPointXY >() << QgsPointXY( 321210, 130280 )
-                                          << QgsPointXY( 322698, 129979 )
-                                          << QgsPointXY( 322501, 192061 )
-                                          << QgsPointXY( 322501, 152061 )
-                                          << QgsPointXY( 321803, 192198 )
-                                          << QgsPointXY( 321210, 152061 )
-                                          << QgsPointXY( 322010, 182061 )
-                                          << QgsPointXY( 322010, 132061 )
-                                          << QgsPointXY( 321050, 162061 )
-                                          << QgsPointXY( 321050, 172061 ) );
+      transform.updateParametersFromGcps(
+        QVector<QgsPointXY>()
+          << QgsPointXY( 321210, 130280 )
+          << QgsPointXY( 322698, 129979 )
+          << QgsPointXY( 322501, 192061 )
+          << QgsPointXY( 322501, 152061 )
+          << QgsPointXY( 321803, 192198 )
+          << QgsPointXY( 321210, 152061 )
+          << QgsPointXY( 322010, 182061 )
+          << QgsPointXY( 322010, 132061 )
+          << QgsPointXY( 321050, 162061 )
+          << QgsPointXY( 321050, 172061 ),
+        QVector<QgsPointXY>()
+          << QgsPointXY( 321210, 130280 )
+          << QgsPointXY( 322698, 129979 )
+          << QgsPointXY( 322501, 192061 )
+          << QgsPointXY( 322501, 152061 )
+          << QgsPointXY( 321803, 192198 )
+          << QgsPointXY( 321210, 152061 )
+          << QgsPointXY( 322010, 182061 )
+          << QgsPointXY( 322010, 132061 )
+          << QgsPointXY( 321050, 162061 )
+          << QgsPointXY( 321050, 172061 )
+      );
 
       double x = 321212;
       double y = 123003;
@@ -1071,26 +1045,31 @@ class TestQgsGcpTransformer : public QgsTest
     {
       QgsGDALGeorefTransform transform( false, 3 );
       //this is a identity transform!
-      transform.updateParametersFromGcps( QVector< QgsPointXY >() << QgsPointXY( 321210, 130280 )
-                                          << QgsPointXY( 322698, 129979 )
-                                          << QgsPointXY( 322501, 192061 )
-                                          << QgsPointXY( 322501, 152061 )
-                                          << QgsPointXY( 321803, 192198 )
-                                          << QgsPointXY( 321210, 152061 )
-                                          << QgsPointXY( 322010, 182061 )
-                                          << QgsPointXY( 322010, 132061 )
-                                          << QgsPointXY( 321050, 162061 )
-                                          << QgsPointXY( 321050, 172061 ),
-                                          QVector< QgsPointXY >() << QgsPointXY( 321210, 130280 )
-                                          << QgsPointXY( 322698, 129979 )
-                                          << QgsPointXY( 322501, 192061 )
-                                          << QgsPointXY( 322501, 152061 )
-                                          << QgsPointXY( 321803, 192198 )
-                                          << QgsPointXY( 321210, 152061 )
-                                          << QgsPointXY( 322010, 182061 )
-                                          << QgsPointXY( 322010, 132061 )
-                                          << QgsPointXY( 321050, 162061 )
-                                          << QgsPointXY( 321050, 172061 ), true );
+      transform.updateParametersFromGcps(
+        QVector<QgsPointXY>()
+          << QgsPointXY( 321210, 130280 )
+          << QgsPointXY( 322698, 129979 )
+          << QgsPointXY( 322501, 192061 )
+          << QgsPointXY( 322501, 152061 )
+          << QgsPointXY( 321803, 192198 )
+          << QgsPointXY( 321210, 152061 )
+          << QgsPointXY( 322010, 182061 )
+          << QgsPointXY( 322010, 132061 )
+          << QgsPointXY( 321050, 162061 )
+          << QgsPointXY( 321050, 172061 ),
+        QVector<QgsPointXY>()
+          << QgsPointXY( 321210, 130280 )
+          << QgsPointXY( 322698, 129979 )
+          << QgsPointXY( 322501, 192061 )
+          << QgsPointXY( 322501, 152061 )
+          << QgsPointXY( 321803, 192198 )
+          << QgsPointXY( 321210, 152061 )
+          << QgsPointXY( 322010, 182061 )
+          << QgsPointXY( 322010, 132061 )
+          << QgsPointXY( 321050, 162061 )
+          << QgsPointXY( 321050, 172061 ),
+        true
+      );
 
       double x = 321212;
       double y = 123003;
@@ -1137,14 +1116,10 @@ class TestQgsGcpTransformer : public QgsTest
     void testTPSReports()
     {
       QgsGDALGeorefTransform transform( true, 1 );
-      transform.updateParametersFromGcps( QVector< QgsPointXY >() << QgsPointXY( 288, 1126 )
-                                          << QgsPointXY( 2352, 716 )
-                                          << QgsPointXY( 2067, 2398 )
-                                          << QgsPointXY( 1102, 2209 ),
-                                          QVector< QgsPointXY >() << QgsPointXY( 321210, 130280 )
-                                          << QgsPointXY( 322698, 129979 )
-                                          << QgsPointXY( 322501, 192061 )
-                                          << QgsPointXY( 321803, 192198 ) );
+      transform.updateParametersFromGcps(
+        QVector<QgsPointXY>() << QgsPointXY( 288, 1126 ) << QgsPointXY( 2352, 716 ) << QgsPointXY( 2067, 2398 ) << QgsPointXY( 1102, 2209 ),
+        QVector<QgsPointXY>() << QgsPointXY( 321210, 130280 ) << QgsPointXY( 322698, 129979 ) << QgsPointXY( 322501, 192061 ) << QgsPointXY( 321803, 192198 )
+      );
 
       double x = 288;
       double y = 1000;
@@ -1152,8 +1127,13 @@ class TestQgsGcpTransformer : public QgsTest
       QGSCOMPARENEAR( x, 321209, 1 );
       QGSCOMPARENEAR( y, 124248, 1 );
       QVERIFY( transform.transform( x, y, true ) );
+#if GDAL_VERSION_NUM >= GDAL_COMPUTE_VERSION( 3, 8, 0 )
+      QGSCOMPARENEAR( x, 288, 1 );
+      QGSCOMPARENEAR( y, 1000, 1 );
+#else
       QGSCOMPARENEAR( x, 290, 1 );
       QGSCOMPARENEAR( y, 680, 1 );
+#endif
 
       x = 2352;
       y = 1150;
@@ -1161,17 +1141,26 @@ class TestQgsGcpTransformer : public QgsTest
       QGSCOMPARENEAR( x, 322700, 1 );
       QGSCOMPARENEAR( y, 146609, 1 );
       QVERIFY( transform.transform( x, y, true ) );
+#if GDAL_VERSION_NUM >= GDAL_COMPUTE_VERSION( 3, 8, 0 )
+      QGSCOMPARENEAR( x, 2352, 1 );
+      QGSCOMPARENEAR( y, 1150, 1 );
+#else
       QGSCOMPARENEAR( x, 2347, 1 );
       QGSCOMPARENEAR( y, 1636, 1 );
-
+#endif
       x = 2067;
       y = 2500;
       QVERIFY( transform.transform( x, y ) );
       QGSCOMPARENEAR( x, 322501, 1 );
       QGSCOMPARENEAR( y, 196160, 1 );
       QVERIFY( transform.transform( x, y, true ) );
+#if GDAL_VERSION_NUM >= GDAL_COMPUTE_VERSION( 3, 8, 0 )
+      QGSCOMPARENEAR( x, 2067, 1 );
+      QGSCOMPARENEAR( y, 2500, 1 );
+#else
       QGSCOMPARENEAR( x, 2068, 1 );
       QGSCOMPARENEAR( y, 2273, 1 );
+#endif
 
       x = 1102;
       y = 2300;
@@ -1179,21 +1168,23 @@ class TestQgsGcpTransformer : public QgsTest
       QGSCOMPARENEAR( x, 321803, 1 );
       QGSCOMPARENEAR( y, 195999, 1 );
       QVERIFY( transform.transform( x, y, true ) );
+#if GDAL_VERSION_NUM >= GDAL_COMPUTE_VERSION( 3, 8, 0 )
+      QGSCOMPARENEAR( x, 1102, 1 );
+      QGSCOMPARENEAR( y, 2300, 1 );
+#else
       QGSCOMPARENEAR( x, 1103, 1 );
       QGSCOMPARENEAR( y, 2177, 1 );
+#endif
     }
 
     void testTPSRasterYAxis()
     {
       QgsGDALGeorefTransform transform( true, 1 );
-      transform.updateParametersFromGcps( QVector< QgsPointXY >() << QgsPointXY( 288, -716 )
-                                          << QgsPointXY( 2352, -1126 )
-                                          << QgsPointXY( 2067, -2398 )
-                                          << QgsPointXY( 1102, -2209 ),
-                                          QVector< QgsPointXY >() << QgsPointXY( 321210, 130280 )
-                                          << QgsPointXY( 322698, 129979 )
-                                          << QgsPointXY( 322501, 192061 )
-                                          << QgsPointXY( 321803, 192198 ), true );
+      transform.updateParametersFromGcps(
+        QVector<QgsPointXY>() << QgsPointXY( 288, -716 ) << QgsPointXY( 2352, -1126 ) << QgsPointXY( 2067, -2398 ) << QgsPointXY( 1102, -2209 ),
+        QVector<QgsPointXY>() << QgsPointXY( 321210, 130280 ) << QgsPointXY( 322698, 129979 ) << QgsPointXY( 322501, 192061 ) << QgsPointXY( 321803, 192198 ),
+        true
+      );
 
       double x = 288;
       double y = -716;
@@ -1201,8 +1192,13 @@ class TestQgsGcpTransformer : public QgsTest
       QGSCOMPARENEAR( x, 321202, 1 );
       QGSCOMPARENEAR( y, 63505, 1 );
       QVERIFY( transform.transform( x, y, true ) );
+#if GDAL_VERSION_NUM >= GDAL_COMPUTE_VERSION( 3, 8, 0 )
+      QGSCOMPARENEAR( x, 288, 1 );
+      QGSCOMPARENEAR( y, -716, 1 );
+#else
       QGSCOMPARENEAR( x, 297, 1 );
       QGSCOMPARENEAR( y, -705, 1 );
+#endif
 
       x = 2352;
       y = -1126;
@@ -1210,8 +1206,13 @@ class TestQgsGcpTransformer : public QgsTest
       QGSCOMPARENEAR( x, 322686, 1 );
       QGSCOMPARENEAR( y, 24959, 1 );
       QVERIFY( transform.transform( x, y, true ) );
+#if GDAL_VERSION_NUM >= GDAL_COMPUTE_VERSION( 3, 8, 0 )
+      QGSCOMPARENEAR( x, 2352, 1 );
+      QGSCOMPARENEAR( y, -1126, 1 );
+#else
       QGSCOMPARENEAR( x, 2361, 1 );
       QGSCOMPARENEAR( y, -1116, 1 );
+#endif
 
       x = 2067;
       y = -2398;
@@ -1219,8 +1220,13 @@ class TestQgsGcpTransformer : public QgsTest
       QGSCOMPARENEAR( x, 322474, 1 );
       QGSCOMPARENEAR( y, -31676, 1 );
       QVERIFY( transform.transform( x, y, true ) );
+#if GDAL_VERSION_NUM >= GDAL_COMPUTE_VERSION( 3, 8, 0 )
+      QGSCOMPARENEAR( x, 2067, 1 );
+      QGSCOMPARENEAR( y, -2398, 1 );
+#else
       QGSCOMPARENEAR( x, 2078, 1 );
       QGSCOMPARENEAR( y, -2385, 1 );
+#endif
 
       x = 1102;
       y = -2209;
@@ -1228,22 +1234,23 @@ class TestQgsGcpTransformer : public QgsTest
       QGSCOMPARENEAR( x, 321780, 1 );
       QGSCOMPARENEAR( y, -13787, 1 );
       QVERIFY( transform.transform( x, y, true ) );
+#if GDAL_VERSION_NUM >= GDAL_COMPUTE_VERSION( 3, 8, 0 )
+      QGSCOMPARENEAR( x, 1102, 1 );
+      QGSCOMPARENEAR( y, -2209, 1 );
+#else
       QGSCOMPARENEAR( x, 1114, 1 );
       QGSCOMPARENEAR( y, -2195, 1 );
+#endif
     }
 
     void testTPSExact()
     {
       QgsGDALGeorefTransform transform( true, 1 );
       //this is a identity transform!
-      transform.updateParametersFromGcps( QVector< QgsPointXY >() << QgsPointXY( 321210, 130280 )
-                                          << QgsPointXY( 322698, 129979 )
-                                          << QgsPointXY( 322501, 192061 )
-                                          << QgsPointXY( 321803, 192198 ),
-                                          QVector< QgsPointXY >() << QgsPointXY( 321210, 130280 )
-                                          << QgsPointXY( 322698, 129979 )
-                                          << QgsPointXY( 322501, 192061 )
-                                          << QgsPointXY( 321803, 192198 ) );
+      transform.updateParametersFromGcps(
+        QVector<QgsPointXY>() << QgsPointXY( 321210, 130280 ) << QgsPointXY( 322698, 129979 ) << QgsPointXY( 322501, 192061 ) << QgsPointXY( 321803, 192198 ),
+        QVector<QgsPointXY>() << QgsPointXY( 321210, 130280 ) << QgsPointXY( 322698, 129979 ) << QgsPointXY( 322501, 192061 ) << QgsPointXY( 321803, 192198 )
+      );
 
       double x = 321212;
       double y = 123003;
@@ -1286,14 +1293,11 @@ class TestQgsGcpTransformer : public QgsTest
     {
       QgsGDALGeorefTransform transform( true, 1 );
       //this is a identity transform!
-      transform.updateParametersFromGcps( QVector< QgsPointXY >() << QgsPointXY( 321210, 130280 )
-                                          << QgsPointXY( 322698, 129979 )
-                                          << QgsPointXY( 322501, 192061 )
-                                          << QgsPointXY( 321803, 192198 ),
-                                          QVector< QgsPointXY >() << QgsPointXY( 321210, 130280 )
-                                          << QgsPointXY( 322698, 129979 )
-                                          << QgsPointXY( 322501, 192061 )
-                                          << QgsPointXY( 321803, 192198 ), true );
+      transform.updateParametersFromGcps(
+        QVector<QgsPointXY>() << QgsPointXY( 321210, 130280 ) << QgsPointXY( 322698, 129979 ) << QgsPointXY( 322501, 192061 ) << QgsPointXY( 321803, 192198 ),
+        QVector<QgsPointXY>() << QgsPointXY( 321210, 130280 ) << QgsPointXY( 322698, 129979 ) << QgsPointXY( 322501, 192061 ) << QgsPointXY( 321803, 192198 ),
+        true
+      );
 
       double x = 321212;
       double y = 123003;
@@ -1339,14 +1343,10 @@ class TestQgsGcpTransformer : public QgsTest
     void testProjective()
     {
       QgsProjectiveGeorefTransform transform;
-      transform.updateParametersFromGcps( QVector< QgsPointXY >() << QgsPointXY( 288, 1126 )
-                                          << QgsPointXY( 2352, 716 )
-                                          << QgsPointXY( 2067, 2398 )
-                                          << QgsPointXY( 1102, 2209 ),
-                                          QVector< QgsPointXY >() << QgsPointXY( 321210, 130280 )
-                                          << QgsPointXY( 322698, 129979 )
-                                          << QgsPointXY( 322501, 192061 )
-                                          << QgsPointXY( 321803, 192198 ) );
+      transform.updateParametersFromGcps(
+        QVector<QgsPointXY>() << QgsPointXY( 288, 1126 ) << QgsPointXY( 2352, 716 ) << QgsPointXY( 2067, 2398 ) << QgsPointXY( 1102, 2209 ),
+        QVector<QgsPointXY>() << QgsPointXY( 321210, 130280 ) << QgsPointXY( 322698, 129979 ) << QgsPointXY( 322501, 192061 ) << QgsPointXY( 321803, 192198 )
+      );
 
       double x = 288;
       double y = 1000;
@@ -1388,14 +1388,11 @@ class TestQgsGcpTransformer : public QgsTest
     void testProjectiveRasterYAxis()
     {
       QgsProjectiveGeorefTransform transform;
-      transform.updateParametersFromGcps( QVector< QgsPointXY >() << QgsPointXY( 288, -716 )
-                                          << QgsPointXY( 2352, -1126 )
-                                          << QgsPointXY( 2067, -2398 )
-                                          << QgsPointXY( 1102, -2209 ),
-                                          QVector< QgsPointXY >() << QgsPointXY( 321210, 130280 )
-                                          << QgsPointXY( 322698, 129979 )
-                                          << QgsPointXY( 322501, 192061 )
-                                          << QgsPointXY( 321803, 192198 ), true );
+      transform.updateParametersFromGcps(
+        QVector<QgsPointXY>() << QgsPointXY( 288, -716 ) << QgsPointXY( 2352, -1126 ) << QgsPointXY( 2067, -2398 ) << QgsPointXY( 1102, -2209 ),
+        QVector<QgsPointXY>() << QgsPointXY( 321210, 130280 ) << QgsPointXY( 322698, 129979 ) << QgsPointXY( 322501, 192061 ) << QgsPointXY( 321803, 192198 ),
+        true
+      );
 
       double x = 288;
       double y = -716;
@@ -1438,14 +1435,10 @@ class TestQgsGcpTransformer : public QgsTest
     {
       QgsProjectiveGeorefTransform transform;
       //this is a identity transform!
-      transform.updateParametersFromGcps( QVector< QgsPointXY >() << QgsPointXY( 321210, 130280 )
-                                          << QgsPointXY( 322698, 129979 )
-                                          << QgsPointXY( 322501, 192061 )
-                                          << QgsPointXY( 321803, 192198 ),
-                                          QVector< QgsPointXY >() << QgsPointXY( 321210, 130280 )
-                                          << QgsPointXY( 322698, 129979 )
-                                          << QgsPointXY( 322501, 192061 )
-                                          << QgsPointXY( 321803, 192198 ) );
+      transform.updateParametersFromGcps(
+        QVector<QgsPointXY>() << QgsPointXY( 321210, 130280 ) << QgsPointXY( 322698, 129979 ) << QgsPointXY( 322501, 192061 ) << QgsPointXY( 321803, 192198 ),
+        QVector<QgsPointXY>() << QgsPointXY( 321210, 130280 ) << QgsPointXY( 322698, 129979 ) << QgsPointXY( 322501, 192061 ) << QgsPointXY( 321803, 192198 )
+      );
 
       double x = 321212;
       double y = 123003;
@@ -1488,14 +1481,11 @@ class TestQgsGcpTransformer : public QgsTest
     {
       QgsProjectiveGeorefTransform transform;
       //this is a identity transform!
-      transform.updateParametersFromGcps( QVector< QgsPointXY >() << QgsPointXY( 321210, 130280 )
-                                          << QgsPointXY( 322698, 129979 )
-                                          << QgsPointXY( 322501, 192061 )
-                                          << QgsPointXY( 321803, 192198 ),
-                                          QVector< QgsPointXY >() << QgsPointXY( 321210, 130280 )
-                                          << QgsPointXY( 322698, 129979 )
-                                          << QgsPointXY( 322501, 192061 )
-                                          << QgsPointXY( 321803, 192198 ), true );
+      transform.updateParametersFromGcps(
+        QVector<QgsPointXY>() << QgsPointXY( 321210, 130280 ) << QgsPointXY( 322698, 129979 ) << QgsPointXY( 322501, 192061 ) << QgsPointXY( 321803, 192198 ),
+        QVector<QgsPointXY>() << QgsPointXY( 321210, 130280 ) << QgsPointXY( 322698, 129979 ) << QgsPointXY( 322501, 192061 ) << QgsPointXY( 321803, 192198 ),
+        true
+      );
 
       double x = 321212;
       double y = 123003;
@@ -1538,36 +1528,26 @@ class TestQgsGcpTransformer : public QgsTest
     // geometry transformer
     void testGeometryTransformer()
     {
-      QgsGcpGeometryTransformer transformer( QgsGcpTransformerInterface::TransformMethod::Projective,
-                                             QVector< QgsPointXY >() << QgsPointXY( 288, 1126 )
-                                             << QgsPointXY( 2352, 716 )
-                                             << QgsPointXY( 2067, 2398 )
-                                             << QgsPointXY( 1102, 2209 ),
-                                             QVector< QgsPointXY >() << QgsPointXY( 321210, 130280 )
-                                             << QgsPointXY( 322698, 129979 )
-                                             << QgsPointXY( 322501, 192061 )
-                                             << QgsPointXY( 321803, 192198 ) );
+      QgsGcpGeometryTransformer transformer(
+        QgsGcpTransformerInterface::TransformMethod::Projective,
+        QVector<QgsPointXY>() << QgsPointXY( 288, 1126 ) << QgsPointXY( 2352, 716 ) << QgsPointXY( 2067, 2398 ) << QgsPointXY( 1102, 2209 ),
+        QVector<QgsPointXY>() << QgsPointXY( 321210, 130280 ) << QgsPointXY( 322698, 129979 ) << QgsPointXY( 322501, 192061 ) << QgsPointXY( 321803, 192198 )
+      );
 
-      const QgsGeometry geom = QgsGeometry::fromWkt( QStringLiteral( "LineString(288 1000, 2352 1150, 2067 2500, 1102 2300)" ) );
+      const QgsGeometry geom = QgsGeometry::fromWkt( u"LineString(288 1000, 2352 1150, 2067 2500, 1102 2300)"_s );
       bool ok = false;
-      QCOMPARE( transformer.transform( geom, ok ).asWkt( 0 ), QStringLiteral( "LineString (321256 123764, 322688 142909, 322495 197069, 321782 198051)" ) );
+      QCOMPARE( transformer.transform( geom, ok ).asWkt( 0 ), u"LineString (321256 123764, 322688 142909, 322495 197069, 321782 198051)"_s );
       QVERIFY( ok );
 
       // invalid parameters -- not enough GCPs
-      QgsGcpGeometryTransformer transformer2( QgsGcpTransformerInterface::TransformMethod::PolynomialOrder2,
-                                              QVector< QgsPointXY >() << QgsPointXY( 288, 1126 )
-                                              << QgsPointXY( 2352, 716 )
-                                              << QgsPointXY( 2067, 2398 )
-                                              << QgsPointXY( 1102, 2209 ),
-                                              QVector< QgsPointXY >() << QgsPointXY( 321210, 130280 )
-                                              << QgsPointXY( 322698, 129979 )
-                                              << QgsPointXY( 322501, 192061 )
-                                              << QgsPointXY( 321803, 192198 ) );
-      QCOMPARE( transformer2.transform( geom, ok ).asWkt( 0 ), QStringLiteral( "LineString (288 1000, 2352 1150, 2067 2500, 1102 2300)" ) );
+      QgsGcpGeometryTransformer transformer2(
+        QgsGcpTransformerInterface::TransformMethod::PolynomialOrder2,
+        QVector<QgsPointXY>() << QgsPointXY( 288, 1126 ) << QgsPointXY( 2352, 716 ) << QgsPointXY( 2067, 2398 ) << QgsPointXY( 1102, 2209 ),
+        QVector<QgsPointXY>() << QgsPointXY( 321210, 130280 ) << QgsPointXY( 322698, 129979 ) << QgsPointXY( 322501, 192061 ) << QgsPointXY( 321803, 192198 )
+      );
+      QCOMPARE( transformer2.transform( geom, ok ).asWkt( 0 ), u"LineString (288 1000, 2352 1150, 2067 2500, 1102 2300)"_s );
       QVERIFY( !ok );
     }
-
-
 };
 
 QGSTEST_MAIN( TestQgsGcpTransformer )

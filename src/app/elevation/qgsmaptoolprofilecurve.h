@@ -38,15 +38,13 @@ class QgsMapToolProfileCurve : public QgsMapToolCapture
   signals:
 
     void captureStarted();
-    void captureCanceled();
+    void captureFinished();
     void curveCaptured( const QgsGeometry &curve );
 
   private:
     void lineCaptured( const QgsCurve *line ) override;
 
-    QPointer< QgsMapTool > mPreviousTool;
-
-
+    QPointer<QgsMapTool> mPreviousTool;
 };
 
 #endif // QGSMAPTOOLPROFILECURVE_H

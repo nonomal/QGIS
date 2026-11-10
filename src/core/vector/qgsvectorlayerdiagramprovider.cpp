@@ -15,18 +15,18 @@
 
 #include "qgsvectorlayerdiagramprovider.h"
 
-#include "qgsgeometry.h"
-#include "qgslabelsearchtree.h"
-#include "qgsvectorlayer.h"
-#include "qgsvectorlayerfeatureiterator.h"
 #include "diagram/qgsdiagram.h"
-#include "qgsgeos.h"
-#include "qgslabelingresults.h"
-#include "qgsrendercontext.h"
-#include "qgsexpressioncontextutils.h"
-
 #include "feature.h"
 #include "labelposition.h"
+#include "qgsexpressioncontextutils.h"
+#include "qgsgeometry.h"
+#include "qgsgeos.h"
+#include "qgslabelingresults.h"
+#include "qgslabelsearchtree.h"
+#include "qgsrendercontext.h"
+#include "qgsscaleutils.h"
+#include "qgsvectorlayer.h"
+#include "qgsvectorlayerfeatureiterator.h"
 
 QgsVectorLayerDiagramProvider::QgsVectorLayerDiagramProvider( QgsVectorLayer *layer, bool ownFeatureLoop )
   : QgsAbstractLabelProvider( layer )
@@ -90,7 +90,16 @@ QList<QgsLabelFeature *> QgsVectorLayerDiagramProvider::labelFeatures( QgsRender
   const QgsFeatureFilterProvider *featureFilterProvider = context.featureFilterProvider();
   if ( featureFilterProvider )
   {
-    featureFilterProvider->filterFeatures( qobject_cast<QgsVectorLayer *>( mLayer ), request );
+    Q_NOWARN_DEPRECATED_PUSH
+    if ( featureFilterProvider->isFilterThreadSafe() )
+    {
+      featureFilterProvider->filterFeatures( layerId(), request );
+    }
+    else
+    {
+      featureFilterProvider->filterFeatures( qobject_cast<QgsVectorLayer *>( mLayer ), request );
+    }
+    Q_NOWARN_DEPRECATED_POP
   }
   QgsFeatureIterator fit = mSource->getFeatures( request );
 
@@ -119,6 +128,9 @@ void QgsVectorLayerDiagramProvider::drawLabel( QgsRenderContext &context, pal::L
 #endif
 
   QgsDiagramLabelFeature *dlf = dynamic_cast<QgsDiagramLabelFeature *>( label->getFeaturePart()->feature() );
+  if ( !dlf )
+    return;
+
   const QgsFeature feature = dlf->feature();
 
   // at time of drawing labels the expression context won't contain a layer scope -- so we manually add it here so that
@@ -138,13 +150,12 @@ void QgsVectorLayerDiagramProvider::drawLabel( QgsRenderContext &context, pal::L
   }
   QgsPointXY outPt( centerX / 4.0, centerY / 4.0 );
   //then, calculate the top left point for the diagram with this center position
-  QgsPointXY centerPt = xform.transform( outPt.x() - label->getWidth() / 2,
-                                         outPt.y() - label->getHeight() / 2 );
+  QgsPointXY centerPt = xform.transform( outPt.x() - label->getWidth() / 2, outPt.y() - label->getHeight() / 2 );
 
   mSettings.renderer()->renderDiagram( feature, context, centerPt.toQPointF(), mSettings.dataDefinedProperties() );
 
   //insert into label search tree to manipulate position interactively
-  mEngine->results()->mLabelSearchTree->insertLabel( label, label->getFeaturePart()->featureId(), mLayerId, QString(), QFont(), true, false );
+  mEngine->results()->insertLabel( label, label->getFeaturePart()->featureId(), mLayerId, QString(), QFont(), true, false );
 }
 
 bool QgsVectorLayerDiagramProvider::prepare( const QgsRenderContext &context, QSet<QString> &attributeNames )
@@ -194,14 +205,19 @@ QgsLabelFeature *QgsVectorLayerDiagramProvider::registerDiagram( const QgsFeatur
     QList<QgsDiagramSettings> settingList = dr->diagramSettings();
     if ( !settingList.isEmpty() && settingList.at( 0 ).scaleBasedVisibility )
     {
+      // Note: scale might be a non-round number, so compare with qgsDoubleNear
+      const double rendererScale = context.rendererScale();
+
+      // maxScale is inclusive ( < --> no diagram )
       double maxScale = settingList.at( 0 ).maximumScale;
-      if ( maxScale > 0 && context.rendererScale() < maxScale )
+      if ( maxScale > 0 && QgsScaleUtils::lessThanMaximumScale( rendererScale, maxScale ) )
       {
         return nullptr;
       }
 
+      // minScale is exclusive ( >= --> no diagram)
       double minScale = settingList.at( 0 ).minimumScale;
-      if ( minScale > 0 && context.rendererScale() > minScale )
+      if ( minScale > 0 && QgsScaleUtils::equalToOrGreaterThanMinimumScale( rendererScale, minScale ) )
       {
         return nullptr;
       }
@@ -235,7 +251,7 @@ QgsLabelFeature *QgsVectorLayerDiagramProvider::registerDiagram( const QgsFeatur
   if ( !clipGeometry.isEmpty() )
   {
     const Qgis::GeometryType expectedType = geom.type();
-    geom = geom.intersection( clipGeometry );
+    geom = geom.intersection( clipGeometry, QgsGeometryParameters(), context.feedback() );
     geom.convertGeometryCollectionToSubclass( expectedType );
   }
   if ( geom.isEmpty() )
@@ -320,8 +336,7 @@ QgsLabelFeature *QgsVectorLayerDiagramProvider::registerDiagram( const QgsFeatur
 
   // z-Index
   double zIndex = mSettings.zIndex();
-  if ( mSettings.dataDefinedProperties().hasProperty( QgsDiagramLayerSettings::Property::ZIndex )
-       && mSettings.dataDefinedProperties().property( QgsDiagramLayerSettings::Property::ZIndex ).isActive() )
+  if ( mSettings.dataDefinedProperties().hasProperty( QgsDiagramLayerSettings::Property::ZIndex ) && mSettings.dataDefinedProperties().property( QgsDiagramLayerSettings::Property::ZIndex ).isActive() )
   {
     context.expressionContext().setOriginalValueVariable( zIndex );
     zIndex = mSettings.dataDefinedProperties().valueAsDouble( QgsDiagramLayerSettings::Property::ZIndex, context.expressionContext(), zIndex );
@@ -345,4 +360,3 @@ QgsLabelFeature *QgsVectorLayerDiagramProvider::registerDiagram( const QgsFeatur
   lf->setDistLabel( dist );
   return lf;
 }
-

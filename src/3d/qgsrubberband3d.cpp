@@ -15,188 +15,545 @@
 
 #include "qgsrubberband3d.h"
 
+#include "qgs3d.h"
+#include "qgs3dmapscene.h"
+#include "qgs3dmapsettings.h"
+#include "qgs3dutils.h"
+#include "qgsabstract3dengine.h"
 #include "qgsbillboardgeometry.h"
-#include "qgspoint3dbillboardmaterial.h"
-#include "qgsmarkersymbol.h"
-#include "qgswindow3dengine.h"
-#include "qgslinevertexdata_p.h"
+#include "qgsframegraph.h"
+#include "qgsgeotransform.h"
 #include "qgslinematerial_p.h"
-#include "qgsvertexid.h"
 #include "qgslinestring.h"
+#include "qgslinevertexdata_p.h"
+#include "qgsmarkersymbol.h"
+#include "qgsmaterial3dhandler.h"
+#include "qgsmessagelog.h"
+#include "qgspoint3dbillboardmaterial.h"
+#include "qgspolygon.h"
+#include "qgsrubberbandrenderview.h"
 #include "qgssymbollayer.h"
+#include "qgssymbollayerutils.h"
+#include "qgstessellatedpolygongeometry.h"
+#include "qgstessellator.h"
+#include "qgsunlitmaterial.h"
+#include "qgsvertexid.h"
 
-#include <Qt3DCore/QEntity>
-
-#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
-#include <Qt3DRender/QAttribute>
-#include <Qt3DRender/QBuffer>
-#include <Qt3DRender/QGeometry>
-#else
+#include <QColor>
+#include <QString>
 #include <Qt3DCore/QAttribute>
 #include <Qt3DCore/QBuffer>
+#include <Qt3DCore/QEntity>
 #include <Qt3DCore/QGeometry>
-#endif
-
 #include <Qt3DRender/QGeometryRenderer>
-#include <Qt3DRender/QMaterial>
-#include <QColor>
 
+using namespace Qt::StringLiterals;
 
 /// @cond PRIVATE
 
 
-QgsRubberBand3D::QgsRubberBand3D( Qgs3DMapSettings &map, QgsWindow3DEngine *engine, Qt3DCore::QEntity *parentEntity )
+QgsRubberBand3D::QgsRubberBand3D( Qgs3DMapScene *scene, const Qgis::GeometryType geometryType )
+  : mMapSettings( scene->mapSettings() )
+  , mEngine( scene->engine() )
+  , mGeometryType( geometryType )
 {
-  mMapSettings = &map;
-  mEngine = engine;
+  Qt3DCore::QEntity *parentEntity = mEngine->frameGraph()->rubberBandRenderView().rubberBandEntity();
 
-  // Rubberband line
-  mLineEntity = new Qt3DCore::QEntity( parentEntity );
+  switch ( mGeometryType )
+  {
+    case Qgis::GeometryType::Point:
+      setupMarker( parentEntity );
+      break;
+    case Qgis::GeometryType::Line:
+      setupLine( parentEntity );
+      setupMarker( parentEntity );
+      break;
+    case Qgis::GeometryType::Polygon:
+      setupMarker( parentEntity );
+      setupLine( parentEntity );
+      setupPolygon( parentEntity );
+      break;
+    case Qgis::GeometryType::Null:
+    case Qgis::GeometryType::Unknown:
+      QgsDebugError( "Unknown GeometryType used in QgsRubberband3D" );
+      break;
+  }
+}
+
+void QgsRubberBand3D::setupMarker( Qt3DCore::QEntity *parentEntity )
+{
+  mMarkerEntity = make_qobject_unique<Qt3DCore::QEntity>( parentEntity );
+  mMarkerGeometry = new QgsBillboardGeometry();
+  mMarkerGeometryRenderer = new Qt3DRender::QGeometryRenderer;
+  mMarkerGeometryRenderer->setPrimitiveType( Qt3DRender::QGeometryRenderer::TriangleStrip );
+  mMarkerGeometryRenderer->setGeometry( mMarkerGeometry );
+  mMarkerGeometryRenderer->setVertexCount( 4 );
+  mMarkerGeometryRenderer->setInstanceCount( 0 );
+
+  setMarkerType( mMarkerType );
+  mMarkerEntity->addComponent( mMarkerGeometryRenderer );
+
+  mMarkerTransform = new QgsGeoTransform;
+  mMarkerTransform->setOrigin( mMapSettings->origin() );
+  mMarkerEntity->addComponent( mMarkerTransform );
+}
+
+void QgsRubberBand3D::setupLine( Qt3DCore::QEntity *parentEntity )
+{
+  mLineEntity = make_qobject_unique<Qt3DCore::QEntity>( parentEntity );
 
   QgsLineVertexData dummyLineData;
-  mGeometry = dummyLineData.createGeometry( mLineEntity );
+  mLineGeometry = dummyLineData.createGeometry( mLineEntity );
 
-  Q_ASSERT( mGeometry->attributes().count() == 2 );
-  mPositionAttribute = mGeometry->attributes()[0];
-  mIndexAttribute = mGeometry->attributes()[1];
+  Q_ASSERT( mLineGeometry->attributes().count() == 5 );
+  mPointAAttribute = mLineGeometry->attributes().at( 1 );
+  mPointBAttribute = mLineGeometry->attributes().at( 2 );
+  mPointPrevAttribute = mLineGeometry->attributes().at( 3 );
+  mPointNextAttribute = mLineGeometry->attributes().at( 4 );
 
-  mGeomRenderer = new Qt3DRender::QGeometryRenderer;
-  mGeomRenderer->setPrimitiveType( Qt3DRender::QGeometryRenderer::LineStripAdjacency );
-  mGeomRenderer->setGeometry( mGeometry );
-  mGeomRenderer->setPrimitiveRestartEnabled( true );
-  mGeomRenderer->setRestartIndexValue( 0 );
+  mLineGeometryRenderer = new Qt3DRender::QGeometryRenderer;
+  mLineGeometryRenderer->setPrimitiveType( Qt3DRender::QGeometryRenderer::Triangles );
+  mLineGeometryRenderer->setGeometry( mLineGeometry );
+  mLineGeometryRenderer->setVertexCount( 6 );
+  mLineGeometryRenderer->setInstanceCount( 0 );
 
-  mLineEntity->addComponent( mGeomRenderer );
+  mLineEntity->addComponent( mLineGeometryRenderer );
 
   mLineMaterial = new QgsLineMaterial;
-  mLineMaterial->setLineWidth( 3 );
-  mLineMaterial->setLineColor( Qt::red );
+  mLineMaterial->setLineWidth( mWidth );
+  mLineMaterial->setLineColor( mColor );
 
-  QObject::connect( engine, &QgsAbstract3DEngine::sizeChanged, mLineMaterial, [this, engine]
-  {
-    mLineMaterial->setViewportSize( engine->size() );
-  } );
-  mLineMaterial->setViewportSize( engine->size() );
+  QObject::connect( mEngine, &QgsAbstract3DEngine::sizeChanged, mLineMaterial, [this] { mLineMaterial->setViewportSize( mEngine->size() ); } );
+  mLineMaterial->setViewportSize( mEngine->size() );
 
   mLineEntity->addComponent( mLineMaterial );
 
-  // Rubberband vertex markers
-  mMarkerEntity = new Qt3DCore::QEntity( parentEntity );
-  mMarkerGeometry = new QgsBillboardGeometry();
-  mMarkerGeometryRenderer = new Qt3DRender::QGeometryRenderer;
-  mMarkerGeometryRenderer->setPrimitiveType( Qt3DRender::QGeometryRenderer::Points );
-  mMarkerGeometryRenderer->setGeometry( mMarkerGeometry );
-  mMarkerGeometryRenderer->setVertexCount( mMarkerGeometry->count() );
+  mLineTransform = new QgsGeoTransform;
+  mLineTransform->setOrigin( mMapSettings->origin() );
+  mLineEntity->addComponent( mLineTransform );
 
-  const QVariantMap props
+  mJoinEntity = make_qobject_unique<Qt3DCore::QEntity>( parentEntity );
+
+  mJoinGeometry = dummyLineData.createJoinGeometry( mJoinEntity );
+
+  mJoinPointAAttribute = mJoinGeometry->attributes().at( 1 );
+  mJoinPointBAttribute = mJoinGeometry->attributes().at( 2 );
+  mJoinPointCAttribute = mJoinGeometry->attributes().at( 3 );
+
+  mJoinGeometryRenderer = new Qt3DRender::QGeometryRenderer;
+  mJoinGeometryRenderer->setPrimitiveType( Qt3DRender::QGeometryRenderer::Triangles );
+  mJoinGeometryRenderer->setGeometry( mJoinGeometry );
+  mJoinGeometryRenderer->setVertexCount( 6 );
+  mJoinGeometryRenderer->setInstanceCount( 0 );
+
+  mJoinEntity->addComponent( mJoinGeometryRenderer );
+
+  mJoinMaterial = new QgsLineMaterial( QgsLineMaterial::LinePart::Join );
+  mJoinMaterial->setLineWidth( mWidth );
+  mJoinMaterial->setLineColor( mColor );
+
+  QObject::connect( mEngine, &QgsAbstract3DEngine::sizeChanged, mJoinMaterial, [this] { mJoinMaterial->setViewportSize( mEngine->size() ); } );
+  mJoinMaterial->setViewportSize( mEngine->size() );
+
+  mJoinEntity->addComponent( mJoinMaterial );
+
+  mJoinTransform = new QgsGeoTransform;
+  mJoinTransform->setOrigin( mMapSettings->origin() );
+  mJoinEntity->addComponent( mJoinTransform );
+}
+
+void QgsRubberBand3D::setupPolygon( Qt3DCore::QEntity *parentEntity )
+{
+  mPolygonEntity = make_qobject_unique<Qt3DCore::QEntity>( parentEntity );
+
+  mPolygonGeometry = new QgsTessellatedPolygonGeometry();
+
+  Qt3DRender::QGeometryRenderer *polygonGeometryRenderer = new Qt3DRender::QGeometryRenderer;
+  polygonGeometryRenderer->setPrimitiveType( Qt3DRender::QGeometryRenderer::Triangles );
+  polygonGeometryRenderer->setGeometry( mPolygonGeometry );
+  mPolygonEntity->addComponent( polygonGeometryRenderer );
+
+  QColor color = mColor;
+  color.setAlphaF( DEFAULT_POLYGON_OPACITY );
+  mPolygonMaterial = new QgsUnlitMaterial();
+  mPolygonMaterial->setColor( color );
+
+  mPolygonEntity->addComponent( mPolygonMaterial );
+
+  mPolygonTransform = new QgsGeoTransform;
+  mPolygonTransform->setOrigin( mMapSettings->origin() );
+  mPolygonEntity->addComponent( mPolygonTransform );
+}
+
+void QgsRubberBand3D::removePoint( int index )
+{
+  if ( QgsPolygon *polygon = qgsgeometry_cast<QgsPolygon *>( mGeometry.get() ) )
   {
-    {QStringLiteral( "color" ), QStringLiteral( "red" ) },
-    {QStringLiteral( "size" ), 6 },
-    {QStringLiteral( "outline_color" ), QStringLiteral( "green" ) },
-    {QStringLiteral( "outline_width" ), 0.5 }
-  };
+    QgsLineString *lineString = qgsgeometry_cast<QgsLineString *>( polygon->exteriorRing() );
+    const int vertexIndex = index < 0 ? lineString->numPoints() - 1 + index : index;
+    lineString->deleteVertex( QgsVertexId( 0, 0, vertexIndex ) );
 
-  mMarkerSymbol = QgsMarkerSymbol::createSimple( props );
-  updateMarkerMaterial();
-  mMarkerEntity->addComponent( mMarkerGeometryRenderer );
+    if ( lineString->numPoints() < 3 )
+    {
+      mGeometry.set( new QgsLineString( *lineString ) );
+    }
+  }
+  else if ( QgsLineString *lineString = qgsgeometry_cast<QgsLineString *>( mGeometry.get() ) )
+  {
+    const int vertexIndex = index < 0 ? lineString->numPoints() + index : index;
+    lineString->deleteVertex( QgsVertexId( 0, 0, vertexIndex ) );
+  }
+  else
+  {
+    return;
+  }
+
+  updateGeometry();
 }
 
 QgsRubberBand3D::~QgsRubberBand3D()
 {
-  delete mLineEntity;
-  delete mMarkerEntity;
-  delete mMarkerSymbol;
+  if ( mPolygonEntity )
+  {
+    mPolygonEntity.reset();
+  }
+  if ( mLineEntity )
+  {
+    mLineEntity.reset();
+  }
+  if ( mJoinEntity )
+  {
+    mJoinEntity.reset();
+  }
+  if ( mMarkerEntity )
+  {
+    mMarkerEntity.reset();
+  }
 }
+
 
 float QgsRubberBand3D::width() const
 {
-  return mLineMaterial->lineWidth();
+  return mWidth;
 }
 
 void QgsRubberBand3D::setWidth( float width )
 {
-  mLineMaterial->setLineWidth( width );
+  const bool isLineOrPolygon = mGeometryType == Qgis::GeometryType::Line || mGeometryType == Qgis::GeometryType::Polygon;
+  mWidth = width;
+
+  if ( isLineOrPolygon && mEdgesEnabled )
+  {
+    // when highlighting lines, the vertex markers should be wider
+    mLineMaterial->setLineWidth( width );
+    mJoinMaterial->setLineWidth( width );
+    width *= 3;
+  }
+
   mMarkerSymbol->setSize( width );
   updateMarkerMaterial();
 }
 
 QColor QgsRubberBand3D::color() const
 {
-  return mLineMaterial->lineColor();
+  return mColor;
 }
 
-void QgsRubberBand3D::setColor( QColor color )
+void QgsRubberBand3D::setColor( const QColor color )
 {
-  mLineMaterial->setLineColor( color );
-  mMarkerSymbol->setColor( color.lighter( 130 ) );
-  if ( mMarkerSymbol->symbolLayerCount() > 0 && mMarkerSymbol->symbolLayer( 0 )->layerType() == QLatin1String( "SimpleMarker" ) )
+  const bool isLineOrPolygon = mGeometryType == Qgis::GeometryType::Line || mGeometryType == Qgis::GeometryType::Polygon;
+  mColor = color;
+
+  if ( mEdgesEnabled && isLineOrPolygon )
   {
-    static_cast<QgsMarkerSymbolLayer *>( mMarkerSymbol->symbolLayer( 0 ) )->setStrokeColor( color );
+    mLineMaterial->setLineColor( color );
+    mJoinMaterial->setLineColor( color );
+  }
+
+  if ( isLineOrPolygon )
+  {
+    mMarkerSymbol->setColor( color.lighter( 130 ) );
+  }
+  else
+  {
+    mMarkerSymbol->setColor( color );
+  }
+
+  if ( mMarkerSymbol->symbolLayerCount() > 0 && mMarkerSymbol->symbolLayer( 0 )->layerType() == "SimpleMarker"_L1 && !mOutlineColor.value() )
+  {
+    mMarkerSymbol->symbolLayer( 0 )->setStrokeColor( color );
+  }
+  updateMarkerMaterial();
+
+  if ( mGeometryType == Qgis::GeometryType::Polygon )
+  {
+    if ( mPolygonMaterial )
+      mPolygonEntity->removeComponent( mPolygonMaterial );
+
+    if ( mPolygonFillEnabled )
+    {
+      QColor color = mColor;
+      color.setAlphaF( DEFAULT_POLYGON_OPACITY );
+      mPolygonMaterial = new QgsUnlitMaterial();
+      mPolygonMaterial->setColor( color );
+      mPolygonEntity->addComponent( mPolygonMaterial );
+    }
+  }
+}
+
+QColor QgsRubberBand3D::outlineColor() const
+{
+  return mOutlineColor;
+}
+
+void QgsRubberBand3D::setOutlineColor( const QColor color )
+{
+  mOutlineColor = color;
+
+  if ( mMarkerSymbol->symbolLayerCount() > 0 && mMarkerSymbol->symbolLayer( 0 )->layerType() == "SimpleMarker"_L1 )
+  {
+    mMarkerSymbol->symbolLayer( 0 )->setStrokeColor( color );
   }
   updateMarkerMaterial();
 }
 
+void QgsRubberBand3D::setMarkerType( const MarkerType marker )
+{
+  mMarkerType = marker;
+
+  const bool lineOrPolygon = mGeometryType == Qgis::GeometryType::Line || mGeometryType == Qgis::GeometryType::Polygon;
+
+  const QVariantMap props {
+    { u"color"_s, lineOrPolygon ? mColor.lighter( 130 ).name() : mColor.name() },
+    { u"size_unit"_s, u"pixel"_s },
+    { u"size"_s, QString::number( lineOrPolygon ? mWidth * 3.f : mWidth ) },
+    { u"outline_color"_s, mOutlineColor.value() ? mOutlineColor.name() : mColor.name() },
+    { u"outline_style"_s, QgsSymbolLayerUtils::encodePenStyle( mMarkerOutlineStyle ) },
+    { u"outline_width"_s, QString::number( lineOrPolygon ? 0.5 : 1 ) },
+    { u"name"_s, mMarkerType == Square ? u"square"_s : u"circle"_s }
+  };
+
+  mMarkerSymbol = QgsMarkerSymbol::createSimple( props );
+  updateMarkerMaterial();
+}
+
+QgsRubberBand3D::MarkerType QgsRubberBand3D::markerType() const
+{
+  return mMarkerType;
+}
+
+void QgsRubberBand3D::setMarkerOutlineStyle( const Qt::PenStyle style )
+{
+  mMarkerOutlineStyle = style;
+  setMarkerType( markerType() );
+}
+
+Qt::PenStyle QgsRubberBand3D::markerOutlineStyle() const
+{
+  return mMarkerOutlineStyle;
+}
+
+void QgsRubberBand3D::setMarkersEnabled( const bool enable )
+{
+  mMarkerEnabled = enable;
+  updateMarkerMaterial();
+}
+
+bool QgsRubberBand3D::hasMarkersEnabled() const
+{
+  return mMarkerEnabled;
+}
+
+void QgsRubberBand3D::setEdgesEnabled( const bool enable )
+{
+  mEdgesEnabled = enable;
+  setColor( mColor );
+}
+
+bool QgsRubberBand3D::hasEdgesEnabled() const
+{
+  return mEdgesEnabled;
+}
+
+void QgsRubberBand3D::setFillEnabled( const bool enable )
+{
+  mPolygonFillEnabled = enable;
+  setColor( mColor );
+}
+
+bool QgsRubberBand3D::hasFillEnabled() const
+{
+  return mPolygonFillEnabled;
+}
+
 void QgsRubberBand3D::reset()
 {
-  mLineString.clear();
-  mShowLastMarker = false;
+  mGeometry.set( nullptr );
   updateGeometry();
 }
 
 void QgsRubberBand3D::addPoint( const QgsPoint &pt )
 {
-  mLineString.addVertex( pt );
+  if ( QgsPolygon *polygon = qgsgeometry_cast<QgsPolygon *>( mGeometry.get() ) )
+  {
+    QgsLineString *exteriorRing = qgsgeometry_cast<QgsLineString *>( polygon->exteriorRing() );
+    const int lastVertexIndex = exteriorRing->numPoints() - 1;
+    exteriorRing->insertVertex( QgsVertexId( 0, 0, lastVertexIndex ), pt );
+  }
+  else if ( QgsLineString *lineString = qgsgeometry_cast<QgsLineString *>( mGeometry.get() ) )
+  {
+    lineString->addVertex( pt );
+    // transform linestring to polygon if we have enough vertices
+    if ( mGeometryType == Qgis::GeometryType::Polygon && lineString->numPoints() >= 3 )
+    {
+      mGeometry.set( new QgsPolygon( lineString->clone() ) );
+    }
+  }
+  else if ( !mGeometry.constGet() )
+  {
+    mGeometry.set( new QgsLineString( QVector<QgsPoint> { pt } ) );
+  }
+
+  updateGeometry();
+}
+
+void QgsRubberBand3D::setGeometry( const QgsGeometry &geometry )
+{
+  mGeometry = geometry;
+  mGeometryType = geometry.type();
+
   updateGeometry();
 }
 
 void QgsRubberBand3D::removeLastPoint()
 {
-  const int lastVertexIndex = mLineString.numPoints() - 1;
-  mLineString.deleteVertex( QgsVertexId( 0, 0, lastVertexIndex ) );
-  updateGeometry();
+  removePoint( -1 );
+}
+
+void QgsRubberBand3D::removePenultimatePoint()
+{
+  removePoint( -2 );
 }
 
 void QgsRubberBand3D::moveLastPoint( const QgsPoint &pt )
 {
-  const int lastVertexIndex = mLineString.numPoints() - 1;
-  mLineString.moveVertex( QgsVertexId( 0, 0, lastVertexIndex ), pt );
+  if ( QgsPolygon *polygon = qgsgeometry_cast<QgsPolygon *>( mGeometry.get() ) )
+  {
+    QgsLineString *lineString = qgsgeometry_cast<QgsLineString *>( polygon->exteriorRing() );
+    const int lastVertexIndex = lineString->numPoints() - 2;
+    lineString->moveVertex( QgsVertexId( 0, 0, lastVertexIndex ), pt );
+  }
+  else if ( QgsLineString *lineString = qgsgeometry_cast<QgsLineString *>( mGeometry.get() ) )
+  {
+    const int lastVertexIndex = lineString->numPoints() - 1;
+    lineString->moveVertex( QgsVertexId( 0, 0, lastVertexIndex ), pt );
+  }
+  else
+  {
+    return;
+  }
+
   updateGeometry();
 }
 
 void QgsRubberBand3D::updateGeometry()
 {
+  // figure out a reasonable origin for the coordinates to keep them as small as possible
+  const QgsBox3D box = mGeometry.constGet() ? mGeometry.constGet()->boundingBox3D() : QgsBox3D();
+  const QgsVector3D dataOrigin = box.isNull() ? mMapSettings->origin() : box.center();
+
   QgsLineVertexData lineData;
-  lineData.withAdjacency = true;
-  lineData.init( Qgis::AltitudeClamping::Absolute, Qgis::AltitudeBinding::Vertex, 0, mMapSettings );
-  lineData.addLineString( mLineString );
+  lineData.geocentricCoordinates = mMapSettings->sceneMode() == Qgis::SceneMode::Globe;
+  lineData.init( Qgis::AltitudeClamping::Absolute, Qgis::AltitudeBinding::Vertex, 0, Qgs3DRenderContext::fromMapSettings( mMapSettings ), dataOrigin );
+  if ( const QgsPolygon *polygon = qgsgeometry_cast<const QgsPolygon *>( mGeometry.constGet() ) )
+  {
+    std::unique_ptr< QgsLineString > lineString( qgsgeometry_cast<QgsLineString *>( polygon->exteriorRing()->clone() ) );
+    const int lastVertexIndex = lineString->numPoints() - 1;
+    lineString->deleteVertex( QgsVertexId( 0, 0, lastVertexIndex ) );
+    lineData.addLineString( *lineString, 0, true );
+  }
+  else if ( const QgsLineString *lineString = qgsgeometry_cast<const QgsLineString *>( mGeometry.constGet() ) )
+  {
+    lineData.addLineString( *lineString, 0, false );
+  }
 
-  mPositionAttribute->buffer()->setData( lineData.createVertexBuffer() );
-  mIndexAttribute->buffer()->setData( lineData.createIndexBuffer() );
-  mGeomRenderer->setVertexCount( lineData.indexes.count() );
 
-  // first entry is empty for primitive restart
-  lineData.vertices.pop_front();
+  if ( mEdgesEnabled && ( mGeometryType == Qgis::GeometryType::Line || mGeometryType == Qgis::GeometryType::Polygon ) )
+  {
+    mPointAAttribute->buffer()->setData( lineData.createPointABuffer() );
+    mPointBAttribute->buffer()->setData( lineData.createPointBBuffer() );
+    mPointPrevAttribute->buffer()->setData( lineData.createPointPrevBuffer() );
+    mPointNextAttribute->buffer()->setData( lineData.createPointNextBuffer() );
+    mLineGeometryRenderer->setInstanceCount( lineData.pointsA.size() );
+    mLineTransform->setGeoTranslation( dataOrigin );
+
+    mJoinPointAAttribute->buffer()->setData( lineData.createJoinPointABuffer() );
+    mJoinPointBAttribute->buffer()->setData( lineData.createJoinPointBBuffer() );
+    mJoinPointCAttribute->buffer()->setData( lineData.createJoinPointCBuffer() );
+    mJoinGeometryRenderer->setInstanceCount( lineData.joinPointA.size() );
+    mJoinTransform->setGeoTranslation( dataOrigin );
+  }
 
   // we may not want a marker on the last point as it's tracked by the mouse cursor
-  if ( !mShowLastMarker && !lineData.vertices.isEmpty() )
+  if ( mHideLastMarker && !lineData.vertices.isEmpty() )
     lineData.vertices.pop_back();
 
-  mMarkerGeometry->setPoints( lineData.vertices );
-  mMarkerGeometryRenderer->setVertexCount( lineData.vertices.count() );
+  mMarkerGeometry->setPositions( lineData.vertices );
+  mMarkerGeometryRenderer->setVertexCount( 4 );
+  mMarkerGeometryRenderer->setInstanceCount( lineData.vertices.count() );
+  mMarkerTransform->setGeoTranslation( dataOrigin );
+
+  if ( mGeometryType == Qgis::GeometryType::Polygon )
+  {
+    if ( const QgsPolygon *polygon = qgsgeometry_cast<const QgsPolygon *>( mGeometry.constGet() ) )
+    {
+      QgsTessellator tessellator;
+      tessellator.setOrigin( mMapSettings->origin() );
+      tessellator.setAddNormals( true );
+      tessellator.addPolygon( *polygon, 0 );
+      if ( !tessellator.error().isEmpty() )
+      {
+        QgsMessageLog::logMessage( tessellator.error(), QObject::tr( "3D" ) );
+      }
+      // extract vertex buffer data from tessellator
+      const QByteArray vertexBuffer = tessellator.vertexBuffer();
+      const QByteArray indexBuffer = tessellator.indexBuffer();
+      const size_t vertexCount = tessellator.uniqueVertexCount();
+      const size_t indexCount = tessellator.dataVerticesCount();
+
+      mPolygonGeometry->setVertexBufferData( vertexBuffer, vertexCount, QVector<QgsFeatureId>(), QVector<uint>() );
+      mPolygonGeometry->setIndexBufferData( indexBuffer, indexCount );
+      mPolygonTransform->setGeoTranslation( mMapSettings->origin() );
+    }
+    else
+    {
+      mPolygonGeometry->setVertexBufferData( QByteArray(), 0, QVector<QgsFeatureId>(), QVector<uint>() );
+      mPolygonGeometry->setIndexBufferData( QByteArray(), 0 );
+    }
+  }
 }
 
 void QgsRubberBand3D::updateMarkerMaterial()
 {
-  delete mMarkerMaterial;
-  mMarkerMaterial = new QgsPoint3DBillboardMaterial();
-  mMarkerMaterial->setTexture2DFromSymbol( mMarkerSymbol, *mMapSettings );
-  mMarkerEntity->addComponent( mMarkerMaterial );
-
-  //TODO: QgsAbstract3DEngine::sizeChanged should have const QSize &size param
-  QObject::connect( mEngine, &QgsAbstract3DEngine::sizeChanged, mMarkerMaterial, [this]
+  if ( mMarkerEnabled )
   {
+    if ( !mMarkerMaterial )
+    {
+      mMarkerMaterial = new QgsPoint3DBillboardMaterial();
+      mMarkerEntity->addComponent( mMarkerMaterial );
+      //TODO: QgsAbstract3DEngine::sizeChanged should have const QSize &size param
+      QObject::connect( mEngine, &QgsAbstract3DEngine::sizeChanged, mMarkerMaterial, [material = mMarkerMaterial, engine = mEngine] { material->setViewportSize( engine->size() ); } );
+    }
+
+    mMarkerMaterial->setTexture2DFromSymbol( mMarkerSymbol.get(), Qgs3DRenderContext::fromMapSettings( mMapSettings ) );
     mMarkerMaterial->setViewportSize( mEngine->size() );
-  } );
-  mMarkerMaterial->setViewportSize( mEngine->size() );
+  }
+  else if ( !mMarkerEnabled && mMarkerMaterial )
+  {
+    mMarkerEntity->removeComponent( mMarkerMaterial );
+    mMarkerMaterial->setParent( static_cast<Qt3DCore::QEntity *>( nullptr ) );
+    mMarkerMaterial->deleteLater();
+    mMarkerMaterial = nullptr;
+  }
 }
 /// @endcond

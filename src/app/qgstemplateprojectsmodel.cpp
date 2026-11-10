@@ -14,115 +14,144 @@
  ***************************************************************************/
 
 #include "qgstemplateprojectsmodel.h"
-#include "qgsziputils.h"
-#include "qgssettings.h"
-#include "qgsapplication.h"
-#include "qgis.h"
-#include "qgsprojectlistitemdelegate.h"
-#include "qgsproject.h"
-
-#include <QApplication>
-#include <QStandardPaths>
-#include <QDir>
-#include <QCryptographicHash>
-#include <QPainter>
 
 #include <memory>
 
+#include "qgis.h"
+#include "qgsapplication.h"
+#include "qgsproject.h"
+#include "qgssettingsregistrycore.h"
+#include "qgsziputils.h"
+
+#include <QApplication>
+#include <QCryptographicHash>
+#include <QDir>
+#include <QPainter>
+#include <QString>
+#include <QUrl>
+
+#include "moc_qgstemplateprojectsmodel.cpp"
+
+using namespace Qt::StringLiterals;
 
 QgsTemplateProjectsModel::QgsTemplateProjectsModel( QObject *parent )
   : QStandardItemModel( parent )
 {
-  const QStringList paths = QStandardPaths::standardLocations( QStandardPaths::AppDataLocation );
-  const QString templateDirName = QgsSettings().value( QStringLiteral( "qgis/projectTemplateDir" ),
-                                  QString( QgsApplication::qgisSettingsDirPath() + QStringLiteral( "project_templates" ) ) ).toString();
-
-  for ( const QString &templatePath : paths )
-  {
-    const QString path = templatePath + QDir::separator() + QStringLiteral( "project_templates" );
-    addTemplateDirectory( path );
-  }
-
-  addTemplateDirectory( templateDirName );
-
-  connect( &mFileSystemWatcher, &QFileSystemWatcher::directoryChanged, this, &QgsTemplateProjectsModel::scanDirectory );
-
   setColumnCount( 1 );
 
+  const QColor canvasColor = QgsSettingsRegistryCore::settingsDefaultCanvasColor->value();
+
   QStandardItem *emptyProjectItem = new QStandardItem();
-
-  emptyProjectItem->setData( tr( "New Empty Project" ), QgsProjectListItemDelegate::TitleRole );
-  connect( QgsProject::instance(), &QgsProject::crsChanged, this, [emptyProjectItem]() { emptyProjectItem->setData( QgsProject::instance()->crs().userFriendlyIdentifier(), QgsProjectListItemDelegate::CrsRole ); } );
-  emptyProjectItem->setData( QgsProject::instance()->crs().userFriendlyIdentifier(), QgsProjectListItemDelegate::CrsRole );
-  emptyProjectItem->setFlags( Qt::ItemFlag::ItemIsSelectable | Qt::ItemFlag::ItemIsEnabled ) ;
-  const double devicePixelRatio = qobject_cast< QGuiApplication * >( QCoreApplication::instance() )->devicePixelRatio();
-  QImage image( QSize( 250 * devicePixelRatio, 177 * devicePixelRatio ), QImage::Format_ARGB32 );
-  const QgsSettings settings;
-  const int myRed = settings.value( QStringLiteral( "qgis/default_canvas_color_red" ), 255 ).toInt();
-  const int myGreen = settings.value( QStringLiteral( "qgis/default_canvas_color_green" ), 255 ).toInt();
-  const int myBlue = settings.value( QStringLiteral( "qgis/default_canvas_color_blue" ), 255 ).toInt();
-  image.fill( QColor( myRed, myGreen, myBlue ) );
-  QPainter painter( &image );
-  painter.setOpacity( 0.5 );
-  const QRect rect( 20, 20, image.width() - 40, image.height() - 40 );
-  QPen pen;
-  pen.setStyle( Qt::DashLine );
-  pen.setColor( Qt::gray );
-  painter.setPen( pen );
-  painter.drawRect( rect );
-  const QgsProjectPreviewImage previewImage( image );
-  emptyProjectItem->setData( previewImage.pixmap(), Qt::DecorationRole );
-
+  emptyProjectItem->setData( false, static_cast<int>( CustomRole::WritableRole ) );
+  emptyProjectItem->setData( canvasColor, static_cast<int>( CustomRole::CanvasColorRole ) );
+  emptyProjectItem->setData( static_cast<int>( TemplateType::Blank ), static_cast<int>( CustomRole::TypeRole ) );
+  emptyProjectItem->setData( tr( "New Empty Project" ), static_cast<int>( CustomRole::TitleRole ) );
+  connect( QgsProject::instance(), &QgsProject::crsChanged, this, [emptyProjectItem]() {
+    emptyProjectItem->setData( QgsProject::instance()->crs().userFriendlyIdentifier(), static_cast<int>( CustomRole::CrsRole ) );
+  } );
+  emptyProjectItem->setData( QgsProject::instance()->crs().userFriendlyIdentifier(), static_cast<int>( CustomRole::CrsRole ) );
+  emptyProjectItem->setFlags( Qt::ItemFlag::ItemIsSelectable | Qt::ItemFlag::ItemIsEnabled );
   appendRow( emptyProjectItem );
+
+  emptyProjectItem = new QStandardItem();
+  emptyProjectItem->setData( false, static_cast<int>( CustomRole::WritableRole ) );
+  emptyProjectItem->setData( canvasColor, static_cast<int>( CustomRole::CanvasColorRole ) );
+  emptyProjectItem->setData( static_cast<int>( TemplateType::Basemap ), static_cast<int>( CustomRole::TypeRole ) );
+  emptyProjectItem->setData( tr( "OpenStreetMap Basemap" ), static_cast<int>( CustomRole::TitleRole ) );
+  emptyProjectItem->setData( QgsCoordinateReferenceSystem( u"EPSG:3857"_s ).userFriendlyIdentifier(), static_cast<int>( CustomRole::CrsRole ) );
+  emptyProjectItem->setFlags( Qt::ItemFlag::ItemIsSelectable | Qt::ItemFlag::ItemIsEnabled );
+  appendRow( emptyProjectItem );
+
+  reload();
 }
 
-void QgsTemplateProjectsModel::addTemplateDirectory( const QString &path )
+QHash<int, QByteArray> QgsTemplateProjectsModel::roleNames() const
 {
-  if ( QDir().exists( path ) )
+  QHash<int, QByteArray> roles = QStandardItemModel::roleNames();
+  roles[static_cast<int>( CustomRole::TypeRole )] = "Type";
+  roles[static_cast<int>( CustomRole::TitleRole )] = "Title";
+  roles[static_cast<int>( CustomRole::PathRole )] = "TemplatePath";
+  roles[static_cast<int>( CustomRole::NativePathRole )] = "TemplateNativePath"; //#spellok
+  roles[static_cast<int>( CustomRole::CrsRole )] = "Crs";
+  roles[static_cast<int>( CustomRole::PreviewImagePathRole )] = "PreviewImagePath";
+  roles[static_cast<int>( CustomRole::WritableRole )] = "Writable";
+  roles[static_cast<int>( CustomRole::CanvasColorRole )] = "CanvasColor";
+  roles[static_cast<int>( CustomRole::SectionRole )] = "Section";
+  return roles;
+}
+
+QList<std::pair<QString, QString>> QgsTemplateProjectsModel::labelledTemplatePaths()
+{
+  const QStringList templatePaths = QgsApplication::projectTemplatePaths();
+
+  QSet<QString> directoryNames;
+  bool duplicateFound = false;
+  for ( const QString &templatePath : templatePaths )
   {
-    scanDirectory( path );
-    mFileSystemWatcher.addPath( path );
+    const QString dirName = QDir( templatePath ).dirName();
+    if ( directoryNames.contains( dirName ) )
+    {
+      duplicateFound = true;
+      break;
+    }
+    directoryNames << dirName;
   }
+
+  QList<std::pair<QString, QString>> result;
+  result.reserve( templatePaths.size() );
+  for ( const QString &templatePath : templatePaths )
+  {
+    result.append( { duplicateFound ? QDir::toNativeSeparators( templatePath ) : QDir( templatePath ).dirName(), templatePath } );
+  }
+  return result;
 }
 
-void QgsTemplateProjectsModel::scanDirectory( const QString &path )
+void QgsTemplateProjectsModel::reload()
 {
-  const QDir dir = QDir( path );
-  const QFileInfoList files = dir.entryInfoList( QStringList() << QStringLiteral( "*.qgs" ) << QStringLiteral( "*.qgz" ) );
-
-  // Remove any template from this directory
+  // Remove file templates only
   for ( int i = rowCount() - 1; i >= 0; --i )
   {
-    if ( index( i, 0 ).data( QgsProjectListItemDelegate::NativePathRole ).toString().startsWith( path ) )
+    if ( index( i, 0 ).data( static_cast<int>( CustomRole::TypeRole ) ).toInt() == static_cast<int>( TemplateType::File ) )
     {
       removeRow( i );
     }
   }
 
-  // Refill with templates from this directory
-  for ( const QFileInfo &file : files )
+  // Use default canvas color when preview image is missing
+  const QColor canvasColor = QgsSettingsRegistryCore::settingsDefaultCanvasColor->value();
+
+  int row = 0;
+  for ( const std::pair<QString, QString> &labelsPaths : QgsTemplateProjectsModel::labelledTemplatePaths() )
   {
-    std::unique_ptr<QStandardItem> item = std::make_unique<QStandardItem>( file.fileName() ) ;
+    QString section = labelsPaths.first;
+    QString templatePath = labelsPaths.second;
+    const QDir dir( templatePath );
+    if ( !dir.exists() )
+      continue;
 
-    const QString fileId = QCryptographicHash::hash( file.filePath().toUtf8(), QCryptographicHash::Sha224 ).toHex();
-
-    QStringList files;
-    QDir().mkpath( mTemporaryDir.filePath( fileId ) );
-
-    QgsZipUtils::unzip( file.filePath(), mTemporaryDir.filePath( fileId ), files );
-
-    const QString filename( mTemporaryDir.filePath( fileId ) + QDir::separator() + QStringLiteral( "preview.png" ) );
-
-    const QgsProjectPreviewImage thumbnail( filename );
-
-    if ( !thumbnail.isNull() )
+    const QFileInfoList files = dir.entryInfoList( QStringList() << u"*.qgs"_s << u"*.qgz"_s );
+    for ( const QFileInfo &file : files )
     {
-      item->setData( thumbnail.pixmap(), Qt::DecorationRole );
-    }
-    item->setData( file.baseName(), QgsProjectListItemDelegate::TitleRole );
-    item->setData( file.filePath(), QgsProjectListItemDelegate::NativePathRole );
+      auto item = std::make_unique<QStandardItem>( file.fileName() );
+      item->setData( file.isWritable(), static_cast<int>( CustomRole::WritableRole ) );
+      item->setData( canvasColor, static_cast<int>( CustomRole::CanvasColorRole ) );
+      item->setData( static_cast<int>( TemplateType::File ), static_cast<int>( CustomRole::TypeRole ) );
 
-    item->setFlags( Qt::ItemFlag::ItemIsSelectable | Qt::ItemFlag::ItemIsEnabled ) ;
-    appendRow( item.release() );
+      const QString fileId = QCryptographicHash::hash( file.filePath().toUtf8(), QCryptographicHash::Sha224 ).toHex();
+
+      QStringList unzippedFiles;
+      QDir().mkpath( mTemporaryDir.filePath( fileId ) );
+
+      QgsZipUtils::unzip( file.filePath(), mTemporaryDir.filePath( fileId ), unzippedFiles );
+
+      const QString filename( mTemporaryDir.filePath( fileId ) + QDir::separator() + u"preview.png"_s );
+      item->setData( QFileInfo::exists( filename ) ? QUrl::fromLocalFile( filename ) : QString(), static_cast<int>( CustomRole::PreviewImagePathRole ) );
+      item->setData( file.baseName(), static_cast<int>( CustomRole::TitleRole ) );
+      item->setData( file.filePath(), static_cast<int>( CustomRole::NativePathRole ) );
+      item->setData( section, static_cast<int>( CustomRole::SectionRole ) );
+
+      item->setFlags( Qt::ItemFlag::ItemIsSelectable | Qt::ItemFlag::ItemIsEnabled );
+      insertRow( row++, item.release() );
+    }
   }
 }

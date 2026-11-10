@@ -19,9 +19,7 @@ QgsSldExportContext::QgsSldExportContext( const Qgis::SldExportOptions &options,
   : mExportOptions( options )
   , mVendorExtensions( vendorExtension )
   , mExportFilePath( filePath )
-{
-
-}
+{}
 
 Qgis::SldExportOptions QgsSldExportContext::exportOptions() const
 {
@@ -51,4 +49,14 @@ QString QgsSldExportContext::exportFilePath() const
 void QgsSldExportContext::setExportFilePath( const QString &exportFilePath )
 {
   mExportFilePath = exportFilePath;
+}
+
+QVariantMap QgsSldExportContext::extraProperties() const
+{
+  return mExtraProperties;
+}
+
+void QgsSldExportContext::setExtraProperties( const QVariantMap &properties )
+{
+  mExtraProperties = properties;
 }

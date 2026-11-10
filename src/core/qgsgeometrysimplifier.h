@@ -17,8 +17,8 @@
 #ifndef QGSGEOMETRYSIMPLIFIER_H
 #define QGSGEOMETRYSIMPLIFIER_H
 
-#include <QVector>
 #include <QPointF>
+#include <QVector>
 
 class QgsGeometry;
 class QgsRectangle;
@@ -29,7 +29,7 @@ class QgsAbstractGeometry;
 
 /**
  * \ingroup core
- * \brief Abstract base class for simplify geometries using a specific algorithm
+ * \brief Abstract base class for simplifying geometries using a specific algorithm.
  */
 class CORE_EXPORT QgsAbstractGeometrySimplifier
 {
@@ -62,7 +62,7 @@ class CORE_EXPORT QgsAbstractGeometrySimplifier
 
 /**
  * \ingroup core
- * \brief Implementation of GeometrySimplifier using the Douglas-Peucker algorithm
+ * \brief Implementation of GeometrySimplifier using the Douglas-Peucker algorithm.
  *
  * Simplifies a geometry, ensuring that the result is a valid geometry having the same dimension and number of components as the input.
  * The simplification uses a maximum distance difference algorithm similar to the one used in the Douglas-Peucker algorithm.
@@ -70,7 +70,6 @@ class CORE_EXPORT QgsAbstractGeometrySimplifier
 class CORE_EXPORT QgsTopologyPreservingSimplifier : public QgsAbstractGeometrySimplifier
 {
   public:
-
     /**
      * Constructor for QgsTopologyPreservingSimplifier. The tolerance parameter
      * is specified in layer units.
@@ -83,7 +82,6 @@ class CORE_EXPORT QgsTopologyPreservingSimplifier : public QgsAbstractGeometrySi
   protected:
     //! Distance tolerance for the simplification
     double mTolerance;
-
 };
 
 #endif // QGSGEOMETRYSIMPLIFIER_H

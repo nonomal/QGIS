@@ -14,20 +14,18 @@
  ***************************************************************************/
 #include "qgsoptionsutils.h"
 
-#include "qgisapp.h"
 #include "qgis.h"
+#include "qgisapp.h"
 #include "qgsoptionswidgetfactory.h"
 
-QgsScopedOptionsWidgetFactory::QgsScopedOptionsWidgetFactory( std::unique_ptr< QgsOptionsWidgetFactory > &&factory )
+QgsScopedOptionsWidgetFactory::QgsScopedOptionsWidgetFactory( std::unique_ptr<QgsOptionsWidgetFactory> &&factory )
 {
   reset( std::move( factory ) );
 }
 
 QgsScopedOptionsWidgetFactory::QgsScopedOptionsWidgetFactory( QgsScopedOptionsWidgetFactory &&other )
   : mFactory( std::move( other.mFactory ) )
-{
-
-}
+{}
 
 QgsScopedOptionsWidgetFactory::~QgsScopedOptionsWidgetFactory()
 {

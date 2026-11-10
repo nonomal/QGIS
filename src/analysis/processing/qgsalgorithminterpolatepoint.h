@@ -18,10 +18,11 @@
 #ifndef QGSINTERPOLATEPOINTALGORITHM_H
 #define QGSINTERPOLATEPOINTALGORITHM_H
 
-#define SIP_NO_FILE
 
 #include "qgis_sip.h"
 #include "qgsprocessingalgorithm.h"
+
+#define SIP_NO_FILE
 
 ///@cond PRIVATE
 
@@ -30,9 +31,7 @@
  */
 class QgsInterpolatePointAlgorithm : public QgsProcessingFeatureBasedAlgorithm
 {
-
   public:
-
     QgsInterpolatePointAlgorithm() = default;
     QString name() const override;
     QString displayName() const override;
@@ -51,19 +50,15 @@ class QgsInterpolatePointAlgorithm : public QgsProcessingFeatureBasedAlgorithm
     QString outputName() const override;
     Qgis::ProcessingFeatureSourceFlags sourceFlags() const override;
     bool prepareAlgorithm( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
-    QgsFeatureList processFeature( const QgsFeature &feature,  QgsProcessingContext &, QgsProcessingFeedback *feedback ) override;
+    QgsFeatureList processFeature( const QgsFeature &feature, QgsProcessingContext &, QgsProcessingFeedback *feedback ) override;
 
   private:
-
     double mDistance = 0.0;
     bool mDynamicDistance = false;
     QgsProperty mDistanceProperty;
-
 };
 
 
 ///@endcond PRIVATE
 
 #endif // QGSINTERPOLATEPOINTALGORITHM_H
-
-

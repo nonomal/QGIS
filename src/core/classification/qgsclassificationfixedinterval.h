@@ -28,18 +28,15 @@
 class CORE_EXPORT QgsClassificationFixedInterval : public QgsClassificationMethod
 {
   public:
-
     QgsClassificationFixedInterval();
-    QgsClassificationMethod *clone() const override;
+    std::unique_ptr< QgsClassificationMethod > clone() const override;
     QString name() const override;
     QString id() const override;
     QIcon icon() const override;
     bool valuesRequired() const override;
 
   private:
-    QList<double> calculateBreaks( double &minimum, double &maximum, const QList<double> &values, int nclasses ) override;
-
-
+    QList<double> calculateBreaks( double &minimum, double &maximum, const QList<double> &values, int nclasses, QString &error ) override;
 };
 
 #endif // QGSCLASSIFICATIONFIXEDINTERVAL_H

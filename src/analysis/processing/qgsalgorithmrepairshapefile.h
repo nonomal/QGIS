@@ -18,10 +18,11 @@
 #ifndef QGSALGORITHMREPAIRSHAPEFILE_H
 #define QGSALGORITHMREPAIRSHAPEFILE_H
 
-#define SIP_NO_FILE
 
 #include "qgis_sip.h"
 #include "qgsprocessingalgorithm.h"
+
+#define SIP_NO_FILE
 
 ///@cond PRIVATE
 
@@ -30,9 +31,7 @@
  */
 class QgsRepairShapefileAlgorithm : public QgsProcessingAlgorithm
 {
-
   public:
-
     QgsRepairShapefileAlgorithm() = default;
     void initAlgorithm( const QVariantMap &configuration = QVariantMap() ) override;
     QString name() const override;
@@ -45,9 +44,7 @@ class QgsRepairShapefileAlgorithm : public QgsProcessingAlgorithm
     QgsRepairShapefileAlgorithm *createInstance() const override SIP_FACTORY;
 
   protected:
-
-    QVariantMap processAlgorithm( const QVariantMap &parameters,
-                                  QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
+    QVariantMap processAlgorithm( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
 };
 
 ///@endcond PRIVATE

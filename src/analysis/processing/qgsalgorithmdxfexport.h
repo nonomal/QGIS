@@ -16,9 +16,10 @@
 #ifndef QGSDXFEXPORTALGORITHM_H
 #define QGSDXFEXPORTALGORITHM_H
 
-#define SIP_NO_FILE
 
 #include "qgsprocessingalgorithm.h"
+
+#define SIP_NO_FILE
 
 ///@cond PRIVATE
 
@@ -32,16 +33,17 @@ class QgsDxfExportAlgorithm : public QgsProcessingAlgorithm
     QString group() const override;
     QString groupId() const override;
     QString shortHelpString() const override;
+    QString shortDescription() const override;
     void initAlgorithm( const QVariantMap &configuration = QVariantMap() ) override;
     QgsDxfExportAlgorithm *createInstance() const override SIP_FACTORY;
 
   protected:
-    QVariantMap processAlgorithm( const QVariantMap &parameters,
-                                  QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
+    QVariantMap processAlgorithm( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
     bool prepareAlgorithm( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
 
   private:
     QMap<QString, QString> mMapThemeStyleOverrides;
+    Qgis::ScaleCalculationMethod mScaleMethod = Qgis::ScaleCalculationMethod::HorizontalMiddle;
 };
 
 ///@endcond PRIVATE

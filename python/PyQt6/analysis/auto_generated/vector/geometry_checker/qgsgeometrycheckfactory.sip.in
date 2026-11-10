@@ -3,9 +3,8 @@
  *                                                                      *
  * src/analysis/vector/geometry_checker/qgsgeometrycheckfactory.h       *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/
-
 
 
 
@@ -15,7 +14,6 @@
 class QgsGeometryCheckFactory /Abstract/
 {
 %Docstring(signature="appended")
-
 A factory for geometry checks.
 
 .. note::
@@ -29,7 +27,6 @@ A factory for geometry checks.
 #include "qgsgeometrycheckfactory.h"
 %End
   public:
-
     virtual ~QgsGeometryCheckFactory();
 
     virtual QgsGeometryCheck *createGeometryCheck( const QgsGeometryCheckContext *context, const QVariantMap &configuration ) const = 0 /Factory/;
@@ -97,5 +94,5 @@ Template to create a factory for a geometry check.
  *                                                                      *
  * src/analysis/vector/geometry_checker/qgsgeometrycheckfactory.h       *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/

@@ -18,28 +18,28 @@
 #ifndef QGSCUBICRASTERRESAMPLER_H
 #define QGSCUBICRASTERRESAMPLER_H
 
-#include "qgsrasterresampler.h"
-#include "qgis_sip.h"
 #include "qgis.h"
-#include <QColor>
-
 #include "qgis_core.h"
+#include "qgis_sip.h"
+#include "qgsrasterresampler.h"
+
+#include <QColor>
 
 /**
  * \ingroup core
  * \brief Cubic Raster Resampler.
  */
-class CORE_EXPORT QgsCubicRasterResampler: public QgsRasterResamplerV2
+class CORE_EXPORT QgsCubicRasterResampler : public QgsRasterResamplerV2
 {
   public:
-
-    /**
-     * Constructor for QgsCubicRasterResampler.
-     */
     QgsCubicRasterResampler() = default;
     QgsCubicRasterResampler *clone() const override SIP_FACTORY;
 
     QImage resampleV2( const QImage &source, const QSize &size ) override;
+
+    /**
+     * \deprecated QGIS 3.12. Use resampleV2() instead.
+     */
     Q_DECL_DEPRECATED void resample( const QImage &srcImage, QImage &dstImage ) override SIP_DEPRECATED;
     QString type() const override;
     int tileBufferPixels() const override;

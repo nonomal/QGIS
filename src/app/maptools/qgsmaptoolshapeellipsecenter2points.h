@@ -4,7 +4,7 @@
     ---------------------
     begin                : July 2017
     copyright            : (C) 2017 by Loïc Bartoletti
-    email                : lbartoletti at tuxfamily dot org
+    email                : lituus at free dot fr
  ***************************************************************************
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -17,8 +17,8 @@
 #ifndef QGSMAPTOOLSHAPEELLIPSECENTER2POINTS_H
 #define QGSMAPTOOLSHAPEELLIPSECENTER2POINTS_H
 
-#include "qgsmaptoolshapeellipseabstract.h"
 #include "qgis_app.h"
+#include "qgsmaptoolshapeellipseabstract.h"
 #include "qgsmaptoolshaperegistry.h"
 
 class APP_EXPORT QgsMapToolShapeEllipseCenter2PointsMetadata : public QgsMapToolShapeMetadata
@@ -37,7 +37,7 @@ class APP_EXPORT QgsMapToolShapeEllipseCenter2PointsMetadata : public QgsMapTool
     QgsMapToolShapeAbstract *factory( QgsMapToolCapture *parentTool ) const override;
 };
 
-class APP_EXPORT QgsMapToolShapeEllipseCenter2Points: public QgsMapToolShapeEllipseAbstract
+class APP_EXPORT QgsMapToolShapeEllipseCenter2Points : public QgsMapToolShapeEllipseAbstract
 {
     Q_OBJECT
 

@@ -16,13 +16,13 @@
 #ifndef QGSTEXTDOCUMENT_H
 #define QGSTEXTDOCUMENT_H
 
-#include "qgis_sip.h"
 #include "qgis_core.h"
+#include "qgis_sip.h"
 #include "qgsstringutils.h"
 #include "qgstextblock.h"
 
-#include <QVector>
 #include <QSizeF>
+#include <QVector>
 
 class QgsTextFragment;
 class QgsTextFormat;
@@ -39,10 +39,13 @@ class QgsTextFormat;
  */
 class CORE_EXPORT QgsTextDocument
 {
-
   public:
-
     QgsTextDocument();
+    QgsTextDocument( const QgsTextDocument &other );
+    SIP_SKIP QgsTextDocument( QgsTextDocument &&other );
+    QgsTextDocument &operator=( const QgsTextDocument &other );
+    QgsTextDocument &operator=( QgsTextDocument &&other );
+
     ~QgsTextDocument();
 
     /**
@@ -57,13 +60,28 @@ class CORE_EXPORT QgsTextDocument
 
     /**
      * Constructor for QgsTextDocument consisting of a set of plain text \a lines.
+     *
+     * If any line contains tab characters they will be appended as separate text fragments
+     * within the document, consisting of just the tab character.
      */
     static QgsTextDocument fromPlainText( const QStringList &lines );
 
     /**
      * Constructor for QgsTextDocument consisting of a set of HTML formatted \a lines.
+     *
+     * If the HTML contains tab characters they will be appended as separate text fragments
+     * within the document, consisting of just the tab character.
      */
     static QgsTextDocument fromHtml( const QStringList &lines );
+
+    /**
+     * Constructor for QgsTextDocument consisting of a set of \a lines, respecting settings from a text \a format.
+     *
+     * This method will determine from the text \a format whether the lines should be treated as HTML or plain text.
+     *
+     * \since QGIS 3.40
+     */
+    static QgsTextDocument fromTextAndFormat( const QStringList &lines, const QgsTextFormat &format );
 
     /**
      * Appends a \a block to the document.
@@ -74,6 +92,46 @@ class CORE_EXPORT QgsTextDocument
      * Appends a \a block to the document.
      */
     void append( QgsTextBlock &&block ) SIP_SKIP;
+
+#ifndef SIP_RUN
+
+    /**
+     * Inserts a \a block into the document, at the specified index.
+     *
+     * \since QGIS 3.40
+     */
+    void insert( int index, const QgsTextBlock &block );
+#else
+    // clang-format off
+
+    /**
+     * Inserts a \a block into the document, at the specified index.
+     *
+     * \throws IndexError if no block exists at the specified index.
+     *
+     * \since QGIS 3.40
+     */
+    void insert( int index, const QgsTextBlock &block );
+    % MethodCode
+    if ( a0 < 0 || a0 > sipCpp->size() )
+    {
+      PyErr_SetString( PyExc_IndexError, QByteArray::number( a0 ) );
+      sipIsErr = 1;
+    }
+    else
+    {
+      sipCpp->insert( a0, *a1 );
+    }
+    % End
+// clang-format on
+#endif
+
+    /**
+     * Inserts a \a block into the document, at the specified index.
+     *
+     * \since QGIS 3.40
+     */
+    void insert( int index, QgsTextBlock &&block ) SIP_SKIP;
 
     /**
      * Reserves the specified \a count of blocks for optimised block appending.
@@ -87,6 +145,7 @@ class CORE_EXPORT QgsTextDocument
      */
     const QgsTextBlock &at( int index ) const SIP_FACTORY;
 #else
+    // clang-format off
 
     /**
      * Returns the block at the specified \a index.
@@ -105,6 +164,7 @@ class CORE_EXPORT QgsTextDocument
       sipRes = new QgsTextBlock( sipCpp->at( a0 ) );
     }
     % End
+// clang-format on
 #endif
 
     /**
@@ -112,6 +172,7 @@ class CORE_EXPORT QgsTextDocument
      */
     QgsTextBlock &operator[]( int index ) SIP_FACTORY;
 #ifdef SIP_RUN
+    // clang-format off
     % MethodCode
     SIP_SSIZE_T idx = sipConvertFromSequenceIndex( a0, sipCpp->size() );
     if ( idx < 0 )
@@ -119,24 +180,27 @@ class CORE_EXPORT QgsTextDocument
     else
       sipRes = new QgsTextBlock( sipCpp->operator[]( idx ) );
     % End
+// clang-format on
 #endif
 
-    /**
+      /**
      * Returns the number of blocks in the document.
      */
-    int size() const;
+      int size() const;
 
 #ifdef SIP_RUN
+    // clang-format off
     int __len__() const;
     % MethodCode
     sipRes = sipCpp->size();
     % End
+// clang-format on
 #endif
 
-    /**
+        /**
      * Returns a list of plain text lines of text representing the document.
      */
-    QStringList toPlainText() const;
+        QStringList toPlainText() const;
 
     /**
      * Splits lines of text in the document to separate lines, using a specified wrap character (\a wrapCharacter) or newline characters.
@@ -150,11 +214,25 @@ class CORE_EXPORT QgsTextDocument
     void splitLines( const QString &wrapCharacter, int autoWrapLength = 0, bool useMaxLineLengthWhenAutoWrapping = true );
 
     /**
+     * Splits the text document, such that each block in the document becomes a separate document of its own.
+     *
+     * \since QGIS 4.0
+     */
+    QVector< QgsTextDocument > splitBlocksToDocuments() const;
+
+    /**
      * Applies a \a capitalization style to the document's text.
      *
      * \since QGIS 3.16
      */
     void applyCapitalization( Qgis::Capitalization capitalization );
+
+    /**
+     * Returns TRUE if any blocks or fragments in the document have background brushes set.
+     *
+     * \since QGIS 3.42
+     */
+    bool hasBackgrounds() const;
 
 #ifndef SIP_RUN
     ///@cond PRIVATE
@@ -164,9 +242,7 @@ class CORE_EXPORT QgsTextDocument
 #endif
 
   private:
-
     QVector< QgsTextBlock > mBlocks;
-
 };
 
 #endif // QGSTEXTDOCUMENT_H

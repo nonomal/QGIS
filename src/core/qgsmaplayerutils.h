@@ -17,15 +17,18 @@
 #ifndef QGSMAPLAYERUTILS_H
 #define QGSMAPLAYERUTILS_H
 
-#include "qgis_sip.h"
-#include "qgis_core.h"
-#include "qgis.h"
+#define MAXIMUM_OPENSTREETMAP_TILES_FETCH 5000
 
-class QgsMapLayer;
+#include "qgis.h"
+#include "qgis_core.h"
+#include "qgis_sip.h"
+#include "qgsmaplayer.h"
+
 class QgsRectangle;
 class QgsCoordinateReferenceSystem;
 class QgsCoordinateTransformContext;
 class QgsAbstractDatabaseProviderConnection;
+class QgsGeometry;
 
 /**
  * \ingroup core
@@ -34,9 +37,7 @@ class QgsAbstractDatabaseProviderConnection;
 */
 class CORE_EXPORT QgsMapLayerUtils
 {
-
   public:
-
     /**
      * Returns the combined extent of a list of \a layers.
      *
@@ -59,6 +60,24 @@ class CORE_EXPORT QgsMapLayerUtils
      * \since QGIS 3.22
      */
     static bool layerSourceMatchesPath( const QgsMapLayer *layer, const QString &path );
+
+    /**
+     * Returns TRUE if a \a layer and \a uri point to the same resource at the specified hierarchy \a level.
+     *
+     * This method parses the underlying connection parameters of the \a layer and \a uri
+     * to check if they share the same scope defined by \a level.
+     *
+     * \note This method is only valid for a \a uri from the same data provider as \a layer.
+     *
+     * \warning Not all providers implement this functionality. Check whether the provider's metadata capabilities returns the
+     * QgsProviderMetadata::ProviderMetadataCapability::UrisReferToSame to determine whether a specific provider metadata object
+     * supports this method.
+     *
+     * \throws QgsNotSupportedException if the layer's provider does not implement the QgsProviderMetadata::ProviderMetadataCapability::UrisReferToSame capability.
+     *
+     * \since QGIS 4.0
+     */
+    static bool layerRefersToUri( const QgsMapLayer *layer, const QString &uri, Qgis::SourceHierarchyLevel level = Qgis::SourceHierarchyLevel::Object ) SIP_THROW( QgsNotSupportedException );
 
     /**
      * Updates a \a layer's data source, replacing its data source with a path referring to \a newPath.
@@ -94,8 +113,91 @@ class CORE_EXPORT QgsMapLayerUtils
      */
     static QString launderLayerName( const QString &name );
 
+    /**
+     * Returns TRUE if the \a layer is served by OpenStreetMap server.
+     *
+     * \since QGIS 3.40
+     */
+    static bool isOpenStreetMapLayer( QgsMapLayer *layer );
+
+    /**
+     * Returns TRUE if the \a uri for a given \a provider is served by OpenStreetMap server.
+     *
+     * \since QGIS 4.2
+     */
+    static bool isOpenStreetMapUri( const QString &uri, const QString &providerType );
+
+    /**
+     * Returns the translated name of the type for a given layer type.
+     *
+     * \since QGIS 4.0
+     */
+    static QString layerTypeToString( Qgis::LayerType type );
+
+    /**
+     * Returns the consistent tooltip for the given layer.
+     *
+     * \since QGIS 4.2
+     */
+    static QString layerToolTip( const QgsMapLayer *layer );
+
+    /**
+     * Saves QML and SLD representations of \a layer's style to a table in the database
+     * identified by \a providerKey and associates it with \a targetDataSource which can
+     * be different from the layer's own data source.
+     *
+     * Unlike QgsMapLayer::saveStyleToDatabaseV2(), this method allows saving the style
+     * from one layer to a different layer in a database. The target layer is identified
+     *by the \a targetDataSource argument, which is a URI that specifies the layer in
+     * the database to which the style should be associated.
+     *
+     * \param layer Source layer whose style will be exported.
+     * \param providerKey Provider key for the target database.
+     * \param targetDataSource URI of the target layer in the database.
+     * \param name Style name.
+     * \param description A description of the style.
+     * \param useAsDefault Set to TRUE if style should be used as the default style for the layer.
+     * \param uiFileContent Optional UI file content associated with the style.
+     * \param formats Flag specifying which style formats to save.
+     * \param categories The style categories to be saved.
+     * \returns Flags representing whether QML or SLD storing was successful.
+     *
+     * \since QGIS 4.4
+     */
+    static QgsSaveStyleResult saveLayerStyleToDatabase(
+      QgsMapLayer *layer,
+      const QString &providerKey,
+      const QString &targetDataSource,
+      const QString &name,
+      const QString &description,
+      bool useAsDefault,
+      const QString &uiFileContent,
+      const Qgis::SaveStyleFormats formats = Qgis::SaveStyleFormats( Qgis::SaveStyleFormat::QML | Qgis::SaveStyleFormat::SLD ),
+      QgsMapLayer::StyleCategories categories = QgsMapLayer::AllStyleCategories
+    );
 };
 
+/**
+ * \ingroup core
+ * \brief Represents the result of saving a style.
+ * \since QGIS 4.4
+ */
+class CORE_EXPORT QgsSaveStyleResult
+{
+  public:
+    //! Flags representing which style formats (QML and/or SLD) were successfully saved.
+    QgsMapLayer::SaveStyleResults saveResult;
+
+    //! List of error messages generated while exporting the style to SLD.
+    QStringList sldErrorMessages;
+
+    //! List of warning messages generated while exporting the style to SLD.
+    QStringList sldWarningMessages;
+
+    //! Error message reported by the data provider when saving the style, or an empty string if no error occurred.
+    QString providerSaveStyleError;
+
+    //! Error message generated while saving the style as QML, or an empty string if no error occurred.
+    QString qmlError;
+};
 #endif // QGSMAPLAYERUTILS_H
-
-

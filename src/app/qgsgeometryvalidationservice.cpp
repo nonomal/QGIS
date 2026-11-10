@@ -15,22 +15,28 @@ email                : matthias@opengis.ch
 
 
 #include "qgsgeometryvalidationservice.h"
-#include "qgsproject.h"
-#include "qgsvectorlayer.h"
-#include "qgsgeometryoptions.h"
+
 #include "qgsanalysis.h"
-#include "qgsgeometrycheckregistry.h"
-#include "qgsgeometrycheckfactory.h"
-#include "qgsvectorlayereditbuffer.h"
-#include "qgsvectorlayerfeaturepool.h"
 #include "qgsfeedback.h"
-#include "qgsreadwritelocker.h"
+#include "qgsgeometrycheckfactory.h"
+#include "qgsgeometrycheckregistry.h"
+#include "qgsgeometryoptions.h"
 #include "qgsmessagebar.h"
 #include "qgsmessagebaritem.h"
 #include "qgsmessagelog.h"
+#include "qgsproject.h"
+#include "qgsreadwritelocker.h"
+#include "qgsvectorlayer.h"
+#include "qgsvectorlayereditbuffer.h"
+#include "qgsvectorlayerfeaturepool.h"
 
-#include <QtConcurrent>
 #include <QFutureWatcher>
+#include <QString>
+#include <QtConcurrentMap>
+
+#include "moc_qgsgeometryvalidationservice.cpp"
+
+using namespace Qt::StringLiterals;
 
 QgsGeometryValidationService::QgsGeometryValidationService( QgsProject *project )
   : mProject( project )
@@ -84,26 +90,16 @@ void QgsGeometryValidationService::onLayersAdded( const QList<QgsMapLayer *> &la
     QgsVectorLayer *vectorLayer = qobject_cast<QgsVectorLayer *>( layer );
     if ( vectorLayer )
     {
-      connect( vectorLayer->geometryOptions(), &QgsGeometryOptions::checkConfigurationChanged, this, [this, vectorLayer]()
-      {
-        enableLayerChecks( vectorLayer );
-      } );
+      connect( vectorLayer->geometryOptions(), &QgsGeometryOptions::checkConfigurationChanged, this, [this, vectorLayer]() { enableLayerChecks( vectorLayer ); } );
 
-      connect( vectorLayer->geometryOptions(), &QgsGeometryOptions::geometryChecksChanged, this, [this, vectorLayer]()
-      {
-        enableLayerChecks( vectorLayer );
-      } );
+      connect( vectorLayer->geometryOptions(), &QgsGeometryOptions::geometryChecksChanged, this, [this, vectorLayer]() { enableLayerChecks( vectorLayer ); } );
 
-      connect( vectorLayer, &QgsVectorLayer::destroyed, this, [vectorLayer, this]()
-      {
+      connect( vectorLayer, &QgsVectorLayer::destroyed, this, [vectorLayer, this]() {
         cleanupLayerChecks( vectorLayer );
         mLayerChecks.remove( vectorLayer );
       } );
 
-      connect( vectorLayer, &QgsMapLayer::beforeResolveReferences, this, [this, vectorLayer]()
-      {
-        enableLayerChecks( vectorLayer );
-      } );
+      connect( vectorLayer, &QgsMapLayer::beforeResolveReferences, this, [this, vectorLayer]() { enableLayerChecks( vectorLayer ); } );
     }
   }
 }
@@ -136,12 +132,17 @@ void QgsGeometryValidationService::onGeometryChanged( QgsVectorLayer *layer, Qgs
 
 void QgsGeometryValidationService::onFeatureDeleted( QgsVectorLayer *layer, QgsFeatureId fid )
 {
-  if ( !mLayerChecks[layer].topologyChecks.empty() )
+  VectorLayerCheckInformation &checkInformation = mLayerChecks[layer];
+  checkInformation.singleFeatureCheckErrors.remove( fid );
+
+  if ( !checkInformation.topologyChecks.empty() )
   {
     invalidateTopologyChecks( layer );
   }
-
-  mLayerChecks[layer].singleFeatureCheckErrors.remove( fid );
+  else
+  {
+    layer->setAllowCommit( checkInformation.singleFeatureCheckErrors.empty() );
+  }
 
   // There should be no geometry errors on a non-existent feature, right?
   emit geometryCheckCompleted( layer, fid, QList<std::shared_ptr<QgsSingleGeometryCheckError>>() );
@@ -175,7 +176,7 @@ void QgsGeometryValidationService::onEditingStopped( QgsVectorLayer *layer )
 void QgsGeometryValidationService::showMessage( const QString &message )
 {
   mMessageBar->popWidget( mMessageBarItem );
-  mMessageBarItem = QgsMessageBar::createMessage( tr( "Geometry Validation" ),  message );
+  mMessageBarItem = QgsMessageBar::createMessage( tr( "Geometry Validation" ), message );
   mMessageBarItem->setDuration( 5 );
   mMessageBar->pushItem( mMessageBarItem );
 }
@@ -274,7 +275,7 @@ void QgsGeometryValidationService::enableLayerChecks( QgsVectorLayer *layer )
       const QVariantMap checkConfiguration = layer->geometryOptions()->checkConfiguration( checkId );
       topologyChecks.append( factory->createGeometryCheck( checkInformation.context.get(), checkConfiguration ) );
 
-      if ( checkConfiguration.value( QStringLiteral( "allowedGapsEnabled" ) ).toBool() )
+      if ( checkConfiguration.value( u"allowedGapsEnabled"_s ).toBool() )
       {
         QgsVectorLayer *gapsLayer = QgsProject::instance()->mapLayer<QgsVectorLayer *>( checkConfiguration.value( "allowedGapsLayer" ).toString() );
         if ( gapsLayer )
@@ -296,34 +297,16 @@ void QgsGeometryValidationService::enableLayerChecks( QgsVectorLayer *layer )
   if ( checkInformation.connections.empty() )
   {
     // Connect to all modifications on a layer that can introduce a geometry or topology error
-    // Also connect to the beforeCommitChanges signal, so we can trigger topology checks
+    // Also connect to the beforeCommitChecks signal, so we can trigger topology checks
     // We keep all connections around in a list, so if in the future all checks get disabled
     // we can kill those connections to be sure the layer does not even get a tiny bit of overhead.
-    checkInformation.connections
-        << connect( layer, &QgsVectorLayer::featureAdded, this, [this, layer]( QgsFeatureId fid )
-    {
-      onFeatureAdded( layer, fid );
-    } );
-    checkInformation.connections
-        << connect( layer, &QgsVectorLayer::geometryChanged, this, [this, layer]( QgsFeatureId fid, const QgsGeometry & geometry )
-    {
+    checkInformation.connections << connect( layer, &QgsVectorLayer::featureAdded, this, [this, layer]( QgsFeatureId fid ) { onFeatureAdded( layer, fid ); } );
+    checkInformation.connections << connect( layer, &QgsVectorLayer::geometryChanged, this, [this, layer]( QgsFeatureId fid, const QgsGeometry &geometry ) {
       onGeometryChanged( layer, fid, geometry );
     } );
-    checkInformation.connections
-        << connect( layer, &QgsVectorLayer::featureDeleted, this, [this, layer]( QgsFeatureId fid )
-    {
-      onFeatureDeleted( layer, fid );
-    } );
-    checkInformation.connections
-        << connect( layer, &QgsVectorLayer::beforeCommitChanges, this, [this, layer]( bool stopEditing )
-    {
-      onBeforeCommitChanges( layer, stopEditing );
-    } );
-    checkInformation.connections
-        << connect( layer, &QgsVectorLayer::editingStopped, this, [this, layer]()
-    {
-      onEditingStopped( layer );
-    } );
+    checkInformation.connections << connect( layer, &QgsVectorLayer::featureDeleted, this, [this, layer]( QgsFeatureId fid ) { onFeatureDeleted( layer, fid ); } );
+    checkInformation.connections << connect( layer, &QgsVectorLayer::beforeCommitChecks, this, [this, layer]( bool stopEditing ) { onBeforeCommitChanges( layer, stopEditing ); } );
+    checkInformation.connections << connect( layer, &QgsVectorLayer::editingStopped, this, [this, layer]() { onEditingStopped( layer ); } );
   }
 }
 
@@ -368,7 +351,7 @@ void QgsGeometryValidationService::processFeature( QgsVectorLayer *layer, QgsFea
   if ( !mLayerChecks.contains( layer ) )
     return;
 
-  const QList< QgsSingleGeometryCheck * > checks = mLayerChecks[layer].singleFeatureChecks;
+  const QList<QgsSingleGeometryCheck *> checks = mLayerChecks[layer].singleFeatureChecks;
   if ( checks.empty() )
     return;
 
@@ -457,8 +440,7 @@ void QgsGeometryValidationService::triggerTopologyChecks( QgsVectorLayer *layer,
   mLayerChecks[layer].topologyCheckFeedbacks = feedbacks.values();
 
   QFutureWatcher<void> *futureWatcher = new QFutureWatcher<void>();
-  connect( futureWatcher, &QFutureWatcherBase::finished, this, [&allErrors, layer, feedbacks, futureWatcher, stopEditing, this]()
-  {
+  connect( futureWatcher, &QFutureWatcherBase::finished, this, [&allErrors, layer, feedbacks, futureWatcher, stopEditing, this]() {
     QgsReadWriteLocker errorLocker( mTopologyCheckLock, QgsReadWriteLocker::Read );
     layer->setAllowCommit( allErrors.empty() && mLayerChecks[layer].singleFeatureCheckErrors.empty() );
     errorLocker.unlock();
@@ -470,9 +452,13 @@ void QgsGeometryValidationService::triggerTopologyChecks( QgsVectorLayer *layer,
     if ( !allErrors.empty() || !mLayerChecks[layer].singleFeatureCheckErrors.empty() )
     {
       if ( mLayerChecks[layer].commitPending )
+      {
         showMessage( tr( "Geometry errors have been found. Please fix the errors before saving the layer." ) );
+      }
       else
+      {
         showMessage( tr( "Geometry errors have been found." ) );
+      }
     }
     if ( allErrors.empty() && mLayerChecks[layer].singleFeatureCheckErrors.empty() && mLayerChecks[layer].commitPending )
     {
@@ -486,8 +472,7 @@ void QgsGeometryValidationService::triggerTopologyChecks( QgsVectorLayer *layer,
     mLayerChecks[layer].commitPending = false;
   } );
 
-  QFuture<void> future = QtConcurrent::map( checks, [&allErrors, layerFeatureIds, layer, layerId, feedbacks, affectedFeatureIds, this]( const QgsGeometryCheck * check )
-  {
+  QFuture<void> future = QtConcurrent::map( checks, [&allErrors, layerFeatureIds, layer, layerId, feedbacks, affectedFeatureIds, this]( const QgsGeometryCheck *check ) {
     // Watch out with the layer pointer in here. We are running in a thread, so we do not want to actually use it
     // except for using its address to report the error.
     QList<QgsGeometryCheckError *> errors;
@@ -497,7 +482,7 @@ void QgsGeometryValidationService::triggerTopologyChecks( QgsVectorLayer *layer,
     check->collectErrors( mFeaturePools, errors, messages, feedback, layerFeatureIds );
     QgsReadWriteLocker errorLocker( mTopologyCheckLock, QgsReadWriteLocker::Write );
 
-    QList<std::shared_ptr<QgsGeometryCheckError> > sharedErrors;
+    QList<std::shared_ptr<QgsGeometryCheckError>> sharedErrors;
     for ( QgsGeometryCheckError *err : errors )
     {
       std::shared_ptr<QgsGeometryCheckError> error( err );

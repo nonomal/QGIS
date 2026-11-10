@@ -3,7 +3,7 @@
  *                                                                      *
  * src/3d/lights/qgspointlightsettings.h                                *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/
 
 
@@ -13,12 +13,12 @@
 class QgsPointLightSettings : QgsLightSource
 {
 %Docstring(signature="appended")
-Definition of a point light in a 3D map scene
+Definition of a point light in a 3D map scene.
 
-Total light at the distance D from a point light with intensity I
-is (I / TA) where TA is total attenuation which is calculated as
-(A_0 + A_1 * D + A_2 * D^2). The terms A_0, A_1 and A_2 stand for
-constant, linear and quadratic attenuation.
+Total light at the distance D from a point light with intensity I is (I
+/ TA) where TA is total attenuation which is calculated as (A_0 + A_1 *
+D + A_2 * D^2). The terms A_0, A_1 and A_2 stand for constant, linear
+and quadratic attenuation.
 
 .. versionadded:: 3.6
 %End
@@ -43,11 +43,11 @@ Construct a point light with default values
 
     QgsVector3D position() const;
 %Docstring
-Returns position of the light (in 3D world coordinates)
+Returns position of the light (in 3D map coordinates)
 %End
     void setPosition( const QgsVector3D &pos );
 %Docstring
-Sets position of the light (in 3D world coordinates)
+Sets position of the light (in 3D map coordinates)
 %End
 
     QColor color() const;
@@ -59,43 +59,43 @@ Returns color of the light
 Sets color of the light
 %End
 
-    float intensity() const;
+    double intensity() const;
 %Docstring
 Returns intensity of the light
 %End
-    void setIntensity( float intensity );
+    void setIntensity( double intensity );
 %Docstring
 Sets intensity of the light
 %End
 
-    float constantAttenuation() const;
+    double constantAttenuation() const;
 %Docstring
 Returns constant attenuation (A_0)
 %End
-    void setConstantAttenuation( float value );
+    void setConstantAttenuation( double value );
 %Docstring
 Sets constant attenuation (A_0)
 %End
 
-    float linearAttenuation() const;
+    double linearAttenuation() const;
 %Docstring
 Returns linear attenuation (A_1)
 %End
-    void setLinearAttenuation( float value );
+    void setLinearAttenuation( double value );
 %Docstring
 Sets linear attenuation (A_1)
 %End
 
-    float quadraticAttenuation() const;
+    double quadraticAttenuation() const;
 %Docstring
 Returns quadratic attenuation (A_2)
 %End
-    void setQuadraticAttenuation( float value );
+    void setQuadraticAttenuation( double value );
 %Docstring
 Sets quadratic attenuation (A_2)
 %End
 
-    bool operator==( const QgsPointLightSettings &other );
+    bool operator==( const QgsPointLightSettings &other ) const;
 
 };
 
@@ -104,5 +104,5 @@ Sets quadratic attenuation (A_2)
  *                                                                      *
  * src/3d/lights/qgspointlightsettings.h                                *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/

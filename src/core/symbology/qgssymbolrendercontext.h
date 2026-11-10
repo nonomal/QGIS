@@ -16,10 +16,10 @@
 #ifndef QGSSYMBOLRENDERCONTEXT_H
 #define QGSSYMBOLRENDERCONTEXT_H
 
-#include "qgis_core.h"
 #include "qgis.h"
-#include "qgsmapunitscale.h"
+#include "qgis_core.h"
 #include "qgsfields.h"
+#include "qgsmapunitscale.h"
 
 class QgsRenderContext;
 class QgsFeature;
@@ -29,12 +29,12 @@ class QgsExpressionContextScope;
 /**
  * \ingroup core
  * \class QgsSymbolRenderContext
+ * \brief Encapsulates the context in which a symbol is being rendered.
  */
 class CORE_EXPORT QgsSymbolRenderContext
 {
   public:
-
-    //TODO QGIS 4.0 - remove mapUnitScale and renderunit
+    //TODO QGIS 5.0 - remove mapUnitScale and renderunit
 
     /**
      * Constructor for QgsSymbolRenderContext
@@ -47,11 +47,19 @@ class CORE_EXPORT QgsSymbolRenderContext
      * \param fields
      * \param mapUnitScale
      */
-    QgsSymbolRenderContext( QgsRenderContext &c, Qgis::RenderUnit u, qreal opacity = 1.0, bool selected = false, Qgis::SymbolRenderHints renderHints = Qgis::SymbolRenderHints(), const QgsFeature *f = nullptr, const QgsFields &fields = QgsFields(), const QgsMapUnitScale &mapUnitScale = QgsMapUnitScale() );
+    QgsSymbolRenderContext(
+      QgsRenderContext &c,
+      Qgis::RenderUnit u,
+      qreal opacity = 1.0,
+      bool selected = false,
+      Qgis::SymbolRenderHints renderHints = Qgis::SymbolRenderHints(),
+      const QgsFeature *f = nullptr,
+      const QgsFields &fields = QgsFields(),
+      const QgsMapUnitScale &mapUnitScale = QgsMapUnitScale()
+    );
 
     ~QgsSymbolRenderContext();
 
-    //! QgsSymbolRenderContext cannot be copied.
     QgsSymbolRenderContext( const QgsSymbolRenderContext &rh ) = delete;
 
     /**
@@ -63,7 +71,7 @@ class CORE_EXPORT QgsSymbolRenderContext
      * Returns a reference to the context's render context.
      * \note Not available in Python bindings.
      */
-    const QgsRenderContext &renderContext() const { return mRenderContext; } SIP_SKIP
+    const QgsRenderContext &renderContext() const SIP_SKIP { return mRenderContext; }
 
     /**
      * Sets the original value variable value for data defined symbology
@@ -74,23 +82,23 @@ class CORE_EXPORT QgsSymbolRenderContext
 
     /**
      * Returns the output unit for the context.
-     * \deprecated No longer used and will be removed in QGIS 4.0
+     * \deprecated QGIS 3.40. No longer used and will be removed in QGIS 5.0.
      */
     Q_DECL_DEPRECATED Qgis::RenderUnit outputUnit() const SIP_DEPRECATED { return mOutputUnit; }
 
     /**
      * Sets the output unit for the context.
-     * \deprecated No longer used and will be removed in QGIS 4.0
+     * \deprecated QGIS 3.40. No longer used and will be removed in QGIS 5.0.
      */
     Q_DECL_DEPRECATED void setOutputUnit( Qgis::RenderUnit u ) SIP_DEPRECATED { mOutputUnit = u; }
 
     /**
-     * \deprecated Will be removed in QGIS 4.0
+     * \deprecated QGIS 3.40. Will be removed in QGIS 5.0.
      */
     Q_DECL_DEPRECATED QgsMapUnitScale mapUnitScale() const SIP_DEPRECATED { return mMapUnitScale; }
 
     /**
-     * \deprecated Will be removed in QGIS 4.0
+     * \deprecated QGIS 3.40. Will be removed in QGIS 5.0.
      */
     Q_DECL_DEPRECATED void setMapUnitScale( const QgsMapUnitScale &scale ) SIP_DEPRECATED { mMapUnitScale = scale; }
 
@@ -127,10 +135,26 @@ class CORE_EXPORT QgsSymbolRenderContext
     Qgis::SymbolRenderHints renderHints() const { return mRenderHints; }
 
     /**
+     * Returns TRUE if symbol must be rendered using vector methods, and optimisations
+     * like pre-rendered images must be disabled.
+     *
+     * \since QGIS 3.40
+     */
+    bool forceVectorRendering() const;
+
+    /**
      * Sets rendering hint flags for the symbol.
      * \see renderHints()
      */
     void setRenderHints( Qgis::SymbolRenderHints hints ) { mRenderHints = hints; }
+
+    /**
+     * Sets a rendering \a hint flag for the symbol.
+     * \see renderHints()
+     *
+     * \since QGIS 3.40
+     */
+    void setRenderHint( Qgis::SymbolRenderHint hint, bool enabled = true ) { mRenderHints.setFlag( hint, enabled ); }
 
     void setFeature( const QgsFeature *f ) { mFeature = f; }
 
@@ -182,12 +206,12 @@ class CORE_EXPORT QgsSymbolRenderContext
     void setGeometryPartNum( int num ) { mGeometryPartNum = num; }
 
     /**
-     * \deprecated Use the size conversion methods in QgsRenderContext instead.
+     * \deprecated QGIS 3.40. Use the size conversion methods in QgsRenderContext instead.
      */
     Q_DECL_DEPRECATED double outputLineWidth( double width ) const SIP_DEPRECATED;
 
     /**
-     * \deprecated Use the size conversion methods in QgsRenderContext instead.
+     * \deprecated QGIS 3.40. Use the size conversion methods in QgsRenderContext instead.
      */
     Q_DECL_DEPRECATED double outputPixelSize( double size ) const SIP_DEPRECATED;
 
@@ -227,7 +251,6 @@ class CORE_EXPORT QgsSymbolRenderContext
     void setPatchShape( const QgsLegendPatchShape &shape );
 
   private:
-
 #ifdef SIP_RUN
     QgsSymbolRenderContext( const QgsSymbolRenderContext &rh ) SIP_FORCE;
 #endif
@@ -241,12 +264,11 @@ class CORE_EXPORT QgsSymbolRenderContext
     Qgis::SymbolRenderHints mRenderHints;
     const QgsFeature *mFeature; //current feature
     QgsFields mFields;
-    int mGeometryPartCount;
-    int mGeometryPartNum;
+    int mGeometryPartCount = 0;
+    int mGeometryPartNum = 0;
     Qgis::GeometryType mOriginalGeometryType = Qgis::GeometryType::Unknown;
     std::unique_ptr< QgsLegendPatchShape > mPatchShape;
 };
 
 
 #endif // QGSSYMBOLRENDERCONTEXT_H
-

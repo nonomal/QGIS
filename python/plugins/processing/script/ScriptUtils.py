@@ -15,27 +15,27 @@
 ***************************************************************************
 """
 
+__author__ = "Victor Olaya"
+__date__ = "August 2012"
+__copyright__ = "(C) 2012, Victor Olaya"
 
-__author__ = 'Victor Olaya'
-__date__ = 'August 2012'
-__copyright__ = '(C) 2012, Victor Olaya'
-
-from qgis.processing import alg as algfactory
-import os
-import inspect
 import importlib.util
+import inspect
+import os
 
+from qgis.core import (
+    Qgis,
+    QgsApplication,
+    QgsMessageLog,
+    QgsProcessingAlgorithm,
+    QgsProcessingFeatureBasedAlgorithm,
+    QgsProcessingUtils,
+)
+from qgis.processing import alg as algfactory
 from qgis.PyQt.QtCore import QCoreApplication, QDir
 
-from qgis.core import (Qgis,
-                       QgsApplication,
-                       QgsProcessingAlgorithm,
-                       QgsProcessingFeatureBasedAlgorithm,
-                       QgsMessageLog
-                       )
-
 from processing.core.ProcessingConfig import ProcessingConfig
-from processing.tools.system import mkdir, userFolder
+from processing.tools.system import mkdir
 
 scriptsRegistry = {}
 
@@ -43,7 +43,7 @@ SCRIPTS_FOLDERS = "SCRIPTS_FOLDERS"
 
 
 def defaultScriptsFolder():
-    folder = str(os.path.join(userFolder(), "scripts"))
+    folder = str(os.path.join(QgsProcessingUtils.userFolder(), "scripts"))
     mkdir(folder)
     return os.path.abspath(folder)
 
@@ -70,14 +70,29 @@ def loadAlgorithm(moduleName, filePath):
         except IndexError:
             for x in dir(module):
                 obj = getattr(module, x)
-                if inspect.isclass(obj) and issubclass(obj, (QgsProcessingAlgorithm, QgsProcessingFeatureBasedAlgorithm)) and obj.__name__ not in ("QgsProcessingAlgorithm", "QgsProcessingFeatureBasedAlgorithm"):
+                if (
+                    inspect.isclass(obj)
+                    and issubclass(
+                        obj,
+                        (QgsProcessingAlgorithm, QgsProcessingFeatureBasedAlgorithm),
+                    )
+                    and obj.__name__
+                    not in (
+                        "QgsProcessingAlgorithm",
+                        "QgsProcessingFeatureBasedAlgorithm",
+                    )
+                ):
                     o = obj()
                     scriptsRegistry[o.name()] = filePath
                     return o
     except (ImportError, AttributeError, TypeError) as e:
-        QgsMessageLog.logMessage(QCoreApplication.translate("ScriptUtils", "Could not import script algorithm '{}' from '{}'\n{}").format(moduleName, filePath, str(e)),
-                                 QCoreApplication.translate("ScriptUtils", "Processing"),
-                                 Qgis.MessageLevel.Critical)
+        QgsMessageLog.logMessage(
+            QCoreApplication.translate(
+                "ScriptUtils", "Could not import script algorithm '{}' from '{}'\n{}"
+            ).format(moduleName, filePath, str(e)),
+            QCoreApplication.translate("ScriptUtils", "Processing"),
+            Qgis.MessageLevel.Critical,
+        )
 
 
 def findAlgorithmSource(name):
@@ -96,9 +111,13 @@ def resetScriptFolder(folder):
     if os.path.exists(newFolder):
         return newFolder
 
-    QgsMessageLog.logMessage(QgsApplication .translate("loadAlgorithms", "Script folder {} does not exist").format(newFolder),
-                             QgsApplication.translate("loadAlgorithms", "Processing"),
-                             Qgis.MessageLevel.Warning)
+    QgsMessageLog.logMessage(
+        QgsApplication.translate(
+            "loadAlgorithms", "Script folder {} does not exist"
+        ).format(newFolder),
+        QgsApplication.translate("loadAlgorithms", "Processing"),
+        Qgis.MessageLevel.Warning,
+    )
 
     if not os.path.isabs(newFolder):
         return None
@@ -115,7 +134,7 @@ def resetScriptFolder(folder):
     if commonSettingPath in newFolder:
         # strip not common folder part. e.g. preserve the profile path
         # stripping the heading part that come from another location
-        tail = newFolder[newFolder.find(commonSettingPath):]
+        tail = newFolder[newFolder.find(commonSettingPath) :]
         # tail folder with the actual userSetting path
         header = os.path.join(os.sep, os.path.join(*paths[:appIndex]))
         newFolder = os.path.join(header, tail)
@@ -124,8 +143,12 @@ def resetScriptFolder(folder):
         if not os.path.exists(newFolder):
             return None
 
-        QgsMessageLog.logMessage(QgsApplication .translate("loadAlgorithms", "Script folder changed into {}").format(newFolder),
-                                 QgsApplication.translate("loadAlgorithms", "Processing"),
-                                 Qgis.MessageLevel.Warning)
+        QgsMessageLog.logMessage(
+            QgsApplication.translate(
+                "loadAlgorithms", "Script folder changed into {}"
+            ).format(newFolder),
+            QgsApplication.translate("loadAlgorithms", "Processing"),
+            Qgis.MessageLevel.Warning,
+        )
 
     return newFolder

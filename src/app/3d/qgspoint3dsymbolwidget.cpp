@@ -14,15 +14,49 @@
  ***************************************************************************/
 
 #include "qgspoint3dsymbolwidget.h"
-#include <QFileDialog>
-#include <QMessageBox>
-#include "qgslayoututils.h"
 
+#include "qgs3dutils.h"
+#include "qgsabstractmaterialsettings.h"
+#include "qgslayoututils.h"
+#include "qgsmarkersymbol.h"
 #include "qgspoint3dsymbol.h"
 #include "qgssymbolbutton.h"
-#include "qgsmarkersymbol.h"
-#include "qgsabstractmaterialsettings.h"
-#include "qgsvector3d.h"
+
+#include <QFileDialog>
+#include <QMessageBox>
+#include <QString>
+
+#include "moc_qgspoint3dsymbolwidget.cpp"
+
+using namespace Qt::StringLiterals;
+
+QString resolveAxisConflict( const QString &axisWithPossibleConflict, const QString &fixedAxis, bool isUpFixed )
+{
+  // mapping of original axis which clashes to suggested value, respecting right hand rule
+  static const QMap<QString, QString> rightHandRulesUpFixed = {
+    { u"x"_s, u"z"_s },
+    { u"-x"_s, u"-z"_s },
+    { u"y"_s, u"x"_s },
+    { u"-y"_s, u"-x"_s },
+    { u"z"_s, u"y"_s },
+    { u"-z"_s, u"-y"_s },
+  };
+  static const QMap<QString, QString> rightHandRulesForwardFixed = {
+    { u"x"_s, u"y"_s },
+    { u"-x"_s, u"-y"_s },
+    { u"y"_s, u"z"_s },
+    { u"-y"_s, u"-z"_s },
+    { u"z"_s, u"x"_s },
+    { u"-z"_s, u"-x"_s },
+  };
+
+  if ( fixedAxis.last( 1 ) == axisWithPossibleConflict.last( 1 ) )
+  {
+    return isUpFixed ? rightHandRulesUpFixed.value( axisWithPossibleConflict ) : rightHandRulesForwardFixed.value( axisWithPossibleConflict );
+  }
+  return QString();
+}
+
 
 QgsPoint3DSymbolWidget::QgsPoint3DSymbolWidget( QWidget *parent )
   : Qgs3DSymbolWidget( parent )
@@ -56,6 +90,18 @@ QgsPoint3DSymbolWidget::QgsPoint3DSymbolWidget( QWidget *parent )
   cboShape->addItem( tr( "3D Model" ), QVariant::fromValue( Qgis::Point3DShape::Model ) );
   cboShape->addItem( tr( "Billboard" ), QVariant::fromValue( Qgis::Point3DShape::Billboard ) );
 
+  for ( QComboBox *combo : { mComboModelUpAxis, mComboModelForwardAxis } )
+  {
+    combo->addItem( tr( "X" ), u"x"_s );
+    combo->addItem( tr( "Y" ), u"y"_s );
+    combo->addItem( tr( "Z" ), u"z"_s );
+    combo->addItem( tr( "-X" ), u"-x"_s );
+    combo->addItem( tr( "-Y" ), u"-y"_s );
+    combo->addItem( tr( "-Z" ), u"-z"_s );
+  }
+  mComboModelUpAxis->setCurrentIndex( mComboModelUpAxis->findData( "z" ) );
+  mComboModelForwardAxis->setCurrentIndex( mComboModelForwardAxis->findData( "y" ) );
+
   btnChangeSymbol->setSymbolType( Qgis::SymbolType::Marker );
   btnChangeSymbol->setDialogTitle( tr( "Billboard symbol" ) );
 
@@ -73,11 +119,48 @@ QgsPoint3DSymbolWidget::QgsPoint3DSymbolWidget( QWidget *parent )
     connect( spinBox, static_cast<void ( QDoubleSpinBox::* )( double )>( &QDoubleSpinBox::valueChanged ), this, &QgsPoint3DSymbolWidget::changed );
   connect( lineEditModel, &QgsAbstractFileContentSourceLineEdit::sourceChanged, this, &QgsPoint3DSymbolWidget::changed );
   connect( widgetMaterial, &QgsMaterialWidget::changed, this, &QgsPoint3DSymbolWidget::changed );
-  connect( btnChangeSymbol, static_cast<void ( QgsSymbolButton::* )( )>( &QgsSymbolButton::changed ), this, &QgsPoint3DSymbolWidget::changed );
+  connect( widgetMaterial, &QgsMaterialWidget::showPanel, this, &QgsPoint3DSymbolWidget::openPanel );
+  connect( btnChangeSymbol, static_cast<void ( QgsSymbolButton::* )()>( &QgsSymbolButton::changed ), this, &QgsPoint3DSymbolWidget::changed );
 
   // Sync between billboard height and TZ
-  connect( spinBillboardHeight, static_cast<void ( QDoubleSpinBox::* )( double )>( &QDoubleSpinBox::valueChanged ), spinTZ,  &QDoubleSpinBox::setValue );
-  connect( spinTZ, static_cast<void ( QDoubleSpinBox::* )( double )>( &QDoubleSpinBox::valueChanged ), spinBillboardHeight,  &QDoubleSpinBox::setValue );
+  connect( spinBillboardHeight, static_cast<void ( QDoubleSpinBox::* )( double )>( &QDoubleSpinBox::valueChanged ), spinTZ, &QDoubleSpinBox::setValue );
+  connect( spinTZ, static_cast<void ( QDoubleSpinBox::* )( double )>( &QDoubleSpinBox::valueChanged ), spinBillboardHeight, &QDoubleSpinBox::setValue );
+
+  connect( mComboModelUpAxis, qOverload< int >( &QComboBox::currentIndexChanged ), this, [this] {
+    // ensure up axis is different to forward axis
+    const QString upAxis = mComboModelUpAxis->currentData().toString();
+    const QString forwardAxis = mComboModelForwardAxis->currentData().toString();
+    const QString resolvedAxisConflict = resolveAxisConflict( forwardAxis, upAxis, true );
+    if ( !resolvedAxisConflict.isEmpty() )
+    {
+      whileBlocking( mComboModelForwardAxis )->setCurrentIndex( mComboModelForwardAxis->findData( resolvedAxisConflict ) );
+    }
+
+    emit changed();
+  } );
+  connect( mComboModelForwardAxis, qOverload< int >( &QComboBox::currentIndexChanged ), this, [this] {
+    // ensure up axis is different to forward axis
+    const QString upAxis = mComboModelUpAxis->currentData().toString();
+    const QString forwardAxis = mComboModelForwardAxis->currentData().toString();
+    const QString resolvedAxisConflict = resolveAxisConflict( upAxis, forwardAxis, false );
+    if ( !resolvedAxisConflict.isEmpty() )
+    {
+      whileBlocking( mComboModelUpAxis )->setCurrentIndex( mComboModelUpAxis->findData( resolvedAxisConflict ) );
+    }
+    emit changed();
+  } );
+
+  connect( mButtonDDScaleX, &QgsPropertyOverrideButton::changed, this, &QgsPoint3DSymbolWidget::changed );
+  connect( mButtonDDScaleY, &QgsPropertyOverrideButton::changed, this, &QgsPoint3DSymbolWidget::changed );
+  connect( mButtonDDScaleZ, &QgsPropertyOverrideButton::changed, this, &QgsPoint3DSymbolWidget::changed );
+  connect( mButtonDDTranslationX, &QgsPropertyOverrideButton::changed, this, &QgsPoint3DSymbolWidget::changed );
+  connect( mButtonDDTranslationY, &QgsPropertyOverrideButton::changed, this, &QgsPoint3DSymbolWidget::changed );
+  connect( mButtonDDTranslationZ, &QgsPropertyOverrideButton::changed, this, &QgsPoint3DSymbolWidget::changed );
+  connect( mButtonDDRotationX, &QgsPropertyOverrideButton::changed, this, &QgsPoint3DSymbolWidget::changed );
+  connect( mButtonDDRotationY, &QgsPropertyOverrideButton::changed, this, &QgsPoint3DSymbolWidget::changed );
+  connect( mButtonDDRotationZ, &QgsPropertyOverrideButton::changed, this, &QgsPoint3DSymbolWidget::changed );
+
+  widgetMaterial->setDockMode( dockMode() );
 }
 
 Qgs3DSymbolWidget *QgsPoint3DSymbolWidget::create( QgsVectorLayer * )
@@ -87,47 +170,50 @@ Qgs3DSymbolWidget *QgsPoint3DSymbolWidget::create( QgsVectorLayer * )
 
 void QgsPoint3DSymbolWidget::setSymbol( const QgsAbstract3DSymbol *symbol, QgsVectorLayer *layer )
 {
-  const QgsPoint3DSymbol *pointSymbol = dynamic_cast< const QgsPoint3DSymbol *>( symbol );
+  const QgsPoint3DSymbol *pointSymbol = dynamic_cast<const QgsPoint3DSymbol *>( symbol );
   if ( !pointSymbol )
     return;
 
   cboAltClamping->setCurrentIndex( static_cast<int>( pointSymbol->altitudeClamping() ) );
 
   cboShape->setCurrentIndex( cboShape->findData( QVariant::fromValue( pointSymbol->shape() ) ) );
-  QgsMaterialSettingsRenderingTechnique technique = QgsMaterialSettingsRenderingTechnique::InstancedPoints;
+  mRenderingTechnique = Qgis::MaterialRenderingTechnique::InstancedPoints;
   bool forceNullMaterial = false;
   switch ( pointSymbol->shape() )
   {
     case Qgis::Point3DShape::Sphere:
-      spinRadius->setValue( pointSymbol->shapeProperty( QStringLiteral( "radius" ) ).toDouble() );
+      spinRadius->setValue( pointSymbol->shapeProperty( u"radius"_s ).toDouble() );
       break;
     case Qgis::Point3DShape::Cylinder:
-      spinRadius->setValue( pointSymbol->shapeProperty( QStringLiteral( "radius" ) ).toDouble() );
-      spinLength->setValue( pointSymbol->shapeProperty( QStringLiteral( "length" ) ).toDouble() );
+      spinRadius->setValue( pointSymbol->shapeProperty( u"radius"_s ).toDouble() );
+      spinLength->setValue( pointSymbol->shapeProperty( u"length"_s ).toDouble() );
       break;
     case Qgis::Point3DShape::Cube:
-      spinSize->setValue( pointSymbol->shapeProperty( QStringLiteral( "size" ) ).toDouble() );
+      spinSize->setValue( pointSymbol->shapeProperty( u"size"_s ).toDouble() );
       break;
     case Qgis::Point3DShape::Cone:
-      spinTopRadius->setValue( pointSymbol->shapeProperty( QStringLiteral( "topRadius" ) ).toDouble() );
-      spinBottomRadius->setValue( pointSymbol->shapeProperty( QStringLiteral( "bottomRadius" ) ).toDouble() );
-      spinLength->setValue( pointSymbol->shapeProperty( QStringLiteral( "length" ) ).toDouble() );
+      spinTopRadius->setValue( pointSymbol->shapeProperty( u"topRadius"_s ).toDouble() );
+      spinBottomRadius->setValue( pointSymbol->shapeProperty( u"bottomRadius"_s ).toDouble() );
+      spinLength->setValue( pointSymbol->shapeProperty( u"length"_s ).toDouble() );
       break;
     case Qgis::Point3DShape::Plane:
-      spinSize->setValue( pointSymbol->shapeProperty( QStringLiteral( "size" ) ).toDouble() );
+      spinSize->setValue( pointSymbol->shapeProperty( u"size"_s ).toDouble() );
       break;
     case Qgis::Point3DShape::Torus:
-      spinRadius->setValue( pointSymbol->shapeProperty( QStringLiteral( "radius" ) ).toDouble() );
-      spinMinorRadius->setValue( pointSymbol->shapeProperty( QStringLiteral( "minorRadius" ) ).toDouble() );
+      spinRadius->setValue( pointSymbol->shapeProperty( u"radius"_s ).toDouble() );
+      spinMinorRadius->setValue( pointSymbol->shapeProperty( u"minorRadius"_s ).toDouble() );
       break;
     case Qgis::Point3DShape::Model:
     {
-      lineEditModel->setSource( pointSymbol->shapeProperty( QStringLiteral( "model" ) ).toString() );
+      lineEditModel->setSource( pointSymbol->shapeProperty( u"model"_s ).toString() );
       // "overwriteMaterial" is a legacy setting indicating that non-null material should be used
-      forceNullMaterial = ( pointSymbol->shapeProperties().contains( QStringLiteral( "overwriteMaterial" ) ) && !pointSymbol->shapeProperties().value( QStringLiteral( "overwriteMaterial" ) ).toBool() )
+      forceNullMaterial = ( pointSymbol->shapeProperties().contains( u"overwriteMaterial"_s ) && !pointSymbol->shapeProperties().value( u"overwriteMaterial"_s ).toBool() )
                           || !pointSymbol->materialSettings()
-                          || pointSymbol->materialSettings()->type() == QLatin1String( "null" );
-      technique = QgsMaterialSettingsRenderingTechnique::TrianglesFromModel;
+                          || pointSymbol->materialSettings()->type() == "null"_L1;
+      mRenderingTechnique = Qgis::MaterialRenderingTechnique::TrianglesFromModel;
+
+      whileBlocking( mComboModelUpAxis )->setCurrentIndex( mComboModelUpAxis->findData( pointSymbol->shapeProperty( u"upAxis"_s ).toString() ) );
+      whileBlocking( mComboModelForwardAxis )->setCurrentIndex( mComboModelForwardAxis->findData( pointSymbol->shapeProperty( u"forwardAxis"_s ).toString() ) );
       break;
     }
     case Qgis::Point3DShape::Billboard:
@@ -135,83 +221,85 @@ void QgsPoint3DSymbolWidget::setSymbol( const QgsAbstract3DSymbol *symbol, QgsVe
       {
         btnChangeSymbol->setSymbol( pointSymbol->billboardSymbol()->clone() );
       }
-      technique = QgsMaterialSettingsRenderingTechnique::Points;
+      mRenderingTechnique = Qgis::MaterialRenderingTechnique::Billboards;
       break;
     case Qgis::Point3DShape::ExtrudedText:
       break;
   }
 
   widgetMaterial->setSettings( pointSymbol->materialSettings(), layer );
-  widgetMaterial->setTechnique( technique );
+  widgetMaterial->setTechnique( mRenderingTechnique );
+  widgetMaterial->setFilterByTechnique( true );
+  emit renderingTechniqueChanged();
 
   if ( forceNullMaterial )
   {
-    widgetMaterial->setType( QStringLiteral( "null" ) );
+    widgetMaterial->setType( u"null"_s );
   }
 
-  // decompose the transform matrix
-  // assuming the last row has values [0 0 0 1]
-  // see https://math.stackexchange.com/questions/237369/given-this-transformation-matrix-how-do-i-decompose-it-into-translation-rotati
-  // A point on the 2D plane (x', y') is transformed to (x, -z) in the 3D world.
-  // The formula from stackexchange need to be changed to take into account the 3D representation.
-  QMatrix4x4 m = pointSymbol->transform();
-  float *md = m.data();  // returns data in column-major order
-  const float sx = QVector3D( md[0], md[1], md[2] ).length();
-  const float sz = QVector3D( md[4], md[5], md[6] ).length();
-  const float sy = QVector3D( md[8], md[9], md[10] ).length();
-  float rd[9] =
-  {
-    md[0] / sx, md[4] / sy, md[8] / sz,
-    md[1] / sx, md[5] / sy, md[9] / sz,
-    md[2] / sx, md[6] / sy, md[10] / sz,
-  };
-  const QMatrix3x3 rot3x3( rd ); // takes data in row-major order
-  const QVector3D rot = QQuaternion::fromRotationMatrix( rot3x3 ).toEulerAngles();
-  const QgsVector3D translationMapCoords( md[12], -md[14], md[13] );
+  QVector3D translation, scale;
+  QQuaternion rotation;
+  Qgs3DUtils::decomposeTransformMatrix( pointSymbol->transform(), translation, rotation, scale );
 
-  spinBillboardHeight->setValue( md[13] );
-  spinTX->setValue( translationMapCoords.x() );
-  spinTY->setValue( translationMapCoords.y() );
-  spinTZ->setValue( translationMapCoords.z() );
-  spinSX->setValue( sx );
-  spinSY->setValue( sy );
-  spinSZ->setValue( sz );
+  const QVector3D rot = rotation.toEulerAngles();
+
+  spinBillboardHeight->setValue( translation.z() );
+  spinTX->setValue( translation.x() );
+  spinTY->setValue( translation.y() );
+  spinTZ->setValue( translation.z() );
+  spinSX->setValue( scale.x() );
+  spinSY->setValue( scale.y() );
+  spinSZ->setValue( scale.z() );
   spinRX->setValue( QgsLayoutUtils::normalizedAngle( rot.x() ) );
-  spinRY->setValue( QgsLayoutUtils::normalizedAngle( 360.0 - rot.z() ) );
-  spinRZ->setValue( QgsLayoutUtils::normalizedAngle( rot.y() ) );
+  spinRY->setValue( QgsLayoutUtils::normalizedAngle( rot.y() ) );
+  spinRZ->setValue( QgsLayoutUtils::normalizedAngle( rot.z() ) );
+
+  mButtonDDScaleX->init( static_cast< int >( QgsAbstract3DSymbol::Property::ScaleX ), pointSymbol->dataDefinedProperties(), QgsAbstract3DSymbol::propertyDefinitions(), layer, true );
+  mButtonDDScaleY->init( static_cast< int >( QgsAbstract3DSymbol::Property::ScaleY ), pointSymbol->dataDefinedProperties(), QgsAbstract3DSymbol::propertyDefinitions(), layer, true );
+  mButtonDDScaleZ->init( static_cast< int >( QgsAbstract3DSymbol::Property::ScaleZ ), pointSymbol->dataDefinedProperties(), QgsAbstract3DSymbol::propertyDefinitions(), layer, true );
+
+  mButtonDDTranslationX->init( static_cast< int >( QgsAbstract3DSymbol::Property::TranslationX ), pointSymbol->dataDefinedProperties(), QgsAbstract3DSymbol::propertyDefinitions(), layer, true );
+  mButtonDDTranslationY->init( static_cast< int >( QgsAbstract3DSymbol::Property::TranslationY ), pointSymbol->dataDefinedProperties(), QgsAbstract3DSymbol::propertyDefinitions(), layer, true );
+  mButtonDDTranslationZ->init( static_cast< int >( QgsAbstract3DSymbol::Property::TranslationZ ), pointSymbol->dataDefinedProperties(), QgsAbstract3DSymbol::propertyDefinitions(), layer, true );
+
+  mButtonDDRotationX->init( static_cast< int >( QgsAbstract3DSymbol::Property::RotationX ), pointSymbol->dataDefinedProperties(), QgsAbstract3DSymbol::propertyDefinitions(), layer, true );
+  mButtonDDRotationY->init( static_cast< int >( QgsAbstract3DSymbol::Property::RotationY ), pointSymbol->dataDefinedProperties(), QgsAbstract3DSymbol::propertyDefinitions(), layer, true );
+  mButtonDDRotationZ->init( static_cast< int >( QgsAbstract3DSymbol::Property::RotationZ ), pointSymbol->dataDefinedProperties(), QgsAbstract3DSymbol::propertyDefinitions(), layer, true );
 }
 
 QgsAbstract3DSymbol *QgsPoint3DSymbolWidget::symbol()
 {
   QVariantMap vm;
-  std::unique_ptr< QgsPoint3DSymbol > sym = std::make_unique< QgsPoint3DSymbol >();
-  sym->setBillboardSymbol( static_cast<QgsMarkerSymbol *>( QgsSymbol::defaultSymbol( Qgis::GeometryType::Point ) ) );
-  switch ( cboShape->currentData().value< Qgis::Point3DShape >() )
+  auto sym = std::make_unique<QgsPoint3DSymbol>();
+  sym->setBillboardSymbol( qgis::unique_ptr_static_cast<QgsMarkerSymbol>( QgsSymbol::defaultSymbol( Qgis::GeometryType::Point ) ).release() );
+  switch ( cboShape->currentData().value<Qgis::Point3DShape>() )
   {
     case Qgis::Point3DShape::Sphere:
-      vm[QStringLiteral( "radius" )] = spinRadius->value();
+      vm[u"radius"_s] = spinRadius->value();
       break;
     case Qgis::Point3DShape::Cylinder:
-      vm[QStringLiteral( "radius" )] = spinRadius->value();
-      vm[QStringLiteral( "length" )] = spinLength->value();
+      vm[u"radius"_s] = spinRadius->value();
+      vm[u"length"_s] = spinLength->value();
       break;
     case Qgis::Point3DShape::Cube:
-      vm[QStringLiteral( "size" )] = spinSize->value();
+      vm[u"size"_s] = spinSize->value();
       break;
     case Qgis::Point3DShape::Cone:
-      vm[QStringLiteral( "topRadius" )] = spinTopRadius->value();
-      vm[QStringLiteral( "bottomRadius" )] = spinBottomRadius->value();
-      vm[QStringLiteral( "length" )] = spinLength->value();
+      vm[u"topRadius"_s] = spinTopRadius->value();
+      vm[u"bottomRadius"_s] = spinBottomRadius->value();
+      vm[u"length"_s] = spinLength->value();
       break;
     case Qgis::Point3DShape::Plane:
-      vm[QStringLiteral( "size" )] = spinSize->value();
+      vm[u"size"_s] = spinSize->value();
       break;
     case Qgis::Point3DShape::Torus:
-      vm[QStringLiteral( "radius" )] = spinRadius->value();
-      vm[QStringLiteral( "minorRadius" )] = spinMinorRadius->value();
+      vm[u"radius"_s] = spinRadius->value();
+      vm[u"minorRadius"_s] = spinMinorRadius->value();
       break;
     case Qgis::Point3DShape::Model:
-      vm[QStringLiteral( "model" )] = lineEditModel->source();
+      vm[u"model"_s] = lineEditModel->source();
+      vm[u"upAxis"_s] = mComboModelUpAxis->currentData().toString();
+      vm[u"forwardAxis"_s] = mComboModelForwardAxis->currentData().toString();
       break;
     case Qgis::Point3DShape::Billboard:
       sym->setBillboardSymbol( btnChangeSymbol->clonedSymbol<QgsMarkerSymbol>() );
@@ -220,12 +308,9 @@ QgsAbstract3DSymbol *QgsPoint3DSymbolWidget::symbol()
       break;
   }
 
-  // A point on the 2D plane (x', y') is transformed to (x, -z) in the 3D world.
-  // The rotation, scale and translation values need to be converted in the 3D world.
-  const QgsVector3D translationWorldCoords( spinTX->value(), spinTZ->value(), -spinTY->value() );
-  const QQuaternion rot( QQuaternion::fromEulerAngles( static_cast<float>( spinRX->value() ), static_cast<float>( spinRZ->value() ), static_cast<float>( 360.0 - spinRY->value() ) ) );
-  const QVector3D sca( static_cast<float>( spinSX->value() ), static_cast<float>( spinSZ->value() ), static_cast<float>( spinSY->value() ) );
-  const QVector3D tra( static_cast<float>( translationWorldCoords.x() ), static_cast<float>( translationWorldCoords.y() ), static_cast<float>( translationWorldCoords.z() ) );
+  const QQuaternion rot( QQuaternion::fromEulerAngles( static_cast<float>( spinRX->value() ), static_cast<float>( spinRY->value() ), static_cast<float>( spinRZ->value() ) ) );
+  const QVector3D sca( static_cast<float>( spinSX->value() ), static_cast<float>( spinSY->value() ), static_cast<float>( spinSZ->value() ) );
+  const QVector3D tra( static_cast<float>( spinTX->value() ), static_cast<float>( spinTY->value() ), static_cast<float>( spinTZ->value() ) );
 
   QMatrix4x4 tr;
   tr.translate( tra );
@@ -233,35 +318,74 @@ QgsAbstract3DSymbol *QgsPoint3DSymbolWidget::symbol()
   tr.rotate( rot );
 
   sym->setAltitudeClamping( static_cast<Qgis::AltitudeClamping>( cboAltClamping->currentIndex() ) );
-  sym->setShape( cboShape->itemData( cboShape->currentIndex() ).value< Qgis::Point3DShape >() );
+  sym->setShape( cboShape->itemData( cboShape->currentIndex() ).value<Qgis::Point3DShape>() );
   sym->setShapeProperties( vm );
-  sym->setMaterialSettings( widgetMaterial->settings() );
+  sym->setMaterialSettings( widgetMaterial->settings().release() );
   sym->setTransform( tr );
+
+  QgsPropertyCollection ddp;
+  ddp.setProperty( QgsAbstract3DSymbol::Property::ScaleX, mButtonDDScaleX->toProperty() );
+  ddp.setProperty( QgsAbstract3DSymbol::Property::ScaleY, mButtonDDScaleY->toProperty() );
+  ddp.setProperty( QgsAbstract3DSymbol::Property::ScaleZ, mButtonDDScaleZ->toProperty() );
+  ddp.setProperty( QgsAbstract3DSymbol::Property::TranslationX, mButtonDDTranslationX->toProperty() );
+  ddp.setProperty( QgsAbstract3DSymbol::Property::TranslationY, mButtonDDTranslationY->toProperty() );
+  ddp.setProperty( QgsAbstract3DSymbol::Property::TranslationZ, mButtonDDTranslationZ->toProperty() );
+  ddp.setProperty( QgsAbstract3DSymbol::Property::RotationX, mButtonDDRotationX->toProperty() );
+  ddp.setProperty( QgsAbstract3DSymbol::Property::RotationY, mButtonDDRotationY->toProperty() );
+  ddp.setProperty( QgsAbstract3DSymbol::Property::RotationZ, mButtonDDRotationZ->toProperty() );
+  sym->setDataDefinedProperties( ddp );
+
   return sym.release();
 }
 
 QString QgsPoint3DSymbolWidget::symbolType() const
 {
-  return QStringLiteral( "point" );
+  return u"point"_s;
+}
+
+Qgis::MaterialRenderingTechnique QgsPoint3DSymbolWidget::renderingTechnique() const
+{
+  return mRenderingTechnique;
+}
+
+void QgsPoint3DSymbolWidget::setDockMode( bool dockMode )
+{
+  widgetMaterial->setDockMode( dockMode );
+  Qgs3DSymbolWidget::setDockMode( dockMode );
 }
 
 void QgsPoint3DSymbolWidget::onShapeChanged()
 {
   QList<QWidget *> allWidgets;
-  allWidgets << labelSize << spinSize
-             << labelRadius << spinRadius
-             << labelMinorRadius << spinMinorRadius
-             << labelTopRadius << spinTopRadius
-             << labelBottomRadius << spinBottomRadius
-             << labelLength << spinLength
-             << labelModel << lineEditModel
-             << labelBillboardHeight << spinBillboardHeight << labelBillboardSymbol << btnChangeSymbol;
+  allWidgets
+    << labelSize
+    << spinSize
+    << labelRadius
+    << spinRadius
+    << labelMinorRadius
+    << spinMinorRadius
+    << labelTopRadius
+    << spinTopRadius
+    << labelBottomRadius
+    << spinBottomRadius
+    << labelLength
+    << spinLength
+    << labelModel
+    << lineEditModel
+    << labelBillboardHeight
+    << spinBillboardHeight
+    << labelBillboardSymbol
+    << btnChangeSymbol
+    << mComboModelForwardAxis
+    << mComboModelUpAxis
+    << labelUpAxis
+    << labelForwardAxis;
 
   materialsGroupBox->show();
   transformationWidget->show();
   QList<QWidget *> activeWidgets;
-  QgsMaterialSettingsRenderingTechnique technique = QgsMaterialSettingsRenderingTechnique::InstancedPoints;
-  switch ( cboShape->currentData().value< Qgis::Point3DShape >() )
+  mRenderingTechnique = Qgis::MaterialRenderingTechnique::InstancedPoints;
+  switch ( cboShape->currentData().value<Qgis::Point3DShape>() )
   {
     case Qgis::Point3DShape::Sphere:
       activeWidgets << labelRadius << spinRadius;
@@ -282,26 +406,28 @@ void QgsPoint3DSymbolWidget::onShapeChanged()
       activeWidgets << labelRadius << spinRadius << labelMinorRadius << spinMinorRadius;
       break;
     case Qgis::Point3DShape::Model:
-      activeWidgets << labelModel << lineEditModel;
-      technique = QgsMaterialSettingsRenderingTechnique::TrianglesFromModel;
+      activeWidgets << labelModel << lineEditModel << mComboModelForwardAxis << mComboModelUpAxis << labelUpAxis << labelForwardAxis;
+      mRenderingTechnique = Qgis::MaterialRenderingTechnique::TrianglesFromModel;
       break;
     case Qgis::Point3DShape::Billboard:
       activeWidgets << labelBillboardHeight << spinBillboardHeight << labelBillboardSymbol << btnChangeSymbol;
       // Always hide material and transformationwidget for billboard
       materialsGroupBox->hide();
       transformationWidget->hide();
-      technique = QgsMaterialSettingsRenderingTechnique::Points;
+      mRenderingTechnique = Qgis::MaterialRenderingTechnique::Billboards;
       break;
     case Qgis::Point3DShape::ExtrudedText:
       break;
   }
 
-  widgetMaterial->setTechnique( technique );
+  widgetMaterial->setTechnique( mRenderingTechnique );
+  widgetMaterial->setFilterByTechnique( true );
+  emit renderingTechniqueChanged();
 
   if ( cboShape->currentIndex() == 6 )
   {
     // going from different shape -> model resets the material to the null type
-    widgetMaterial->setType( QStringLiteral( "null" ) );
+    widgetMaterial->setType( u"null"_s );
   }
 
   const auto constAllWidgets = allWidgets;
@@ -311,4 +437,9 @@ void QgsPoint3DSymbolWidget::onShapeChanged()
   }
 
   emit changed();
+}
+
+void QgsPoint3DSymbolWidget::setMode( Qgis::MaterialWidgetMode mode )
+{
+  widgetMaterial->setMode( mode );
 }

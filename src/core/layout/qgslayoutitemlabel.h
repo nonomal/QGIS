@@ -20,6 +20,7 @@
 #include "qgis_core.h"
 #include "qgslayoutitem.h"
 #include "qgstextformat.h"
+
 #include <QFont>
 #include <QUrl>
 
@@ -31,12 +32,11 @@ class QgsDistanceArea;
  * \ingroup core
  * \brief A layout item subclass for text labels.
  */
-class CORE_EXPORT QgsLayoutItemLabel: public QgsLayoutItem
+class CORE_EXPORT QgsLayoutItemLabel : public QgsLayoutItem
 {
     Q_OBJECT
 
   public:
-
     //! Label modes
     enum Mode
     {
@@ -66,6 +66,16 @@ class CORE_EXPORT QgsLayoutItemLabel: public QgsLayoutItem
      * \see sizeForText()
      */
     void adjustSizeToText();
+
+    /**
+     * Resizes the item so that the label's text fits to the item.
+     *
+     * Keeps the specified reference point stationary.
+     *
+     * \see sizeForText()
+     * \since QGIS 3.42
+     */
+    void adjustSizeToText( QgsLayoutItem::ReferencePoint referencePoint );
 
     /**
      * Returns the required item size (in layout units) for the label's text to fill the item.
@@ -109,14 +119,14 @@ class CORE_EXPORT QgsLayoutItemLabel: public QgsLayoutItem
     /**
      * Returns the label's current font.
      * \see setFont()
-     * \deprecated use textFormat() instead (since QGIS 3.24)
+     * \deprecated QGIS 3.40. Use textFormat() instead (since QGIS 3.24).
      */
     Q_DECL_DEPRECATED QFont font() const SIP_DEPRECATED;
 
     /**
      * Sets the label's current \a font.
      * \see font()
-     * \deprecated use setTextFormat() instead (since QGIS 3.24)
+     * \deprecated QGIS 3.40. Use setTextFormat() instead (since QGIS 3.24).
      */
     Q_DECL_DEPRECATED void setFont( const QFont &font ) SIP_DEPRECATED;
 
@@ -139,14 +149,22 @@ class CORE_EXPORT QgsLayoutItemLabel: public QgsLayoutItem
      * \see hAlign()
      * \see setVAlign()
      */
-    void setHAlign( Qt::AlignmentFlag alignment ) { mHAlignment = alignment; invalidateCache(); }
+    void setHAlign( Qt::AlignmentFlag alignment )
+    {
+      mHAlignment = alignment;
+      invalidateCache();
+    }
 
     /**
      * Sets for the vertical \a alignment of the label.
      * \see vAlign()
      * \see setHAlign()
      */
-    void setVAlign( Qt::AlignmentFlag alignment ) { mVAlignment = alignment; invalidateCache(); }
+    void setVAlign( Qt::AlignmentFlag alignment )
+    {
+      mVAlignment = alignment;
+      invalidateCache();
+    }
 
     /**
      * Returns the horizontal margin between the edge of the frame and the label
@@ -196,14 +214,14 @@ class CORE_EXPORT QgsLayoutItemLabel: public QgsLayoutItem
     /**
      * Sets the label font \a color.
      * \see fontColor()
-     * \deprecated Use setTextFormat() instead (since QGIS 3.24)
+     * \deprecated QGIS 3.40. Use setTextFormat() instead (since QGIS 3.24).
      */
     Q_DECL_DEPRECATED void setFontColor( const QColor &color ) SIP_DEPRECATED { mFormat.setColor( color ); }
 
     /**
      * Returns the label font color.
      * \see setFontColor()
-     * \deprecated use textFormat() instead (since QGIS 3.24)
+     * \deprecated QGIS 3.40. Use textFormat() instead (since QGIS 3.24).
      */
     Q_DECL_DEPRECATED QColor fontColor() const SIP_DEPRECATED { return mFormat.color(); }
 
@@ -251,8 +269,6 @@ class CORE_EXPORT QgsLayoutItemLabel: public QgsLayoutItem
     void updateBoundingRect();
 
   private:
-    bool mFirstRender = true;
-
     // Text
     QString mText;
 

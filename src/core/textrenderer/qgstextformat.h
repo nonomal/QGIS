@@ -16,17 +16,20 @@
 #ifndef QGSTEXTFORMAT_H
 #define QGSTEXTFORMAT_H
 
-#include "qgis_sip.h"
-#include "qgis_core.h"
 #include "qgis.h"
-#include "qgstextbuffersettings.h"
-#include "qgstextbackgroundsettings.h"
-#include "qgstextshadowsettings.h"
-#include "qgstextmasksettings.h"
-#include "qgsstringutils.h"
+#include "qgis_core.h"
+#include "qgis_sip.h"
 #include "qgsscreenproperties.h"
+#include "qgsstringutils.h"
+#include "qgstextbackgroundsettings.h"
+#include "qgstextbuffersettings.h"
+#include "qgstextmasksettings.h"
+#include "qgstextshadowsettings.h"
 
 #include <QSharedDataPointer>
+#include <QString>
+
+using namespace Qt::StringLiterals;
 
 class QMimeData;
 class QgsTextSettingsPrivate;
@@ -40,20 +43,17 @@ class QgsTextSettingsPrivate;
 class CORE_EXPORT QgsTextFormat
 {
   public:
-
     /**
      * Default constructor for QgsTextFormat. Creates a text format initially
      * set to an invalid state (see isValid()).
      */
     QgsTextFormat();
 
-    /**
-     * Copy constructor.
-     * \param other source QgsTextFormat
-     */
     QgsTextFormat( const QgsTextFormat &other );
+    SIP_SKIP QgsTextFormat( QgsTextFormat &&other );
 
     QgsTextFormat &operator=( const QgsTextFormat &other );
+    QgsTextFormat &operator=( QgsTextFormat &&other );
 
     ~QgsTextFormat();
 
@@ -178,7 +178,7 @@ class CORE_EXPORT QgsTextFormat
      * units and map unit scale) for a specified render context.
      * \param context destination render context
      * \param scaleFactor optional font size scaling factor. It is recommended to set this to
-     * QgsTextRenderer::FONT_WORKAROUND_SCALE and then manually scale painter devices or calculations
+     * QgsTextRenderer::calculateScaleFactorForFormat() and then manually scale painter devices or calculations
      * based on the resultant font metrics. Failure to do so will result in poor quality text rendering
      * at small font sizes.
      * \param isZeroSize will be set to true if the font is scaled down to a near 0 size, and nothing should be rendered. Not available in Python bindings.
@@ -464,6 +464,156 @@ class CORE_EXPORT QgsTextFormat
     void setLineHeightUnit( Qgis::RenderUnit unit );
 
     /**
+     * Returns the distance for tab stops.
+     *
+     * \note This value will be ignored if tabPositions() is non-empty.
+     *
+     * \see tabPositions()
+     * \see tabStopDistanceUnit()
+     * \see setTabStopDistance()
+     *
+     * \since QGIS 3.38
+     */
+    double tabStopDistance() const;
+
+    /**
+     * Sets the \a distance for tab stops.
+     *
+     * The units are specified using setTabStopDistanceUnit().
+     *
+     * \note This value will be ignored if tabPositions() is non-empty.
+     *
+     * \see tabPositions()
+     * \see tabStopDistance()
+     * \see setTabStopDistanceUnit()
+     *
+     * \since QGIS 3.38
+     */
+    void setTabStopDistance( double distance );
+
+    /**
+     * \ingroup core
+     * \brief Defines a tab position for a text format.
+     * \since QGIS 3.42
+     */
+    class CORE_EXPORT Tab
+    {
+      public:
+        /**
+         * Constructor for a Tab at the specified \a position.
+         */
+        explicit Tab( double position );
+
+        /**
+         * Sets the tab position.
+         *
+         * \see position()
+         */
+        void setPosition( double position ) { mPosition = position; }
+
+        /**
+         * Returns the tab position.
+         *
+         * \see setPosition()
+         */
+        double position() const { return mPosition; }
+
+        bool operator==( const QgsTextFormat::Tab &other ) const { return qgsDoubleNear( mPosition, other.mPosition ); }
+
+#ifdef SIP_RUN
+        // clang-format off
+        SIP_PYOBJECT __repr__();
+        % MethodCode
+        const QString str = u"<QgsTextFormat.Tab: %1>"_s.arg( sipCpp->position() );
+        sipRes = PyUnicode_FromString( str.toUtf8().constData() );
+        % End
+// clang-format on
+#endif
+
+        // clang-format off
+        private:
+        // clang-format on
+
+        double mPosition
+        = 0;
+    };
+
+    /**
+     * Returns the list of tab positions for tab stops.
+     *
+     * The units are specified using tabStopDistanceUnit().
+     *
+     * \note If non-empty, this list overrides any distance defined by tabStopDistance().
+     *
+     * \see setTabPositions()
+     * \see tabStopDistance()
+     * \see tabStopDistanceUnit()
+     * \see setTabStopDistance()
+     *
+     * \since QGIS 3.42
+     */
+    QList< QgsTextFormat::Tab > tabPositions() const;
+
+    /**
+     * Sets the list of tab \a positions for tab stops.
+     *
+     * The units are specified using setTabStopDistanceUnit().
+     *
+     * \note If non-empty, this list overrides any distance defined by setTabStopDistance().
+     *
+     * \see tabPositions()
+     * \see setTabStopDistance()
+     * \see setTabStopDistanceUnit()
+     *
+     * \since QGIS 3.42
+     */
+    void setTabPositions( const QList< QgsTextFormat::Tab > &positions );
+
+    /**
+     * Returns the units for the tab stop distance.
+     *
+     * \see tabStopDistance()
+     * \see tabPositions()
+     * \see setTabStopDistanceUnit()
+     *
+     * \since QGIS 3.38
+     */
+    Qgis::RenderUnit tabStopDistanceUnit() const;
+
+    /**
+     * Sets the \a unit used for the tab stop distance.
+     *
+     * \see setTabStopDistance()
+     * \see setTabPositions()
+     * \see tabStopDistanceUnit()
+     *
+     * \since QGIS 3.38
+     */
+    void setTabStopDistanceUnit( Qgis::RenderUnit unit );
+
+    /**
+     * Returns the map unit scale object for the tab stop distance. This is only used if the
+     * tab stop distance is set to Qgis::RenderUnit::MapUnits.
+     *
+     * \see setTabStopDistanceMapUnitScale()
+     * \see tabStopDistanceUnit()
+     *
+     * \since QGIS 3.38
+     */
+    QgsMapUnitScale tabStopDistanceMapUnitScale() const;
+
+    /**
+     * Sets the map unit \a scale object for the tab stop distance. This is only used if the
+     * tab stop distance is set to Qgis::RenderUnit::MapUnits.
+     *
+     * \see tabStopDistanceMapUnitScale()
+     * \see setTabStopDistanceUnit()
+     *
+     * \since QGIS 3.38
+     */
+    void setTabStopDistanceMapUnitScale( const QgsMapUnitScale &scale );
+
+    /**
      * Returns the orientation of the text.
      * \see setOrientation()
      * \since QGIS 3.10
@@ -562,7 +712,7 @@ class CORE_EXPORT QgsTextFormat
      * Caller takes responsibility for deleting the returned object.
      * \see fromMimeData()
      */
-    QMimeData *toMimeData() const SIP_FACTORY;
+    std::unique_ptr<QMimeData> toMimeData() const;
 
     /**
      * Returns a text format matching the settings from an input \a font.
@@ -594,6 +744,15 @@ class CORE_EXPORT QgsTextFormat
      * such as blend modes, which require output in raster formats to be fully respected.
      */
     bool containsAdvancedEffects() const;
+
+    /**
+     * Returns TRUE if any component of the font format requires a non-default composition mode.
+     *
+     * The default composition mode is QPainter::CompositionMode_SourceOver.
+     *
+     * \since QGIS 3.44
+     */
+    bool hasNonDefaultCompositionMode() const;
 
     /**
      * Returns TRUE if the specified font was found on the system, or FALSE
@@ -668,7 +827,6 @@ class CORE_EXPORT QgsTextFormat
     QString asCSS( double pointToPixelMultiplier = 1.0 ) const;
 
   private:
-
     QgsTextBufferSettings mBufferSettings;
     QgsTextBackgroundSettings mBackgroundSettings;
     QgsTextShadowSettings mShadowSettings;
@@ -678,7 +836,6 @@ class CORE_EXPORT QgsTextFormat
     bool mTextFontFound = true;
 
     QSharedDataPointer<QgsTextSettingsPrivate> d;
-
 };
 
 Q_DECLARE_METATYPE( QgsTextFormat )

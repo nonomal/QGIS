@@ -13,12 +13,16 @@
  *                                                                         *
  ***************************************************************************/
 
-#define SIP_NO_FILE
+#ifndef QGSMEMORYPROVIDER_H
+#define QGSMEMORYPROVIDER_H
 
-#include "qgsvectordataprovider.h"
+
 #include "qgscoordinatereferencesystem.h"
 #include "qgsfields.h"
 #include "qgsprovidermetadata.h"
+#include "qgsvectordataprovider.h"
+
+#define SIP_NO_FILE
 
 ///@cond PRIVATE
 typedef QMap<QgsFeatureId, QgsFeature> QgsFeatureMap;
@@ -27,13 +31,12 @@ class QgsSpatialIndex;
 
 class QgsMemoryFeatureIterator;
 
-class QgsMemoryProvider final: public QgsVectorDataProvider
+class QgsMemoryProvider final : public QgsVectorDataProvider
 {
     Q_OBJECT
 
   public:
-    explicit QgsMemoryProvider( const QString &uri, const QgsVectorDataProvider::ProviderOptions &coordinateTransformContext,
-                                QgsDataProvider::ReadFlags flags = QgsDataProvider::ReadFlags() );
+    explicit QgsMemoryProvider( const QString &uri, const QgsVectorDataProvider::ProviderOptions &coordinateTransformContext, Qgis::DataProviderReadFlags flags = Qgis::DataProviderReadFlags() );
 
     ~QgsMemoryProvider() override;
 
@@ -52,6 +55,8 @@ class QgsMemoryProvider final: public QgsVectorDataProvider
     Qgis::WkbType wkbType() const override;
     long long featureCount() const override;
     QgsFields fields() const override;
+
+    using QgsVectorDataProvider::addFeatures;
     bool addFeatures( QgsFeatureList &flist, QgsFeatureSink::Flags flags = QgsFeatureSink::Flags() ) override;
     bool deleteFeatures( const QgsFeatureIds &id ) override;
     bool addAttributes( const QList<QgsField> &attributes ) override;
@@ -61,10 +66,12 @@ class QgsMemoryProvider final: public QgsVectorDataProvider
     bool changeGeometryValues( const QgsGeometryMap &geometry_map ) override;
     QString subsetString() const override;
     bool setSubsetString( const QString &theSQL, bool updateFeatureCount = true ) override;
-    bool supportsSubsetString() const override { return true; }
+    bool supportsSubsetString() const override;
+    QString subsetStringDialect() const override;
+    QString subsetStringHelpUrl() const override;
     bool createSpatialIndex() override;
     Qgis::SpatialIndexPresence hasSpatialIndex() const override;
-    QgsVectorDataProvider::Capabilities capabilities() const override;
+    Qgis::VectorProviderCapabilities capabilities() const override;
     bool truncate() override;
 
     /* Implementation of functions from QgsDataProvider */
@@ -72,6 +79,7 @@ class QgsMemoryProvider final: public QgsVectorDataProvider
     QString name() const override;
     QString description() const override;
     QgsRectangle extent() const override;
+    QgsBox3D extent3D() const override;
     void updateExtents() override;
     bool isValid() const override;
     QgsCoordinateReferenceSystem crs() const override;
@@ -84,14 +92,14 @@ class QgsMemoryProvider final: public QgsVectorDataProvider
     // fields
     QgsFields mFields;
     Qgis::WkbType mWkbType;
-    mutable QgsRectangle mExtent;
+    mutable QgsBox3D mExtent3D;
 
     // features
     QgsFeatureMap mFeatures;
     QgsFeatureId mNextFeatureId;
 
     // indexing
-    QgsSpatialIndex *mSpatialIndex = nullptr;
+    std::unique_ptr<QgsSpatialIndex> mSpatialIndex;
 
     QString mSubsetString;
 
@@ -99,15 +107,16 @@ class QgsMemoryProvider final: public QgsVectorDataProvider
 };
 
 
-class QgsMemoryProviderMetadata final: public QgsProviderMetadata
+class QgsMemoryProviderMetadata final : public QgsProviderMetadata
 {
     Q_OBJECT
 
   public:
     QgsMemoryProviderMetadata();
     QIcon icon() const override;
-    QgsDataProvider *createProvider( const QString &uri, const QgsDataProvider::ProviderOptions &options, QgsDataProvider::ReadFlags flags = QgsDataProvider::ReadFlags() ) override;
+    QgsDataProvider *createProvider( const QString &uri, const QgsDataProvider::ProviderOptions &options, Qgis::DataProviderReadFlags flags = Qgis::DataProviderReadFlags() ) override;
     QList< Qgis::LayerType > supportedLayerTypes() const override;
 };
 
 ///@endcond
+#endif // QGSMEMORYPROVIDER_H

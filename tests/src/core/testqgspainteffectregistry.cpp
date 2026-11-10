@@ -15,24 +15,29 @@
  *                                                                         *
  ***************************************************************************/
 
-#include "qgspainteffectregistry.h"
-#include "qgspainteffect.h"
 #include "qgseffectstack.h"
+#include "qgspainteffect.h"
+#include "qgspainteffectregistry.h"
 #include "qgsrendercontext.h"
+#include "qgstest.h"
 
 #include <QObject>
-#include "qgstest.h"
+#include <QString>
+
+using namespace Qt::StringLiterals;
 
 //dummy paint effect for testing
 class DummyPaintEffect : public QgsPaintEffect
 {
   public:
     DummyPaintEffect() = default;
-    QString type() const override { return QStringLiteral( "Dummy" ); }
+    QString type() const override { return u"Dummy"_s; }
     QgsPaintEffect *clone() const override { return new DummyPaintEffect(); }
-    static QgsPaintEffect *create( const QVariantMap & ) { return new DummyPaintEffect(); }
+    static std::unique_ptr<QgsPaintEffect> create( const QVariantMap & ) { return std::make_unique<DummyPaintEffect>(); }
     QVariantMap properties() const override { return QVariantMap(); }
+    using QgsPaintEffect::readProperties;
     void readProperties( const QVariantMap &props ) override { Q_UNUSED( props ); }
+
   protected:
     void draw( QgsRenderContext &context ) override { Q_UNUSED( context ); }
 };
@@ -42,20 +47,19 @@ class TestQgsPaintEffectRegistry : public QObject
     Q_OBJECT
 
   private slots:
-    void initTestCase();// will be called before the first testfunction is executed.
-    void cleanupTestCase();// will be called after the last testfunction was executed.
-    void init();// will be called before each testfunction is executed.
-    void cleanup();// will be called after every testfunction.
-    void metadata(); //test metadata
-    void createInstance(); // create global instance of QgsPaintEffectRegistry
+    void initTestCase();              // will be called before the first testfunction is executed.
+    void cleanupTestCase();           // will be called after the last testfunction was executed.
+    void init();                      // will be called before each testfunction is executed.
+    void cleanup();                   // will be called after every testfunction.
+    void metadata();                  //test metadata
+    void createInstance();            // create global instance of QgsPaintEffectRegistry
     void instanceHasDefaultEffects(); // check that global instance is populated with default effects
-    void addEffect(); // check adding an effect to an empty registry
-    void fetchEffects(); //check fetching effects
-    void createEffect(); //check creating effect
-    void defaultStack(); //check creating/testing default stack
+    void addEffect();                 // check adding an effect to an empty registry
+    void fetchEffects();              //check fetching effects
+    void createEffect();              //check creating effect
+    void defaultStack();              //check creating/testing default stack
 
   private:
-
 };
 
 void TestQgsPaintEffectRegistry::initTestCase()
@@ -70,18 +74,14 @@ void TestQgsPaintEffectRegistry::cleanupTestCase()
 }
 
 void TestQgsPaintEffectRegistry::init()
-{
-
-}
+{}
 
 void TestQgsPaintEffectRegistry::cleanup()
-{
-
-}
+{}
 
 void TestQgsPaintEffectRegistry::metadata()
 {
-  QgsPaintEffectMetadata metadata = QgsPaintEffectMetadata( QStringLiteral( "name" ), QStringLiteral( "display name" ), DummyPaintEffect::create );
+  QgsPaintEffectMetadata metadata = QgsPaintEffectMetadata( u"name"_s, u"display name"_s, DummyPaintEffect::create );
   QCOMPARE( metadata.name(), QString( "name" ) );
   QCOMPARE( metadata.visibleName(), QString( "display name" ) );
 
@@ -114,11 +114,11 @@ void TestQgsPaintEffectRegistry::addEffect()
   QgsPaintEffectRegistry *registry = QgsApplication::paintEffectRegistry();
   const int previousCount = registry->effects().length();
 
-  registry->addEffectType( new QgsPaintEffectMetadata( QStringLiteral( "Dummy" ), QStringLiteral( "Dummy effect" ), DummyPaintEffect::create ) );
+  registry->addEffectType( new QgsPaintEffectMetadata( u"Dummy"_s, u"Dummy effect"_s, DummyPaintEffect::create ) );
   QCOMPARE( registry->effects().length(), previousCount + 1 );
   //try adding again, should have no effect
-  QgsPaintEffectMetadata *dupe = new QgsPaintEffectMetadata( QStringLiteral( "Dummy" ), QStringLiteral( "Dummy effect" ), DummyPaintEffect::create );
-  QVERIFY( ! registry->addEffectType( dupe ) );
+  QgsPaintEffectMetadata *dupe = new QgsPaintEffectMetadata( u"Dummy"_s, u"Dummy effect"_s, DummyPaintEffect::create );
+  QVERIFY( !registry->addEffectType( dupe ) );
   QCOMPARE( registry->effects().length(), previousCount + 1 );
   delete dupe;
 
@@ -134,54 +134,52 @@ void TestQgsPaintEffectRegistry::fetchEffects()
 
   QVERIFY( effects.contains( "Dummy" ) );
 
-  QgsPaintEffectAbstractMetadata *metadata = registry->effectMetadata( QStringLiteral( "Dummy" ) );
+  QgsPaintEffectAbstractMetadata *metadata = registry->effectMetadata( u"Dummy"_s );
   QCOMPARE( metadata->name(), QString( "Dummy" ) );
 
   //metadata for bad effect
-  metadata = registry->effectMetadata( QStringLiteral( "bad effect" ) );
+  metadata = registry->effectMetadata( u"bad effect"_s );
   QVERIFY( !metadata );
 }
 
 void TestQgsPaintEffectRegistry::createEffect()
 {
   QgsPaintEffectRegistry *registry = QgsApplication::paintEffectRegistry();
-  QgsPaintEffect *effect = registry->createEffect( QStringLiteral( "Dummy" ) );
+  std::unique_ptr<QgsPaintEffect> effect = registry->createEffect( u"Dummy"_s );
 
   QVERIFY( effect );
-  DummyPaintEffect *dummyEffect = dynamic_cast<DummyPaintEffect *>( effect );
+  auto dummyEffect = qgis::unique_ptr_dynamic_cast<DummyPaintEffect>( std::move( effect ) );
   QVERIFY( dummyEffect );
-  delete effect;
 
   //try creating a bad effect
-  effect = registry->createEffect( QStringLiteral( "bad effect" ) );
+  effect = registry->createEffect( u"bad effect"_s );
   QVERIFY( !effect );
 }
 
 void TestQgsPaintEffectRegistry::defaultStack()
 {
   QgsPaintEffectRegistry *registry = QgsApplication::paintEffectRegistry();
-  QgsEffectStack *effect = static_cast<QgsEffectStack *>( QgsPaintEffectRegistry::defaultStack() );
-  QVERIFY( registry->isDefaultStack( effect ) );
+  auto effect = qgis::unique_ptr_static_cast<QgsEffectStack>( QgsPaintEffectRegistry::defaultStack() );
+  QVERIFY( registry->isDefaultStack( effect.get() ) );
   effect->effect( 1 )->setEnabled( true );
-  QVERIFY( !registry->isDefaultStack( effect ) );
+  QVERIFY( !registry->isDefaultStack( effect.get() ) );
   effect->effect( 1 )->setEnabled( false );
   effect->effect( 2 )->setEnabled( false ); //third effect should be enabled by default
-  QVERIFY( !registry->isDefaultStack( effect ) );
+  QVERIFY( !registry->isDefaultStack( effect.get() ) );
   effect->effect( 2 )->setEnabled( true );
   effect->appendEffect( new QgsEffectStack() );
-  QVERIFY( !registry->isDefaultStack( effect ) );
-  delete effect;
+  QVERIFY( !registry->isDefaultStack( effect.get() ) );
   QgsPaintEffect *effect2 = new DummyPaintEffect();
   QVERIFY( !registry->isDefaultStack( effect2 ) );
   delete effect2;
 
-  effect = static_cast<QgsEffectStack *>( QgsPaintEffectRegistry::defaultStack() );
-  static_cast< QgsDrawSourceEffect * >( effect->effect( 2 ) )->setOpacity( 0.5 );
-  QVERIFY( !registry->isDefaultStack( effect ) );
-  static_cast< QgsDrawSourceEffect * >( effect->effect( 2 ) )->setOpacity( 1.0 );
-  QVERIFY( registry->isDefaultStack( effect ) );
-  static_cast< QgsDrawSourceEffect * >( effect->effect( 2 ) )->setBlendMode( QPainter::CompositionMode_Lighten );
-  QVERIFY( !registry->isDefaultStack( effect ) );
+  effect = qgis::unique_ptr_static_cast<QgsEffectStack>( QgsPaintEffectRegistry::defaultStack() );
+  static_cast<QgsDrawSourceEffect *>( effect->effect( 2 ) )->setOpacity( 0.5 );
+  QVERIFY( !registry->isDefaultStack( effect.get() ) );
+  static_cast<QgsDrawSourceEffect *>( effect->effect( 2 ) )->setOpacity( 1.0 );
+  QVERIFY( registry->isDefaultStack( effect.get() ) );
+  static_cast<QgsDrawSourceEffect *>( effect->effect( 2 ) )->setBlendMode( QPainter::CompositionMode_Lighten );
+  QVERIFY( !registry->isDefaultStack( effect.get() ) );
 }
 
 QGSTEST_MAIN( TestQgsPaintEffectRegistry )

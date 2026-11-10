@@ -16,19 +16,22 @@
 #ifndef QGSELEVATIONMAP_H
 #define QGSELEVATIONMAP_H
 
+#include <memory>
+
 #include "qgis.h"
 #include "qgis_sip.h"
 
 #include <QImage>
-#include <memory>
 
 class QgsRasterBlock;
 
 /**
  * \ingroup core
- * \brief Stores digital elevation model in a raster image which may get updated
- * as a part of map layer rendering process. Afterwards the elevations can
- * be used for post-processing effects of the rendered color map image.
+ * \brief Stores a digital elevation model in a raster image which may get updated
+ * as a part of the map layer rendering process.
+ *
+ * Afterwards the elevations can be used for post-processing effects of the
+ * rendered color map image.
  *
  * Elevations are encoded as colors in QImage, thanks to this it is not
  * only possible to set elevation for each pixel, but also to use QPainter
@@ -42,8 +45,6 @@ class QgsRasterBlock;
 class CORE_EXPORT QgsElevationMap
 {
   public:
-
-    //! Default constructor
     QgsElevationMap() = default;
 
     //! Constructs an elevation map with the given width and height
@@ -58,7 +59,6 @@ class CORE_EXPORT QgsElevationMap
      */
     explicit QgsElevationMap( const QImage &image );
 
-    //! Copy constructor
     QgsElevationMap( const QgsElevationMap &other );
 
     /**
@@ -146,15 +146,14 @@ class CORE_EXPORT QgsElevationMap
     static std::unique_ptr<QgsElevationMap> fromRasterBlock( QgsRasterBlock *block ) SIP_SKIP;
 
     //! Returns whether the encoded value is a no data value
-    inline bool isNoData( QRgb colorRaw ) const {return colorRaw == 0;}
+    inline bool isNoData( QRgb colorRaw ) const { return colorRaw == 0; }
 
     //! Returns the no data value for the elevation map
-    inline float noDataValue() const {return decodeElevation( 0 );}
+    inline float noDataValue() const { return decodeElevation( 0 ); }
 
     QgsElevationMap &operator=( const QgsElevationMap &other );
 
   private:
-
     mutable QImage mElevationImage;
     mutable std::unique_ptr<QPainter> mPainter;
 };

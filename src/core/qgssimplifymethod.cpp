@@ -14,10 +14,14 @@
  ***************************************************************************/
 
 #include "qgssimplifymethod.h"
-#include "qgslogger.h"
+
 #include "qgsgeometrysimplifier.h"
+#include "qgslogger.h"
 #include "qgsmaptopixelgeometrysimplifier.h"
 
+#include <QString>
+
+using namespace Qt::StringLiterals;
 
 void QgsSimplifyMethod::setMethodType( MethodType methodType )
 {
@@ -42,7 +46,7 @@ QgsAbstractGeometrySimplifier *QgsSimplifyMethod::createGeometrySimplifier( cons
   if ( methodType == QgsSimplifyMethod::OptimizeForRendering )
   {
     const int simplifyFlags = QgsMapToPixelSimplifier::SimplifyGeometry | QgsMapToPixelSimplifier::SimplifyEnvelope;
-    return new QgsMapToPixelSimplifier( simplifyFlags, simplifyMethod.tolerance(), QgsMapToPixelSimplifier::Distance );
+    return new QgsMapToPixelSimplifier( simplifyFlags, simplifyMethod.tolerance(), Qgis::VectorSimplificationAlgorithm::Distance );
   }
   else if ( methodType == QgsSimplifyMethod::PreserveTopology )
   {
@@ -50,18 +54,14 @@ QgsAbstractGeometrySimplifier *QgsSimplifyMethod::createGeometrySimplifier( cons
   }
   else
   {
-    QgsDebugError( QStringLiteral( "Simplification method type (%1) is not recognised" ).arg( methodType ) );
+    QgsDebugError( u"Simplification method type (%1) is not recognised"_s.arg( methodType ) );
     return nullptr;
   }
 }
 
 bool QgsSimplifyMethod::operator==( const QgsSimplifyMethod &v ) const
 {
-  return
-    mMethodType == v.mMethodType &&
-    mTolerance == v.mTolerance &&
-    mThreshold == v.mThreshold &&
-    mForceLocalOptimization == v.mForceLocalOptimization;
+  return mMethodType == v.mMethodType && mTolerance == v.mTolerance && mThreshold == v.mThreshold && mForceLocalOptimization == v.mForceLocalOptimization;
 }
 
 bool QgsSimplifyMethod::operator!=( const QgsSimplifyMethod &v ) const

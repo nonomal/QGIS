@@ -27,63 +27,27 @@
 // version without notice, or even be removed.
 //
 
-#include <Qt3DCore/QEntity>
+#include "qgsbox3d.h"
+#include "qgsvector3d.h"
 
-class QgsFeature;
-
-
-#include "qgsexpressioncontext.h"
-
-class Qgs3DMapSettings;
+#include <QSet>
+#include <QString>
+#include <QVector>
 
 #define SIP_NO_FILE
 
-
-/**
- * \ingroup 3d
- * \brief Rendering context for preparation of 3D entities.
- *
- * \note Not available in Python bindings
- */
-class Qgs3DRenderContext
+namespace Qt3DCore
 {
-  public:
-    Qgs3DRenderContext( const Qgs3DMapSettings &map ) : mMap( map ) {}
+  class QEntity;
+}
 
-    const Qgs3DMapSettings &map() const { return mMap; }
-
-    /**
-     * Sets the expression context. This context is used for all expression evaluation
-     * associated with this render context.
-     * \see expressionContext()
-     */
-    void setExpressionContext( const QgsExpressionContext &context ) { mExpressionContext = context; }
-
-    /**
-     * Gets the expression context. This context should be used for all expression evaluation
-     * associated with this render context.
-     * \see setExpressionContext()
-     */
-    QgsExpressionContext &expressionContext() { return mExpressionContext; }
-
-    /**
-     * Gets the expression context (const version). This context should be used for all expression evaluation
-     * associated with this render context.
-     * \see setExpressionContext()
-     * \note not available in Python bindings
-     */
-    const QgsExpressionContext &expressionContext() const { return mExpressionContext; } SIP_SKIP
-
-  private:
-    const Qgs3DMapSettings &mMap;
-    //! Expression context
-    QgsExpressionContext mExpressionContext;
-
-};
+class Qgs3DRenderContext;
+class QgsFeature;
+class QgsGeometry;
 
 
 /**
- * \ingroup 3d
+ * \ingroup qgis_3d
  * \brief Interface to be implemented by 3D symbol implementations in order to generate 3D entities.
  */
 class QgsFeature3DHandler
@@ -95,7 +59,7 @@ class QgsFeature3DHandler
      * Called before feature iteration starts to initialize, get required attributes.
      * \returns TRUE on success (on FALSE the handler failed to initialize and processFeature() / finalize() should not be called
      */
-    virtual bool prepare( const Qgs3DRenderContext &context, QSet<QString> &attributeNames ) = 0;
+    virtual bool prepare( const Qgs3DRenderContext &context, QSet<QString> &attributeNames, const QgsBox3D &chunkExtent ) = 0;
 
     /**
      * Called for every feature to extract information out of it into some
@@ -126,25 +90,48 @@ class QgsFeature3DHandler
      */
     int featureCount() const { return mFeatureCount; }
 
+    /**
+     * Sets whether the feature handler should use highlight material for the created 3D entities. This is used
+     * for highlighting identified features.
+     * \since QGIS 4.0
+     */
+    void setHighlightingEnabled( bool enable ) { mHighlightingEnabled = enable; }
+
+    /**
+     * Returns whether the feature handler will use highlight material for the created 3D entities.
+     * \since QGIS 4.0
+     */
+    bool highlightingEnabled() const { return mHighlightingEnabled; }
+
   protected:
     //! updates zMinimum, zMaximum from the vector of positions in 3D world coordinates
     void updateZRangeFromPositions( const QVector<QVector3D> &positions );
+
+    /**
+     * Clips \a geom to the chunk extents if it is larger than MAX_GEOM_BBOX_SIZE
+     * Return TRUE if \a geom was clipped, FALSE otherwise
+     */
+    bool clipGeometryIfTooLarge( QgsGeometry &geom ) const;
 
   protected:
     float mZMin = std::numeric_limits<float>::max();
     float mZMax = std::numeric_limits<float>::lowest();
     int mFeatureCount = 0;
+    bool mHighlightingEnabled = false;
+
+    /**
+     * Origin (in map coordinates) for output geometries - it is kind of arbitrary, but it should be
+     * picked so that the coordinates are relatively small to avoid numerical precision issues (e.g. at the center of the chunk)
+     */
+    QgsVector3D mChunkOrigin;
+
+    //! bounding box of the chunk
+    QgsBox3D mChunkExtent;
+
+  private:
+    //! features whose bbox is larger than this should be clipped to the chunk's extents
+    static constexpr double MAX_GEOM_BBOX_SIZE = 1e6;
 };
-
-
-class Qgs3DMapSettings;
-class QgsVectorLayer;
-
-namespace Qgs3DSymbolImpl
-{
-  //! generic method to iterate over a layer, handle features with handler and create an entity out of it
-  Qt3DCore::QEntity *entityFromHandler( QgsFeature3DHandler *handler, const Qgs3DMapSettings &map, QgsVectorLayer *layer );
-}
 
 
 /// @endcond

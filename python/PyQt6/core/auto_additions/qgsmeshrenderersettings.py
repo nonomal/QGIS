@@ -1,11 +1,35 @@
 # The following has been generated automatically from src/core/mesh/qgsmeshrenderersettings.h
 QgsMeshRendererScalarSettings.NoResampling = QgsMeshRendererScalarSettings.DataResamplingMethod.NoResampling
 QgsMeshRendererScalarSettings.NeighbourAverage = QgsMeshRendererScalarSettings.DataResamplingMethod.NeighbourAverage
-QgsMeshRendererVectorArrowSettings.MinMax = QgsMeshRendererVectorArrowSettings.ArrowScalingMethod.MinMax
-QgsMeshRendererVectorArrowSettings.Scaled = QgsMeshRendererVectorArrowSettings.ArrowScalingMethod.Scaled
-QgsMeshRendererVectorArrowSettings.Fixed = QgsMeshRendererVectorArrowSettings.ArrowScalingMethod.Fixed
-QgsMeshRendererVectorStreamlineSettings.MeshGridded = QgsMeshRendererVectorStreamlineSettings.SeedingStartPointsMethod.MeshGridded
-QgsMeshRendererVectorStreamlineSettings.Random = QgsMeshRendererVectorStreamlineSettings.SeedingStartPointsMethod.Random
-QgsMeshRendererVectorSettings.Arrows = QgsMeshRendererVectorSettings.Symbology.Arrows
-QgsMeshRendererVectorSettings.Streamlines = QgsMeshRendererVectorSettings.Symbology.Streamlines
-QgsMeshRendererVectorSettings.Traces = QgsMeshRendererVectorSettings.Symbology.Traces
+try:
+    QgsMeshRendererMeshSettings.__group__ = ['mesh']
+except (NameError, AttributeError):
+    pass
+try:
+    QgsMeshRendererScalarSettings.__group__ = ['mesh']
+except (NameError, AttributeError):
+    pass
+try:
+    QgsMeshRendererVectorArrowSettings.__group__ = ['mesh']
+except (NameError, AttributeError):
+    pass
+try:
+    QgsMeshRendererVectorStreamlineSettings.__group__ = ['mesh']
+except (NameError, AttributeError):
+    pass
+try:
+    QgsMeshRendererVectorTracesSettings.__group__ = ['mesh']
+except (NameError, AttributeError):
+    pass
+try:
+    QgsMeshRendererVectorWindBarbSettings.__group__ = ['mesh']
+except (NameError, AttributeError):
+    pass
+try:
+    QgsMeshRendererVectorSettings.__group__ = ['mesh']
+except (NameError, AttributeError):
+    pass
+try:
+    QgsMeshRendererSettings.__group__ = ['mesh']
+except (NameError, AttributeError):
+    pass

@@ -5,24 +5,30 @@ it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or
 (at your option) any later version.
 """
-__author__ = '(C) 2016 by Paul Blottiere'
-__date__ = '14/03/2016'
-__copyright__ = 'Copyright 2016, The QGIS Project'
 
-from qgis.PyQt.QtCore import QPointF
-from qgis.PyQt.QtGui import QPolygonF
-from qgis.PyQt.QtXml import QDomDocument
+__author__ = "(C) 2016 by Paul Blottiere"
+__date__ = "14/03/2016"
+__copyright__ = "Copyright 2016, The QGIS Project"
+
+import unittest
+from pathlib import Path
+
 from qgis.core import (
+    Qgis,
+    QgsGeometryGeneratorSymbolLayer,
     QgsLayout,
+    QgsLayoutItemMap,
     QgsLayoutItemPolyline,
     QgsLayoutItemRegistry,
     QgsLineSymbol,
     QgsProject,
-    QgsReadWriteContext
+    QgsReadWriteContext,
+    QgsRectangle,
 )
-import unittest
-from qgis.testing import start_app, QgisTestCase
-
+from qgis.PyQt.QtCore import QPointF, QRectF
+from qgis.PyQt.QtGui import QPolygonF
+from qgis.PyQt.QtXml import QDomDocument
+from qgis.testing import QgisTestCase, start_app
 from test_qgslayoutitem import LayoutItemTestCase
 from utilities import unitTestDataPath
 
@@ -31,14 +37,13 @@ TEST_DATA_DIR = unitTestDataPath()
 
 
 class TestQgsLayoutPolyline(QgisTestCase, LayoutItemTestCase):
-
     @classmethod
     def control_path_prefix(cls):
         return "composer_polyline"
 
     @classmethod
     def setUpClass(cls):
-        super(TestQgsLayoutPolyline, cls).setUpClass()
+        super().setUpClass()
         cls.item_class = QgsLayoutItemPolyline
 
     def __init__(self, methodName):
@@ -56,8 +61,7 @@ class TestQgsLayoutPolyline(QgisTestCase, LayoutItemTestCase):
         polygon.append(QPointF(200.0, 100.0))
         polygon.append(QPointF(100.0, 200.0))
 
-        self.polyline = QgsLayoutItemPolyline(
-            polygon, self.layout)
+        self.polyline = QgsLayoutItemPolyline(polygon, self.layout)
         self.layout.addLayoutItem(self.polyline)
 
         # style
@@ -97,17 +101,15 @@ class TestQgsLayoutPolyline(QgisTestCase, LayoutItemTestCase):
         """Test if type is valid"""
 
         self.assertEqual(
-            self.polyline.type(), QgsLayoutItemRegistry.ItemType.LayoutPolyline)
+            self.polyline.type(), QgsLayoutItemRegistry.ItemType.LayoutPolyline
+        )
 
     def testDefaultStyle(self):
         """Test polygon rendering with default style."""
 
         self.polyline.setDisplayNodes(False)
         self.assertTrue(
-            self.render_layout_check(
-                'composerpolyline_defaultstyle',
-                self.layout
-            )
+            self.render_layout_check("composerpolyline_defaultstyle", self.layout)
         )
 
     def testDisplayNodes(self):
@@ -115,18 +117,12 @@ class TestQgsLayoutPolyline(QgisTestCase, LayoutItemTestCase):
 
         self.polyline.setDisplayNodes(True)
         self.assertTrue(
-            self.render_layout_check(
-                'composerpolyline_displaynodes',
-                self.layout
-            )
+            self.render_layout_check("composerpolyline_displaynodes", self.layout)
         )
 
         self.polyline.setDisplayNodes(False)
         self.assertTrue(
-            self.render_layout_check(
-                'composerpolyline_defaultstyle',
-                self.layout
-            )
+            self.render_layout_check("composerpolyline_defaultstyle", self.layout)
         )
 
     def testSelectedNode(self):
@@ -136,19 +132,13 @@ class TestQgsLayoutPolyline(QgisTestCase, LayoutItemTestCase):
 
         self.polyline.setSelectedNode(3)
         self.assertTrue(
-            self.render_layout_check(
-                'composerpolyline_selectednode',
-                self.layout
-            )
+            self.render_layout_check("composerpolyline_selectednode", self.layout)
         )
 
         self.polyline.deselectNode()
         self.polyline.setDisplayNodes(False)
         self.assertTrue(
-            self.render_layout_check(
-                'composerpolyline_defaultstyle',
-                self.layout
-            )
+            self.render_layout_check("composerpolyline_defaultstyle", self.layout)
         )
 
     def testEndArrow(self):
@@ -156,12 +146,113 @@ class TestQgsLayoutPolyline(QgisTestCase, LayoutItemTestCase):
         self.polyline.setArrowHeadWidth(30.0)
 
         self.assertTrue(
-            self.render_layout_check(
-                'composerpolyline_endArrow',
-                self.layout
-            )
+            self.render_layout_check("composerpolyline_endArrow", self.layout)
         )
         self.polyline.setEndMarker(QgsLayoutItemPolyline.MarkerMode.NoMarker)
+
+    def testStartArrowVersion1(self):
+        project = QgsProject()
+        layout = QgsLayout(project)
+        layout.initializeDefaults()
+
+        polygon = QPolygonF()
+        polygon.append(QPointF(100.0, 50.0))
+        polygon.append(QPointF(200.0, 100.0))
+        layout_polyline = QgsLayoutItemPolyline(polygon, layout)
+
+        document = QDomDocument("testdoc")
+        root = document.createElement("test")
+        self.assertTrue(layout_polyline.writeXml(root, document, QgsReadWriteContext()))
+        element = root.firstChildElement()
+        self.assertFalse(element.isNull())
+        element.setAttribute("version", "1")
+        layout_polyline_v1 = QgsLayoutItemPolyline(layout)
+        self.assertTrue(
+            layout_polyline_v1.readXml(
+                root.firstChildElement(), document, QgsReadWriteContext()
+            )
+        )
+
+        layout.addLayoutItem(layout_polyline_v1)
+
+        properties = {"color": "0,0,0,255", "width": "10.0", "capstyle": "square"}
+        style = QgsLineSymbol.createSimple(properties)
+        layout_polyline_v1.setSymbol(style)
+
+        layout_polyline_v1.setStartMarker(QgsLayoutItemPolyline.MarkerMode.ArrowHead)
+        layout_polyline_v1.setArrowHeadWidth(30.0)
+
+        self.assertTrue(
+            self.render_layout_check("composerpolyline_startArrowVersion1", layout)
+        )
+
+    def testStartArrowVersion2(self):
+        project = QgsProject()
+        layout = QgsLayout(project)
+        layout.initializeDefaults()
+
+        polygon = QPolygonF()
+        polygon.append(QPointF(100.0, 50.0))
+        polygon.append(QPointF(200.0, 100.0))
+        layout_polyline = QgsLayoutItemPolyline(polygon, layout)
+        layout.addLayoutItem(layout_polyline)
+
+        properties = {"color": "0,0,0,255", "width": "10.0", "capstyle": "square"}
+        style = QgsLineSymbol.createSimple(properties)
+        layout_polyline.setSymbol(style)
+
+        layout_polyline.setStartMarker(QgsLayoutItemPolyline.MarkerMode.ArrowHead)
+        layout_polyline.setArrowHeadWidth(30.0)
+
+        self.assertTrue(
+            self.render_layout_check("composerpolyline_startArrowVersion2", layout)
+        )
+
+    def testBothArrows(self):
+        project = QgsProject()
+        layout = QgsLayout(project)
+        layout.initializeDefaults()
+
+        polygon = QPolygonF()
+        polygon.append(QPointF(100.0, 50.0))
+        polygon.append(QPointF(200.0, 100.0))
+        layout_polyline = QgsLayoutItemPolyline(polygon, layout)
+        layout.addLayoutItem(layout_polyline)
+
+        properties = {"color": "0,0,0,255", "width": "10.0", "capstyle": "square"}
+        style = QgsLineSymbol.createSimple(properties)
+        layout_polyline.setSymbol(style)
+
+        layout_polyline.setStartMarker(QgsLayoutItemPolyline.MarkerMode.ArrowHead)
+        layout_polyline.setEndMarker(QgsLayoutItemPolyline.MarkerMode.ArrowHead)
+        layout_polyline.setArrowHeadWidth(30.0)
+
+        self.assertTrue(self.render_layout_check("composerpolyline_bothArrows", layout))
+
+    def testBothSvgMarkers(self):
+        project = QgsProject()
+        layout = QgsLayout(project)
+        layout.initializeDefaults()
+
+        polygon = QPolygonF()
+        polygon.append(QPointF(100.0, 50.0))
+        polygon.append(QPointF(200.0, 100.0))
+        layout_polyline = QgsLayoutItemPolyline(polygon, layout)
+        layout.addLayoutItem(layout_polyline)
+
+        properties = {"color": "0,0,0,255", "width": "0.5", "capstyle": "square"}
+        style = QgsLineSymbol.createSimple(properties)
+        layout_polyline.setSymbol(style)
+
+        svg_path = Path(TEST_DATA_DIR) / "test_symbol_svg.svg"
+        layout_polyline.setStartMarker(QgsLayoutItemPolyline.MarkerMode.SvgMarker)
+        layout_polyline.setStartSvgMarkerPath(svg_path.as_posix())
+        layout_polyline.setEndMarker(QgsLayoutItemPolyline.MarkerMode.SvgMarker)
+        layout_polyline.setEndSvgMarkerPath(svg_path.as_posix())
+
+        self.assertTrue(
+            self.render_layout_check("composerpolyline_bothSvgMarkers", layout)
+        )
 
     def testRemoveNode(self):
         """Test removeNode method"""
@@ -170,10 +261,7 @@ class TestQgsLayoutPolyline(QgisTestCase, LayoutItemTestCase):
         self.assertEqual(rc, False)
 
         self.assertTrue(
-            self.render_layout_check(
-                'composerpolyline_defaultstyle',
-                self.layout
-            )
+            self.render_layout_check("composerpolyline_defaultstyle", self.layout)
         )
 
         self.assertEqual(self.polyline.nodesSize(), 4)
@@ -182,10 +270,7 @@ class TestQgsLayoutPolyline(QgisTestCase, LayoutItemTestCase):
         self.assertEqual(self.polyline.nodesSize(), 3)
 
         self.assertTrue(
-            self.render_layout_check(
-                'composerpolyline_removednode',
-                self.layout
-            )
+            self.render_layout_check("composerpolyline_removednode", self.layout)
         )
 
     def testAddNode(self):
@@ -232,10 +317,7 @@ class TestQgsLayoutPolyline(QgisTestCase, LayoutItemTestCase):
         self.assertEqual(self.polyline.nodesSize(), 5)
 
         self.assertTrue(
-            self.render_layout_check(
-                'composerpolyline_addnode',
-                self.layout
-            )
+            self.render_layout_check("composerpolyline_addnode", self.layout)
         )
 
     def testMoveNode(self):
@@ -248,10 +330,7 @@ class TestQgsLayoutPolyline(QgisTestCase, LayoutItemTestCase):
         self.assertEqual(rc, True)
 
         self.assertTrue(
-            self.render_layout_check(
-                'composerpolyline_movenode',
-                self.layout
-            )
+            self.render_layout_check("composerpolyline_movenode", self.layout)
         )
 
     def testNodeAtPosition(self):
@@ -262,13 +341,11 @@ class TestQgsLayoutPolyline(QgisTestCase, LayoutItemTestCase):
         self.assertEqual(rc, -1)
 
         # default searching radius is 10
-        rc = self.polyline.nodeAtPosition(
-            QPointF(100.0, 210.0), False)
+        rc = self.polyline.nodeAtPosition(QPointF(100.0, 210.0), False)
         self.assertEqual(rc, 3)
 
         # default searching radius is 10
-        rc = self.polyline.nodeAtPosition(
-            QPointF(100.0, 210.0), True, 10.1)
+        rc = self.polyline.nodeAtPosition(QPointF(100.0, 210.0), True, 10.1)
         self.assertEqual(rc, 3)
 
     def testReadWriteXml(self):
@@ -295,10 +372,61 @@ class TestQgsLayoutPolyline(QgisTestCase, LayoutItemTestCase):
         self.assertTrue(shape.writeXml(elem, doc, QgsReadWriteContext()))
 
         shape2 = QgsLayoutItemPolyline(l)
-        self.assertTrue(shape2.readXml(elem.firstChildElement(), doc, QgsReadWriteContext()))
+        self.assertTrue(
+            shape2.readXml(elem.firstChildElement(), doc, QgsReadWriteContext())
+        )
 
         self.assertEqual(shape2.nodes(), shape.nodes())
-        self.assertEqual(shape2.symbol().symbolLayer(0).color().name(), '#ff0000')
+        self.assertEqual(shape2.symbol().symbolLayer(0).color().name(), "#ff0000")
+
+    def testSavingLoadingArrowVersions(self):
+        project = QgsProject()
+        layout = QgsLayout(project)
+        polygon = QPolygonF()
+        polygon.append(QPointF(0.0, 0.0))
+        polygon.append(QPointF(100.0, 0.0))
+
+        def _write_xml(polyline):
+            document = QDomDocument("testdoc")
+            root = document.createElement("test")
+            self.assertTrue(polyline.writeXml(root, document, QgsReadWriteContext()))
+            element = root.firstChildElement()
+            self.assertFalse(element.isNull())
+            return element, document
+
+        def _check_version(polyline, version):
+            element, document = _write_xml(polyline)
+            self.assertEqual(element.attribute("version"), version)
+            return element, document
+
+        # new polylines have version 2 by default
+        polyline_v2 = QgsLayoutItemPolyline(polygon, layout)
+        element, document = _check_version(polyline_v2, "2")
+
+        # load polyline from xml
+        restored_v2 = QgsLayoutItemPolyline(layout)
+        self.assertTrue(restored_v2.readXml(element, document, QgsReadWriteContext()))
+        _check_version(restored_v2, "2")
+
+        # save/load polyline version 1
+        element, document = _write_xml(restored_v2)
+        element.setAttribute("version", "1")
+        self.assertEqual(element.attribute("version"), "1")
+
+        polyline_v1 = QgsLayoutItemPolyline(layout)
+        self.assertTrue(polyline_v1.readXml(element, document, QgsReadWriteContext()))
+        _check_version(polyline_v1, "1")
+
+        # loading from an XML without "version" should result in version 1
+        element, document = _write_xml(polyline_v2)
+        element.removeAttribute("version")
+        self.assertFalse(element.hasAttribute("version"))
+
+        polyline_no_version = QgsLayoutItemPolyline(layout)
+        self.assertTrue(
+            polyline_no_version.readXml(element, document, QgsReadWriteContext())
+        )
+        _check_version(polyline_no_version, "1")
 
     def testBounds(self):
         pr = QgsProject()
@@ -351,12 +479,7 @@ class TestQgsLayoutPolyline(QgisTestCase, LayoutItemTestCase):
         style = QgsLineSymbol.createSimple(props)
         shape.setSymbol(style)
 
-        self.assertTrue(
-            self.render_layout_check(
-                'composerpolyline_hozline',
-                l
-            )
-        )
+        self.assertTrue(self.render_layout_check("composerpolyline_hozline", l))
 
     def testVerticalLine(self):
         pr = QgsProject()
@@ -377,13 +500,46 @@ class TestQgsLayoutPolyline(QgisTestCase, LayoutItemTestCase):
         style = QgsLineSymbol.createSimple(props)
         shape.setSymbol(style)
 
-        self.assertTrue(
-            self.render_layout_check(
-                'composerpolyline_vertline',
-                l
-            )
+        self.assertTrue(self.render_layout_check("composerpolyline_vertline", l))
+
+    def test_generator(self):
+        project = QgsProject()
+        layout = QgsLayout(project)
+        layout.initializeDefaults()
+
+        p = QPolygonF()
+        p.append(QPointF(0.0, 0.0))
+        p.append(QPointF(100.0, 100.0))
+        shape = QgsLayoutItemPolyline(p, layout)
+        layout.addLayoutItem(shape)
+
+        map = QgsLayoutItemMap(layout)
+        map.attemptSetSceneRect(QRectF(0, 0, 10, 10))
+        map.zoomToExtent(QgsRectangle(1, 1, 2, 2))
+        layout.addLayoutItem(map)
+
+        props = {}
+        props["color"] = "0,0,0,255"
+        props["width"] = "10.0"
+        props["capstyle"] = "square"
+
+        sub_symbol = QgsLineSymbol.createSimple(props)
+
+        line_symbol = QgsLineSymbol()
+        generator = QgsGeometryGeneratorSymbolLayer.create(
+            {
+                "geometryModifier": "geom_from_wkt('POLYGON((10 10,287 10,287 200,10 200,10 10))')",
+                "SymbolType": "Line",
+            }
         )
+        generator.setUnits(Qgis.RenderUnit.Millimeters)
+        generator.setSubSymbol(sub_symbol)
+
+        line_symbol.changeSymbolLayer(0, generator)
+        shape.setSymbol(line_symbol)
+
+        self.assertTrue(self.render_layout_check("polyline_generator", layout))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

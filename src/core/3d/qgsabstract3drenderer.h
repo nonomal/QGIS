@@ -21,6 +21,8 @@
 
 #include <QString>
 
+using namespace Qt::StringLiterals;
+
 class QDomElement;
 class QgsProject;
 class QgsReadWriteContext;
@@ -35,7 +37,7 @@ namespace Qt3DCore
 
 /**
  * \ingroup core
- * \brief Base class for all renderers that may to participate in 3D view.
+ * \brief Base class for all renderers that participate in 3D views.
  *
  * 3D renderers implement the method createEntity() that returns a new 3D entity - that entity
  * will be added to the 3D scene to represent data in renderer's display style.
@@ -46,6 +48,29 @@ namespace Qt3DCore
  */
 class CORE_EXPORT QgsAbstract3DRenderer SIP_ABSTRACT
 {
+#ifdef SIP_RUN
+    SIP_CONVERT_TO_SUBCLASS_CODE
+
+    // QgsMeshLayer3DRenderer is not available in Python bindings
+    const QString type = sipCpp->type();
+
+    if ( sipCpp->type() == "annotation"_L1 )
+      sipType = sipFindType( "QgsAnnotationLayer3DRenderer" );
+    else if ( sipCpp->type() == "categorized"_L1 )
+      sipType = sipFindType( "QgsCategorized3DRenderer" );
+    else if ( sipCpp->type() == "pointcloud"_L1 )
+      sipType = sipFindType( "QgsPointCloudLayer3DRenderer" );
+    else if ( sipCpp->type() == "rulebased"_L1 )
+      sipType = sipFindType( "QgsRuleBased3DRenderer" );
+    else if ( sipCpp->type() == "tiledscene"_L1 )
+      sipType = sipFindType( "QgsTiledSceneLayer3DRenderer" );
+    else if ( sipCpp->type() == "vector"_L1 )
+      sipType = sipFindType( "QgsVectorLayer3DRenderer" );
+    else
+      sipType = nullptr;
+  SIP_END
+#endif
+
   public:
     virtual ~QgsAbstract3DRenderer() = default;
 
@@ -54,7 +79,7 @@ class CORE_EXPORT QgsAbstract3DRenderer SIP_ABSTRACT
     //! Returns a cloned instance
     virtual QgsAbstract3DRenderer *clone() const = 0 SIP_FACTORY;
     //! Returns a 3D entity that will be used to show renderer's data in 3D scene
-    virtual Qt3DCore::QEntity *createEntity( const Qgs3DMapSettings &map ) const = 0 SIP_SKIP;
+    virtual Qt3DCore::QEntity *createEntity( Qgs3DMapSettings *map ) const SIP_SKIP = 0;
 
     //! Writes renderer's properties to given XML element
     virtual void writeXml( QDomElement &elem, const QgsReadWriteContext &context ) const = 0;
@@ -64,7 +89,6 @@ class CORE_EXPORT QgsAbstract3DRenderer SIP_ABSTRACT
     virtual void resolveReferences( const QgsProject &project );
 
   protected:
-    //! Default constructor
     QgsAbstract3DRenderer() = default;
 
   private:

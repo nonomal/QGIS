@@ -19,8 +19,8 @@
 #ifndef QGSTILEDSCENETILE_H
 #define QGSTILEDSCENETILE_H
 
-#include "qgis_core.h"
 #include "qgis.h"
+#include "qgis_core.h"
 #include "qgsmatrix4x4.h"
 #include "qgstiledsceneboundingvolume.h"
 
@@ -35,7 +35,6 @@
 class CORE_EXPORT QgsTiledSceneTile
 {
   public:
-
     /**
      * Constructor for an invalid tile.
      *
@@ -52,9 +51,7 @@ class CORE_EXPORT QgsTiledSceneTile
 
     ~QgsTiledSceneTile();
 
-    //! Copy constructor
     QgsTiledSceneTile( const QgsTiledSceneTile &other );
-    //! Assignment operator
     QgsTiledSceneTile &operator=( const QgsTiledSceneTile &other );
 
     /**
@@ -133,16 +130,16 @@ class CORE_EXPORT QgsTiledSceneTile
     void setResources( const QVariantMap &resources );
 
     /**
-     * Returns the tile's geometric error, which is the error, in scene CRS units, of the tile's
-     * simplified representation of its source geometry.
+     * Returns the tile's geometric error, which is the error, in meters, of
+     * the tile's simplified representation of its source geometry.
      *
      * \see setGeometricError()
      */
     double geometricError() const { return mGeometricError; }
 
     /**
-     * Sets the tile's geometric \a error, which is the error, in scene CRS units, of the tile's
-     * simplified representation of its source geometry.
+     * Sets the tile's geometric \a error, which is the error, in meters, of
+     * the tile's simplified representation of its source geometry.
      *
      * \see geometricError()
      */
@@ -187,7 +184,6 @@ class CORE_EXPORT QgsTiledSceneTile
     double mGeometricError = 0;
     QUrl mBaseUrl;
     QVariantMap mMetadata;
-
 };
 
 #endif // QGSTILEDSCENETILE_H

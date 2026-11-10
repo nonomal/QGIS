@@ -15,18 +15,25 @@
  ***************************************************************************/
 
 #include "qgsqmlwidgetwrapper.h"
-#include "qgsattributeform.h"
-#include "qgsmessagelog.h"
+
 #include "qgsexpressioncontextutils.h"
+#include "qgsmessagelog.h"
 #include "qgsvaluerelationfieldformatter.h"
 
+#include <QDir>
 #include <QQmlContext>
 #include <QQmlEngine>
+#include <QString>
 #include <QUrl>
+
+#include "moc_qgsqmlwidgetwrapper.cpp"
+
+using namespace Qt::StringLiterals;
 
 QgsQmlWidgetWrapper::QgsQmlWidgetWrapper( QgsVectorLayer *layer, QWidget *editor, QWidget *parent )
   : QgsWidgetWrapper( layer, editor, parent )
 {
+  mQmlFile.setFileTemplate( u"%1%2QgsQmlWidgetWrapper-XXXXXX.qml"_s.arg( QDir::tempPath(), QDir::separator() ) );
   connect( this, &QgsWidgetWrapper::contextChanged, this, &QgsQmlWidgetWrapper::setQmlContext );
 }
 
@@ -42,8 +49,7 @@ QWidget *QgsQmlWidgetWrapper::createWidget( QWidget *parent )
   if ( form )
   {
     mFormFeature = form->feature();
-    connect( form, &QgsAttributeForm::widgetValueChanged, this, [ = ]( const QString & attribute, const QVariant & newValue, bool attributeChanged )
-    {
+    connect( form, &QgsAttributeForm::widgetValueChanged, this, [this]( const QString &attribute, const QVariant &newValue, bool attributeChanged ) {
       if ( attributeChanged )
       {
         if ( mRequiresFormScope )
@@ -55,7 +61,9 @@ QWidget *QgsQmlWidgetWrapper::createWidget( QWidget *parent )
     } );
   }
 
-  return new QQuickWidget( parent );
+  QQuickWidget *widget = new QQuickWidget( parent );
+
+  return widget;
 }
 
 void QgsQmlWidgetWrapper::initWidget( QWidget *editor )
@@ -63,8 +71,9 @@ void QgsQmlWidgetWrapper::initWidget( QWidget *editor )
   mWidget = qobject_cast<QQuickWidget *>( editor );
 
   if ( !mWidget )
+  {
     return;
-
+  }
 
   if ( !mQmlFile.open() )
   {
@@ -72,16 +81,27 @@ void QgsQmlWidgetWrapper::initWidget( QWidget *editor )
     return;
   }
 
-  mWidget->setSource( QUrl::fromLocalFile( mQmlFile.fileName() ) );
+  if ( mWidgetBridge )
+  {
+    mWidgetBridge->deleteLater();
+    mWidgetBridge = nullptr;
+  }
+  setQmlContext();
+
+  QUrl sourceUrl = QUrl::fromLocalFile( mQmlFile.fileName() );
+  sourceUrl.setQuery( u"t=%1"_s.arg( QDateTime::currentSecsSinceEpoch() ) );
+  mWidget->setSource( sourceUrl );
 
   mQmlFile.close();
 }
 
 
-void QgsQmlWidgetWrapper::reinitWidget( )
+void QgsQmlWidgetWrapper::reinitWidget()
 {
   if ( !mWidget )
+  {
     return;
+  }
 
   mWidget->engine()->clearComponentCache();
 
@@ -98,7 +118,8 @@ void QgsQmlWidgetWrapper::setQmlCode( const QString &qmlCode )
   mQmlCode = qmlCode;
 
   bool ok = false;
-  const thread_local QRegularExpression expRe( QStringLiteral( R"re(expression.evaluate\s*\(\s*"(.*)"\))re" ), QRegularExpression::PatternOption::MultilineOption | QRegularExpression::PatternOption::DotMatchesEverythingOption );
+  const thread_local QRegularExpression
+    expRe( QStringLiteral( R"re(expression.evaluate\s*\(\s*"(.*)"\s*\))re" ), QRegularExpression::PatternOption::MultilineOption | QRegularExpression::PatternOption::DotMatchesEverythingOption | QRegularExpression::InvertedGreedinessOption );
   QRegularExpressionMatchIterator matchIt = expRe.globalMatch( mQmlCode );
   while ( !ok && matchIt.hasNext() )
   {
@@ -116,26 +137,35 @@ void QgsQmlWidgetWrapper::setQmlCode( const QString &qmlCode )
 
   mQmlFile.resize( 0 );
   mQmlFile.write( mQmlCode.toUtf8() );
-
   mQmlFile.close();
 }
 
-void QgsQmlWidgetWrapper::setQmlContext( )
+void QgsQmlWidgetWrapper::setQmlContext()
 {
   if ( !mWidget )
-    return;
-
-  const QgsAttributeEditorContext attributecontext = context();
-  QgsExpressionContext expressionContext = layer()->createExpressionContext();
-  expressionContext << QgsExpressionContextUtils::formScope( mFormFeature, attributecontext.attributeFormModeString() );
-  if ( attributecontext.parentFormFeature().isValid() )
   {
-    expressionContext << QgsExpressionContextUtils::parentFormScope( attributecontext.parentFormFeature() );
+    return;
   }
 
+  const QgsAttributeEditorContext attributeEditorContext = context();
+
+  if ( !mWidgetBridge )
+  {
+    QgsAttributeForm *form = qobject_cast<QgsAttributeForm *>( parent() );
+    mWidgetBridge = new QgsQmlAttributeFormBridge( form, this );
+    mWidget->rootContext()->setContextProperty( "attributeFormBridge", mWidgetBridge );
+  }
+  mWidgetBridge->setContext( attributeEditorContext );
+
+  QgsExpressionContext expressionContext = layer()->createExpressionContext();
+  expressionContext << QgsExpressionContextUtils::formScope( mFormFeature, attributeEditorContext.attributeFormModeString() );
+  if ( attributeEditorContext.parentFormFeature().isValid() )
+  {
+    expressionContext << QgsExpressionContextUtils::parentFormScope( attributeEditorContext.parentFormFeature() );
+  }
   expressionContext.setFeature( mFeature );
 
-  QmlExpression *qmlExpression = new QmlExpression();
+  QgsQmlExpression *qmlExpression = new QgsQmlExpression();
   qmlExpression->setExpressionContext( expressionContext );
 
   mWidget->rootContext()->setContextProperty( "expression", qmlExpression );
@@ -144,24 +174,94 @@ void QgsQmlWidgetWrapper::setQmlContext( )
 void QgsQmlWidgetWrapper::setFeature( const QgsFeature &feature )
 {
   if ( !mWidget )
+  {
     return;
+  }
 
   mFeature = feature;
   mFormFeature = feature;
+
+  emit mWidgetBridge->currentFormFeatureChanged();
 
   setQmlContext();
 }
 
 ///@cond PRIVATE
-void QmlExpression::setExpressionContext( const QgsExpressionContext &context )
+void QgsQmlExpression::setExpressionContext( const QgsExpressionContext &context )
 {
   mExpressionContext = context;
 }
 
-QVariant QmlExpression::evaluate( const QString &expression ) const
+QVariant QgsQmlExpression::evaluate( const QString &expression ) const
 {
   QgsExpression exp = QgsExpression( expression );
   exp.prepare( &mExpressionContext );
   return exp.evaluate( &mExpressionContext );
+}
+
+
+QgsQmlAttributeFormBridge::QgsQmlAttributeFormBridge( QgsAttributeForm *form, QObject *parent )
+  : QObject( parent )
+  , mForm( form )
+{
+  if ( mForm )
+  {
+    connect( mForm, &QgsAttributeForm::widgetValueChanged, this, [this]( const QString &, const QVariant &, bool attributeChanged ) {
+      if ( attributeChanged )
+      {
+        emit currentFormFeatureChanged();
+      }
+    } );
+
+    connect( mForm, &QgsAttributeForm::editableChanged, this, &QgsQmlAttributeFormBridge::editableChanged );
+  }
+}
+
+bool QgsQmlAttributeFormBridge::editable() const
+{
+  return mForm ? mForm->editable() : false;
+}
+
+QgsAttributeEditorContext QgsQmlAttributeFormBridge::context() const
+{
+  return mContext;
+}
+
+void QgsQmlAttributeFormBridge::setContext( const QgsAttributeEditorContext &context )
+{
+  mContext = context;
+  emit contextChanged();
+}
+
+QgsVectorLayer *QgsQmlAttributeFormBridge::layer() const
+{
+  return mForm ? mForm->layer() : nullptr;
+}
+
+QgsFeature QgsQmlAttributeFormBridge::currentFormFeature() const
+{
+  return mForm ? mForm->currentFormFeature() : QgsFeature();
+}
+
+void QgsQmlAttributeFormBridge::changeGeometry( const QgsGeometry &geometry )
+{
+  if ( mForm )
+  {
+    mForm->changeGeometry( geometry );
+    emit currentFormFeatureChanged();
+  }
+}
+
+void QgsQmlAttributeFormBridge::changeAttribute( const QString &field, const QVariant &value )
+{
+  if ( mForm )
+  {
+    mForm->changeAttribute( field, value );
+  }
+}
+
+QVariant QgsQmlAttributeFormBridge::attribute( const QString &field )
+{
+  return mForm ? mForm->feature().attribute( field ) : QVariant();
 }
 ///@endcond

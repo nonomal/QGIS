@@ -20,21 +20,23 @@
 #define QGSSENSORTHINGSGUIPROVIDER_H
 
 #include "qgsproviderguimetadata.h"
-#include "qgssourceselectprovider.h"
 #include "qgsprovidersourcewidgetprovider.h"
+#include "qgssourceselectprovider.h"
+
+#define SIP_NO_FILE
 
 ///@cond PRIVATE
-#define SIP_NO_FILE
 
 class QgsSensorThingsSourceSelectProvider : public QgsSourceSelectProvider
 {
   public:
-
     QString providerKey() const final;
     QString text() const final;
     QIcon icon() const final;
     int ordering() const final;
-    QgsAbstractDataSourceWidget *createDataSourceWidget( QWidget *parent = nullptr, Qt::WindowFlags fl = Qt::Widget, QgsProviderRegistry::WidgetMode widgetMode = QgsProviderRegistry::WidgetMode::Embedded ) const final;
+    QgsAbstractDataSourceWidget *createDataSourceWidget(
+      QWidget *parent = nullptr, Qt::WindowFlags fl = Qt::Widget, QgsProviderRegistry::WidgetMode widgetMode = QgsProviderRegistry::WidgetMode::Embedded
+    ) const final;
 };
 
 class QgsSensorThingsSourceWidgetProvider : public QgsProviderSourceWidgetProvider
@@ -46,7 +48,7 @@ class QgsSensorThingsSourceWidgetProvider : public QgsProviderSourceWidgetProvid
     QgsProviderSourceWidget *createWidget( QgsMapLayer *layer, QWidget *parent = nullptr ) override;
 };
 
-class QgsSensorThingsProviderGuiMetadata: public QgsProviderGuiMetadata
+class QgsSensorThingsProviderGuiMetadata : public QgsProviderGuiMetadata
 {
   public:
     QgsSensorThingsProviderGuiMetadata();
@@ -54,7 +56,6 @@ class QgsSensorThingsProviderGuiMetadata: public QgsProviderGuiMetadata
     QList<QgsProviderSourceWidgetProvider *> sourceWidgetProviders() override;
     QList<QgsDataItemGuiProvider *> dataItemGuiProviders() override;
     QList<QgsSubsetStringEditorProvider *> subsetStringEditorProviders() override;
-
 };
 
 ///@endcond

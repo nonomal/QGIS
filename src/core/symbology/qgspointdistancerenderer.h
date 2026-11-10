@@ -18,10 +18,11 @@
 #ifndef QGSPOINTDISTANCERENDERER_H
 #define QGSPOINTDISTANCERENDERER_H
 
-#include "qgis_core.h"
 #include "qgis.h"
-#include "qgsrenderer.h"
+#include "qgis_core.h"
 #include "qgsmapunitscale.h"
+#include "qgsrenderer.h"
+
 #include <QFont>
 
 class QgsSpatialIndex;
@@ -32,19 +33,18 @@ class QgsSymbolRenderContext;
  * \class QgsPointDistanceRenderer
  * \ingroup core
  * \brief An abstract base class for distance based point renderers (e.g., clusterer and displacement renderers).
+ *
  * QgsPointDistanceRenderer handles calculation of point clusters using a distance based threshold.
  * Subclasses must implement drawGroup() to handle the rendering of individual point clusters
  * in the desired style.
  */
 
-class CORE_EXPORT QgsPointDistanceRenderer: public QgsFeatureRenderer
+class CORE_EXPORT QgsPointDistanceRenderer : public QgsFeatureRenderer
 {
   public:
-
     //! Contains properties for a feature within a clustered group.
     struct CORE_EXPORT GroupedFeature
     {
-
         /**
          * Constructor for GroupedFeature.
         * \param feature feature
@@ -81,7 +81,8 @@ class CORE_EXPORT QgsPointDistanceRenderer: public QgsFeatureRenderer
      */
     QgsPointDistanceRenderer( const QString &rendererName, const QString &labelAttributeName = QString() );
 
-    void toSld( QDomDocument &doc, QDomElement &element, const QVariantMap &props = QVariantMap() ) const override;
+    Q_DECL_DEPRECATED void toSld( QDomDocument &doc, QDomElement &element, const QVariantMap &props = QVariantMap() ) const override SIP_DEPRECATED;
+    bool toSld( QDomDocument &doc, QDomElement &element, QgsSldExportContext &context ) const override;
     bool renderFeature( const QgsFeature &feature, QgsRenderContext &context, int layer = -1, bool selected = false, bool drawVertexMarker = false ) override SIP_THROW( QgsCsException );
     QSet<QString> usedAttributes( const QgsRenderContext &context ) const override;
     bool filterNeedsGeometry() const override;
@@ -141,7 +142,7 @@ class CORE_EXPORT QgsPointDistanceRenderer: public QgsFeatureRenderer
      * \see labelAttributeName()
      * \see labelColor()
      */
-    QFont labelFont() const { return mLabelFont;}
+    QFont labelFont() const { return mLabelFont; }
 
     /**
      * Sets the minimum map \a scale (i.e. most "zoomed out") at which points should be labeled by the renderer.
@@ -166,7 +167,7 @@ class CORE_EXPORT QgsPointDistanceRenderer: public QgsFeatureRenderer
      * \see setLabelAttributeName()
      * \see setLabelFont()
      */
-    void setLabelColor( const QColor &color ) { mLabelColor = color;}
+    void setLabelColor( const QColor &color ) { mLabelColor = color; }
 
     /**
      * Returns the color used for for labeling points.
@@ -226,7 +227,6 @@ class CORE_EXPORT QgsPointDistanceRenderer: public QgsFeatureRenderer
     const QgsMapUnitScale &toleranceMapUnitScale() const { return mToleranceMapUnitScale; }
 
   protected:
-
     //! Embedded base renderer. This can be used for rendering individual, isolated points.
     std::unique_ptr< QgsFeatureRenderer > mRenderer;
 
@@ -234,12 +234,12 @@ class CORE_EXPORT QgsPointDistanceRenderer: public QgsFeatureRenderer
     QString mLabelAttributeName;
 
     //! Label attribute index (or -1 if none). This index is not stored, it is requested in the startRender() method.
-    int mLabelIndex;
+    int mLabelIndex = -1;
 
     //! Distance tolerance. Points that are closer together than this distance are considered clustered.
-    double mTolerance;
+    double mTolerance = 3;
     //! Unit for distance tolerance.
-    Qgis::RenderUnit mToleranceUnit;
+    Qgis::RenderUnit mToleranceUnit = Qgis::RenderUnit::Millimeters;
     //! Map unit scale for distance tolerance.
     QgsMapUnitScale mToleranceMapUnitScale;
 
@@ -248,7 +248,7 @@ class CORE_EXPORT QgsPointDistanceRenderer: public QgsFeatureRenderer
     //! Label text color.
     QColor mLabelColor;
     //! Whether labels should be drawn for points. This is set internally from startRender() depending on scale denominator.
-    bool mDrawLabels;
+    bool mDrawLabels = true;
     //! Maximum scale denominator for label display. A zero value indicates no scale limitation.
     double mMinLabelScale = 0;
 
@@ -275,7 +275,6 @@ class CORE_EXPORT QgsPointDistanceRenderer: public QgsFeatureRenderer
     void drawLabels( QPointF centerPoint, QgsSymbolRenderContext &context, const QList<QPointF> &labelShifts, const ClusteredGroup &group ) const;
 
   private:
-
     /**
      * Draws a group of clustered points.
      * \param centerPoint central point (geographic centroid) of all points contained within the cluster
@@ -309,7 +308,6 @@ class CORE_EXPORT QgsPointDistanceRenderer: public QgsFeatureRenderer
      * \returns new expression context scope
      */
     QgsExpressionContextScope *createGroupScope( const ClusteredGroup &group ) const;
-
 };
 
 #endif // QGSPOINTDISTANCERENDERER_H

@@ -18,10 +18,11 @@
 #ifndef QGSALGORITHMEXPORTLAYERSINFORMATION_H
 #define QGSALGORITHMEXPORTLAYERSINFORMATION_H
 
-#define SIP_NO_FILE
 
 #include "qgis_sip.h"
 #include "qgsprocessingalgorithm.h"
+
+#define SIP_NO_FILE
 
 ///@cond PRIVATE
 
@@ -30,9 +31,7 @@
  */
 class QgsExportLayersInformationAlgorithm : public QgsProcessingAlgorithm
 {
-
   public:
-
     QgsExportLayersInformationAlgorithm() = default;
     void initAlgorithm( const QVariantMap &configuration = QVariantMap() ) override;
     QString name() const override;
@@ -41,20 +40,16 @@ class QgsExportLayersInformationAlgorithm : public QgsProcessingAlgorithm
     QString group() const override;
     QString groupId() const override;
     QString shortHelpString() const override;
+    QString shortDescription() const override;
     QgsExportLayersInformationAlgorithm *createInstance() const override SIP_FACTORY;
 
   protected:
-
-    bool prepareAlgorithm( const QVariantMap &parameters,
-                           QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
-    QVariantMap processAlgorithm( const QVariantMap &parameters,
-                                  QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
+    bool prepareAlgorithm( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
+    QVariantMap processAlgorithm( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
 
   private:
-
-    std::vector< std::unique_ptr< QgsMapLayer> > mLayers;
+    std::vector<std::unique_ptr<QgsMapLayer>> mLayers;
     QgsCoordinateReferenceSystem mCrs;
-
 };
 
 ///@endcond PRIVATE

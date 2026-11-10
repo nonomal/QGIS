@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/gps/qgssatelliteinformation.h                               *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/
 
 
@@ -20,7 +20,9 @@ Encapsulates information relating to a GPS satellite.
 #include "qgssatelliteinformation.h"
 %End
   public:
+    static const QMetaObject staticMetaObject;
 
+  public:
     int id;
 
     bool inUse;
@@ -53,5 +55,5 @@ Returns the GNSS constellation associated with the information.
  *                                                                      *
  * src/core/gps/qgssatelliteinformation.h                               *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/

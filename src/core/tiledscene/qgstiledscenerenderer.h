@@ -18,10 +18,13 @@
 #ifndef QGSTILEDSCENERENDERER_H
 #define QGSTILEDSCENERENDERER_H
 
-#include "qgsrendercontext.h"
-
 #include "qgis_core.h"
 #include "qgis_sip.h"
+#include "qgsrendercontext.h"
+
+#include <QString>
+
+using namespace Qt::StringLiterals;
 
 class QgsLayerTreeLayer;
 class QgsLayerTreeModelLegendNode;
@@ -37,16 +40,12 @@ class QgsLayerTreeModelLegendNode;
 class CORE_EXPORT QgsTiledSceneRenderContext
 {
   public:
-
     /**
      * Constructor for QgsTiledSceneRenderContext.
      */
     QgsTiledSceneRenderContext( QgsRenderContext &context, QgsFeedback *feedback = nullptr );
 
-    //! QgsTiledSceneRenderContext cannot be copied.
     QgsTiledSceneRenderContext( const QgsTiledSceneRenderContext &rh ) = delete;
-
-    //! QgsTiledSceneRenderContext cannot be copied.
     QgsTiledSceneRenderContext &operator=( const QgsTiledSceneRenderContext & ) = delete;
 
     /**
@@ -58,7 +57,7 @@ class CORE_EXPORT QgsTiledSceneRenderContext
      * Returns a reference to the context's render context.
      * \note Not available in Python bindings.
      */
-    const QgsRenderContext &renderContext() const { return mRenderContext; } SIP_SKIP
+    const QgsRenderContext &renderContext() const SIP_SKIP { return mRenderContext; }
 
     /**
      * Returns the feedback object used to cancel rendering
@@ -86,11 +85,7 @@ class CORE_EXPORT QgsTiledSceneRenderContext
      *
      * \see textureCoordinates()
      */
-    void setTextureCoordinates(
-      float textureX1, float textureY1,
-      float textureX2, float textureY2,
-      float textureX3, float textureY3
-    );
+    void setTextureCoordinates( float textureX1, float textureY1, float textureX2, float textureY2, float textureX3, float textureY3 );
 
     /**
      * Returns the current texture coordinates.
@@ -108,7 +103,6 @@ class CORE_EXPORT QgsTiledSceneRenderContext
     QgsFeedback *mFeedback = nullptr;
     QImage mTextureImage;
     float mTextureCoordinates[6] { 0, 0, 0, 0, 0, 0 };
-
 };
 
 /**
@@ -121,26 +115,22 @@ class CORE_EXPORT QgsTiledSceneRenderContext
  */
 class CORE_EXPORT QgsTiledSceneRenderer
 {
-
 #ifdef SIP_RUN
     SIP_CONVERT_TO_SUBCLASS_CODE
 
     const QString type = sipCpp->type();
-    if ( type == QLatin1String( "texture" ) )
+    if ( type == "texture"_L1 )
       sipType = sipType_QgsTiledSceneTextureRenderer;
-    else if ( type == QLatin1String( "wireframe" ) )
+    else if ( type == "wireframe"_L1 )
       sipType = sipType_QgsTiledSceneWireframeRenderer;
     else
       sipType = 0;
 
-    SIP_END
+  SIP_END
 #endif
 
   public:
 
-    /**
-     * Constructor for QgsTiledSceneRenderer.
-     */
     QgsTiledSceneRenderer() = default;
 
     virtual ~QgsTiledSceneRenderer() = default;
@@ -174,7 +164,7 @@ class CORE_EXPORT QgsTiledSceneRenderer
      *
      * \see save()
      */
-    static QgsTiledSceneRenderer *load( QDomElement &element, const QgsReadWriteContext &context ) SIP_FACTORY;
+    static std::unique_ptr<QgsTiledSceneRenderer> load( QDomElement &element, const QgsReadWriteContext &context );
 
     /**
      * Saves the renderer configuration to an XML element.
@@ -280,7 +270,6 @@ class CORE_EXPORT QgsTiledSceneRenderer
     virtual void renderLine( QgsTiledSceneRenderContext &context, const QPolygonF &line ) = 0;
 
   protected:
-
     /**
      * Copies common tiled scene renderer properties (such as screen error) to the \a destination renderer.
      */
@@ -315,7 +304,6 @@ class CORE_EXPORT QgsTiledSceneRenderer
     double mMaximumScreenError = 3;
     Qgis::RenderUnit mMaximumScreenErrorUnit = Qgis::RenderUnit::Millimeters;
     bool mTileBorderRendering = false;
-
 };
 
 #endif // QGSTILEDSCENERENDERER_H

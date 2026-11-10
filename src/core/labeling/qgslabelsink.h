@@ -18,10 +18,11 @@
 #ifndef QGSLABELSINK_H
 #define QGSLABELSINK_H
 
-#define SIP_NO_FILE
 
-#include "qgsvectorlayerlabelprovider.h"
 #include "qgsrulebasedlabeling.h"
+#include "qgsvectorlayerlabelprovider.h"
+
+#define SIP_NO_FILE
 
 class QgsPalLayerSettings;
 class QgsRuleBasedLabeling;
@@ -99,7 +100,7 @@ class QgsRuleBasedLabelSinkProvider : public QgsRuleBasedLabelProvider
 
     /**
      * Reinitialize the subproviders with QgsLabelSinkProviders
-     * \deprecated since QGIS 3.12
+     * \deprecated QGIS 3.12
      */
     Q_DECL_DEPRECATED void reinit( QgsVectorLayer *layer );
 
@@ -112,7 +113,6 @@ class QgsRuleBasedLabelSinkProvider : public QgsRuleBasedLabelProvider
   private:
     QgsLabelSink *mLabelSink = nullptr;
 };
-
 
 
 #endif // QGSLABELSINK_H

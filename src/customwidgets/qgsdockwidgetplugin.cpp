@@ -13,16 +13,17 @@
 *                                                                         *
 ***************************************************************************/
 
-#include "qgiscustomwidgets.h"
-#include "qgsdockwidget.h"
 #include "qgsdockwidgetplugin.h"
 
+#include "qgiscustomwidgets.h"
+#include "qgsdockwidget.h"
+
+#include "moc_qgsdockwidgetplugin.cpp"
 
 QgsDockWidgetPlugin::QgsDockWidgetPlugin( QObject *parent )
   : QObject( parent )
   , mInitialized( false )
-{
-}
+{}
 
 
 QString QgsDockWidgetPlugin::name() const
@@ -81,18 +82,20 @@ QString QgsDockWidgetPlugin::whatsThis() const
 
 QString QgsDockWidgetPlugin::domXml() const
 {
-  return QString( "<ui language=\"c++\">\n"
-                  " <widget class=\"%1\" name=\"mDockWidget\">\n"
-                  "  <property name=\"geometry\">\n"
-                  "   <rect>\n"
-                  "    <x>0</x>\n"
-                  "    <y>0</y>\n"
-                  "    <width>300</width>\n"
-                  "    <height>500</height>\n"
-                  "   </rect>\n"
-                  "  </property>\n"
-                  "  <widget class=\"QWidget\" name=\"dockWidgetContents\"/>"
-                  " </widget>\n"
-                  "</ui>\n" )
-         .arg( name() );
+  return QString(
+           "<ui language=\"c++\">\n"
+           " <widget class=\"%1\" name=\"mDockWidget\">\n"
+           "  <property name=\"geometry\">\n"
+           "   <rect>\n"
+           "    <x>0</x>\n"
+           "    <y>0</y>\n"
+           "    <width>300</width>\n"
+           "    <height>500</height>\n"
+           "   </rect>\n"
+           "  </property>\n"
+           "  <widget class=\"QWidget\" name=\"dockWidgetContents\"/>"
+           " </widget>\n"
+           "</ui>\n"
+  )
+    .arg( name() );
 }

@@ -15,13 +15,20 @@
  ***************************************************************************/
 
 #include "qgslayoutpagecollection.h"
+
+#include "qgsfillsymbol.h"
 #include "qgslayout.h"
-#include "qgsreadwritecontext.h"
-#include "qgssymbollayerutils.h"
 #include "qgslayoutframe.h"
 #include "qgslayoutundostack.h"
-#include "qgsfillsymbol.h"
 #include "qgsmargins.h"
+#include "qgsreadwritecontext.h"
+#include "qgssymbollayerutils.h"
+
+#include <QString>
+
+#include "moc_qgslayoutpagecollection.cpp"
+
+using namespace Qt::StringLiterals;
 
 QgsLayoutPageCollection::QgsLayoutPageCollection( QgsLayout *layout )
   : QObject( layout )
@@ -155,8 +162,7 @@ bool QgsLayoutPageCollection::hasUniformPageSizes() const
       size = pageSize;
     else
     {
-      if ( !qgsDoubleNear( pageSize.width(), size.width(), 0.01 )
-           || !qgsDoubleNear( pageSize.height(), size.height(), 0.01 ) )
+      if ( !qgsDoubleNear( pageSize.width(), size.width(), 0.01 ) || !qgsDoubleNear( pageSize.height(), size.height(), 0.01 ) )
         return false;
     }
   }
@@ -308,7 +314,7 @@ void QgsLayoutPageCollection::resizeToContents( const QgsMargins &margins, Qgis:
 
   if ( mPages.empty() )
   {
-    std::unique_ptr< QgsLayoutItemPage > page = std::make_unique< QgsLayoutItemPage >( mLayout );
+    auto page = std::make_unique< QgsLayoutItemPage >( mLayout );
     addPage( page.release() );
   }
 
@@ -366,7 +372,7 @@ void QgsLayoutPageCollection::resizeToContents( const QgsMargins &margins, Qgis:
 
 bool QgsLayoutPageCollection::writeXml( QDomElement &parentElement, QDomDocument &document, const QgsReadWriteContext &context ) const
 {
-  QDomElement element = document.createElement( QStringLiteral( "PageCollection" ) );
+  QDomElement element = document.createElement( u"PageCollection"_s );
 
   QDomElement pageStyleElem = QgsSymbolLayerUtils::saveSymbol( QString(), mPageStyleSymbol.get(), document, context );
   element.appendChild( pageStyleElem );
@@ -385,12 +391,12 @@ bool QgsLayoutPageCollection::writeXml( QDomElement &parentElement, QDomDocument
 bool QgsLayoutPageCollection::readXml( const QDomElement &e, const QDomDocument &document, const QgsReadWriteContext &context )
 {
   QDomElement element = e;
-  if ( element.nodeName() != QLatin1String( "PageCollection" ) )
+  if ( element.nodeName() != "PageCollection"_L1 )
   {
-    element = element.firstChildElement( QStringLiteral( "PageCollection" ) );
+    element = element.firstChildElement( u"PageCollection"_s );
   }
 
-  if ( element.nodeName() != QLatin1String( "PageCollection" ) )
+  if ( element.nodeName() != "PageCollection"_L1 )
   {
     return false;
   }
@@ -407,17 +413,17 @@ bool QgsLayoutPageCollection::readXml( const QDomElement &e, const QDomDocument 
   }
   mPages.clear();
 
-  QDomElement pageStyleSymbolElem = element.firstChildElement( QStringLiteral( "symbol" ) );
+  QDomElement pageStyleSymbolElem = element.firstChildElement( u"symbol"_s );
   if ( !pageStyleSymbolElem.isNull() )
   {
-    mPageStyleSymbol.reset( QgsSymbolLayerUtils::loadSymbol<QgsFillSymbol>( pageStyleSymbolElem, context ) );
+    mPageStyleSymbol = QgsSymbolLayerUtils::loadSymbol<QgsFillSymbol>( pageStyleSymbolElem, context );
   }
 
-  QDomNodeList pageList = element.elementsByTagName( QStringLiteral( "LayoutItem" ) );
+  QDomNodeList pageList = element.elementsByTagName( u"LayoutItem"_s );
   for ( int i = 0; i < pageList.size(); ++i )
   {
     QDomElement pageElement = pageList.at( i ).toElement();
-    std::unique_ptr< QgsLayoutItemPage > page( new QgsLayoutItemPage( mLayout ) );
+    auto page = std::make_unique<QgsLayoutItemPage>( mLayout );
     if ( mPageStyleSymbol )
       page->setPageStyleSymbol( mPageStyleSymbol->clone() );
     page->readXml( pageElement, document, context );
@@ -442,6 +448,32 @@ QgsLayoutGuideCollection &QgsLayoutPageCollection::guides()
 const QgsLayoutGuideCollection &QgsLayoutPageCollection::guides() const
 {
   return *mGuideCollection;
+}
+
+void QgsLayoutPageCollection::applyPropertiesToAllOtherPages( int sourcePage )
+{
+  QgsLayoutItemPage *referencePage = page( sourcePage );
+  if ( !referencePage )
+  {
+    return;
+  }
+
+  mLayout->undoStack()->beginCommand( this, tr( "Apply page properties" ) );
+  mBlockUndoCommands = true;
+
+  for ( QgsLayoutItemPage *page : mPages )
+  {
+    if ( page == referencePage )
+    {
+      continue;
+    }
+    page->setPageSize( referencePage->pageSize() );
+    page->setPageStyleSymbol( referencePage->pageStyleSymbol()->clone() );
+  }
+
+  mLayout->undoStack()->endCommand();
+  mBlockUndoCommands = false;
+  mLayout->refresh();
 }
 
 void QgsLayoutPageCollection::redraw()
@@ -587,7 +619,7 @@ QgsLayoutItemPage *QgsLayoutPageCollection::extendByNewPage()
     return nullptr;
 
   QgsLayoutItemPage *lastPage = mPages.at( mPages.count() - 1 );
-  std::unique_ptr< QgsLayoutItemPage > newPage = std::make_unique< QgsLayoutItemPage >( mLayout );
+  auto newPage = std::make_unique< QgsLayoutItemPage >( mLayout );
   newPage->attemptResize( lastPage->sizeWithUnits() );
   addPage( newPage.release() );
   return mPages.at( mPages.count() - 1 );
@@ -626,7 +658,7 @@ void QgsLayoutPageCollection::insertPage( QgsLayoutItemPage *page, int beforePag
   }
 
   endPageSizeChange();
-  if ( ! mBlockUndoCommands )
+  if ( !mBlockUndoCommands )
   {
     mLayout->undoStack()->endCommand();
     mLayout->undoStack()->endMacro();
@@ -660,7 +692,7 @@ void QgsLayoutPageCollection::deletePage( int pageNumber )
   }
 
   endPageSizeChange();
-  if ( ! mBlockUndoCommands )
+  if ( !mBlockUndoCommands )
   {
     mLayout->undoStack()->endCommand();
     mLayout->undoStack()->endMacro();
@@ -711,7 +743,7 @@ void QgsLayoutPageCollection::clear()
     mLayout->undoStack()->beginMacro( tr( "Remove Pages" ) );
     mLayout->undoStack()->beginCommand( this, tr( "Remove Pages" ) );
   }
-  for ( int i = mPages.count() - 1;  i >= 0; --i )
+  for ( int i = mPages.count() - 1; i >= 0; --i )
   {
     emit pageAboutToBeRemoved( i );
     mPages.takeAt( i )->deleteLater();
@@ -733,10 +765,9 @@ QgsLayoutItemPage *QgsLayoutPageCollection::takePage( QgsLayoutItemPage *page )
 void QgsLayoutPageCollection::createDefaultPageStyleSymbol()
 {
   QVariantMap properties;
-  properties.insert( QStringLiteral( "color" ), QStringLiteral( "white" ) );
-  properties.insert( QStringLiteral( "style" ), QStringLiteral( "solid" ) );
-  properties.insert( QStringLiteral( "style_border" ), QStringLiteral( "no" ) );
-  properties.insert( QStringLiteral( "joinstyle" ), QStringLiteral( "miter" ) );
-  mPageStyleSymbol.reset( QgsFillSymbol::createSimple( properties ) );
+  properties.insert( u"color"_s, u"white"_s );
+  properties.insert( u"style"_s, u"solid"_s );
+  properties.insert( u"style_border"_s, u"no"_s );
+  properties.insert( u"joinstyle"_s, u"miter"_s );
+  mPageStyleSymbol = QgsFillSymbol::createSimple( properties );
 }
-

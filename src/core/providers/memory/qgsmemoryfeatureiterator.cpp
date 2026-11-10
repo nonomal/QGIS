@@ -13,25 +13,23 @@
  *                                                                         *
  ***************************************************************************/
 #include "qgsmemoryfeatureiterator.h"
-#include "qgsmemoryprovider.h"
 
+#include "qgsexception.h"
+#include "qgsexpressioncontextutils.h"
 #include "qgsgeometry.h"
 #include "qgsgeometryengine.h"
 #include "qgslogger.h"
-#include "qgsspatialindex.h"
+#include "qgsmemoryprovider.h"
 #include "qgsproject.h"
-#include "qgsexception.h"
-#include "qgsexpressioncontextutils.h"
+#include "qgsspatialindex.h"
 
 ///@cond PRIVATE
 
 QgsMemoryFeatureIterator::QgsMemoryFeatureIterator( QgsMemoryFeatureSource *source, bool ownSource, const QgsFeatureRequest &request )
   : QgsAbstractFeatureIteratorFromSource<QgsMemoryFeatureSource>( source, ownSource, request )
 {
-  if ( mRequest.destinationCrs().isValid() && mRequest.destinationCrs() != mSource->mCrs )
-  {
-    mTransform = QgsCoordinateTransform( mSource->mCrs, mRequest.destinationCrs(), mRequest.transformContext() );
-  }
+  mTransform = mRequest.calculateTransform( mSource->mCrs );
+
   try
   {
     mFilterRect = filterRectToSourceCrs( mTransform );
@@ -59,7 +57,7 @@ QgsMemoryFeatureIterator::QgsMemoryFeatureIterator( QgsMemoryFeatureSource *sour
       if ( !mFilterRect.isNull() && ( mRequest.flags() & Qgis::FeatureRequestFlag::ExactIntersect ) )
       {
         mSelectRectGeom = QgsGeometry::fromRect( mFilterRect );
-        mSelectRectEngine.reset( QgsGeometry::createGeometryEngine( mSelectRectGeom.constGet() ) );
+        mSelectRectEngine = QgsGeometry::createGeometryEngine( mSelectRectGeom.constGet() );
         mSelectRectEngine->prepareGeometry();
       }
       break;
@@ -68,7 +66,7 @@ QgsMemoryFeatureIterator::QgsMemoryFeatureIterator( QgsMemoryFeatureSource *sour
       if ( !mRequest.referenceGeometry().isEmpty() )
       {
         mDistanceWithinGeom = mRequest.referenceGeometry();
-        mDistanceWithinEngine.reset( QgsGeometry::createGeometryEngine( mDistanceWithinGeom.constGet() ) );
+        mDistanceWithinEngine = QgsGeometry::createGeometryEngine( mDistanceWithinGeom.constGet() );
         mDistanceWithinEngine->prepareGeometry();
       }
       break;
@@ -289,8 +287,7 @@ QgsMemoryFeatureSource::QgsMemoryFeatureSource( const QgsMemoryProvider *p )
   , mSpatialIndex( p->mSpatialIndex ? std::make_unique< QgsSpatialIndex >( *p->mSpatialIndex ) : nullptr ) // just shallow copy
   , mSubsetString( p->mSubsetString )
   , mCrs( p->mCrs )
-{
-}
+{}
 
 QgsFeatureIterator QgsMemoryFeatureSource::getFeatures( const QgsFeatureRequest &request )
 {
@@ -303,10 +300,8 @@ QgsExpressionContext *QgsMemoryFeatureSource::expressionContext()
   // iterating over a memory layer with a subset string set
   if ( !mExpressionContext )
   {
-    mExpressionContext = std::make_unique< QgsExpressionContext >(
-                           QList<QgsExpressionContextScope *>()
-                           << QgsExpressionContextUtils::globalScope()
-                           << QgsExpressionContextUtils::projectScope( QgsProject::instance() ) );
+    mExpressionContext = std::make_unique< QgsExpressionContext >();
+    *mExpressionContext << QgsExpressionContextUtils::globalScope() << QgsExpressionContextUtils::projectScope( QgsProject::instance() ); // skip-keyword-check
     mExpressionContext->setFields( mFields );
   }
   return mExpressionContext.get();

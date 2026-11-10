@@ -16,15 +16,23 @@
 #ifndef QGSDOCKABLEWIDGETHELPER_H
 #define QGSDOCKABLEWIDGETHELPER_H
 
+#include "qgis.h"
 #include "qgis_gui.h"
+#include "qgsgui.h"
+#include "qgssettingsentryenumflag.h"
+#include "qgssettingsentryimpl.h"
 
 #include <QDialog>
-#include <QToolButton>
-#include <QMainWindow>
 #include <QDomElement>
+#include <QMainWindow>
 #include <QPointer>
+#include <QString>
+#include <QToolButton>
 
 #define SIP_NO_FILE
+
+using namespace Qt::StringLiterals;
+
 
 class QgsDockWidget;
 
@@ -34,7 +42,6 @@ class GUI_EXPORT QgsNonRejectableDialog : public QDialog
 {
     Q_OBJECT
   public:
-
     explicit QgsNonRejectableDialog( QWidget *parent = nullptr, Qt::WindowFlags f = Qt::WindowFlags() );
     void reject() override;
 };
@@ -51,20 +58,51 @@ class GUI_EXPORT QgsNonRejectableDialog : public QDialog
  */
 class GUI_EXPORT QgsDockableWidgetHelper : public QObject
 {
+    static inline QgsSettingsTreeNode *sTtreeDockConfigs = QgsGui::sTtreeWidgetGeometry->createNamedListNode( u"docks"_s ) SIP_SKIP;
+
+    static const QgsSettingsEntryBool *sSettingsIsDocked SIP_SKIP;
+    static const QgsSettingsEntryVariant *sSettingsDockGeometry SIP_SKIP;
+    static const QgsSettingsEntryVariant *sSettingsDialogGeometry SIP_SKIP;
+    static const QgsSettingsEntryEnumFlag<Qt::DockWidgetArea> *sSettingsDockArea SIP_SKIP;
+
     Q_OBJECT
   public:
+    enum class Option : int
+    {
+      RaiseTab = 1 << 1,        //!< Raise Tab
+      PermanentWidget = 1 << 2, //!< The widget (either as a dock or window) cannot be destroyed and must be hidden instead
+    };
+    Q_ENUM( Option )
+    Q_DECLARE_FLAGS( Options, Option )
 
     /**
      * Constructs an object that is responsible of making a docked widget or a window titled \a windowTitle that holds the \a widget
      * The ownership of \a widget is returned to \a ownerWindow once the object is destroyed.
      *
-     * If \a usePersistentWidget is TRUE then the \a widget (either as a dock or window) cannot be destroyed and must be hidden instead.
+     * With a unique \a dockId, the status (docked, area and geometry) are saved in the settings and re-used on creation.
+     * The default values of the settings can be overridden with \a defaultIsDocked and \a defaultDockArea.
+     *
+     * \since QGIS 3.42
      */
-    QgsDockableWidgetHelper( bool isDocked, const QString &windowTitle, QWidget *widget, QMainWindow *ownerWindow,
-                             Qt::DockWidgetArea defaultDockArea = Qt::NoDockWidgetArea,
-                             const QStringList &tabifyWith = QStringList(), bool raiseTab = false,
-                             const QString &windowGeometrySettingsKey = QString(), bool usePersistentWidget = false );
-    ~QgsDockableWidgetHelper();
+    QgsDockableWidgetHelper(
+      const QString &windowTitle,
+      QWidget *widget,
+      QMainWindow *ownerWindow,
+      const QString &dockId,
+      const QStringList &tabifyWith = QStringList(),
+      Qgis::DockableWidgetInitialState openingMode = Qgis::DockableWidgetInitialState::RestorePreviousState,
+      bool defaultIsDocked = false,
+      Qt::DockWidgetArea defaultDockArea = Qt::DockWidgetArea::RightDockWidgetArea,
+      Options options = Options()
+    );
+
+    ~QgsDockableWidgetHelper() override;
+
+    /**
+     * Returns if the widget is docked
+     * \since QGIS 3.42
+     */
+    bool isDocked() const { return mIsDocked; }
 
     //! Reads the dimensions of both the dock widget and the top level window
     void writeXml( QDomElement &viewDom );
@@ -85,10 +123,20 @@ class GUI_EXPORT QgsDockableWidgetHelper : public QObject
     //! Returns the displayed title of the dialog and the dock widget
     QString windowTitle() const { return mWindowTitle; }
 
+    //! Sets default dialog size
+    void setDefaultDialogSize( const QSize &size );
+
     //! Sets the object name of the dock widget
     void setDockObjectName( const QString &name );
     //! Returns the object name of the dock widget
     QString dockObjectName() const;
+
+    /**
+     * Sets the setting key \a id to use for storing previous state settings for the widget.
+     *
+     * Set to an empty string to prevent any storage of the widget's state.
+     */
+    void setSettingKeyDockId( const QString &id );
 
     /**
      * Returns TRUE if the widget is a visible dialog or a user-visible
@@ -109,9 +157,6 @@ class GUI_EXPORT QgsDockableWidgetHelper : public QObject
 
     bool eventFilter( QObject *watched, QEvent *event ) override;
 
-    static std::function< void( Qt::DockWidgetArea, QDockWidget *, const QStringList &, bool ) > sAddTabifiedDockWidgetFunction;
-    static std::function< QString( ) > sAppStylesheetFunction;
-
     static QMainWindow *sOwnerWindow;
 
   signals:
@@ -126,16 +171,26 @@ class GUI_EXPORT QgsDockableWidgetHelper : public QObject
 
     void setUserVisible( bool visible );
 
+    /**
+     * Rejects the widget.
+     *
+     * If the widget is shown as a dialog, calls QDialog::reject(). If it's shown as dock widget,
+     * the widget is closed.
+     *
+     * \since QGIS 4.2
+     */
+    void reject();
+
   private:
     void setupDockWidget( const QStringList &tabSiblings = QStringList() );
 
     bool mIsDocked = true;
     QWidget *mWidget = nullptr;
 
-    QPointer< QDialog > mDialog;
+    QPointer<QDialog> mDialog;
     QRect mDialogGeometry;
 
-    QPointer< QgsDockWidget > mDock;
+    QPointer<QgsDockWidget> mDock;
     QRect mDockGeometry;
     bool mIsDockFloating = true;
     Qt::DockWidgetArea mDockArea = Qt::RightDockWidgetArea;
@@ -145,15 +200,20 @@ class GUI_EXPORT QgsDockableWidgetHelper : public QObject
     QMainWindow *mOwnerWindow = nullptr;
 
     QStringList mTabifyWith;
-    bool mRaiseTab = false;
-
-    QString mWindowGeometrySettingsKey;
+    Options mOptions;
 
     // Unique identifier of dock
     QString mUuid;
 
-    bool mUsePersistentWidget = false;
+    QString mSettingKeyDockId;
+    QSize mDefaultDialogSize;
+    bool mDialogRestored = false;
+
+    friend class TestQgsDockableWidgetHelper;
 };
+
+Q_DECLARE_OPERATORS_FOR_FLAGS( QgsDockableWidgetHelper::Options )
+
 
 ///@endcond
 

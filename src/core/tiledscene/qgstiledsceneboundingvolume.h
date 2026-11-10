@@ -19,13 +19,13 @@
 #ifndef QGSTILEDSCENEBOUNDINGVOLUME_H
 #define QGSTILEDSCENEBOUNDINGVOLUME_H
 
+#include "qgis.h"
 #include "qgis_core.h"
 #include "qgis_sip.h"
-#include "qgis.h"
 #include "qgsbox3d.h"
+#include "qgscoordinatetransform.h"
 #include "qgsmatrix4x4.h"
 #include "qgsorientedbox3d.h"
-#include "qgscoordinatetransform.h"
 
 class QgsMatrix4x4;
 
@@ -38,7 +38,6 @@ class QgsMatrix4x4;
 class CORE_EXPORT QgsTiledSceneBoundingVolume
 {
   public:
-
     /**
      * Constructor for QgsTiledSceneBoundingVolume, with the specified oriented \a box.
      */
@@ -60,7 +59,7 @@ class CORE_EXPORT QgsTiledSceneBoundingVolume
      * The optional \a transform and \a direction arguments should be used whenever the volume needs
      * to be transformed into a specific destination CRS, in order to correctly handle 3D coordinate transforms.
      */
-    QgsAbstractGeometry *as2DGeometry( const QgsCoordinateTransform &transform = QgsCoordinateTransform(), Qgis::TransformDirection direction = Qgis::TransformDirection::Forward ) const SIP_FACTORY;
+    std::unique_ptr<QgsAbstractGeometry> as2DGeometry( const QgsCoordinateTransform &transform = QgsCoordinateTransform(), Qgis::TransformDirection direction = Qgis::TransformDirection::Forward ) const;
 
     /**
      * Applies a \a transform to the bounding volume.
@@ -78,9 +77,7 @@ class CORE_EXPORT QgsTiledSceneBoundingVolume
     QgsOrientedBox3D box() const { return mBox; }
 
   private:
-
     QgsOrientedBox3D mBox;
-
 };
 
 #endif // QGSTILEDSCENEBOUNDINGVOLUME_H

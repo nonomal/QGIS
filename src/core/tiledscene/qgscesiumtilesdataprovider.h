@@ -19,10 +19,10 @@
 #ifndef QGSCESIUMTILESDATAPROVIDER_H
 #define QGSCESIUMTILESDATAPROVIDER_H
 
-#include "qgis_core.h"
-#include "qgstiledscenedataprovider.h"
 #include "qgis.h"
+#include "qgis_core.h"
 #include "qgsprovidermetadata.h"
+#include "qgstiledscenedataprovider.h"
 
 #define SIP_NO_FILE
 
@@ -32,16 +32,12 @@ class QgsCesiumTilesDataProviderSharedData;
 
 ///@cond PRIVATE
 
-class CORE_EXPORT QgsCesiumTilesDataProvider final: public QgsTiledSceneDataProvider
+class CORE_EXPORT QgsCesiumTilesDataProvider final : public QgsTiledSceneDataProvider
 {
     Q_OBJECT
   public:
-
-
     //! Constructor for QgsCesiumTilesDataProvider
-    QgsCesiumTilesDataProvider( const QString &uri,
-                                const QgsDataProvider::ProviderOptions &providerOptions,
-                                QgsDataProvider::ReadFlags flags = QgsDataProvider::ReadFlags() );
+    QgsCesiumTilesDataProvider( const QString &uri, const QgsDataProvider::ProviderOptions &providerOptions, Qgis::DataProviderReadFlags flags = Qgis::DataProviderReadFlags() );
     QgsCesiumTilesDataProvider( const QgsCesiumTilesDataProvider &other );
     QgsCesiumTilesDataProvider &operator=( const QgsCesiumTilesDataProvider &other ) = delete;
 
@@ -62,7 +58,6 @@ class CORE_EXPORT QgsCesiumTilesDataProvider final: public QgsTiledSceneDataProv
     QgsDoubleRange zRange() const final;
 
   private:
-
     bool init();
 
     bool mIsValid = false;
@@ -70,8 +65,9 @@ class CORE_EXPORT QgsCesiumTilesDataProvider final: public QgsTiledSceneDataProv
     QString mAuthCfg;
     QgsHttpHeaders mHeaders;
 
-    std::shared_ptr<QgsCesiumTilesDataProviderSharedData> mShared;  //!< Mutable data shared between provider instances
+    std::shared_ptr<QgsCesiumTilesDataProviderSharedData> mShared; //!< Mutable data shared between provider instances
 
+    Qgis::DataProviderFlags mProviderFlags = Qgis::DataProviderFlag::FastExtent2D;
 };
 
 
@@ -83,7 +79,7 @@ class QgsCesiumTilesProviderMetadata : public QgsProviderMetadata
     QgsCesiumTilesProviderMetadata();
     QIcon icon() const override;
     QgsProviderMetadata::ProviderMetadataCapabilities capabilities() const override;
-    QgsCesiumTilesDataProvider *createProvider( const QString &uri, const QgsDataProvider::ProviderOptions &options, QgsDataProvider::ReadFlags flags = QgsDataProvider::ReadFlags() ) override;
+    QgsCesiumTilesDataProvider *createProvider( const QString &uri, const QgsDataProvider::ProviderOptions &options, Qgis::DataProviderReadFlags flags = Qgis::DataProviderReadFlags() ) override;
     QList< QgsProviderSublayerDetails > querySublayers( const QString &uri, Qgis::SublayerQueryFlags flags = Qgis::SublayerQueryFlags(), QgsFeedback *feedback = nullptr ) const override;
     int priorityForUri( const QString &uri ) const override;
     QList< Qgis::LayerType > validLayerTypesForUri( const QString &uri ) const override;
@@ -92,10 +88,8 @@ class QgsCesiumTilesProviderMetadata : public QgsProviderMetadata
     QString filters( Qgis::FileFilterType type ) override;
     ProviderCapabilities providerCapabilities() const override;
     QList< Qgis::LayerType > supportedLayerTypes() const override;
-
 };
 
 ///@endcond
 
 #endif // QGSCESIUMTILESDATAPROVIDER_H
-

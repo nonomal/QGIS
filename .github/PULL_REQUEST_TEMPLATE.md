@@ -2,6 +2,10 @@
 
 [Replace this with some text explaining the rationale and details about this pull request]
 
+- [ ] I certify that no AI tool(s) (Copilot, Claude, or something similar), LLMs, or agent based workflows were used or supported my development of this PR. See our [policy about AI tool use](https://github.com/qgis/QGIS-Enhancement-Proposals/blob/master/qep-408-ai-tool-policy.md).
+
+**No LLM, AI or agent assisted code contributions are allowed in the QGIS repository. If we subsequently discover that you have used an AI, LLM, or any agent-based workflow for your contribution, you will be subject to code reversion and contributor rights sanctioning. See [QEP 408](https://github.com/qgis/QGIS-Enhancement-Proposals/blob/master/qep-408-ai-tool-policy.md) for details.**
+
 <!--
   BEFORE HITTING SUBMIT -- Please BUILD AND TEST your changes thoroughly. This is YOUR responsibility! Do NOT rely on the QGIS code maintainers to do this for you!!
 
@@ -29,8 +33,5 @@
 
   - New unit tests have been added for relevant changes
 
-  - You have run the `scripts/prepare_commit.sh` script (https://github.com/qgis/QGIS/blob/master/.github/CONTRIBUTING.md#contributing-to-qgis) before each commit.
-    If you didn't do this, you can also run `./scripts/astyle_all.sh` from your source folder.
-
-  - You have read the QGIS Coding Standards (https://docs.qgis.org/testing/en/docs/developers_guide/codingstandards.html) and this PR complies with them
+  - you have read the QGIS Developer Guide (https://docs.qgis.org/testing/en/docs/developers_guide/index.html) and your PR complies with its QGIS Coding Standards
 -->

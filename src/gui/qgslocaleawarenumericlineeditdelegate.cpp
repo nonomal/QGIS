@@ -14,25 +14,27 @@
  *                                                                         *
  ***************************************************************************/
 
-#include <QLineEdit>
-
 #include "qgslocaleawarenumericlineeditdelegate.h"
+
 #include "qgsdoublevalidator.h"
 #include "qgsguiutils.h"
+
+#include <QLineEdit>
+
+#include "moc_qgslocaleawarenumericlineeditdelegate.cpp"
 
 /// @cond PRIVATE
 
 QgsLocaleAwareNumericLineEditDelegate::QgsLocaleAwareNumericLineEditDelegate( Qgis::DataType dataType, QWidget *parent )
   : QStyledItemDelegate( parent )
   , mDataType( dataType )
-{
-}
+{}
 
 QWidget *QgsLocaleAwareNumericLineEditDelegate::createEditor( QWidget *parent, const QStyleOptionViewItem &option, const QModelIndex &index ) const
 {
   Q_UNUSED( option )
   Q_UNUSED( index )
-  auto editor = new QLineEdit{ parent };
+  auto editor = new QLineEdit { parent };
   editor->setValidator( new QgsDoubleValidator( QgsGuiUtils::significantDigits( mDataType ), editor ) );
   return editor;
 }
@@ -42,7 +44,7 @@ void QgsLocaleAwareNumericLineEditDelegate::setEditorData( QWidget *editor, cons
   QLineEdit *lineEdit { qobject_cast<QLineEdit *>( editor ) };
   if ( lineEdit )
   {
-    const QVariant value = index.data( );
+    const QVariant value = index.data();
     lineEdit->setText( displayText( value, QLocale() ) );
   }
   else
@@ -54,7 +56,7 @@ void QgsLocaleAwareNumericLineEditDelegate::setEditorData( QWidget *editor, cons
 void QgsLocaleAwareNumericLineEditDelegate::setModelData( QWidget *editor, QAbstractItemModel *model, const QModelIndex &index ) const
 {
   QLineEdit *lineEdit { qobject_cast<QLineEdit *>( editor ) };
-  if ( ! editor )
+  if ( !editor )
   {
     QStyledItemDelegate::setModelData( editor, model, index );
   }
@@ -64,7 +66,7 @@ void QgsLocaleAwareNumericLineEditDelegate::setModelData( QWidget *editor, QAbst
 
 QString QgsLocaleAwareNumericLineEditDelegate::displayText( const QVariant &value, const QLocale & ) const
 {
-  return QgsGuiUtils::displayValueWithMaximumDecimals( mDataType, value.toDouble( ) );
+  return QgsGuiUtils::displayValueWithMaximumDecimals( mDataType, value.toDouble() );
 }
 
 void QgsLocaleAwareNumericLineEditDelegate::setDataType( const Qgis::DataType &dataType )

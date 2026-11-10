@@ -19,18 +19,25 @@
 #include "qgsconnectionpool.h"
 #include "qgsogrprovidermetadata.h"
 #include "qgsogrproviderutils.h"
+
+#include <QString>
+
+#define SIP_NO_FILE
+
+using namespace Qt::StringLiterals;
+
+#define CPL_SUPRESS_CPLUSPLUS //#spellok
 #include <gdal.h>
 #include "qgis_sip.h"
 #include <cpl_string.h>
 
 ///@cond PRIVATE
-#define SIP_NO_FILE
 
 struct QgsOgrConn
 {
-  QString path;
-  GDALDatasetH ds;
-  bool valid;
+    QString path;
+    GDALDatasetH ds;
+    bool valid;
 };
 
 inline QString qgsConnectionPool_ConnectionToName( QgsOgrConn *c )
@@ -43,15 +50,12 @@ inline void qgsConnectionPool_ConnectionCreate( const QString &connInfo, QgsOgrC
   c = new QgsOgrConn;
 
   const QVariantMap parts = QgsOgrProviderMetadata().decodeUri( connInfo );
-  const QString fullPath = parts.value( QStringLiteral( "vsiPrefix" ) ).toString()
-                           + parts.value( QStringLiteral( "path" ) ).toString()
-                           + parts.value( QStringLiteral( "vsiSuffix" ) ).toString();
-  const QStringList openOptions = parts.value( QStringLiteral( "openOptions" ) ).toStringList();
+  const QString fullPath = parts.value( u"vsiPrefix"_s ).toString() + parts.value( u"path"_s ).toString() + parts.value( u"vsiSuffix"_s ).toString();
+  const QStringList openOptions = parts.value( u"openOptions"_s ).toStringList();
   char **papszOpenOptions = nullptr;
   for ( const QString &option : openOptions )
   {
-    papszOpenOptions = CSLAddString( papszOpenOptions,
-                                     option.toUtf8().constData() );
+    papszOpenOptions = CSLAddString( papszOpenOptions, option.toUtf8().constData() );
   }
   c->ds = QgsOgrProviderUtils::GDALOpenWrapper( fullPath.toUtf8().constData(), false, papszOpenOptions, nullptr );
   CSLDestroy( papszOpenOptions );
@@ -81,15 +85,12 @@ class QgsOgrConnPoolGroup : public QObject, public QgsConnectionPoolGroup<QgsOgr
 
   public:
     explicit QgsOgrConnPoolGroup( const QString &name )
-      : QgsConnectionPoolGroup<QgsOgrConn*>( name )
+      : QgsConnectionPoolGroup<QgsOgrConn *>( name )
     {
-      initTimer( this );
+      initTimer<QgsOgrConnPoolGroup>( this );
     }
 
-    //! QgsOgrConnPoolGroup cannot be copied
     QgsOgrConnPoolGroup( const QgsOgrConnPoolGroup &other ) = delete;
-
-    //! QgsOgrConnPoolGroup cannot be copied
     QgsOgrConnPoolGroup &operator=( const QgsOgrConnPoolGroup &other ) = delete;
 
     void ref() { ++mRefCount; }
@@ -99,21 +100,19 @@ class QgsOgrConnPoolGroup : public QObject, public QgsConnectionPoolGroup<QgsOgr
       return --mRefCount == 0;
     }
 
-  protected slots:
+  public slots:
     void handleConnectionExpired() { onConnectionExpired(); }
     void startExpirationTimer() { expirationTimer->start(); }
     void stopExpirationTimer() { expirationTimer->stop(); }
 
   private:
     int mRefCount = 0;
-
 };
 
 //! Ogr connection pool - singleton
 class QgsOgrConnPool : public QgsConnectionPool<QgsOgrConn *, QgsOgrConnPoolGroup>
 {
   public:
-
     // NOTE: first call to this function initializes the
     //       singleton.
     // WARNING: concurrent call from multiple threads may result
@@ -132,20 +131,16 @@ class QgsOgrConnPool : public QgsConnectionPool<QgsOgrConn *, QgsOgrConnPoolGrou
     //
     static void cleanupInstance();
 
-    //! QgsOgrConnPool cannot be copied
     QgsOgrConnPool( const QgsOgrConnPool &other ) = delete;
-
-    //! QgsOgrConnPool cannot be copied
     QgsOgrConnPool &operator=( const QgsOgrConnPool &other ) = delete;
 
     /**
      * \brief Increases the reference count on the connection pool for the specified connection.
      * \param connInfo The connection string.
-     * \note
-     *     Any user of the connection pool needs to increase the reference count
-     *     before it acquires any connections and decrease the reference count after
-     *     releasing all acquired connections to ensure that all open OGR handles
-     *     are freed when and only when no one is using the pool anymore.
+     * \note Any user of the connection pool needs to increase the reference count
+     * before it acquires any connections and decrease the reference count after
+     * releasing all acquired connections to ensure that all open OGR handles
+     * are freed when and only when no one is using the pool anymore.
      */
     void ref( const QString &connInfo )
     {

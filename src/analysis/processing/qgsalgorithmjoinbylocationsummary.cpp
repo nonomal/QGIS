@@ -16,73 +16,73 @@
  ***************************************************************************/
 
 #include "qgsalgorithmjoinbylocationsummary.h"
-#include "qgsprocessing.h"
-#include "qgsgeometryengine.h"
-#include "qgsvectorlayer.h"
+
+#include "qgsalgorithmjoinbylocation.h"
 #include "qgsapplication.h"
+#include "qgsdatetimestatisticalsummary.h"
 #include "qgsfeature.h"
 #include "qgsfeaturesource.h"
-#include "qgsalgorithmjoinbylocation.h"
-#include "qgsdatetimestatisticalsummary.h"
+#include "qgsgeometryengine.h"
 #include "qgsstringstatisticalsummary.h"
+#include "qgsvectorlayer.h"
+
+#include <QString>
+
+using namespace Qt::StringLiterals;
 
 ///@cond PRIVATE
 
 
 void QgsJoinByLocationSummaryAlgorithm::initAlgorithm( const QVariantMap & )
 {
-  addParameter( new QgsProcessingParameterFeatureSource( QStringLiteral( "INPUT" ),
-                QObject::tr( "Join to features in" ), QList< int > () << static_cast< int >( Qgis::ProcessingSourceType::VectorAnyGeometry ) ) );
+  addParameter( new QgsProcessingParameterFeatureSource( u"INPUT"_s, QObject::tr( "Join to features in" ), QList<int>() << static_cast<int>( Qgis::ProcessingSourceType::VectorAnyGeometry ) ) );
 
-  std::unique_ptr< QgsProcessingParameterEnum > predicateParam = std::make_unique< QgsProcessingParameterEnum >( QStringLiteral( "PREDICATE" ), QObject::tr( "Where the features" ),
-      QgsJoinByLocationAlgorithm::translatedPredicates(), true, 0 );
+  auto predicateParam = std::make_unique<QgsProcessingParameterEnum>( u"PREDICATE"_s, QObject::tr( "Where the features" ), QgsJoinByLocationAlgorithm::translatedPredicates(), true, 0 );
   QVariantMap predicateMetadata;
   QVariantMap widgetMetadata;
-  widgetMetadata.insert( QStringLiteral( "useCheckBoxes" ), true );
-  widgetMetadata.insert( QStringLiteral( "columns" ), 2 );
-  predicateMetadata.insert( QStringLiteral( "widget_wrapper" ), widgetMetadata );
+  widgetMetadata.insert( u"useCheckBoxes"_s, true );
+  widgetMetadata.insert( u"columns"_s, 2 );
+  predicateMetadata.insert( u"widget_wrapper"_s, widgetMetadata );
   predicateParam->setMetadata( predicateMetadata );
   addParameter( predicateParam.release() );
 
-  addParameter( new QgsProcessingParameterFeatureSource( QStringLiteral( "JOIN" ),
-                QObject::tr( "By comparing to" ), QList< int > () << static_cast< int >( Qgis::ProcessingSourceType::VectorAnyGeometry ) ) );
+  addParameter( new QgsProcessingParameterFeatureSource( u"JOIN"_s, QObject::tr( "By comparing to" ), QList<int>() << static_cast<int>( Qgis::ProcessingSourceType::VectorAnyGeometry ) ) );
 
-  addParameter( new QgsProcessingParameterField( QStringLiteral( "JOIN_FIELDS" ),
-                QObject::tr( "Fields to summarise (leave empty to use all fields)" ),
-                QVariant(), QStringLiteral( "JOIN" ), Qgis::ProcessingFieldParameterDataType::Any, true, true ) );
+  addParameter(
+    new QgsProcessingParameterField( u"JOIN_FIELDS"_s, QObject::tr( "Fields to summarise (leave empty to use all fields)" ), QVariant(), u"JOIN"_s, Qgis::ProcessingFieldParameterDataType::Any, true, true )
+  );
 
-  mAllSummaries << QObject::tr( "count" )
-                << QObject::tr( "unique" )
-                << QObject::tr( "min" )
-                << QObject::tr( "max" )
-                << QObject::tr( "range" )
-                << QObject::tr( "sum" )
-                << QObject::tr( "mean" )
-                << QObject::tr( "median" )
-                << QObject::tr( "stddev" )
-                << QObject::tr( "minority" )
-                << QObject::tr( "majority" )
-                << QObject::tr( "q1" )
-                << QObject::tr( "q3" )
-                << QObject::tr( "iqr" )
-                << QObject::tr( "empty" )
-                << QObject::tr( "filled" )
-                << QObject::tr( "min_length" )
-                << QObject::tr( "max_length" )
-                << QObject::tr( "mean_length" );
+  mAllSummaries
+    << QObject::tr( "count" )
+    << QObject::tr( "unique" )
+    << QObject::tr( "min" )
+    << QObject::tr( "max" )
+    << QObject::tr( "range" )
+    << QObject::tr( "sum" )
+    << QObject::tr( "mean" )
+    << QObject::tr( "median" )
+    << QObject::tr( "stddev" )
+    << QObject::tr( "minority" )
+    << QObject::tr( "majority" )
+    << QObject::tr( "q1" )
+    << QObject::tr( "q3" )
+    << QObject::tr( "iqr" )
+    << QObject::tr( "empty" )
+    << QObject::tr( "filled" )
+    << QObject::tr( "min_length" )
+    << QObject::tr( "max_length" )
+    << QObject::tr( "mean_length" );
 
-  std::unique_ptr< QgsProcessingParameterEnum > summaryParam = std::make_unique< QgsProcessingParameterEnum >( QStringLiteral( "SUMMARIES" ), QObject::tr( "Summaries to calculate (leave empty to use all available)" ), mAllSummaries, true, QVariant(), true );
+  auto summaryParam = std::make_unique<QgsProcessingParameterEnum>( u"SUMMARIES"_s, QObject::tr( "Summaries to calculate (leave empty to use all available)" ), mAllSummaries, true, QVariant(), true );
   addParameter( summaryParam.release() );
 
-  addParameter( new QgsProcessingParameterBoolean( QStringLiteral( "DISCARD_NONMATCHING" ),
-                QObject::tr( "Discard records which could not be joined" ),
-                false ) );
-  addParameter( new QgsProcessingParameterFeatureSink( QStringLiteral( "OUTPUT" ), QObject::tr( "Joined layer" ) ) );
+  addParameter( new QgsProcessingParameterBoolean( u"DISCARD_NONMATCHING"_s, QObject::tr( "Discard records which could not be joined" ), false ) );
+  addParameter( new QgsProcessingParameterFeatureSink( u"OUTPUT"_s, QObject::tr( "Joined layer" ) ) );
 }
 
 QString QgsJoinByLocationSummaryAlgorithm::name() const
 {
-  return QStringLiteral( "joinbylocationsummary" );
+  return u"joinbylocationsummary"_s;
 }
 
 QString QgsJoinByLocationSummaryAlgorithm::displayName() const
@@ -92,9 +92,12 @@ QString QgsJoinByLocationSummaryAlgorithm::displayName() const
 
 QStringList QgsJoinByLocationSummaryAlgorithm::tags() const
 {
-  return QObject::tr( "summary,aggregate,join,intersects,intersecting,touching,within,contains,overlaps,relation,spatial,"
-                      "stats,statistics,sum,maximum,minimum,mean,average,standard,deviation,"
-                      "count,distinct,unique,variance,median,quartile,range,majority,minority,histogram,distinct" ).split( ',' );
+  return QObject::tr(
+           "summary,aggregate,join,intersects,intersecting,touching,within,contains,overlaps,relation,spatial,"
+           "stats,statistics,sum,maximum,minimum,mean,average,standard,deviation,"
+           "count,distinct,unique,variance,median,quartile,range,majority,minority,histogram,distinct"
+  )
+    .split( ',' );
 }
 
 QString QgsJoinByLocationSummaryAlgorithm::group() const
@@ -104,29 +107,32 @@ QString QgsJoinByLocationSummaryAlgorithm::group() const
 
 QString QgsJoinByLocationSummaryAlgorithm::groupId() const
 {
-  return QStringLiteral( "vectorgeneral" );
+  return u"vectorgeneral"_s;
 }
 
 QString QgsJoinByLocationSummaryAlgorithm::shortHelpString() const
 {
-  return QObject::tr( "This algorithm takes an input vector layer and creates a new vector layer that is an extended version of the input one, with additional attributes in its attribute table.\n\n"
-                      "The additional attributes and their values are taken from a second vector layer. A spatial criteria is applied to select the values from the second layer that are added to each feature from the first layer in the resulting one.\n\n"
-                      "The algorithm calculates a statistical summary for the values from matching features in the second layer( e.g. maximum value, mean value, etc )." );
+  return QObject::tr(
+    "This algorithm takes an input vector layer and creates a new vector layer that is an extended version of the input one, with additional attributes in its attribute table.\n\n"
+    "The additional attributes and their values are taken from a second vector layer. A spatial criteria is applied to select the values from the second layer that are added to each feature from the "
+    "first layer in the resulting one.\n\n"
+    "The algorithm calculates a statistical summary for the values from matching features in the second layer( e.g. maximum value, mean value, etc )."
+  );
 }
 
 QString QgsJoinByLocationSummaryAlgorithm::shortDescription() const
 {
-  return QObject::tr( "Calculate summaries of attributes from one vector layer to another by location." );
+  return QObject::tr( "Calculates summaries of attributes from one vector layer to another by location." );
 }
 
 QIcon QgsJoinByLocationSummaryAlgorithm::icon() const
 {
-  return QgsApplication::getThemeIcon( QStringLiteral( "/algorithms/mAlgorithmBasicStatistics.svg" ) );
+  return QgsApplication::getThemeIcon( u"/algorithms/mAlgorithmBasicStatistics.svg"_s );
 }
 
 QString QgsJoinByLocationSummaryAlgorithm::svgIconPath() const
 {
-  return QgsApplication::iconPath( QStringLiteral( "/algorithms/mAlgorithmBasicStatistics.svg" ) );
+  return QgsApplication::iconPath( u"/algorithms/mAlgorithmBasicStatistics.svg"_s );
 }
 
 QgsJoinByLocationSummaryAlgorithm *QgsJoinByLocationSummaryAlgorithm::createInstance() const
@@ -136,22 +142,24 @@ QgsJoinByLocationSummaryAlgorithm *QgsJoinByLocationSummaryAlgorithm::createInst
 
 QVariantMap QgsJoinByLocationSummaryAlgorithm::processAlgorithm( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback )
 {
-  std::unique_ptr< QgsProcessingFeatureSource > baseSource( parameterAsSource( parameters, QStringLiteral( "INPUT" ), context ) );
-  if ( !baseSource )
-    throw QgsProcessingException( invalidSourceError( parameters, QStringLiteral( "INPUT" ) ) );
+  QGS_MARK_ALGORITHM_SOURCE
 
-  std::unique_ptr< QgsProcessingFeatureSource > joinSource( parameterAsSource( parameters, QStringLiteral( "JOIN" ), context ) );
+  std::unique_ptr<QgsProcessingFeatureSource> baseSource( parameterAsSource( parameters, u"INPUT"_s, context ) );
+  if ( !baseSource )
+    throw QgsProcessingException( invalidSourceError( parameters, u"INPUT"_s ) );
+
+  std::unique_ptr<QgsProcessingFeatureSource> joinSource( parameterAsSource( parameters, u"JOIN"_s, context ) );
   if ( !joinSource )
-    throw QgsProcessingException( invalidSourceError( parameters, QStringLiteral( "JOIN" ) ) );
+    throw QgsProcessingException( invalidSourceError( parameters, u"JOIN"_s ) );
 
   if ( joinSource->hasSpatialIndex() == Qgis::SpatialIndexPresence::NotPresent )
     feedback->reportError( QObject::tr( "No spatial index exists for join layer, performance will be severely degraded" ) );
 
-  QStringList joinedFieldNames = parameterAsStrings( parameters, QStringLiteral( "JOIN_FIELDS" ), context );
+  QStringList joinedFieldNames = parameterAsStrings( parameters, u"JOIN_FIELDS"_s, context );
 
-  bool discardNonMatching = parameterAsBoolean( parameters, QStringLiteral( "DISCARD_NONMATCHING" ), context );
+  bool discardNonMatching = parameterAsBoolean( parameters, u"DISCARD_NONMATCHING"_s, context );
 
-  QList< int > summaries = parameterAsEnums( parameters, QStringLiteral( "SUMMARIES" ), context );
+  QList<int> summaries = parameterAsEnums( parameters, u"SUMMARIES"_s, context );
   if ( summaries.empty() )
   {
     for ( int i = 0; i < mAllSummaries.size(); ++i )
@@ -160,7 +168,7 @@ QVariantMap QgsJoinByLocationSummaryAlgorithm::processAlgorithm( const QVariantM
 
   QgsFields sourceFields = baseSource->fields();
   QgsFields fieldsToJoin;
-  QList< int > joinFieldIndices;
+  QList<int> joinFieldIndices;
   if ( joinedFieldNames.empty() )
   {
     // no fields selected, use all
@@ -171,20 +179,18 @@ QVariantMap QgsJoinByLocationSummaryAlgorithm::processAlgorithm( const QVariantM
   }
 
   // Adds a field to the output, keeping the same data type as the original
-  auto addFieldKeepType = [&fieldsToJoin]( const QgsField & original, const QString & statistic )
-  {
+  auto addFieldKeepType = [&fieldsToJoin]( const QgsField &original, const QString &statistic ) {
     QgsField field = QgsField( original );
     field.setName( field.name() + '_' + statistic );
     fieldsToJoin.append( field );
   };
 
   // Adds a field to the output, with a specified type
-  auto addFieldWithType = [&fieldsToJoin]( const QgsField & original, const QString & statistic, QVariant::Type type )
-  {
+  auto addFieldWithType = [&fieldsToJoin]( const QgsField &original, const QString &statistic, QMetaType::Type type ) {
     QgsField field = QgsField( original );
     field.setName( field.name() + '_' + statistic );
     field.setType( type );
-    if ( type == QVariant::Double )
+    if ( type == QMetaType::Type::Double )
     {
       field.setLength( 20 );
       field.setPrecision( 6 );
@@ -198,58 +204,57 @@ QVariantMap QgsJoinByLocationSummaryAlgorithm::processAlgorithm( const QVariantM
     DateTime,
     String
   };
-  QList< FieldType > fieldTypes;
+  QList<FieldType> fieldTypes;
 
   struct FieldStatistic
   {
-    FieldStatistic( int enumIndex, const QString &name, QVariant::Type type )
-      : enumIndex( enumIndex )
-      , name( name )
-      , type( type )
-    {}
+      FieldStatistic( int enumIndex, const QString &name, QMetaType::Type type )
+        : enumIndex( enumIndex )
+        , name( name )
+        , type( type )
+      {}
 
-    int enumIndex = 0;
-    QString name;
-    QVariant::Type type;
+      int enumIndex = 0;
+      QString name;
+      QMetaType::Type type;
   };
-  static const QVector< FieldStatistic > sNumericStats
-  {
-    FieldStatistic( 0, QStringLiteral( "count" ), QVariant::LongLong ),
-    FieldStatistic( 1, QStringLiteral( "unique" ), QVariant::LongLong ),
-    FieldStatistic( 2, QStringLiteral( "min" ), QVariant::Double ),
-    FieldStatistic( 3, QStringLiteral( "max" ), QVariant::Double ),
-    FieldStatistic( 4, QStringLiteral( "range" ), QVariant::Double ),
-    FieldStatistic( 5, QStringLiteral( "sum" ), QVariant::Double ),
-    FieldStatistic( 6, QStringLiteral( "mean" ), QVariant::Double ),
-    FieldStatistic( 7, QStringLiteral( "median" ), QVariant::Double ),
-    FieldStatistic( 8, QStringLiteral( "stddev" ), QVariant::Double ),
-    FieldStatistic( 9, QStringLiteral( "minority" ), QVariant::Double ),
-    FieldStatistic( 10, QStringLiteral( "majority" ), QVariant::Double ),
-    FieldStatistic( 11, QStringLiteral( "q1" ), QVariant::Double ),
-    FieldStatistic( 12, QStringLiteral( "q3" ), QVariant::Double ),
-    FieldStatistic( 13, QStringLiteral( "iqr" ), QVariant::Double ),
+  static const QVector<FieldStatistic> sNumericStats {
+    FieldStatistic( 0, u"count"_s, QMetaType::Type::LongLong ),
+    FieldStatistic( 1, u"unique"_s, QMetaType::Type::LongLong ),
+    FieldStatistic( 2, u"min"_s, QMetaType::Type::Double ),
+    FieldStatistic( 3, u"max"_s, QMetaType::Type::Double ),
+    FieldStatistic( 4, u"range"_s, QMetaType::Type::Double ),
+    FieldStatistic( 5, u"sum"_s, QMetaType::Type::Double ),
+    FieldStatistic( 6, u"mean"_s, QMetaType::Type::Double ),
+    FieldStatistic( 7, u"median"_s, QMetaType::Type::Double ),
+    FieldStatistic( 8, u"stddev"_s, QMetaType::Type::Double ),
+    FieldStatistic( 9, u"minority"_s, QMetaType::Type::Double ),
+    FieldStatistic( 10, u"majority"_s, QMetaType::Type::Double ),
+    FieldStatistic( 11, u"q1"_s, QMetaType::Type::Double ),
+    FieldStatistic( 12, u"q3"_s, QMetaType::Type::Double ),
+    FieldStatistic( 13, u"iqr"_s, QMetaType::Type::Double ),
   };
-  static const QVector< FieldStatistic > sDateTimeStats
-  {
-    FieldStatistic( 0, QStringLiteral( "count" ), QVariant::LongLong ),
-    FieldStatistic( 1, QStringLiteral( "unique" ), QVariant::LongLong ),
-    FieldStatistic( 14, QStringLiteral( "empty" ), QVariant::LongLong ),
-    FieldStatistic( 15, QStringLiteral( "filled" ), QVariant::LongLong ),
-    FieldStatistic( 2, QStringLiteral( "min" ), QVariant::Invalid ),
-    FieldStatistic( 3, QStringLiteral( "max" ), QVariant::Invalid ),
+  static const QVector<FieldStatistic> sDateTimeStats {
+    FieldStatistic( 0, u"count"_s, QMetaType::Type::LongLong ),
+    FieldStatistic( 1, u"unique"_s, QMetaType::Type::LongLong ),
+    FieldStatistic( 14, u"empty"_s, QMetaType::Type::LongLong ),
+    FieldStatistic( 15, u"filled"_s, QMetaType::Type::LongLong ),
+    FieldStatistic( 2, u"min"_s, QMetaType::Type::UnknownType ),
+    FieldStatistic( 3, u"max"_s, QMetaType::Type::UnknownType ),
   };
-  static const QVector< FieldStatistic > sStringStats
-  {
-    FieldStatistic( 0, QStringLiteral( "count" ), QVariant::LongLong ),
-    FieldStatistic( 1, QStringLiteral( "unique" ), QVariant::LongLong ),
-    FieldStatistic( 14, QStringLiteral( "empty" ), QVariant::LongLong ),
-    FieldStatistic( 15, QStringLiteral( "filled" ), QVariant::LongLong ),
-    FieldStatistic( 2, QStringLiteral( "min" ), QVariant::Invalid ),
-    FieldStatistic( 3, QStringLiteral( "max" ), QVariant::Invalid ),
-    FieldStatistic( 16, QStringLiteral( "min_length" ), QVariant::Int ),
-    FieldStatistic( 17, QStringLiteral( "max_length" ), QVariant::Int ),
-    FieldStatistic( 18, QStringLiteral( "mean_length" ), QVariant::Double ),
+  static const QVector<FieldStatistic> sStringStats {
+    FieldStatistic( 0, u"count"_s, QMetaType::Type::LongLong ),
+    FieldStatistic( 1, u"unique"_s, QMetaType::Type::LongLong ),
+    FieldStatistic( 14, u"empty"_s, QMetaType::Type::LongLong ),
+    FieldStatistic( 15, u"filled"_s, QMetaType::Type::LongLong ),
+    FieldStatistic( 2, u"min"_s, QMetaType::Type::UnknownType ),
+    FieldStatistic( 3, u"max"_s, QMetaType::Type::UnknownType ),
+    FieldStatistic( 16, u"min_length"_s, QMetaType::Type::Int ),
+    FieldStatistic( 17, u"max_length"_s, QMetaType::Type::Int ),
+    FieldStatistic( 18, u"mean_length"_s, QMetaType::Type::Double ),
   };
+
+  QgsAttributes nonMatchingJoinAttributes;
 
   for ( const QString &field : std::as_const( joinedFieldNames ) )
   {
@@ -259,15 +264,13 @@ QVariantMap QgsJoinByLocationSummaryAlgorithm::processAlgorithm( const QVariantM
       joinFieldIndices.append( fieldIndex );
 
       const QgsField joinField = joinSource->fields().at( fieldIndex );
-      QVector< FieldStatistic > statisticList;
+      QVector<FieldStatistic> statisticList;
       if ( joinField.isNumeric() )
       {
         fieldTypes.append( FieldType::Numeric );
         statisticList = sNumericStats;
       }
-      else if ( joinField.type() == QVariant::Date
-                || joinField.type() == QVariant::Time
-                || joinField.type() == QVariant::DateTime )
+      else if ( joinField.type() == QMetaType::Type::QDate || joinField.type() == QMetaType::Type::QTime || joinField.type() == QMetaType::Type::QDateTime )
       {
         fieldTypes.append( FieldType::DateTime );
         statisticList = sDateTimeStats;
@@ -282,10 +285,21 @@ QVariantMap QgsJoinByLocationSummaryAlgorithm::processAlgorithm( const QVariantM
       {
         if ( summaries.contains( statistic.enumIndex ) )
         {
-          if ( statistic.type != QVariant::Invalid )
+          if ( statistic.type != QMetaType::Type::UnknownType )
             addFieldWithType( joinField, statistic.name, statistic.type );
           else
             addFieldKeepType( joinField, statistic.name );
+
+          // count, unique, empty and filled values should be 0
+          // see https://github.com/qgis/QGIS/issues/40108
+          if ( statistic.enumIndex == 0 || statistic.enumIndex == 1 || statistic.enumIndex == 14 || statistic.enumIndex == 15 )
+          {
+            nonMatchingJoinAttributes.append( QVariant( 0 ) );
+          }
+          else
+          {
+            nonMatchingJoinAttributes.append( QVariant() );
+          }
         }
       }
     }
@@ -294,19 +308,18 @@ QVariantMap QgsJoinByLocationSummaryAlgorithm::processAlgorithm( const QVariantM
   const QgsFields outputFields = QgsProcessingUtils::combineFields( sourceFields, fieldsToJoin );
 
   QString destId;
-  std::unique_ptr< QgsFeatureSink > sink( parameterAsSink( parameters, QStringLiteral( "OUTPUT" ), context, destId, outputFields,
-                                          baseSource->wkbType(), baseSource->sourceCrs() ) );
+  std::unique_ptr<QgsFeatureSink> sink( parameterAsSink( parameters, u"OUTPUT"_s, context, destId, outputFields, baseSource->wkbType(), baseSource->sourceCrs() ) );
 
   if ( !sink )
-    throw QgsProcessingException( invalidSinkError( parameters, QStringLiteral( "OUTPUT" ) ) );
+    throw QgsProcessingException( invalidSinkError( parameters, u"OUTPUT"_s ) );
 
 
-  QList<int> predicates = parameterAsEnums( parameters, QStringLiteral( "PREDICATE" ), context );
+  QList<int> predicates = parameterAsEnums( parameters, u"PREDICATE"_s, context );
   QgsJoinByLocationAlgorithm::sortPredicates( predicates );
 
   QgsFeatureIterator sourceIter = baseSource->getFeatures();
   QgsFeature f;
-  const double step = baseSource->featureCount() > 0 ? 100.0 / baseSource->featureCount() : 1;
+  const double step = baseSource->featureCount() > 0 ? 100.0 / static_cast<double>( baseSource->featureCount() ) : 1;
   long long i = 0;
   while ( sourceIter.nextFeature( f ) )
   {
@@ -320,14 +333,19 @@ QVariantMap QgsJoinByLocationSummaryAlgorithm::processAlgorithm( const QVariantM
         // ensure consistent count of attributes - otherwise non matching
         // features will have incorrect attribute length
         // and provider may reject them
-        f.resizeAttributes( outputFields.size() );
-        sink->addFeature( f, QgsFeatureSink::FastInsert );
+        QgsAttributes outputAttributes = f.attributes();
+        outputAttributes.append( nonMatchingJoinAttributes );
+        f.setAttributes( outputAttributes );
+        if ( !sink->addFeature( f, QgsFeatureSink::FastInsert ) )
+          throw QgsProcessingException( writeFeatureError( sink.get(), parameters, u"OUTPUT"_s ) );
+        else
+          feedback->featureAddedToSink( destId );
       }
       continue;
     }
 
-    std::unique_ptr< QgsGeometryEngine > engine;
-    QVector< QVector< QVariant > > values;
+    std::unique_ptr<QgsGeometryEngine> engine;
+    QVector<QVector<QVariant>> values;
 
     QgsFeatureRequest request;
     request.setFilterRect( f.geometry().boundingBox() );
@@ -343,11 +361,11 @@ QVariantMap QgsJoinByLocationSummaryAlgorithm::processAlgorithm( const QVariantM
 
       if ( !engine )
       {
-        engine.reset( QgsGeometry::createGeometryEngine( f.geometry().constGet() ) );
+        engine = QgsGeometry::createGeometryEngine( f.geometry().constGet() );
         engine->prepareGeometry();
       }
 
-      if ( QgsJoinByLocationAlgorithm::featureFilter( testJoinFeature, engine.get(), true, predicates ) )
+      if ( QgsJoinByLocationAlgorithm::featureFilter( testJoinFeature, engine.get(), true, predicates, feedback ) )
       {
         QgsAttributes joinAttributes;
         joinAttributes.reserve( joinFieldIndices.size() );
@@ -360,7 +378,7 @@ QVariantMap QgsJoinByLocationSummaryAlgorithm::processAlgorithm( const QVariantM
     }
 
     i++;
-    feedback->setProgress( i * step );
+    feedback->setProgress( static_cast<double>( i ) * step );
 
     if ( feedback->isCanceled() )
       break;
@@ -376,8 +394,13 @@ QVariantMap QgsJoinByLocationSummaryAlgorithm::processAlgorithm( const QVariantM
         // ensure consistent count of attributes - otherwise non matching
         // features will have incorrect attribute length
         // and provider may reject them
-        f.resizeAttributes( outputFields.size() );
-        sink->addFeature( f, QgsFeatureSink::FastInsert );
+        QgsAttributes outputAttributes = f.attributes();
+        outputAttributes.append( nonMatchingJoinAttributes );
+        f.setAttributes( outputAttributes );
+        if ( !sink->addFeature( f, QgsFeatureSink::FastInsert ) )
+          throw QgsProcessingException( writeFeatureError( sink.get(), parameters, u"OUTPUT"_s ) );
+        else
+          feedback->featureAddedToSink( destId );
       }
     }
     else
@@ -393,7 +416,7 @@ QVariantMap QgsJoinByLocationSummaryAlgorithm::processAlgorithm( const QVariantM
           case FieldType::Numeric:
           {
             QgsStatisticalSummary stat;
-            for ( const QVector< QVariant > &value : std::as_const( values ) )
+            for ( const QVector<QVariant> &value : std::as_const( values ) )
             {
               stat.addVariant( value.at( fieldIndex ) );
             }
@@ -461,7 +484,7 @@ QVariantMap QgsJoinByLocationSummaryAlgorithm::processAlgorithm( const QVariantM
             QgsDateTimeStatisticalSummary stat;
             QVariantList inputValues;
             inputValues.reserve( values.size() );
-            for ( const QVector< QVariant > &value : std::as_const( values ) )
+            for ( const QVector<QVariant> &value : std::as_const( values ) )
             {
               inputValues << value.at( fieldIndex );
             }
@@ -503,7 +526,7 @@ QVariantMap QgsJoinByLocationSummaryAlgorithm::processAlgorithm( const QVariantM
             QgsStringStatisticalSummary stat;
             QVariantList inputValues;
             inputValues.reserve( values.size() );
-            for ( const QVector< QVariant > &value : std::as_const( values ) )
+            for ( const QVector<QVariant> &value : std::as_const( values ) )
             {
               if ( value.at( fieldIndex ).isNull() )
                 stat.addString( QString() );
@@ -555,18 +578,20 @@ QVariantMap QgsJoinByLocationSummaryAlgorithm::processAlgorithm( const QVariantM
       }
 
       f.setAttributes( outputAttributes );
-      sink->addFeature( f, QgsFeatureSink::FastInsert );
+      if ( !sink->addFeature( f, QgsFeatureSink::FastInsert ) )
+        throw QgsProcessingException( writeFeatureError( sink.get(), parameters, u"OUTPUT"_s ) );
+      else
+        feedback->featureAddedToSink( u"OUTPUT"_s );
     }
   }
 
+  sink->finalize();
+  feedback->featureSinkFinalized( u"OUTPUT"_s );
   sink.reset();
 
   QVariantMap results;
-  results.insert( QStringLiteral( "OUTPUT" ), destId );
+  results.insert( u"OUTPUT"_s, destId );
   return results;
 }
 
 ///@endcond
-
-
-

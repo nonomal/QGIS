@@ -14,7 +14,14 @@
  *                                                                         *
  ***************************************************************************/
 #include "qgsqueryresultmodel.h"
+
+#include "qgsapplication.h"
 #include "qgsexpression.h"
+#include "qgsfileutils.h"
+
+#include <QFont>
+
+#include "moc_qgsqueryresultmodel.cpp"
 
 const int QgsQueryResultModel::FETCH_MORE_ROWS_COUNT = 400;
 
@@ -39,7 +46,7 @@ QgsQueryResultModel::QgsQueryResultModel( const QgsAbstractDatabaseProviderConne
 
 void QgsQueryResultModel::rowsReady( const QList<QList<QVariant>> &rows )
 {
-  beginInsertRows( QModelIndex(), mRows.count( ), mRows.count( ) + rows.count() - 1 );
+  beginInsertRows( QModelIndex(), mRows.count(), mRows.count() + rows.count() - 1 );
   mRows.append( rows );
   endInsertRows();
 }
@@ -55,7 +62,7 @@ bool QgsQueryResultModel::canFetchMore( const QModelIndex &parent ) const
 
 void QgsQueryResultModel::fetchMore( const QModelIndex &parent )
 {
-  if ( ! parent.isValid() )
+  if ( !parent.isValid() )
   {
     emit fetchingStarted();
     emit fetchMoreRows( FETCH_MORE_ROWS_COUNT );
@@ -110,8 +117,7 @@ int QgsQueryResultModel::columnCount( const QModelIndex &parent ) const
 
 QVariant QgsQueryResultModel::data( const QModelIndex &index, int role ) const
 {
-  if ( !index.isValid() || index.row() < 0 || index.column() >= mColumns.count() ||
-       index.row() >= mRows.count( ) )
+  if ( !index.isValid() || index.row() < 0 || index.column() >= mColumns.count() || index.row() >= mRows.count() )
     return QVariant();
 
   switch ( role )
@@ -119,32 +125,95 @@ QVariant QgsQueryResultModel::data( const QModelIndex &index, int role ) const
     case Qt::DisplayRole:
     {
       const QList<QVariant> result = mRows.at( index.row() );
-      if ( index.column() < result.count( ) )
+      if ( index.column() < result.count() )
       {
-        return result.at( index.column() );
+        const QVariant value = result.at( index.column() );
+
+        if ( QgsVariantUtils::isNull( value ) )
+        {
+          return QgsApplication::nullRepresentation();
+        }
+        else if ( value.type() == QVariant::ByteArray )
+        {
+          return tr( "Binary (%1)" ).arg( QgsFileUtils::representFileSize( value.value< QByteArray >().size() ) );
+        }
+        else
+        {
+          return value;
+        }
       }
       break;
+    }
+
+    case Qt::FontRole:
+    {
+      const QList<QVariant> result = mRows.at( index.row() );
+      if ( index.column() < result.count() )
+      {
+        const QVariant value = result.at( index.column() );
+
+        if ( QgsVariantUtils::isNull( value ) )
+        {
+          QFont f;
+          f.setItalic( true );
+          return f;
+        }
+      }
+      return QVariant();
+    }
+
+    case Qt::ForegroundRole:
+    {
+      const QList<QVariant> result = mRows.at( index.row() );
+      if ( index.column() < result.count() )
+      {
+        const QVariant value = result.at( index.column() );
+
+        if ( QgsVariantUtils::isNull( value ) )
+        {
+          return QColor( 128, 128, 128 );
+        }
+      }
+      return QVariant();
     }
 
     case Qt::ToolTipRole:
     {
       const QList<QVariant> result = mRows.at( index.row() );
-      if ( index.column() < result.count( ) )
+      if ( index.column() < result.count() )
       {
         const QVariant value = result.at( index.column() );
-        return QgsExpression::formatPreviewString( value, true, 255 );
+        if ( QgsVariantUtils::isNull( value ) )
+        {
+          return QVariant();
+        }
+        else
+        {
+          return QgsExpression::formatPreviewString( value, true, 255 );
+        }
       }
       break;
     }
+
+    default:
+      break;
   }
   return QVariant();
 }
 
 QVariant QgsQueryResultModel::headerData( int section, Qt::Orientation orientation, int role ) const
 {
-  if ( orientation == Qt::Orientation::Horizontal && role == Qt::ItemDataRole::DisplayRole && section < mColumns.count() )
+  if ( orientation == Qt::Orientation::Horizontal && section < mColumns.count() )
   {
-    return mColumns.at( section );
+    switch ( role )
+    {
+      case Qt::ItemDataRole::DisplayRole:
+      case Qt::ItemDataRole::ToolTipRole:
+        return mColumns.at( section );
+
+      default:
+        break;
+    }
   }
   return QAbstractTableModel::headerData( section, orientation, role );
 }

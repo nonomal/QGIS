@@ -15,22 +15,33 @@
  *                                                                         *
  ***************************************************************************/
 
-#include "qgsmaterialregistry.h"
-#include "qgsphongmaterialsettings.h"
+#include "qgs3d.h"
+#include "qgsgoochmaterial3dhandler.h"
 #include "qgsgoochmaterialsettings.h"
+#include "qgsmaterial.h"
+#include "qgsmaterialregistry.h"
+#include "qgsphongmaterial3dhandler.h"
+#include "qgsphongmaterialsettings.h"
+#include "qgssimplelinematerial3dhandler.h"
+#include "qgssimplelinematerialsettings.h"
+#include "qgstest.h"
 
 #include <QObject>
-#include "qgstest.h"
-#include "qgs3d.h"
+#include <QString>
+#include <Qt3DRender/QEffect>
+#include <Qt3DRender/QParameter>
+#include <Qt3DRender/QRenderPass>
+#include <Qt3DRender/QTechnique>
 
+using namespace Qt::StringLiterals;
 
-class TestQgs3dMaterial : public QgsTest
+class TestQgs3DMaterial : public QgsTest
 {
     Q_OBJECT
 
   public:
-    TestQgs3dMaterial()
-      : QgsTest( QStringLiteral( "3D Material Tests" ), QStringLiteral( "3d" ) )
+    TestQgs3DMaterial()
+      : QgsTest( u"3D Material Tests"_s, u"3d"_s )
     {}
 
   private slots:
@@ -41,44 +52,37 @@ class TestQgs3dMaterial : public QgsTest
 
     void colorDataDefinedPhong();
     void colorDataDefinedGooch();
+    void clipping();
 
   private:
-    void setColorProperty( const QgsProperty &property,
-                           QgsAbstractMaterialSettings::Property propertyType,
-                           QgsPropertyCollection &collection,
-                           QgsAbstractMaterialSettings &materialSettings );
-
+    void setColorProperty( const QgsProperty &property, QgsAbstractMaterialSettings::Property propertyType, QgsPropertyCollection &collection, QgsAbstractMaterialSettings &materialSettings );
 };
 
-void TestQgs3dMaterial::initTestCase()
+void TestQgs3DMaterial::initTestCase()
 {
   QgsApplication::init(); // init paths for CRS lookup
   QgsApplication::initQgis();
 }
 
-void TestQgs3dMaterial::cleanupTestCase()
+void TestQgs3DMaterial::cleanupTestCase()
 {
   QgsApplication::exitQgis();
 }
 
-void TestQgs3dMaterial::init()
-{
+void TestQgs3DMaterial::init()
+{}
 
-}
+void TestQgs3DMaterial::cleanup()
+{}
 
-void TestQgs3dMaterial::cleanup()
-{
-
-}
-
-void TestQgs3dMaterial::setColorProperty( const QgsProperty &property, QgsAbstractMaterialSettings::Property propertyType, QgsPropertyCollection &collection, QgsAbstractMaterialSettings &materialSettings )
+void TestQgs3DMaterial::setColorProperty( const QgsProperty &property, QgsAbstractMaterialSettings::Property propertyType, QgsPropertyCollection &collection, QgsAbstractMaterialSettings &materialSettings )
 {
   collection.setProperty( propertyType, property );
   materialSettings.setDataDefinedProperties( collection );
 }
 
 
-void TestQgs3dMaterial::colorDataDefinedPhong()
+void TestQgs3DMaterial::colorDataDefinedPhong()
 {
   const QgsExpressionContext expressionContext;
   QgsPhongMaterialSettings phongSettings;
@@ -109,38 +113,39 @@ void TestQgs3dMaterial::colorDataDefinedPhong()
 
 
   QgsProperty redProperty;
-  redProperty.setExpressionString( QStringLiteral( "'red'" ) );
+  redProperty.setExpressionString( u"'red'"_s );
   redProperty.setActive( false );
   QgsProperty blueProperty;
-  blueProperty.setExpressionString( QStringLiteral( "'blue'" ) );
+  blueProperty.setExpressionString( u"'blue'"_s );
   blueProperty.setActive( false );
   QgsProperty yellowProperty;
-  yellowProperty.setExpressionString( QStringLiteral( "'yellow'" ) );
+  yellowProperty.setExpressionString( u"'yellow'"_s );
   yellowProperty.setActive( false );
 
+  QgsPhongMaterial3DHandler handler;
   setColorProperty( redProperty, QgsAbstractMaterialSettings::Property::Diffuse, propertyCollection, phongSettings );
-  QCOMPARE( phongSettings.dataDefinedVertexColorsAsByte( expressionContext ), colorByteArrayAllBlack );
+  QCOMPARE( handler.dataDefinedVertexColorsAsByte( &phongSettings, expressionContext ), colorByteArrayAllBlack );
 
   redProperty.setActive( true );
   setColorProperty( redProperty, QgsAbstractMaterialSettings::Property::Diffuse, propertyCollection, phongSettings );
-  QCOMPARE( phongSettings.dataDefinedVertexColorsAsByte( expressionContext ), colorByteArray_1 );
+  QCOMPARE( handler.dataDefinedVertexColorsAsByte( &phongSettings, expressionContext ), colorByteArray_1 );
 
   setColorProperty( blueProperty, QgsAbstractMaterialSettings::Property::Ambient, propertyCollection, phongSettings );
-  QCOMPARE( phongSettings.dataDefinedVertexColorsAsByte( expressionContext ), colorByteArray_1 );
+  QCOMPARE( handler.dataDefinedVertexColorsAsByte( &phongSettings, expressionContext ), colorByteArray_1 );
 
   blueProperty.setActive( true );
   setColorProperty( blueProperty, QgsAbstractMaterialSettings::Property::Ambient, propertyCollection, phongSettings );
-  QCOMPARE( phongSettings.dataDefinedVertexColorsAsByte( expressionContext ), colorByteArray_2 );
+  QCOMPARE( handler.dataDefinedVertexColorsAsByte( &phongSettings, expressionContext ), colorByteArray_2 );
 
   setColorProperty( yellowProperty, QgsAbstractMaterialSettings::Property::Specular, propertyCollection, phongSettings );
-  QCOMPARE( phongSettings.dataDefinedVertexColorsAsByte( expressionContext ), colorByteArray_2 );
+  QCOMPARE( handler.dataDefinedVertexColorsAsByte( &phongSettings, expressionContext ), colorByteArray_2 );
 
   yellowProperty.setActive( true );
   setColorProperty( yellowProperty, QgsAbstractMaterialSettings::Property::Specular, propertyCollection, phongSettings );
-  QCOMPARE( phongSettings.dataDefinedVertexColorsAsByte( expressionContext ), colorByteArray_3 );
+  QCOMPARE( handler.dataDefinedVertexColorsAsByte( &phongSettings, expressionContext ), colorByteArray_3 );
 }
 
-void TestQgs3dMaterial::colorDataDefinedGooch()
+void TestQgs3DMaterial::colorDataDefinedGooch()
 {
   const QgsExpressionContext expressionContext;
 
@@ -182,46 +187,165 @@ void TestQgs3dMaterial::colorDataDefinedGooch()
   colorByteArray_4[11] = 0xff;
 
   QgsProperty redProperty;
-  redProperty.setExpressionString( QStringLiteral( "'red'" ) );
+  redProperty.setExpressionString( u"'red'"_s );
   redProperty.setActive( false );
   QgsProperty blueProperty;
-  blueProperty.setExpressionString( QStringLiteral( "'blue'" ) );
+  blueProperty.setExpressionString( u"'blue'"_s );
   blueProperty.setActive( false );
   QgsProperty yellowProperty;
-  yellowProperty.setExpressionString( QStringLiteral( "'yellow'" ) );
+  yellowProperty.setExpressionString( u"'yellow'"_s );
   yellowProperty.setActive( false );
   QgsProperty whiteProperty;
-  whiteProperty.setExpressionString( QStringLiteral( "'white'" ) );
+  whiteProperty.setExpressionString( u"'white'"_s );
   whiteProperty.setActive( false );
 
+  QgsGoochMaterial3DHandler handler;
   setColorProperty( redProperty, QgsAbstractMaterialSettings::Property::Diffuse, propertyCollection, goochSettings );
-  QCOMPARE( goochSettings.dataDefinedVertexColorsAsByte( expressionContext ), colorByteArrayAllBlack );
+  QCOMPARE( handler.dataDefinedVertexColorsAsByte( &goochSettings, expressionContext ), colorByteArrayAllBlack );
 
   redProperty.setActive( true );
   setColorProperty( redProperty, QgsAbstractMaterialSettings::Property::Diffuse, propertyCollection, goochSettings );
-  QCOMPARE( goochSettings.dataDefinedVertexColorsAsByte( expressionContext ), colorByteArray_1 );
+  QCOMPARE( handler.dataDefinedVertexColorsAsByte( &goochSettings, expressionContext ), colorByteArray_1 );
 
   setColorProperty( blueProperty, QgsAbstractMaterialSettings::Property::Warm, propertyCollection, goochSettings );
-  QCOMPARE( goochSettings.dataDefinedVertexColorsAsByte( expressionContext ), colorByteArray_1 );
+  QCOMPARE( handler.dataDefinedVertexColorsAsByte( &goochSettings, expressionContext ), colorByteArray_1 );
 
   blueProperty.setActive( true );
   setColorProperty( blueProperty, QgsAbstractMaterialSettings::Property::Warm, propertyCollection, goochSettings );
-  QCOMPARE( goochSettings.dataDefinedVertexColorsAsByte( expressionContext ), colorByteArray_2 );
+  QCOMPARE( handler.dataDefinedVertexColorsAsByte( &goochSettings, expressionContext ), colorByteArray_2 );
 
   setColorProperty( yellowProperty, QgsAbstractMaterialSettings::Property::Cool, propertyCollection, goochSettings );
-  QCOMPARE( goochSettings.dataDefinedVertexColorsAsByte( expressionContext ), colorByteArray_2 );
+  QCOMPARE( handler.dataDefinedVertexColorsAsByte( &goochSettings, expressionContext ), colorByteArray_2 );
 
   yellowProperty.setActive( true );
   setColorProperty( yellowProperty, QgsAbstractMaterialSettings::Property::Cool, propertyCollection, goochSettings );
-  QCOMPARE( goochSettings.dataDefinedVertexColorsAsByte( expressionContext ), colorByteArray_3 );
+  QCOMPARE( handler.dataDefinedVertexColorsAsByte( &goochSettings, expressionContext ), colorByteArray_3 );
 
   setColorProperty( whiteProperty, QgsAbstractMaterialSettings::Property::Specular, propertyCollection, goochSettings );
-  QCOMPARE( goochSettings.dataDefinedVertexColorsAsByte( expressionContext ), colorByteArray_3 );
+  QCOMPARE( handler.dataDefinedVertexColorsAsByte( &goochSettings, expressionContext ), colorByteArray_3 );
 
   whiteProperty.setActive( true );
   setColorProperty( whiteProperty, QgsAbstractMaterialSettings::Property::Specular, propertyCollection, goochSettings );
-  QCOMPARE( goochSettings.dataDefinedVertexColorsAsByte( expressionContext ), colorByteArray_4 );
+  QCOMPARE( handler.dataDefinedVertexColorsAsByte( &goochSettings, expressionContext ), colorByteArray_4 );
 }
 
-QGSTEST_MAIN( TestQgs3dMaterial )
+void TestQgs3DMaterial::clipping()
+{
+  const QString defineClippingStr = u"#define %1"_s.arg( QgsMaterial::CLIP_PLANE_DEFINE );
+  const QList<QVector4D> clipPlanesEquations
+    = QList<QVector4D>() << QVector4D( 0.866025, -0.5, 0, 150.0 ) << QVector4D( -0.866025, 0.5, 0, 150.0 ) << QVector4D( 0.5, 0.866025, 0, 305.0 ) << QVector4D( -0.5, -0.866025, 0, 205.0 );
+
+  auto findParameters = []( const Qt3DRender::QEffect *effect, bool &arrayFound, bool &maxFound ) -> void {
+    arrayFound = false;
+    maxFound = false;
+    for ( Qt3DRender::QParameter *parameter : effect->parameters() )
+    {
+      const QString parameterName = parameter->name();
+      if ( parameterName == QgsMaterial::CLIP_PLANE_ARRAY_PARAMETER_NAME )
+      {
+        arrayFound = true;
+      }
+      else if ( parameterName == QgsMaterial::CLIP_PLANE_MAX_PLANE_PARAMETER_NAME )
+      {
+        maxFound = true;
+      }
+    }
+  };
+
+  auto getShaderCode = []( const Qt3DRender::QEffect *effect ) -> QByteArray {
+    Qt3DRender::QTechnique *technique = effect->techniques()[0];
+    Qt3DRender::QRenderPass *renderPass = technique->renderPasses()[0];
+    Qt3DRender::QShaderProgram *shaderProgram = renderPass->shaderProgram();
+    QByteArray vertexCode = shaderProgram->vertexShaderCode();
+    return vertexCode;
+  };
+
+  // test phong material
+  // It does not contain any geometry shader
+  const QgsPhongMaterialSettings phongMaterialSettings;
+  const QgsMaterialContext phongMaterialContext;
+  QgsPhongMaterial3DHandler handler;
+  QgsMaterial *phongMaterial = handler.toMaterial( &phongMaterialSettings, Qgis::MaterialRenderingTechnique::Triangles, phongMaterialContext );
+  QVERIFY( phongMaterial );
+  Qt3DRender::QEffect *phongMaterialEffect = phongMaterial->effect();
+  QVERIFY( phongMaterialEffect );
+
+  // by default clipping is disabled;
+  // check that it does not contain any clipping parameter
+  bool phongArrayParameterFound = true;
+  bool phongMaxParameterFound = true;
+  findParameters( phongMaterialEffect, phongArrayParameterFound, phongMaxParameterFound );
+  QVERIFY( !phongArrayParameterFound );
+  QVERIFY( !phongMaxParameterFound );
+
+  QByteArray phongShaderCode = getShaderCode( phongMaterialEffect );
+  QByteArray phongDefaultVertexCode = phongShaderCode;
+  QVERIFY( !phongDefaultVertexCode.isEmpty() );
+  QVERIFY( !QString( phongDefaultVertexCode ).contains( defineClippingStr ) );
+
+  // Enable clipping
+  phongMaterial->enableClipping( clipPlanesEquations );
+  findParameters( phongMaterialEffect, phongArrayParameterFound, phongMaxParameterFound );
+  QVERIFY( phongArrayParameterFound );
+  QVERIFY( phongMaxParameterFound );
+
+  phongShaderCode = getShaderCode( phongMaterialEffect );
+  QVERIFY( phongShaderCode != phongDefaultVertexCode );
+  QVERIFY( QString( phongShaderCode ).contains( defineClippingStr ) );
+
+  // Disable clipping
+  phongMaterial->disableClipping();
+  findParameters( phongMaterialEffect, phongArrayParameterFound, phongMaxParameterFound );
+  QVERIFY( !phongArrayParameterFound );
+  QVERIFY( !phongMaxParameterFound );
+
+  phongShaderCode = getShaderCode( phongMaterialEffect );
+  QCOMPARE( phongShaderCode, phongDefaultVertexCode );
+  QVERIFY( !QString( phongShaderCode ).contains( defineClippingStr ) );
+
+
+  // test line material
+  const QgsSimpleLineMaterialSettings lineMaterialSettings;
+  const QgsMaterialContext lineMaterialContext;
+  QgsSimpleLineMaterial3DHandler lineHandler;
+  QgsMaterial *lineMaterial = lineHandler.toMaterial( &lineMaterialSettings, Qgis::MaterialRenderingTechnique::Lines, lineMaterialContext );
+  QVERIFY( lineMaterial );
+  Qt3DRender::QEffect *lineMaterialEffect = lineMaterial->effect();
+  QVERIFY( lineMaterialEffect );
+
+  // by default clipping is disabled;
+  // check that it does not contain any clipping parameter
+  bool lineArrayParameterFound = true;
+  bool lineMaxParameterFound = true;
+  findParameters( lineMaterialEffect, lineArrayParameterFound, lineMaxParameterFound );
+  QVERIFY( !lineArrayParameterFound );
+  QVERIFY( !lineMaxParameterFound );
+
+  QByteArray lineShaderCode = getShaderCode( lineMaterialEffect );
+  QByteArray lineDefaultVertexCode = lineShaderCode;
+  QVERIFY( !lineDefaultVertexCode.isEmpty() );
+  QVERIFY( !QString( lineDefaultVertexCode ).contains( defineClippingStr ) );
+
+  // Enable clipping
+  lineMaterial->enableClipping( clipPlanesEquations );
+  findParameters( lineMaterialEffect, lineArrayParameterFound, lineMaxParameterFound );
+  QVERIFY( lineArrayParameterFound );
+  QVERIFY( lineMaxParameterFound );
+
+  lineShaderCode = getShaderCode( lineMaterialEffect );
+  QVERIFY( lineShaderCode != lineDefaultVertexCode );
+  QVERIFY( QString( lineShaderCode ).contains( defineClippingStr ) );
+
+  // Disable clipping
+  lineMaterial->disableClipping();
+  findParameters( lineMaterialEffect, lineArrayParameterFound, lineMaxParameterFound );
+  QVERIFY( !lineArrayParameterFound );
+  QVERIFY( !lineMaxParameterFound );
+
+  lineShaderCode = getShaderCode( lineMaterialEffect );
+  QCOMPARE( lineShaderCode, lineDefaultVertexCode );
+  QVERIFY( !QString( lineShaderCode ).contains( defineClippingStr ) );
+}
+
+QGSTEST_MAIN( TestQgs3DMaterial )
 #include "testqgs3dmaterial.moc"

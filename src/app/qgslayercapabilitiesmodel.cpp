@@ -21,6 +21,8 @@
 #include "qgslayertreemodel.h"
 #include "qgsproject.h"
 
+#include "moc_qgslayercapabilitiesmodel.cpp"
+
 QgsLayerCapabilitiesModel::QgsLayerCapabilitiesModel( QgsProject *project, QObject *parent )
   : QSortFilterProxyModel( parent )
 {
@@ -412,8 +414,6 @@ bool QgsLayerCapabilitiesModel::nodeShown( QgsLayerTreeNode *node ) const
   else
   {
     QgsMapLayer *layer = QgsLayerTree::toLayer( node )->layer();
-    return layer
-           && ( mFilterText.isEmpty() || layer->name().contains( mFilterText, Qt::CaseInsensitive ) )
-           && ( !mShowSpatialLayersOnly || layer->isSpatial() );
+    return layer && ( mFilterText.isEmpty() || layer->name().contains( mFilterText, Qt::CaseInsensitive ) ) && ( !mShowSpatialLayersOnly || layer->isSpatial() );
   }
 }

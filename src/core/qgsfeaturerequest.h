@@ -15,25 +15,26 @@
 #ifndef QGSFEATUREREQUEST_H
 #define QGSFEATUREREQUEST_H
 
-#include "qgis_core.h"
-#include "qgis_sip.h"
-#include <QFlags>
-#include <QList>
 #include <memory>
 
 #include "qgis.h"
-#include "qgsfeature.h"
-#include "qgsrectangle.h"
+#include "qgis_core.h"
+#include "qgis_sip.h"
+#include "qgscoordinatereferencesystem.h"
+#include "qgscoordinatetransform.h"
+#include "qgscoordinatetransformcontext.h"
 #include "qgsexpression.h"
 #include "qgsexpressioncontext.h"
+#include "qgsfeature.h"
+#include "qgsrectangle.h"
 #include "qgssimplifymethod.h"
-#include "qgscoordinatetransformcontext.h"
-#include "qgscoordinatereferencesystem.h"
 
+#include <QFlags>
+#include <QList>
 
 /**
  * \ingroup core
- * \brief This class wraps a request for features to a vector layer (or directly its vector data provider).
+ * \brief Wraps a request for features to a vector layer (or directly its vector data provider).
  *
  * The request may apply an attribute/ID filter to fetch only a particular subset of features. Currently supported filters:
  *
@@ -57,7 +58,7 @@
  * The options may be chained, e.g.:
  *
  * \code{.py}
- *   QgsFeatureRequest().setFilterRect(QgsRectangle(0,0,1,1)).setFlags(QgsFeatureRequest.ExactIntersect)
+ *   QgsFeatureRequest().setFilterRect(QgsRectangle(0,0,1,1)).setFlags(Qgis.FeatureRequestFlag.ExactIntersect)
  * \endcode
  *
  * Examples:
@@ -68,7 +69,7 @@
  *   # fetch all features, only one attribute
  *   QgsFeatureRequest().setSubsetOfAttributes(['myfield'], layer.fields())
  *   # fetch all features, without geometries
- *   QgsFeatureRequest().setFlags(QgsFeatureRequest.NoGeometry)
+ *   QgsFeatureRequest().setFlags(Qgis.FeatureRequestFlag.NoGeometry)
  *   # fetch only features from particular extent
  *   QgsFeatureRequest().setFilterRect(QgsRectangle(0,0,1,1))
  *   # fetch only features from particular extent, where the 'type' attribute is equal to 'road':
@@ -83,7 +84,6 @@
 class CORE_EXPORT QgsFeatureRequest
 {
   public:
-
     /**
      * \ingroup core
      * \brief The OrderByClause class represents an order by clause for a QgsFeatureRequest.
@@ -109,7 +109,6 @@ class CORE_EXPORT QgsFeatureRequest
     class CORE_EXPORT OrderByClause
     {
       public:
-
         /**
          * Creates a new OrderByClause for a QgsFeatureRequest
          *
@@ -191,17 +190,9 @@ class CORE_EXPORT QgsFeatureRequest
 
         // friend inline int qHash(const OrderByClause &a) { return qHash(a.mExpression.expression()) ^ qHash(a.mAscending) ^ qHash( a.mNullsFirst); }
 
-        bool operator==( const OrderByClause &v ) const
-        {
-          return mExpression == v.mExpression &&
-                 mAscending == v.mAscending &&
-                 mNullsFirst == v.mNullsFirst;
-        }
+        bool operator==( const OrderByClause &v ) const { return mExpression == v.mExpression && mAscending == v.mAscending && mNullsFirst == v.mNullsFirst; }
 
-        bool operator!=( const OrderByClause &v ) const
-        {
-          return !( v == *this );
-        }
+        bool operator!=( const OrderByClause &v ) const { return !( v == *this ); }
 
       private:
         QgsExpression mExpression;
@@ -219,7 +210,6 @@ class CORE_EXPORT QgsFeatureRequest
     class OrderBy : public QList<QgsFeatureRequest::OrderByClause>
     {
       public:
-
         /**
          * Create a new empty order by
          */
@@ -229,6 +219,18 @@ class CORE_EXPORT QgsFeatureRequest
          * Create a new order by from a list of clauses
          */
         CORE_EXPORT OrderBy( const QList<QgsFeatureRequest::OrderByClause> &other );
+
+        /**
+         * Equality operator
+         * \since QGIS 3.38
+         */
+        CORE_EXPORT bool operator==( const OrderBy &v ) const;
+
+        /**
+         * Inequality operator
+         * \since QGIS 3.38
+         */
+        CORE_EXPORT bool operator!=( const OrderBy &v ) const;
 
         /**
          * Gets a copy as a list of OrderByClauses
@@ -289,10 +291,18 @@ class CORE_EXPORT QgsFeatureRequest
 
     //! construct a request with a filter expression
     explicit QgsFeatureRequest( const QgsExpression &expr, const QgsExpressionContext &context = QgsExpressionContext() );
-    //! copy constructor
     QgsFeatureRequest( const QgsFeatureRequest &rh );
-    //! Assignment operator
+    SIP_SKIP QgsFeatureRequest( QgsFeatureRequest &&rh );
     QgsFeatureRequest &operator=( const QgsFeatureRequest &rh );
+    QgsFeatureRequest &operator=( QgsFeatureRequest &&rh );
+
+    /**
+     * Compare two requests for equality, ignoring Expression Context, Transform Error Callback, Feedback and Invalid Geometry Callback
+     * \param other the other request
+     * \return TRUE if the requests are equal in all respects but without checking for Expression Context, Transform Error, Feedback and Invalid Geometry Callback
+     * \since QGIS 3.38
+     */
+    bool compare( const QgsFeatureRequest &other ) const;
 
     ~QgsFeatureRequest();
 
@@ -469,6 +479,7 @@ class CORE_EXPORT QgsFeatureRequest
 #ifndef SIP_RUN
     QgsFeatureRequest &setInvalidGeometryCallback( const std::function< void( const QgsFeature & )> &callback );
 #else
+    // clang-format off
     QgsFeatureRequest &setInvalidGeometryCallback( SIP_PYCALLABLE / AllowNone / );
     % MethodCode
     Py_BEGIN_ALLOW_THREADS
@@ -484,6 +495,7 @@ class CORE_EXPORT QgsFeatureRequest
 
     Py_END_ALLOW_THREADS
     % End
+// clang-format on
 #endif
 
     /**
@@ -492,7 +504,7 @@ class CORE_EXPORT QgsFeatureRequest
      * \note not available in Python bindings
      * \see setInvalidGeometryCallback()
      */
-    std::function< void( const QgsFeature & ) > invalidGeometryCallback() const { return mInvalidGeometryCallback; } SIP_SKIP
+    std::function< void( const QgsFeature & ) > invalidGeometryCallback() const SIP_SKIP { return mInvalidGeometryCallback; }
 
     /**
      * Set the filter \a expression. {\see QgsExpression}
@@ -546,7 +558,12 @@ class CORE_EXPORT QgsFeatureRequest
      * \returns The object the method is called on for chaining
      *
      */
-    QgsFeatureRequest &disableFilter() { mFilter = Qgis::FeatureRequestFilterType::NoFilter; mFilterExpression.reset(); return *this; }
+    QgsFeatureRequest &disableFilter()
+    {
+      mFilter = Qgis::FeatureRequestFilterType::NoFilter;
+      mFilterExpression.reset();
+      return *this;
+    }
 
     /**
      * Adds a new OrderByClause, appending it as the least important one.
@@ -704,9 +721,29 @@ class CORE_EXPORT QgsFeatureRequest
     const QgsSimplifyMethod &simplifyMethod() const { return mSimplifyMethod; }
 
     /**
+     * Returns the coordinate transform which will be used to transform
+     * the feature's geometries.
+     *
+     * If this transform is valid  then it will always be used to transform
+     * features, regardless of the destinationCrs() setting or the underlying
+     * feature source's actual CRS.
+     *
+     * \see setCoordinateTransform()
+     *
+     * \since QGIS 3.40
+     */
+    QgsCoordinateTransform coordinateTransform() const;
+
+    /**
      * Returns the destination coordinate reference system for feature's geometries,
      * or an invalid QgsCoordinateReferenceSystem if no reprojection will be done
      * and all features will be left with their original geometry.
+     *
+     * \warning if coordinateTransform() returns a valid transform then the
+     * destinationCrs() will have no effect, and the coordinateTransform() will
+     * always be used to transform features.
+     *
+     * \see calculateTransform()
      * \see setDestinationCrs()
      * \see transformContext()
      */
@@ -719,6 +756,49 @@ class CORE_EXPORT QgsFeatureRequest
      * \see destinationCrs()
      */
     QgsCoordinateTransformContext transformContext() const;
+
+    /**
+     * Calculates the coordinate transform to use to transform geometries
+     * when they are originally in \a sourceCrs.
+     *
+     * This method will return coordinateTransform() if it is set (ignoring \a sourceCrs), otherwise
+     * it will calculate an appropriate transform from \a sourceCrs to destinationCrs().
+     *
+     * \since QGIS 3.40
+     */
+    QgsCoordinateTransform calculateTransform( const QgsCoordinateReferenceSystem &sourceCrs ) const;
+
+    /**
+     * Sets the coordinate \a transform which will be used to transform
+     * the feature's geometries.
+     *
+     * If this transform is valid then it will always be used to transform
+     * features, regardless of the destinationCrs() setting or the underlying
+     * feature source's actual CRS.
+     *
+     * When a \a transform is set using setCoordinateTransform(), then any filterRect()
+     * or referenceGeometry() set on the request is expected to be in the
+     * same CRS as the destination CRS for the \a transform.
+     *
+     * The feature geometry transformation is performed
+     * after all filter expressions are tested and any virtual fields are
+     * calculated. Accordingly, any geometric expressions used in
+     * filterExpression() will be performed in the original
+     * source CRS. This ensures consistent results are returned regardless of the
+     * destination CRS. Similarly, virtual field values will be calculated using the
+     * original geometry in the source CRS, so these values are not affected by
+     * any destination CRS transform present in the feature request.
+     *
+     * \warning This method should be used with caution, and it is recommended
+     * to use the high-level setDestinationCrs() method instead. Setting a specific
+     * transform should only be done when there is a requirement to use a particular
+     * transform.
+     *
+     * \see coordinateTransform()
+     *
+     * \since QGIS 3.40
+     */
+    QgsFeatureRequest &setCoordinateTransform( const QgsCoordinateTransform &transform );
 
     /**
      * Sets the destination \a crs for feature's geometries. If set, all
@@ -740,6 +820,10 @@ class CORE_EXPORT QgsFeatureRequest
      * original geometry in the source CRS, so these values are not affected by
      * any destination CRS transform present in the feature request.
      *
+     * \warning if coordinateTransform() returns a valid transform then the
+     * destinationCrs() will have no effect, and the coordinateTransform() will
+     * always be used to transform features.
+     *
      * \see destinationCrs()
      */
     QgsFeatureRequest &setDestinationCrs( const QgsCoordinateReferenceSystem &crs, const QgsCoordinateTransformContext &context );
@@ -754,6 +838,7 @@ class CORE_EXPORT QgsFeatureRequest
 #ifndef SIP_RUN
     QgsFeatureRequest &setTransformErrorCallback( const std::function< void( const QgsFeature & )> &callback );
 #else
+    // clang-format off
     QgsFeatureRequest &setTransformErrorCallback( SIP_PYCALLABLE / AllowNone / );
     % MethodCode
     Py_BEGIN_ALLOW_THREADS
@@ -769,6 +854,7 @@ class CORE_EXPORT QgsFeatureRequest
 
     Py_END_ALLOW_THREADS
     % End
+// clang-format on
 #endif
 
     /**
@@ -778,7 +864,7 @@ class CORE_EXPORT QgsFeatureRequest
      * \see setTransformErrorCallback()
      * \see destinationCrs()
      */
-    std::function< void( const QgsFeature & ) > transformErrorCallback() const { return mTransformErrorCallback; } SIP_SKIP
+    std::function< void( const QgsFeature & ) > transformErrorCallback() const SIP_SKIP { return mTransformErrorCallback; }
 
 
     /**
@@ -797,7 +883,7 @@ class CORE_EXPORT QgsFeatureRequest
      *
      * \note Only works if the provider supports this option.
      *
-     * \deprecated Use timeout() instead.
+     * \deprecated QGIS 3.40. Use timeout() instead.
      */
     Q_DECL_DEPRECATED int connectionTimeout() const SIP_DEPRECATED;
 
@@ -807,7 +893,7 @@ class CORE_EXPORT QgsFeatureRequest
      *
      * \note Only works if the provider supports this option.
      *
-     * \deprecated Use setTimeout() instead.
+     * \deprecated QGIS 3.40. Use setTimeout() instead.
      */
     Q_DECL_DEPRECATED QgsFeatureRequest &setConnectionTimeout( int connectionTimeout ) SIP_DEPRECATED;
 
@@ -887,7 +973,6 @@ class CORE_EXPORT QgsFeatureRequest
     QgsFeedback *feedback() const;
 
   protected:
-
     /**
      * Attribute/ID filter type.
      */
@@ -932,6 +1017,7 @@ class CORE_EXPORT QgsFeatureRequest
     Qgis::InvalidGeometryCheck mInvalidGeometryFilter = Qgis::InvalidGeometryCheck::NoCheck;
     std::function< void( const QgsFeature & ) > mInvalidGeometryCallback;
     std::function< void( const QgsFeature & ) > mTransformErrorCallback;
+    QgsCoordinateTransform mTransform;
     QgsCoordinateReferenceSystem mCrs;
     QgsCoordinateTransformContext mTransformContext;
     int mTimeout = -1;
@@ -945,7 +1031,7 @@ class QgsAbstractFeatureIterator;
 
 /**
  * \ingroup core
- * \brief Base class that can be used for any class that is capable of returning features
+ * \brief Base class that can be used for any class that is capable of returning features.
  */
 class CORE_EXPORT QgsAbstractFeatureSource
 {

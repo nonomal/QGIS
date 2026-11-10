@@ -16,14 +16,13 @@
 #ifndef QGSRULEBASEDRENDERER_H
 #define QGSRULEBASEDRENDERER_H
 
+#include "qgis.h"
 #include "qgis_core.h"
 #include "qgis_sip.h"
-#include "qgsfields.h"
 #include "qgsfeature.h"
-#include "qgis.h"
-
-#include "qgsrenderer.h"
+#include "qgsfields.h"
 #include "qgsrendercontext.h"
+#include "qgsrenderer.h"
 
 class QgsExpression;
 
@@ -54,12 +53,12 @@ class CORE_EXPORT QgsRuleBasedRenderer : public QgsFeatureRenderer
      */
     struct FeatureToRender
     {
-      FeatureToRender( const QgsFeature &_f, int _flags )
-        : feat( _f )
-        , flags( _flags )
-      {}
-      QgsFeature feat;
-      int flags; // selected and/or draw markers
+        FeatureToRender( const QgsFeature &_f, int _flags )
+          : feat( _f )
+          , flags( _flags )
+        {}
+        QgsFeature feat;
+        int flags; // selected and/or draw markers
     };
 
     /**
@@ -68,7 +67,6 @@ class CORE_EXPORT QgsRuleBasedRenderer : public QgsFeatureRenderer
      */
     struct RenderJob
     {
-
         /**
          * Constructor for a render job, with the specified feature to render and symbol.
          *
@@ -97,37 +95,40 @@ class CORE_EXPORT QgsRuleBasedRenderer : public QgsFeatureRenderer
      */
     struct RenderLevel
     {
-      explicit RenderLevel( int z )
-        : zIndex( z )
-      {}
+        explicit RenderLevel( int z )
+          : zIndex( z )
+        {}
 
-      ~RenderLevel() { qDeleteAll( jobs ); }
-      int zIndex;
+        ~RenderLevel() { qDeleteAll( jobs ); }
+        int zIndex;
 
-      //! List of jobs to render, owned by this object.
-      QList<QgsRuleBasedRenderer::RenderJob *> jobs;
+        //! List of jobs to render, owned by this object.
+        QList<QgsRuleBasedRenderer::RenderJob *> jobs;
 
-      QgsRuleBasedRenderer::RenderLevel &operator=( const QgsRuleBasedRenderer::RenderLevel &rh )
-      {
-        zIndex = rh.zIndex;
-        qDeleteAll( jobs );
-        jobs.clear();
-        for ( auto it = rh.jobs.constBegin(); it != rh.jobs.constEnd(); ++it )
+        QgsRuleBasedRenderer::RenderLevel &operator=( const QgsRuleBasedRenderer::RenderLevel &rh )
         {
-          jobs << new RenderJob( *( *it ) );
-        }
-        return *this;
-      }
+          if ( &rh == this )
+            return *this;
 
-      RenderLevel( const QgsRuleBasedRenderer::RenderLevel &other )
-        : zIndex( other.zIndex ), jobs()
-      {
-        for ( auto it = other.jobs.constBegin(); it != other.jobs.constEnd(); ++it )
+          zIndex = rh.zIndex;
+          qDeleteAll( jobs );
+          jobs.clear();
+          for ( auto it = rh.jobs.constBegin(); it != rh.jobs.constEnd(); ++it )
+          {
+            jobs << new RenderJob( *( *it ) );
+          }
+          return *this;
+        }
+
+        RenderLevel( const QgsRuleBasedRenderer::RenderLevel &other )
+          : zIndex( other.zIndex )
+          , jobs()
         {
-          jobs << new RenderJob( * ( *it ) );
+          for ( auto it = other.jobs.constBegin(); it != other.jobs.constEnd(); ++it )
+          {
+            jobs << new RenderJob( *( *it ) );
+          }
         }
-      }
-
     };
 
     //! Rendering queue: a list of rendering levels
@@ -138,7 +139,7 @@ class CORE_EXPORT QgsRuleBasedRenderer : public QgsFeatureRenderer
 
     /**
      * \ingroup core
-     * \brief  This class keeps data about a rules for rule-based renderer.
+     * \brief Represents an individual rule for a rule-based renderer.
      *
      * A rule consists of a symbol, filter expression and range of scales.
      * If filter is empty, it matches all features.
@@ -158,13 +159,18 @@ class CORE_EXPORT QgsRuleBasedRenderer : public QgsFeatureRenderer
         };
 
         //! Constructor takes ownership of the symbol
-        Rule( QgsSymbol *symbol SIP_TRANSFER, int maximumScale = 0, int minimumScale = 0, const QString &filterExp = QString(),
-              const QString &label = QString(), const QString &description = QString(), bool elseRule = false );
+        Rule(
+          QgsSymbol *symbol SIP_TRANSFER,
+          int maximumScale = 0,
+          int minimumScale = 0,
+          const QString &filterExp = QString(),
+          const QString &label = QString(),
+          const QString &description = QString(),
+          bool elseRule = false
+        );
         ~Rule();
 
-        //! Rules cannot be copied
         Rule( const Rule &rh ) = delete;
-        //! Rules cannot be copied
         Rule &operator=( const Rule &rh ) = delete;
 
         /**
@@ -185,7 +191,9 @@ class CORE_EXPORT QgsRuleBasedRenderer : public QgsFeatureRenderer
          */
         bool needsGeometry() const;
 
-        //! \note available in Python bindings as symbol2
+        /**
+         * Returns a list of the symbols used by this rule and all children of this rule.
+         */
         QgsSymbolList symbols( const QgsRenderContext &context = QgsRenderContext() ) const;
 
         QgsLegendSymbolList legendSymbolItems( int currentLevel = -1 ) const;
@@ -209,6 +217,14 @@ class CORE_EXPORT QgsRuleBasedRenderer : public QgsFeatureRenderer
         bool isScaleOK( double scale ) const;
 
         QgsSymbol *symbol() { return mSymbol.get(); }
+
+        /**
+         * Returns the symbol associated with the rule.
+         *
+         * \since QGIS 4.4
+         */
+        const QgsSymbol *symbol() const SIP_SKIP { return mSymbol.get(); }
+
         QString label() const { return mLabel; }
         bool dependsOnScale() const { return mMaximumScale != 0 || mMinimumScale != 0; }
 
@@ -309,15 +325,26 @@ class CORE_EXPORT QgsRuleBasedRenderer : public QgsFeatureRenderer
         void setActive( bool state ) { mIsActive = state; }
 
         //! clone this rule, return new instance
-        QgsRuleBasedRenderer::Rule *clone() const SIP_FACTORY;
+        std::unique_ptr<QgsRuleBasedRenderer::Rule> clone() const;
 
-        //! Saves the symbol layer as SLD
-        void toSld( QDomDocument &doc, QDomElement &element, QVariantMap props ) const;
+        /**
+         * Saves the symbol layer as SLD.
+         *
+         * \deprecated QGIS 3.44. Use the version with QgsSldExportContext instead.
+         */
+        Q_DECL_DEPRECATED void toSld( QDomDocument &doc, QDomElement &element, QVariantMap props ) const SIP_DEPRECATED;
+
+        /**
+         * Saves the rule to SLD.
+         *
+         * \since QGIS 3.44
+         */
+        bool toSld( QDomDocument &doc, QDomElement &element, QgsSldExportContext &context ) const;
 
         /**
          * Create a rule from the SLD provided in element and for the specified geometry type.
          */
-        static QgsRuleBasedRenderer::Rule *createFromSld( QDomElement &element, Qgis::GeometryType geomType ) SIP_FACTORY;
+        static std::unique_ptr<QgsRuleBasedRenderer::Rule> createFromSld( QDomElement &element, Qgis::GeometryType geomType );
 
         QDomElement save( QDomDocument &doc, QgsSymbolMap &symbolMap ) const;
 
@@ -387,10 +414,11 @@ class CORE_EXPORT QgsRuleBasedRenderer : public QgsFeatureRenderer
          * \param ruleElem  The XML rule element
          * \param symbolMap Symbol map
          * \param reuseId set to TRUE to create an exact copy of the original symbol or FALSE to create a new rule with the same parameters as the original but a new unique ruleKey(). (Since QGIS 3.30)
+         * \param context The rendering context (Since QGIS 4.0)
          *
          * \returns A new rule
          */
-        static QgsRuleBasedRenderer::Rule *create( QDomElement &ruleElem, QgsSymbolMap &symbolMap, bool reuseId = true ) SIP_FACTORY;
+        static std::unique_ptr<QgsRuleBasedRenderer::Rule> create( QDomElement &ruleElem, QgsSymbolMap &symbolMap, bool reuseId = true, const QgsReadWriteContext &context = QgsReadWriteContext() );
 
         /**
          * Returns all children rules of this rule
@@ -497,7 +525,7 @@ class CORE_EXPORT QgsRuleBasedRenderer : public QgsFeatureRenderer
     /////
 
     //! Creates a new rule-based renderer instance from XML
-    static QgsFeatureRenderer *create( QDomElement &element, const QgsReadWriteContext &context ) SIP_FACTORY;
+    static std::unique_ptr<QgsFeatureRenderer> create( QDomElement &element, const QgsReadWriteContext &context );
 
     //! Constructs the renderer from given tree of rules (takes ownership)
     QgsRuleBasedRenderer( QgsRuleBasedRenderer::Rule *root SIP_TRANSFER );
@@ -509,6 +537,7 @@ class CORE_EXPORT QgsRuleBasedRenderer : public QgsFeatureRenderer
     //! Returns symbol for current feature. Should not be used individually: there could be more symbols for a feature
     QgsSymbol *symbolForFeature( const QgsFeature &feature, QgsRenderContext &context ) const override;
 
+    Qgis::FeatureRendererFlags flags() const override;
     bool renderFeature( const QgsFeature &feature, QgsRenderContext &context, int layer = -1, bool selected = false, bool drawVertexMarker = false ) override SIP_THROW( QgsCsException );
 
     void startRender( QgsRenderContext &context, const QgsFields &fields ) override;
@@ -523,12 +552,13 @@ class CORE_EXPORT QgsRuleBasedRenderer : public QgsFeatureRenderer
 
     QgsRuleBasedRenderer *clone() const override SIP_FACTORY;
 
-    void toSld( QDomDocument &doc, QDomElement &element, const QVariantMap &props = QVariantMap() ) const override;
+    Q_DECL_DEPRECATED void toSld( QDomDocument &doc, QDomElement &element, const QVariantMap &props = QVariantMap() ) const override SIP_DEPRECATED;
+    bool toSld( QDomDocument &doc, QDomElement &element, QgsSldExportContext &context ) const override;
 
     /**
      * Creates a new rule based renderer from an SLD XML element.
      */
-    static QgsFeatureRenderer *createFromSld( QDomElement &element, Qgis::GeometryType geomType ) SIP_FACTORY;
+    static std::unique_ptr<QgsFeatureRenderer> createFromSld( QDomElement &element, Qgis::GeometryType geomType );
 
     QgsSymbolList symbols( QgsRenderContext &context ) const override;
 
@@ -539,6 +569,7 @@ class CORE_EXPORT QgsRuleBasedRenderer : public QgsFeatureRenderer
     QString legendKeyToExpression( const QString &key, QgsVectorLayer *layer, bool &ok ) const override;
 
     void setLegendSymbolItem( const QString &key, QgsSymbol *symbol SIP_TRANSFER ) override;
+    void setLegendSymbolItemLabel( const QString &key, const QString &label ) override;
     QgsLegendSymbolList legendSymbolItems() const override;
     QString dump() const override;
     bool willRenderFeature( const QgsFeature &feature, QgsRenderContext &context ) const override;
@@ -550,7 +581,17 @@ class CORE_EXPORT QgsRuleBasedRenderer : public QgsFeatureRenderer
 
     /////
 
-    QgsRuleBasedRenderer::Rule *rootRule() { return mRootRule; }
+    QgsRuleBasedRenderer::Rule *rootRule() { return mRootRule.get(); }
+
+
+    /**
+     * Returns the root rule of the rule-based renderer.
+     *
+     * The root rule is the top-level container for all renderer rules.
+     *
+     * \since QGIS 4.4
+     */
+    const QgsRuleBasedRenderer::Rule *rootRule() const SIP_SKIP { return mRootRule.get(); }
 
     //////
 
@@ -568,14 +609,14 @@ class CORE_EXPORT QgsRuleBasedRenderer : public QgsFeatureRenderer
      *
      * \returns a new renderer if the conversion was possible, otherwise NULLPTR.
      */
-    static QgsRuleBasedRenderer *convertFromRenderer( const QgsFeatureRenderer *renderer, QgsVectorLayer *layer = nullptr ) SIP_FACTORY;
+    static std::unique_ptr<QgsRuleBasedRenderer> convertFromRenderer( const QgsFeatureRenderer *renderer, QgsVectorLayer *layer = nullptr );
 
     //! helper function to convert the size scale and rotation fields present in some other renderers to data defined symbology
     static void convertToDataDefinedSymbology( QgsSymbol *symbol, const QString &sizeScaleField, const QString &rotationField = QString() );
 
   protected:
     //! the root node with hierarchical list of rules
-    Rule *mRootRule = nullptr;
+    std::unique_ptr<Rule> mRootRule;
 
     // temporary
     RenderQueue mRenderQueue;

@@ -15,25 +15,29 @@
 #ifndef QGSCOLORBUTTON_H
 #define QGSCOLORBUTTON_H
 
-#include <QColorDialog>
-#include <QToolButton>
 #include "qgis_gui.h"
 #include "qgis_sip.h"
+
+#include <QColorDialog>
+#include <QToolButton>
 
 class QMimeData;
 class QgsColorSchemeRegistry;
 class QgsPanelWidget;
+class QgsColorPickerHelper;
 
 /**
  * \ingroup gui
  * \class QgsColorButton
- * \brief A cross platform button subclass for selecting colors. Will open a color chooser dialog when clicked.
+ * \brief A cross platform button subclass for selecting colors.
+ *
+ * Will open a color chooser dialog when clicked.
+ *
  * Offers live updates to button from color chooser dialog. An attached drop-down menu allows for copying
  * and pasting colors, picking colors from the screen, and selecting colors from color swatch grids.
  */
 class GUI_EXPORT QgsColorButton : public QToolButton
 {
-
 #ifdef SIP_RUN
     SIP_CONVERT_TO_SUBCLASS_CODE
     if ( qobject_cast<QgsColorButton *>( sipCpp ) )
@@ -53,17 +57,17 @@ class GUI_EXPORT QgsColorButton : public QToolButton
     Q_PROPERTY( QColor defaultColor READ defaultColor WRITE setDefaultColor )
     Q_PROPERTY( bool showNoColor READ showNoColor WRITE setShowNoColor )
     Q_PROPERTY( QString noColorString READ noColorString WRITE setNoColorString )
+    Q_PROPERTY( QString opaqueColorString READ opaqueColorString WRITE setOpaqueColorString )
     Q_PROPERTY( QString context READ context WRITE setContext )
 
   public:
-
     /**
      * Specifies the behavior when the button is clicked
      */
     enum Behavior
     {
       ShowDialog = 0, //!< Show a color picker dialog when clicked
-      SignalOnly //!< Emit colorClicked signal only, no dialog
+      SignalOnly      //!< Emit colorClicked signal only, no dialog
     };
     Q_ENUM( Behavior )
 
@@ -171,7 +175,7 @@ class GUI_EXPORT QgsColorButton : public QToolButton
      * \see showNoColor
      * \see setNoColorString
      * \note The "no color" option is only shown if the color button is set to show an alpha channel in the color
-     * dialog
+     * dialog, and is hidden when the color is already totally transparent
      */
     void setShowNoColor( const bool showNoColorOption ) { mShowNoColorOption = showNoColorOption; }
 
@@ -191,10 +195,27 @@ class GUI_EXPORT QgsColorButton : public QToolButton
      * \param noColorString string to use for the "no color" menu option
      * \see noColorString
      * \see setShowNoColor
+     * \see setOpaqueColorString
      * \note The "no color" option is only shown if the color button is set to show an alpha channel in the color
      * dialog
      */
     void setNoColorString( const QString &noColorString ) { mNoColorString = noColorString; }
+
+    /**
+     * Sets the string to use for the "opaque color" option in the button's drop-down menu.
+     *
+     * This option is shown whenever the button's current color is not totally opaque, so that the
+     * transparency can be dropped again. It sits alongside the "no color" option which is hidden
+     * when the color is already totally transparent.
+     *
+     * \param opaqueColorString string to use for the "opaque color" menu option
+     * \see opaqueColorString
+     * \see setNoColorString
+     * \note The "opaque color" option is only shown if the color button allows opacity, or if it is
+     * set to show the "no color" option
+     * \since QGIS 4.4
+     */
+    void setOpaqueColorString( const QString &opaqueColorString ) { mOpaqueColorString = opaqueColorString; }
 
     /**
      * Sets whether a set to null (clear) option is shown in the button's drop-down menu.
@@ -228,6 +249,15 @@ class GUI_EXPORT QgsColorButton : public QToolButton
      * dialog
      */
     QString noColorString() const { return mNoColorString; }
+
+    /**
+     * Returns the string used for the "opaque color" option in the button's drop-down menu.
+     * \returns string used for the "opaque color" menu option
+     * \see setOpaqueColorString
+     * \see noColorString
+     * \since QGIS 4.4
+     */
+    QString opaqueColorString() const { return mOpaqueColorString; }
 
     /**
      * Sets the context string for the color button. The context string is passed to all color swatch
@@ -341,9 +371,18 @@ class GUI_EXPORT QgsColorButton : public QToolButton
      * Sets color to a totally transparent color.
      * \note If the color button is not set to show an opacity channel in the color
      * dialog  then the color will not be changed.
+     * \see setToOpaqueColor()
      * \see setToNull()
      */
     void setToNoColor();
+
+    /**
+     * Sets the color to a totally opaque one, leaving the other color components untouched.
+     * \see setToNoColor()
+     * \see setToNull()
+     * \since QGIS 4.4
+     */
+    void setToOpaqueColor();
 
     /**
      * Sets color to the button's default color, if set.
@@ -408,7 +447,6 @@ class GUI_EXPORT QgsColorButton : public QToolButton
     void unlinked();
 
   protected:
-
     bool event( QEvent *e ) override;
     void changeEvent( QEvent *e ) override;
     void showEvent( QShowEvent *e ) override;
@@ -420,24 +458,16 @@ class GUI_EXPORT QgsColorButton : public QToolButton
     static const QPixmap &transparentBackground();
 
     /**
-     * Reimplemented to detect right mouse button clicks on the color button and allow dragging colors
+     * Reimplemented to allow dragging colors
      */
     void mousePressEvent( QMouseEvent *e ) override;
+
+    void contextMenuEvent( QContextMenuEvent *e ) override;
 
     /**
      * Reimplemented to allow dragging colors from button
      */
     void mouseMoveEvent( QMouseEvent *e ) override;
-
-    /**
-     * Reimplemented to allow color picking
-     */
-    void mouseReleaseEvent( QMouseEvent *e ) override;
-
-    /**
-     * Reimplemented to allow canceling color pick via keypress, and sample via space bar press
-     */
-    void keyPressEvent( QKeyEvent *e ) override;
 
     /**
      * Reimplemented to accept dragged colors
@@ -457,7 +487,6 @@ class GUI_EXPORT QgsColorButton : public QToolButton
     void wheelEvent( QWheelEvent *event ) override;
 
   private:
-
     Behavior mBehavior = QgsColorButton::ShowDialog;
     QString mColorDialogTitle;
     QColor mColor;
@@ -467,8 +496,7 @@ class GUI_EXPORT QgsColorButton : public QToolButton
 
     QColor mDefaultColor;
 
-    //! Store current color when start picking
-    QColor mCurrentColor;
+    QgsColorPickerHelper *mPickerHelper = nullptr;
 
     QString mContext;
     bool mAllowOpacity = false;
@@ -476,11 +504,11 @@ class GUI_EXPORT QgsColorButton : public QToolButton
 
     bool mShowNoColorOption = false;
     QString mNoColorString;
+    QString mOpaqueColorString;
     bool mShowNull = false;
     QString mNullColorString;
 
     QPoint mDragStartPosition;
-    bool mPickingColor = false;
 
     QMenu *mMenu = nullptr;
 
@@ -497,14 +525,6 @@ class GUI_EXPORT QgsColorButton : public QToolButton
      * \see createColorMimeData
      */
     bool colorFromMimeData( const QMimeData *mimeData, QColor &resultColor );
-
-    /**
-     * Ends a color picking operation
-     * \param eventPos global position of pixel to sample color from
-     * \param samplingColor set to TRUE to actually sample the color, FALSE to just cancel
-     * the color picking operation
-     */
-    void stopPicking( QPoint eventPos, bool samplingColor = true );
 
     QColor linkedProjectColor() const;
 
@@ -535,6 +555,12 @@ class GUI_EXPORT QgsColorButton : public QToolButton
      * Creates the drop-down menu entries
      */
     void prepareMenu();
+
+    void onColorPicked( const QColor &color );
+    void onColorHovered( const QColor &color );
+    void colorPickingCanceled();
+
+    friend class QgsColorTooltip;
 };
 
 #endif

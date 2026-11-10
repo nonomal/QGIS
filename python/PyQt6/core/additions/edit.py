@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 """
 ***************************************************************************
     edit.py
@@ -17,11 +15,8 @@
 ***************************************************************************
 """
 
-from builtins import object
-
 
 class QgsEditError(Exception):
-
     def __init__(self, value):
         self.value = value
 
@@ -29,8 +24,7 @@ class QgsEditError(Exception):
         return repr(self.value)
 
 
-class edit(object):
-
+class edit:
     def __init__(self, layer):
         self.layer = layer
 

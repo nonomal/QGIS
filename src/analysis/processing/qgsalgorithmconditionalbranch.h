@@ -18,10 +18,11 @@
 #ifndef QGSALGORITHMCONDITIONALBRANCH_H
 #define QGSALGORITHMCONDITIONALBRANCH_H
 
-#define SIP_NO_FILE
 
 #include "qgis_sip.h"
 #include "qgsprocessingalgorithm.h"
+
+#define SIP_NO_FILE
 
 class QgsProcessingModelAlgorithm;
 class QTableWidget;
@@ -53,19 +54,17 @@ class QgsConditionalBranchAlgorithm : public QgsProcessingAlgorithm
     QgsConditionalBranchAlgorithm *createInstance() const override SIP_FACTORY;
 
   protected:
-
-    QVariantMap processAlgorithm( const QVariantMap &parameters,
-                                  QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
+    QVariantMap processAlgorithm( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
 
   private:
     struct Output
     {
-      Output( const QString &name, const QString &expression )
-        : name( name )
-        , expression( expression )
-      {}
-      QString name;
-      QgsExpression expression;
+        Output( const QString &name, const QString &expression )
+          : name( name )
+          , expression( expression )
+        {}
+        QString name;
+        QgsExpression expression;
     };
 
     QList<Output *> mOutputs;

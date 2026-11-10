@@ -16,21 +16,21 @@
  ***************************************************************************/
 
 #include "qgswmsrestorer.h"
-#include "qgsmessagelog.h"
+
 #include "qgsmaplayer.h"
-#include "qgsvectorlayer.h"
+#include "qgsmaplayerstylemanager.h"
+#include "qgsmessagelog.h"
 #include "qgsrasterlayer.h"
 #include "qgsrasterrenderer.h"
-#include "qgsmaplayerstylemanager.h"
 #include "qgsreadwritecontext.h"
+#include "qgsvectorlayer.h"
 
 QgsLayerRestorer::QgsLayerRestorer( const QList<QgsMapLayer *> &layers )
 {
   for ( QgsMapLayer *layer : layers )
   {
-
     mLayerSettings.emplace( layer, QgsLayerSettings() );
-    QgsLayerSettings &settings = mLayerSettings[layer ];
+    QgsLayerSettings &settings = mLayerSettings[layer];
 
     settings.name = layer->name();
     settings.mNamedStyle = layer->styleManager()->currentStyle();
@@ -58,7 +58,7 @@ QgsLayerRestorer::QgsLayerRestorer( const QList<QgsMapLayer *> &layers )
       {
         QgsRasterLayer *rLayer = qobject_cast<QgsRasterLayer *>( layer );
 
-        if ( rLayer )
+        if ( rLayer && rLayer->renderer() )
         {
           settings.mOpacity = rLayer->renderer()->opacity();
         }
@@ -74,7 +74,6 @@ QgsLayerRestorer::QgsLayerRestorer( const QList<QgsMapLayer *> &layers )
       case Qgis::LayerType::TiledScene:
         break;
     }
-
   }
 }
 
@@ -119,7 +118,7 @@ QgsLayerRestorer::~QgsLayerRestorer()
       {
         QgsRasterLayer *rLayer = qobject_cast<QgsRasterLayer *>( layer );
 
-        if ( rLayer )
+        if ( rLayer && rLayer->renderer() )
         {
           rLayer->renderer()->setOpacity( settings.mOpacity );
         }
@@ -142,6 +141,5 @@ namespace QgsWms
 {
   QgsWmsRestorer::QgsWmsRestorer( const QgsWmsRenderContext &context )
     : mLayerRestorer( context.layers() )
-  {
-  }
-}
+  {}
+} // namespace QgsWms

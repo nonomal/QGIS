@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/qgsalignrasterdata.h                                        *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/
 
 
@@ -11,7 +11,7 @@
 class QgsAlignRasterData
 {
 %Docstring(signature="appended")
-The :py:class:`QgsAlignRasterData` class provides data structures and enums for align raster tool.
+Provides data structures and enums for the align raster tool.
 
 .. versionadded:: 3.34
 %End
@@ -20,20 +20,19 @@ The :py:class:`QgsAlignRasterData` class provides data structures and enums for 
 #include "qgsalignrasterdata.h"
 %End
   public:
-
     struct RasterItem
     {
-      RasterItem( const QString &input, const QString &output );
+        RasterItem( const QString &input, const QString &output );
 
-      virtual ~RasterItem();
+        virtual ~RasterItem();
 
-      QString inputFilename;
-      QString outputFilename;
-      Qgis::GdalResampleAlgorithm resampleMethod;
-      bool rescaleValues;
+        QString inputFilename;
+        QString outputFilename;
+        Qgis::GdalResampleAlgorithm resampleMethod;
+        bool rescaleValues;
 
 
-      double srcCellSizeInDestCRS;
+        double srcCellSizeInDestCRS;
     };
     typedef QList<QgsAlignRasterData::RasterItem> RasterItemList;
 };
@@ -44,5 +43,5 @@ The :py:class:`QgsAlignRasterData` class provides data structures and enums for 
  *                                                                      *
  * src/core/qgsalignrasterdata.h                                        *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/

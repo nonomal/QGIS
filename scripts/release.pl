@@ -56,6 +56,7 @@ my $dopoint;
 my $doltr = 0;
 my $dopremajor = 0;
 my $skipts = 0;
+my $ignoretsdrop = 0;
 
 my $result = GetOptions(
 		"major" => \$domajor,
@@ -67,6 +68,7 @@ my $result = GetOptions(
 		"dryrun" => \$dryrun,
 		"premajor" => \$dopremajor,
 		"skipts" => \$skipts,
+		"ignoretsdrop" => \$ignoretsdrop,
 	);
 
 pod2usage(1) if $help;
@@ -156,7 +158,8 @@ my $reltag = "final-${newmajor}_${newminor}_${newpatch}";
 
 unless( $skipts ) {
 	print "Pulling transifex translations...\n";
-	run( "scripts/pull_ts.sh", "pull_ts.sh failed" );
+	my $o = $ignoretsdrop ? "" : "CONSIDER_TS_DROP_FATAL=1";
+	run( "$o scripts/pull_ts.sh", "pull_ts.sh failed" );
 	run( "git add i18n/*.ts", "adding translations failed" );
 	run( "git commit -n -a -m \"translation update for $version from transifex\"", "could not commit translation updates" );
 } else {
@@ -248,7 +251,7 @@ my $topush = join(" ", @topush);
 
 print "Push dry-run...\n";
 run( "git push -n --follow-tags origin $topush", "push dry run failed" );
-print "Now manually push and upload the tar balls:\n\tgit push --follow-tags origin $topush\n\trsync qgis-$version.tar.bz2* ssh.qgis.org:/var/www/downloads/\n";
+print "Now manually push and upload the tar balls:\n\tgit push --follow-tags origin $topush\n\trsync qgis-$version.tar.bz2* ssh.qgis.org:/var/www/downloads/\nAnd trigger the download.qgis.org sync\n";
 print "Update version-ltr.txt rewrite rule on website\n" if $doltr;
 unless( defined $dopoint ) {
 	print "Update the versions and release name in release spreadsheet.\n";
@@ -273,6 +276,7 @@ release.pl {{-major|-minor [-premajor]} [-skipts] -releasename=releasename|-poin
     -ltr                new release is a long term release
     -dryrun             just echo but don't run any commands
     -skipts		skip transifex update
+    -ignoretsdrop	drop error out when a translation is dropped
     -premajor           branch off a second "master" branch before
 			a major release
 

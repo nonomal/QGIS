@@ -7,17 +7,16 @@ the Free Software Foundation; either version 2 of the License, or
 """
 
 import os
+import unittest
 
-from qgis.PyQt.QtCore import QFileInfo
-from qgis.PyQt.QtGui import QColor
 from qgis.core import (
+    QgsMapSettings,
     QgsRasterLayer,
     QgsRasterSingleColorRenderer,
-    QgsMapSettings,
 )
-import unittest
-from qgis.testing import start_app, QgisTestCase
-
+from qgis.PyQt.QtCore import QFileInfo
+from qgis.PyQt.QtGui import QColor
+from qgis.testing import QgisTestCase, start_app
 from utilities import unitTestDataPath
 
 # Convenience instances in case you may need them
@@ -26,18 +25,16 @@ start_app()
 
 
 class TestQgsRasterSingleBandGrayRenderer(QgisTestCase):
-
     def testRenderer(self):
-        path = os.path.join(unitTestDataPath(),
-                            'landsat-int16-b1.tif')
+        path = os.path.join(unitTestDataPath(), "landsat-int16-b1.tif")
         info = QFileInfo(path)
         base_name = info.baseName()
         layer = QgsRasterLayer(path, base_name)
-        self.assertTrue(layer.isValid(), f'Raster not loaded: {path}')
+        self.assertTrue(layer.isValid(), f"Raster not loaded: {path}")
 
-        renderer = QgsRasterSingleColorRenderer(layer.dataProvider(),
-                                                1,
-                                                QColor(255, 0, 0))
+        renderer = QgsRasterSingleColorRenderer(
+            layer.dataProvider(), 1, QColor(255, 0, 0)
+        )
 
         self.assertEqual(renderer.inputBand(), 1)
         self.assertEqual(renderer.usesBands(), [1])
@@ -52,11 +49,10 @@ class TestQgsRasterSingleBandGrayRenderer(QgisTestCase):
 
         self.assertTrue(
             self.render_map_settings_check(
-                'raster_single_color_renderer',
-                'raster_single_color_renderer',
-                ms)
+                "raster_single_color_renderer", "raster_single_color_renderer", ms
+            )
         )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

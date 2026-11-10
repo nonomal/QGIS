@@ -14,8 +14,8 @@
  ***************************************************************************/
 
 #include "qgsexpressionnode.h"
-#include "qgsexpression.h"
 
+#include "qgsexpression.h"
 
 QVariant QgsExpressionNode::eval( QgsExpression *parent, const QgsExpressionContext *context )
 {
@@ -29,8 +29,7 @@ QVariant QgsExpressionNode::eval( QgsExpression *parent, const QgsExpressionCont
   }
   else
   {
-    QVariant res = evalNode( parent, context );
-    return res;
+    return evalNode( parent, context );
   }
 }
 
@@ -62,6 +61,11 @@ void QgsExpressionNode::setCachedStaticValue( const QVariant &value ) const
   mCachedStaticValue = value;
 }
 
+QgsExpressionNode *QgsExpressionNode::simplifiedNode() const
+{
+  return clone();
+}
+
 QgsExpressionNode::QgsExpressionNode( const QgsExpressionNode &other )
   : parserFirstLine( other.parserFirstLine )
   , parserFirstColumn( other.parserFirstColumn )
@@ -70,12 +74,13 @@ QgsExpressionNode::QgsExpressionNode( const QgsExpressionNode &other )
   , mHasCachedValue( other.mHasCachedValue )
   , mCachedStaticValue( other.mCachedStaticValue )
   , mCompiledSimplifiedNode( other.mCompiledSimplifiedNode ? other.mCompiledSimplifiedNode->clone() : nullptr )
-{
-
-}
+{}
 
 QgsExpressionNode &QgsExpressionNode::operator=( const QgsExpressionNode &other )
 {
+  if ( &other == this )
+    return *this;
+
   parserFirstLine = other.parserFirstLine;
   parserFirstColumn = other.parserFirstColumn;
   parserLastLine = other.parserLastLine;
@@ -97,4 +102,3 @@ void QgsExpressionNode::cloneTo( QgsExpressionNode *target ) const
   target->parserFirstColumn = parserFirstColumn;
   target->parserFirstLine = parserFirstLine;
 }
-

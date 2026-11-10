@@ -16,23 +16,23 @@
 #ifndef QGSRASTERCHECKER_H
 #define QGSRASTERCHECKER_H
 
-#include "qgis_core.h"
 #include "qgis.h"
+#include "qgis_core.h"
 
 #include <QDir>
 #include <QString>
+
 class QImage;
 
 /**
  * \ingroup core
- * \brief This is a helper class for unit tests that need to
+ * \brief A helper class for unit tests that need to
  * write an image and compare it to an expected result
  * or render time.
  */
 class CORE_EXPORT QgsRasterChecker
 {
   public:
-
     QgsRasterChecker();
 
     QString report() const { return mReport; }
@@ -44,8 +44,8 @@ class CORE_EXPORT QgsRasterChecker
      * \param expectedKey expected provider key
      * \param expectedUri URI of the expected (control) raster
      */
-    bool runTest( const QString &verifiedKey, QString verifiedUri,
-                  const QString &expectedKey, QString expectedUri );
+    bool runTest( const QString &verifiedKey, QString verifiedUri, const QString &expectedKey, QString expectedUri );
+
   private:
     QString mReport;
     QString mExpectedUri;
@@ -74,7 +74,9 @@ class CORE_EXPORT QgsRasterChecker
 #endif
 
     void compare( const QString &paramName, double verifiedVal, double expectedVal, QString &report, bool &ok, double tolerance = 0 );
-    void compareRow( const QString &paramName, const QString &verifiedVal, const QString &expectedVal, QString &report, bool ok, const QString &difference = QString(), const QString &tolerance = QString() );
+    void compareRow(
+      const QString &paramName, const QString &verifiedVal, const QString &expectedVal, QString &report, bool ok, const QString &difference = QString(), const QString &tolerance = QString()
+    );
     double tolerance( double val, int places = 6 );
 }; // class QgsRasterChecker
 

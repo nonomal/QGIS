@@ -27,9 +27,10 @@
 // version without notice, or even be removed.
 //
 
-#define SIP_NO_FILE
 
 #include "qgstaskmanager.h"
+
+#define SIP_NO_FILE
 
 class QgsPointLocator;
 
@@ -38,20 +39,19 @@ class QgsPointLocatorInitTask : public QgsTask
     Q_OBJECT
 
   public:
-
     QgsPointLocatorInitTask( QgsPointLocator *loc );
 
     /**
      * Returns TRUE when the task has finished and the index build was ok
      */
     bool isBuildOK() const;
-
+    void cancel() override;
     bool run() override;
 
   private:
-
     QgsPointLocator *mLoc = nullptr;
     bool mBuildOK = false;
+    std::unique_ptr< QgsFeedback> mFeedback;
 };
 
 /// @endcond

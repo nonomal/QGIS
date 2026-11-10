@@ -23,13 +23,6 @@
 
 #define DRIVER_NAME "Mike21"
 
-// function to split using regex, by default split on whitespace characters
-std::vector<std::string> regex_split( const std::string &input, const std::regex &split_regex = std::regex{"\\s+"} )
-{
-  std::sregex_token_iterator iter( input.begin(), input.end(), split_regex, -1 );
-  std::sregex_token_iterator end;
-  return {iter, end};
-}
 
 static bool parse_vertex_id_gaps( std::map<size_t, size_t> &vertexIDtoIndex, size_t vertexIndex, size_t vertexID )
 {
@@ -68,7 +61,7 @@ MDAL::MeshMike21::MeshMike21( size_t faceVerticesMaximumCount,
   : MemoryMesh( DRIVER_NAME,
                 faceVerticesMaximumCount,
                 uri )
-  , mVertexIDtoIndex( vertexIDtoIndex )
+  , mVertexIDtoIndex( std::move( vertexIDtoIndex ) )
 {
 }
 
@@ -97,6 +90,11 @@ size_t MDAL::MeshMike21::maximumVertexId() const
   }
 }
 
+// Suppress coverity fun_call_w_exception warning, as it believes a std::regex_error
+// may be raised here, but we know for certain that the regex members have valid
+// regular expressions and will not raise
+
+// coverity[fun_call_w_exception:FALSE]
 MDAL::DriverMike21::DriverMike21( ):
   Driver( DRIVER_NAME,
           "Mike21 Mesh File",
@@ -133,14 +131,18 @@ bool MDAL::DriverMike21::canReadMesh( const std::string &uri )
   return true;
 }
 
-size_t MDAL::DriverMike21::getVertexCount( const std::string &line )
+void MDAL::DriverMike21::parseHeader( const std::string &line )
 {
   auto matchResults = std::smatch{};
   if ( std::regex_search( line, matchResults, mRegexHeader2012 ) )
   {
     if ( matchResults.size() > 4 )
     {
-      return std::stoi( matchResults[3].str() );
+      mDataType = matchResults[1].str();
+      mDataUnit = matchResults[2].str();
+      mVertexCount = std::stoi( matchResults[3].str() );
+      mCrs = matchResults[4].str();
+      return;
     }
   }
 
@@ -148,33 +150,11 @@ size_t MDAL::DriverMike21::getVertexCount( const std::string &line )
   {
     if ( matchResults.size() > 2 )
     {
-      return std::stoi( matchResults[1].str() );
+      mVertexCount = std::stoi( matchResults[1].str() );
+      mCrs = matchResults[2].str();
+      return;
     }
   }
-
-  return 0;
-}
-
-std::string MDAL::DriverMike21::getCrs( const std::string &line )
-{
-  auto matchResults = std::smatch{};
-  if ( std::regex_search( line, matchResults, mRegexHeader2012 ) )
-  {
-    if ( matchResults.size() > 5 )
-    {
-      return matchResults[4].str();
-    }
-  }
-
-  if ( std::regex_search( line, matchResults, mRegexHeader2011 ) )
-  {
-    if ( matchResults.size() > 3 )
-    {
-      return matchResults[2].str();
-    }
-  }
-
-  return "";
 }
 
 std::unique_ptr<MDAL::Mesh> MDAL::DriverMike21::load( const std::string &meshFile, const std::string & )
@@ -192,9 +172,8 @@ std::unique_ptr<MDAL::Mesh> MDAL::DriverMike21::load( const std::string &meshFil
     return nullptr;
   }
 
-  std::string crs = getCrs( line );
+  parseHeader( line );
 
-  size_t vertexCount = getVertexCount( line );
   size_t faceCount = 0;
   size_t maxVerticesPerFace = 2;
 
@@ -202,7 +181,7 @@ std::unique_ptr<MDAL::Mesh> MDAL::DriverMike21::load( const std::string &meshFil
 
   while ( std::getline( in, line ) )
   {
-    if ( lineNumber == vertexCount + 1 )
+    if ( lineNumber == mVertexCount + 1 )
     {
       auto matchResults = std::smatch{};
       if ( std::regex_search( line, matchResults, mRegexElementHeader ) )
@@ -236,7 +215,7 @@ std::unique_ptr<MDAL::Mesh> MDAL::DriverMike21::load( const std::string &meshFil
   }
 
   // number of lines in file does not match number of vertices and faces specifed in first and element line
-  if ( lineNumber > 2 + vertexCount + faceCount )
+  if ( lineNumber > 2 + mVertexCount + faceCount )
   {
     MDAL::Log::error( MDAL_Status::Err_InvalidData, name(), "Number of lines in file does not fit with number of vertexes and faces specified." );
     return nullptr;
@@ -245,11 +224,11 @@ std::unique_ptr<MDAL::Mesh> MDAL::DriverMike21::load( const std::string &meshFil
   in.clear();
   in.seekg( 0, std::ios::beg );
 
-  Vertices vertices( vertexCount );
+  Vertices vertices( mVertexCount );
   Faces faces( faceCount );
 
   std::map<size_t, size_t> vertexIDtoIndex;
-  std::vector<double> vertexType( vertexCount );
+  std::vector<double> vertexType( mVertexCount );
 
   std::vector<double> nativeVertexIds;
   std::vector<double> nativeFaceIds;
@@ -263,9 +242,10 @@ std::unique_ptr<MDAL::Mesh> MDAL::DriverMike21::load( const std::string &meshFil
 
   while ( std::getline( in, line ) )
   {
-    if ( 0 < lineNumber && lineNumber < vertexCount + 1 )
+    if ( 0 < lineNumber && lineNumber < mVertexCount + 1 )
     {
-      chunks = regex_split( MDAL::trim( line ) );
+      std::replace( line.begin(), line.end(), '\t', ' ' );
+      chunks = MDAL::split( MDAL::trim( line ), ' ' );
       if ( chunks.size() != 5 )
       {
         MDAL::Log::error( MDAL_Status::Err_InvalidData, name(), "vertex line in invalid format." );
@@ -288,10 +268,10 @@ std::unique_ptr<MDAL::Mesh> MDAL::DriverMike21::load( const std::string &meshFil
       }
 
       // in case we have gaps/reorders in native indexes, store it
-      persist_native_index( nativeVertexIds, nodeID, vertexIndex, vertexCount );
+      persist_native_index( nativeVertexIds, nodeID, vertexIndex, mVertexCount );
       parse_vertex_id_gaps( vertexIDtoIndex, vertexIndex, nodeID - 1 );
 
-      assert( vertexIndex < vertexCount );
+      assert( vertexIndex < mVertexCount );
       Vertex &vertex = vertices[vertexIndex];
       vertex.x = toDouble( chunks[1] );
       vertex.y = toDouble( chunks[2] );
@@ -300,9 +280,10 @@ std::unique_ptr<MDAL::Mesh> MDAL::DriverMike21::load( const std::string &meshFil
       vertexIndex++;
     }
 
-    if ( vertexCount + 1 < lineNumber )
+    if ( mVertexCount + 1 < lineNumber )
     {
-      chunks = regex_split( MDAL::trim( line ) );
+      std::replace( line.begin(), line.end(), '\t', ' ' );
+      chunks = MDAL::split( MDAL::trim( line ), ' ' );
       assert( faceIndex < faceCount );
 
       size_t faceVertexCount = chunks.size() - 1;
@@ -358,7 +339,7 @@ std::unique_ptr<MDAL::Mesh> MDAL::DriverMike21::load( const std::string &meshFil
     new MeshMike21(
       maxVerticesPerFace,
       mMeshFile,
-      vertexIDtoIndex
+      std::move( vertexIDtoIndex )
     )
   );
   mesh->setFaces( std::move( faces ) );
@@ -375,7 +356,13 @@ std::unique_ptr<MDAL::Mesh> MDAL::DriverMike21::load( const std::string &meshFil
   if ( !nativeVertexIds.empty() )
     MDAL::addVertexScalarDatasetGroup( mesh.get(), nativeVertexIds, "NativeVertexIds" );
 
-  mesh->setSourceCrs( crs );
+  mesh->setSourceCrs( mCrs );
+  mesh->setMetadata( "crs", mCrs );
+  if ( !mDataType.empty() )
+    mesh->setMetadata( "data_type", mDataType );
+
+  if ( !mDataUnit.empty() )
+    mesh->setMetadata( "data_unit", mDataUnit );
 
   return std::unique_ptr<Mesh>( mesh.release() );
 }
@@ -391,7 +378,15 @@ void MDAL::DriverMike21::save( const std::string &fileName, const std::string &,
     MDAL::Log::error( MDAL_Status::Err_FailToWriteToDisk, name(), "Could not open file " + fileName );
   }
 
-  std::string line = std::to_string( mesh->verticesCount() ) + " " + mesh->crs();
+  std::string line;
+
+  const std::string dataType = mesh->getMetadata( "data_type" );
+  const std::string dataUnit = mesh->getMetadata( "data_unit" );
+  if ( !dataType.empty() && !dataUnit.empty() )
+    line.append( dataType + " " + dataUnit + " " );
+
+  line.append( std::to_string( mesh->verticesCount() ) + " " + mesh->getMetadata( "crs" ) );
+
   file << line << std::endl;
 
   std::vector<double> vertexTypes;

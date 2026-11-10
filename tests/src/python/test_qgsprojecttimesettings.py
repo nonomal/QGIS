@@ -5,22 +5,23 @@ it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or
 (at your option) any later version.
 """
-__author__ = 'Samweli Mwakisambwe'
-__date__ = '6/3/2020'
-__copyright__ = 'Copyright 2020, The QGIS Project'
 
-from qgis.PyQt.QtCore import QDate, QDateTime, QTime
-from qgis.PyQt.QtTest import QSignalSpy
-from qgis.PyQt.QtXml import QDomDocument
+__author__ = "Samweli Mwakisambwe"
+__date__ = "6/3/2020"
+__copyright__ = "Copyright 2020, The QGIS Project"
+
+import unittest
+
 from qgis.core import (
     QgsDateTimeRange,
     QgsProjectTimeSettings,
     QgsReadWriteContext,
     QgsUnitTypes,
 )
-import unittest
-from qgis.testing import start_app, QgisTestCase
-
+from qgis.PyQt.QtCore import QDate, QDateTime, QTime
+from qgis.PyQt.QtTest import QSignalSpy
+from qgis.PyQt.QtXml import QDomDocument
+from qgis.testing import QgisTestCase, start_app
 from utilities import unitTestDataPath
 
 app = start_app()
@@ -28,7 +29,6 @@ TEST_DATA_DIR = unitTestDataPath()
 
 
 class TestQgsProjectTimeSettings(QgisTestCase):
-
     def testTemporalRange(self):
         p = QgsProjectTimeSettings()
         self.assertTrue(p.temporalRange().isInfinite())
@@ -36,12 +36,12 @@ class TestQgsProjectTimeSettings(QgisTestCase):
 
         r = QgsDateTimeRange(
             QDateTime(QDate(2020, 1, 1), QTime(8, 0, 0)),
-            QDateTime(QDate(2020, 12, 1), QTime(8, 0, 0))
+            QDateTime(QDate(2020, 12, 1), QTime(8, 0, 0)),
         )
 
         rc = QgsDateTimeRange(
             QDateTime(QDate(2020, 1, 1), QTime(8, 0, 0)),
-            QDateTime(QDate(2020, 12, 1), QTime(8, 0, 0))
+            QDateTime(QDate(2020, 12, 1), QTime(8, 0, 0)),
         )
 
         p.setTemporalRange(r)
@@ -80,7 +80,7 @@ class TestQgsProjectTimeSettings(QgisTestCase):
 
         r = QgsDateTimeRange(
             QDateTime(QDate(2020, 1, 1), QTime(8, 0, 0)),
-            QDateTime(QDate(2020, 12, 1), QTime(8, 0, 0))
+            QDateTime(QDate(2020, 12, 1), QTime(8, 0, 0)),
         )
         p.setTemporalRange(r)
         p.setTimeStep(4.8)
@@ -100,5 +100,5 @@ class TestQgsProjectTimeSettings(QgisTestCase):
         self.assertTrue(p.isTemporalRangeCumulative())
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

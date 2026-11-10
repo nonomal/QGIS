@@ -3,17 +3,21 @@
  *                                                                      *
  * src/core/browser/qgsfieldsitem.h                                     *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/
+
+
 
 
 
 class QgsFieldsItem : QgsDataItem
 {
 %Docstring(signature="appended")
-A collection of field items with some internal logic to retrieve
-the fields and a the vector layer instance from a connection URI,
-the schema and the table name.
+A browser item which contains a collection of field items.
+
+:py:class:`QgsFieldsItem` contains internal logic to retrieve the fields
+and the corresponding vector layer instance from a connection URI, the
+schema and the table name.
 
 .. versionadded:: 3.16
 %End
@@ -22,22 +26,19 @@ the schema and the table name.
 #include "qgsfieldsitem.h"
 %End
   public:
-
-    QgsFieldsItem( QgsDataItem *parent /TransferThis/,
-                   const QString &path,
-                   const QString &connectionUri,
-                   const QString &providerKey,
-                   const QString &schema,
-                   const QString &tableName );
+    QgsFieldsItem( QgsDataItem *parent /TransferThis/, const QString &path, const QString &connectionUri, const QString &providerKey, const QString &schema, const QString &tableName );
 %Docstring
 Constructor for QgsFieldsItem, with the specified ``parent`` item.
 
-The ``path`` argument gives the item path in the browser tree. The ``path`` string can take any form,
-but :py:class:`QgsDataItem` items pointing to different logical locations should always use a different item ``path``.
-The ``connectionUri`` argument is the connection part of the layer URI that it is used internally to create
-a connection and retrieve fields information.
-The ``providerKey`` string can be used to specify the key for the :py:class:`QgsDataItemProvider` that created this item.
-The ``schema`` and ``tableName`` are used to retrieve the layer and field information from the ``connectionUri``.
+The ``path`` argument gives the item path in the browser tree. The
+``path`` string can take any form, but :py:class:`QgsDataItem` items
+pointing to different logical locations should always use a different
+item ``path``. The ``connectionUri`` argument is the connection part of
+the layer URI that it is used internally to create a connection and
+retrieve fields information. The ``providerKey`` string can be used to
+specify the key for the :py:class:`QgsDataItemProvider` that created
+this item. The ``schema`` and ``tableName`` are used to retrieve the
+layer and field information from the ``connectionUri``.
 %End
 
     ~QgsFieldsItem();
@@ -48,7 +49,7 @@ The ``schema`` and ``tableName`` are used to retrieve the layer and field inform
     sipRes = PyUnicode_FromString( str.toUtf8().constData() );
 %End
 
-    virtual QVector<QgsDataItem *> createChildren();
+        virtual QVector<QgsDataItem *> createChildren();
 
 
     virtual QIcon icon();
@@ -71,12 +72,23 @@ Returns the connection URI
 
     QgsVectorLayer *layer() /Factory/;
 %Docstring
-Creates and returns a (possibly NULL) layer from the connection URI and schema/table information
+Creates and returns a (possibly ``None``) layer from the connection URI
+and schema/table information
+%End
+
+    QgsFields fields() const;
+%Docstring
+Returns the fields contained by the item.
+
+The fields are only populated after the item's children are created.
+
+.. versionadded:: 4.0
 %End
 
     QgsAbstractDatabaseProviderConnection::TableProperty *tableProperty() const;
 %Docstring
-Returns the (possibly NULL) properties of the table this fields belong to.
+Returns the (possibly ``None``) properties of the table this fields
+belong to.
 
 .. versionadded:: 3.16
 %End
@@ -94,9 +106,11 @@ Returns ``True`` if the connection supports renaming fields.
 class QgsFieldItem : QgsDataItem
 {
 %Docstring(signature="appended")
-A layer field item, information about the connection URI, the schema and the
-table as well as the layer instance the field belongs to can be retrieved
-from the parent QgsFieldsItem object.
+A data item representing a single field from a layer.
+
+Information about the connection URI, the schema and the table as well
+as the layer instance the field belongs to can be retrieved from the
+parent :py:class:`QgsFieldsItem` object.
 
 .. versionadded:: 3.16
 %End
@@ -105,11 +119,10 @@ from the parent QgsFieldsItem object.
 #include "qgsfieldsitem.h"
 %End
   public:
-
-    QgsFieldItem( QgsDataItem *parent /TransferThis/,
-                  const QgsField &field );
+    QgsFieldItem( QgsDataItem *parent /TransferThis/, const QgsField &field );
 %Docstring
-Constructor for QgsFieldItem, with the specified ``parent`` item and ``field``.
+Constructor for QgsFieldItem, with the specified ``parent`` item and
+``field``.
 
 .. note::
 
@@ -124,7 +137,7 @@ Constructor for QgsFieldItem, with the specified ``parent`` item and ``field``.
     sipRes = PyUnicode_FromString( str.toUtf8().constData() );
 %End
 
-    virtual QIcon icon();
+        virtual QIcon icon();
 
 
     QgsField field() const;
@@ -137,14 +150,20 @@ Returns the field definition.
     virtual bool equal( const QgsDataItem *other );
 
 
+    void setDomain( QgsFieldDomain *domain /Transfer/ );
+%Docstring
+Sets the domain for the field. The item will take ownership of the
+domain.
+
+.. versionadded:: 4.4
+%End
+
 };
-
-
 
 /************************************************************************
  * This file has been generated automatically from                      *
  *                                                                      *
  * src/core/browser/qgsfieldsitem.h                                     *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/

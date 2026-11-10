@@ -3,15 +3,14 @@
  *                                                                      *
  * src/core/gps/qgsqtlocationconnection.h                               *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/
 
 
 
 
 
-
-class QgsQtLocationConnection: QgsGpsConnection
+class QgsQtLocationConnection : QgsGpsConnection
 {
 %Docstring(signature="appended")
 A GPS connection subclass based on the Qt Location libraries.
@@ -65,5 +64,5 @@ Called when the number of satellites in use is updated.
  *                                                                      *
  * src/core/gps/qgsqtlocationconnection.h                               *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/

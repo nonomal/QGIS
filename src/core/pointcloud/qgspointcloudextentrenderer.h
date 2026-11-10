@@ -18,9 +18,9 @@
 #ifndef QGSPOINTCLOUDEXTENTRENDERER_H
 #define QGSPOINTCLOUDEXTENTRENDERER_H
 
-#include "qgspointcloudrenderer.h"
 #include "qgis_core.h"
 #include "qgis_sip.h"
+#include "qgspointcloudrenderer.h"
 
 class QgsFillSymbol;
 
@@ -33,7 +33,6 @@ class QgsFillSymbol;
 class CORE_EXPORT QgsPointCloudExtentRenderer : public QgsPointCloudRenderer
 {
   public:
-
     /**
      * Constructor for QgsPointCloudExtentRenderer.
      *
@@ -55,7 +54,7 @@ class CORE_EXPORT QgsPointCloudExtentRenderer : public QgsPointCloudRenderer
     /**
      * Creates an extent renderer from an XML \a element.
      */
-    static QgsPointCloudRenderer *create( QDomElement &element, const QgsReadWriteContext &context ) SIP_FACTORY;
+    static std::unique_ptr<QgsPointCloudRenderer> create( QDomElement &element, const QgsReadWriteContext &context );
 
     /**
      * Renders a polygon \a extent geometry to the specified render \a context.
@@ -65,7 +64,7 @@ class CORE_EXPORT QgsPointCloudExtentRenderer : public QgsPointCloudRenderer
     /**
      * Returns a new instance of the default fill symbol to use for showing point cloud extents.
      */
-    static QgsFillSymbol *defaultFillSymbol() SIP_FACTORY;
+    static std::unique_ptr<QgsFillSymbol> defaultFillSymbol();
 
     /**
      * Returns the symbol used to render the cloud's extent.
@@ -83,10 +82,21 @@ class CORE_EXPORT QgsPointCloudExtentRenderer : public QgsPointCloudRenderer
      */
     void setFillSymbol( QgsFillSymbol *symbol SIP_TRANSFER );
 
+    /**
+     * Renders a label inside the specified extent rectangle.
+     *
+     * The label will be rendered centered horizontally and vertically inside \a extent. If the label is too large to fit
+     * inside this rectangle, it will not be rendered.
+     *
+     * \param extent rectangle (in painter coordinates) inside which the label will be rendered
+     * \param text label text to render
+     * \param context point cloud rendering context
+     * \since QGIS 3.42
+     */
+    void renderLabel( const QRectF &extent, const QString &text, QgsPointCloudRenderContext &context ) const;
+
   private:
-
     std::unique_ptr< QgsFillSymbol > mFillSymbol;
-
 };
 
 #endif // QGSPOINTCLOUDEXTENTRENDERER_H

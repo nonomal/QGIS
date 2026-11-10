@@ -19,11 +19,12 @@
 #include "qgslogger.h"
 #include "qgssettingseditorwidgetwrapper.h"
 #include "qgssettingseditorwidgetwrapperimpl.h"
-#include "qgssettingsenumflageditorwidgetwrapper.h"
 #include "qgssettingsentry.h"
+#include "qgssettingsenumflageditorwidgetwrapper.h"
 
-#include "qgsvectorsimplifymethod.h"
+#include <QString>
 
+using namespace Qt::StringLiterals;
 
 #if defined( HAVE_QTSERIALPORT )
 #include <QSerialPort>
@@ -32,11 +33,12 @@
 
 QgsSettingsEditorWidgetRegistry::QgsSettingsEditorWidgetRegistry()
 {
-  addWrapper( new QgsSettingsStringEditorWidgetWrapper() );
-  addWrapper( new QgsSettingsBoolEditorWidgetWrapper() );
-  addWrapper( new QgsSettingsIntegerEditorWidgetWrapper() );
-  addWrapper( new QgsSettingsDoubleEditorWidgetWrapper() );
-  addWrapper( new QgsSettingsColorEditorWidgetWrapper() );
+  addWrapper( new QgsSettingsStringLineEditWrapper() );
+  addWrapper( new QgsSettingsBoolCheckBoxWrapper() );
+  addWrapper( new QgsSettingsBoolGroupBoxWrapper() );
+  addWrapper( new QgsSettingsIntegerSpinBoxWrapper() );
+  addWrapper( new QgsSettingsDoubleSpinBoxWrapper() );
+  addWrapper( new QgsSettingsColorButtonWrapper() );
 
   // enum
 #if defined( HAVE_QTSERIALPORT )
@@ -57,13 +59,12 @@ QgsSettingsEditorWidgetRegistry::QgsSettingsEditorWidgetRegistry()
   addWrapper( new QgsSettingsEnumEditorWidgetWrapper<Qgis::SnappingType>() );
   addWrapper( new QgsSettingsEnumEditorWidgetWrapper<Qgis::TilePixelRatio>() );
 
-  addWrapper( new QgsSettingsEnumEditorWidgetWrapper<QgsVectorSimplifyMethod::SimplifyAlgorithm>() );
-  addWrapper( new QgsSettingsEnumEditorWidgetWrapper<QgsVectorSimplifyMethod::SimplifyHints>() );
+  addWrapper( new QgsSettingsEnumEditorWidgetWrapper<Qgis::VectorSimplificationAlgorithm>() );
+  addWrapper( new QgsSettingsEnumEditorWidgetWrapper<Qgis::VectorRenderingSimplificationFlags>() );
   addWrapper( new QgsSettingsEnumEditorWidgetWrapper<Qt::TimeSpec>() );
 
   // flags
   addWrapper( new QgsSettingsFlagsEditorWidgetWrapper<Qgis::GpsInformationComponent, Qgis::GpsInformationComponents>() );
-
 }
 
 QgsSettingsEditorWidgetRegistry::~QgsSettingsEditorWidgetRegistry()
@@ -84,6 +85,11 @@ bool QgsSettingsEditorWidgetRegistry::addWrapper( QgsSettingsEditorWidgetWrapper
   return true;
 }
 
+void QgsSettingsEditorWidgetRegistry::addWrapperForSetting( QgsSettingsEditorWidgetWrapper *wrapper, const QgsSettingsEntryBase *setting )
+{
+  mSpecificWrappers.insert( setting, wrapper );
+}
+
 QgsSettingsEditorWidgetWrapper *QgsSettingsEditorWidgetRegistry::createWrapper( const QString &id, QObject *parent ) const
 {
   QgsSettingsEditorWidgetWrapper *wrapper = mWrappers.value( id );
@@ -93,13 +99,18 @@ QgsSettingsEditorWidgetWrapper *QgsSettingsEditorWidgetRegistry::createWrapper( 
   }
   else
   {
-    QgsDebugError( QStringLiteral( "Setting factory was not found for '%1', returning the default string factory" ).arg( id ) );
+    QgsDebugError( u"Setting factory was not found for '%1', returning the default string factory"_s.arg( id ) );
     return nullptr;
   }
 }
 
 QWidget *QgsSettingsEditorWidgetRegistry::createEditor( const QgsSettingsEntryBase *setting, const QStringList &dynamicKeyPartList, QWidget *parent ) const
 {
+  auto it = mSpecificWrappers.constFind( setting );
+  if ( it != mSpecificWrappers.constEnd() )
+  {
+    return it.value()->createEditor( setting, dynamicKeyPartList, parent );
+  }
   QgsSettingsEditorWidgetWrapper *eww = createWrapper( setting->typeId(), parent );
   if ( eww )
     return eww->createEditor( setting, dynamicKeyPartList, parent );

@@ -16,18 +16,17 @@
 #ifndef QGSPROJECTBADLAYERHANDLER_H
 #define QGSPROJECTBADLAYERHANDLER_H
 
-#include <QDomNode>
-
 #include "qgis_core.h"
+
+#include <QDomNode>
 
 /**
  * \ingroup core
- * \brief Interface for classes that handle missing layer files when reading project file.
+ * \brief Interface for classes that handle missing layer files when reading project files.
  */
 class CORE_EXPORT QgsProjectBadLayerHandler
 {
   public:
-
     /**
      * This method will be called whenever the project tries to load layers which
      * cannot be accessed. It should inform the user about this and if possible offer
@@ -43,7 +42,6 @@ class CORE_EXPORT QgsProjectBadLayerHandler
 
 
   protected:
-
     //! file data representation
     enum DataType
     {

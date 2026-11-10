@@ -16,20 +16,23 @@
 #define QGSORACLEPROJECTSTORAGE_H
 
 #include "qgsconfig.h"
-#include "qgsprojectstorage.h"
 
 #include "qgsdatasourceuri.h"
+#include "qgsprojectstorage.h"
 
+#include <QString>
+
+using namespace Qt::StringLiterals;
 
 //! Stores information parsed from oracle project URI
 typedef struct
 {
-  bool valid;
+    bool valid;
 
-  QgsDataSourceUri connInfo;  // using only the bits about connection info (server, port, username, password, service, ssl mode)
+    QgsDataSourceUri connInfo; // using only the bits about connection info (server, port, username, password, service, ssl mode)
 
-  QString owner;
-  QString projectName;
+    QString owner;
+    QString projectName;
 
 } QgsOracleProjectUri;
 
@@ -38,8 +41,7 @@ typedef struct
 class QgsOracleProjectStorage : public QgsProjectStorage
 {
   public:
-
-    QString type() override { return QStringLiteral( "oracle" ); }
+    QString type() override { return u"oracle"_s; }
 
     QStringList listProjects( const QString &uri ) override;
 

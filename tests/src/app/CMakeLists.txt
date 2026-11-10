@@ -3,6 +3,7 @@
 # the UI file won't be wrapped!
 include_directories(
   ${CMAKE_SOURCE_DIR}/src/test
+  ${CMAKE_SOURCE_DIR}/tests/src/gui
   ${CMAKE_CURRENT_BINARY_DIR}
 )
 
@@ -10,38 +11,46 @@ include_directories(
 
 set(TESTS
   testqgisapp.cpp
+  testqgisappwidgetnames.cpp
   testqgsappbrowserproviders.cpp
   testqgisappclipboard.cpp
   testqgisappdockwidgets.cpp
   testqgsadvanceddigitizing.cpp
   testqgsattributetable.cpp
   testqgsapplocatorfilters.cpp
+  testqgscustomization.cpp
   testqgsdecorationscalebar.cpp
   testqgsdwgimportdialog.cpp
+  testqgselevationprofilewidget.cpp
   testqgsfieldcalculator.cpp
+  testqgsidentify.cpp
   testqgslayerpropertiesdialogs.cpp
   testqgsmapcanvasdockwidget.cpp
+  testqgsmapsavedialog.cpp
   testqgsmaptooladdpart.cpp
   testqgsmaptooldeletepart.cpp
   testqgsmaptooladdring.cpp
   testqgsmaptooldeletering.cpp
   testqgsmaptooleditannotation.cpp
-  testqgsmaptoolidentifyaction.cpp
   testqgsmaptoollabel.cpp
   testqgsmaptoolselect.cpp
   testqgsmaptoolreshape.cpp
   testqgsmaptoolrotatefeature.cpp
+  testqgsmaptoolselectannotation.cpp
   testqgsmaptoolscalefeature.cpp
   testqgsmaptoolcircularstring.cpp
   testqgsmaptooleditmesh.cpp
   testqgsmaptoolmovefeature.cpp
+  testqgsmaptoolfeaturearray.cpp
   testqgsmaptoolellipse.cpp
   testqgsmaptoolcircle.cpp
+  testqgsmaptoolnurbs.cpp
   testqgsmaptoolrectangle.cpp
   testqgsmaptoolregularpolygon.cpp
   testqgsmaptoolsplitparts.cpp
   testqgsmaptoolsplitfeatures.cpp
   testqgsmaptooloffsetcurve.cpp
+  testqgsmaptoolchamferfillet.cpp
   testqgsmeasuretool.cpp
   testqgsmeasurebearingtool.cpp
   testqgsvertexeditor.cpp
@@ -63,6 +72,7 @@ endif()
 
 if (WITH_BINDINGS)
   set(TESTS ${TESTS} testqgisapppython.cpp)
+  set(TESTS ${TESTS} testqgsprojectexpressions.cpp)
 endif()
 
 foreach(TESTSRC ${TESTS})

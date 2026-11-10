@@ -20,11 +20,16 @@
 #include "qgis_core.h"
 #include "qgis_sip.h"
 #include "qgsmaplayer.h"
+#include "qgsmaplayerref.h"
 #include "qgsmaplayerrenderer.h"
 
+#include <QString>
+
+using namespace Qt::StringLiterals;
 
 class QgsAnnotationItem;
 class QgsAbstractAnnotationItemEditOperation;
+class QgsAnnotationItemEditContext;
 class QgsPaintEffect;
 
 
@@ -48,26 +53,23 @@ class CORE_EXPORT QgsAnnotationLayer : public QgsMapLayer
     Q_OBJECT
 
   public:
-
     /**
      * Setting options for loading annotation layers.
      * \since QGIS 3.16
      */
     struct LayerOptions
     {
-
-      /**
+        /**
        * Constructor for LayerOptions.
        */
-      explicit LayerOptions( const QgsCoordinateTransformContext &transformContext )
-        : transformContext( transformContext )
-      {}
+        explicit LayerOptions( const QgsCoordinateTransformContext &transformContext )
+          : transformContext( transformContext )
+        {}
 
-      /**
+        /**
        * Coordinate transform context
        */
-      QgsCoordinateTransformContext transformContext;
-
+        QgsCoordinateTransformContext transformContext;
     };
 
 
@@ -80,17 +82,19 @@ class CORE_EXPORT QgsAnnotationLayer : public QgsMapLayer
     ~QgsAnnotationLayer() override;
 
 #ifdef SIP_RUN
+    // clang-format off
     SIP_PYOBJECT __repr__();
     % MethodCode
-    QString str = QStringLiteral( "<QgsAnnotationLayer: '%1'>" ).arg( sipCpp->name() );
+    QString str = u"<QgsAnnotationLayer: '%1'>"_s.arg( sipCpp->name() );
     sipRes = PyUnicode_FromString( str.toUtf8().constData() );
     % End
+// clang-format on
 #endif
 
-    /**
+      /**
      * Resets the annotation layer to a default state, and clears all items from it.
      */
-    void reset();
+      void reset();
 
     /**
      * Adds an \a item to the layer.
@@ -155,9 +159,18 @@ class CORE_EXPORT QgsAnnotationLayer : public QgsMapLayer
      *
      * Returns TRUE if the operation was successfully applied.
      *
-     * \since QGIS 3.22
+     * \deprecated QGIS 3.40. Use applyEditV2() instead.
      */
-    Qgis::AnnotationItemEditOperationResult applyEdit( QgsAbstractAnnotationItemEditOperation *operation );
+    Q_DECL_DEPRECATED Qgis::AnnotationItemEditOperationResult applyEdit( QgsAbstractAnnotationItemEditOperation *operation ) SIP_DEPRECATED;
+
+    /**
+     * Applies an edit \a operation to the layer.
+     *
+     * Returns TRUE if the operation was successfully applied.
+     *
+     * \since QGIS 3.40
+     */
+    Qgis::AnnotationItemEditOperationResult applyEditV2( QgsAbstractAnnotationItemEditOperation *operation, const QgsAnnotationItemEditContext &context );
 
     Qgis::MapLayerProperties properties() const override;
     QgsAnnotationLayer *clone() const override SIP_FACTORY;
@@ -175,6 +188,7 @@ class CORE_EXPORT QgsAnnotationLayer : public QgsMapLayer
     QgsDataProvider *dataProvider() override;
     const QgsDataProvider *dataProvider() const override SIP_SKIP;
     QString htmlMetadata() const override;
+    void resolveReferences( QgsProject *project ) override;
 
     /**
      * Returns the current paint effect for the layer.
@@ -193,8 +207,34 @@ class CORE_EXPORT QgsAnnotationLayer : public QgsMapLayer
      */
     void setPaintEffect( QgsPaintEffect *effect SIP_TRANSFER );
 
-  private:
+    /**
+     * Returns a linked layer, where the items in this annotation layer
+     * will only be visible when the linked layer is also visible.
+     *
+     * \see setLinkedVisibilityLayer()
+     * \since QGIS 3.40
+     */
+    QgsMapLayer *linkedVisibilityLayer();
 
+    /**
+     * Sets a linked \a layer, where the items in this annotation layer
+     * will only be visible when the linked layer is also visible.
+     *
+     * \see linkedVisibilityLayer()
+     * \since QGIS 3.40
+     */
+    void setLinkedVisibilityLayer( QgsMapLayer *layer );
+
+  signals:
+
+    /**
+     * Emitted when items are added, removed or modified in the layer.
+     *
+     * \since QGIS 4.4
+     */
+    void itemsChanged();
+
+  private:
     QStringList queryIndex( const QgsRectangle &bounds, QgsFeedback *feedback = nullptr ) const;
     bool writeItems( QDomNode &node, QDomDocument &doc, QString &errorMessage, const QgsReadWriteContext &context, StyleCategories categories = AllStyleCategories ) const;
     bool readItems( const QDomNode &node, QString &errorMessage, QgsReadWriteContext &context, StyleCategories categories = AllStyleCategories );
@@ -205,12 +245,14 @@ class CORE_EXPORT QgsAnnotationLayer : public QgsMapLayer
     std::unique_ptr< QgsAnnotationLayerSpatialIndex > mSpatialIndex;
     QSet< QString > mNonIndexedItems;
 
-    QgsDataProvider *mDataProvider = nullptr;
+    std::unique_ptr<QgsDataProvider> mDataProvider;
 
     std::unique_ptr< QgsPaintEffect > mPaintEffect;
 
-    friend class QgsAnnotationLayerRenderer;
+    QgsMapLayerRef mLinkedLayer;
 
+    friend class QgsAnnotationLayerRenderer;
+    friend class QgsAnnotationLayerChunkLoader;
 };
 
 #ifndef SIP_RUN
@@ -226,14 +268,12 @@ class QgsAnnotationLayerDataProvider : public QgsDataProvider
     Q_OBJECT
 
   public:
-    QgsAnnotationLayerDataProvider( const QgsDataProvider::ProviderOptions &providerOptions,
-                                    QgsDataProvider::ReadFlags flags );
+    QgsAnnotationLayerDataProvider( const QgsDataProvider::ProviderOptions &providerOptions, Qgis::DataProviderReadFlags flags );
     QgsCoordinateReferenceSystem crs() const override;
     QString name() const override;
     QString description() const override;
     QgsRectangle extent() const override;
     bool isValid() const override;
-
 };
 ///@endcond
 #endif

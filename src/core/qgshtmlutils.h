@@ -20,17 +20,17 @@
 
 #include "qgis_core.h"
 #include "qgis_sip.h"
+
 #include <QString>
 
 /**
  * \ingroup core
  * \class QgsHtmlUtils
- * \brief Class for HTML utilities.
+ * \brief Contains utilities for working with HTML.
  */
 class CORE_EXPORT QgsHtmlUtils
 {
   public:
-
     /**
      * Build a bullet list.
      * This will return a HTML "ul" element.

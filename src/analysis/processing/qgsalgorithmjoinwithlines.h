@@ -18,10 +18,11 @@
 #ifndef QGSALGORITHMJOINWITHLINES_H
 #define QGSALGORITHMJOINWITHLINES_H
 
-#define SIP_NO_FILE
 
 #include "qgis_sip.h"
 #include "qgsprocessingalgorithm.h"
+
+#define SIP_NO_FILE
 
 ///@cond PRIVATE
 
@@ -30,9 +31,7 @@
  */
 class QgsJoinWithLinesAlgorithm : public QgsProcessingAlgorithm
 {
-
   public:
-
     QgsJoinWithLinesAlgorithm() = default;
     void initAlgorithm( const QVariantMap &configuration = QVariantMap() ) override;
     QString name() const override;
@@ -42,17 +41,13 @@ class QgsJoinWithLinesAlgorithm : public QgsProcessingAlgorithm
     QString groupId() const override;
     QString shortHelpString() const override;
     QString shortDescription() const override;
+    Qgis::ProcessingAlgorithmDocumentationFlags documentationFlags() const override;
     QgsJoinWithLinesAlgorithm *createInstance() const override SIP_FACTORY;
 
   protected:
-
-    QVariantMap processAlgorithm( const QVariantMap &parameters,
-                                  QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
-
+    QVariantMap processAlgorithm( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
 };
 
 ///@endcond PRIVATE
 
 #endif // QGSALGORITHMJOINWITHLINES_H
-
-

@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/qgsrendereditemdetails.h                                    *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/
 
 
@@ -14,7 +14,7 @@
 #include "qgsrenderedannotationitemdetails.h"
 %End
 
-class QgsRenderedItemDetails
+  class QgsRenderedItemDetails
 {
 %Docstring(signature="appended")
 Base class for detailed information about a rendered item.
@@ -26,7 +26,6 @@ Base class for detailed information about a rendered item.
 #include "qgsrendereditemdetails.h"
 %End
   public:
-
 %ConvertToSubClassCode
     if ( dynamic_cast<QgsRenderedAnnotationItemDetails *>( sipCpp ) )
       sipType = sipType_QgsRenderedAnnotationItemDetails;
@@ -67,5 +66,5 @@ Sets the bounding box of the item (in map units).
  *                                                                      *
  * src/core/qgsrendereditemdetails.h                                    *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/

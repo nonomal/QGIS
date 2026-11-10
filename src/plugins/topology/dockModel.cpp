@@ -16,16 +16,28 @@
  ***************************************************************************/
 
 #include "dockModel.h"
-#include "topolError.h"
+
 #include "qgsvectorlayer.h"
+#include "topolError.h"
+
+#include <QString>
 #include <qlogging.h>
 
-DockModel::DockModel( ErrorList &errorList, QObject *parent = nullptr )
-  : mErrorlist( errorList )
+#include "moc_dockModel.cpp"
+
+using namespace Qt::StringLiterals;
+
+DockModel::DockModel( QObject *parent )
 {
   Q_UNUSED( parent )
   mHeader << QObject::tr( "Error" ) << QObject::tr( "Layer" ) << QObject::tr( "Feature ID" );
+}
 
+void DockModel::setErrors( const ErrorList &errorList )
+{
+  beginResetModel();
+  mErrorlist = errorList;
+  endResetModel();
 }
 
 int DockModel::rowCount( const QModelIndex &parent ) const
@@ -48,12 +60,13 @@ QVariant DockModel::headerData( int section, Qt::Orientation orientation, int ro
     {
       return QVariant( section );
     }
-    else
+    else if ( section >= 0 && section < mHeader.count() )
     {
       return mHeader[section];
     }
   }
-  else return QVariant();
+
+  return QAbstractItemModel::headerData( section, orientation, role );
 }
 
 QVariant DockModel::data( const QModelIndex &index, int role ) const
@@ -62,10 +75,10 @@ QVariant DockModel::data( const QModelIndex &index, int role ) const
     return QVariant();
 
   const int row = index.row();
-//  if(!row)
-//    {
-//      return QVariant();
-//    }
+  //  if(!row)
+  //    {
+  //      return QVariant();
+  //    }
   const int column = index.column();
 
   if ( role == Qt::TextAlignmentRole )
@@ -84,7 +97,7 @@ QVariant DockModel::data( const QModelIndex &index, int role ) const
       break;
     case 1:
       if ( !mErrorlist[row]->featurePairs().first().layer )
-        val = QStringLiteral( "Unknown" );
+        val = u"Unknown"_s;
       else
         val = mErrorlist[row]->featurePairs().first().layer->name();
       break;
@@ -122,32 +135,26 @@ Qt::ItemFlags DockModel::flags( const QModelIndex &index ) const
   return flags;
 }
 
-void DockModel::resetModel()
-{
-  beginResetModel();
-  endResetModel();
-}
-
 void DockModel::reload( const QModelIndex &index1, const QModelIndex &index2 )
 
 {
   emit dataChanged( index1, index2 );
 }
 
-DockFilterModel::DockFilterModel( ErrorList &errorList, QObject *parent = nullptr )
+DockFilterModel::DockFilterModel( QObject *parent )
   : QSortFilterProxyModel( parent )
-  , mDockModel( new DockModel( errorList, parent ) )
+  , mDockModel( new DockModel( parent ) )
 {
   setSourceModel( mDockModel );
   setFilterKeyColumn( 0 );
 }
 
+void DockFilterModel::setErrors( const ErrorList &errorList )
+{
+  mDockModel->setErrors( errorList );
+}
+
 void DockFilterModel::reload( const QModelIndex &index1, const QModelIndex &index2 )
 {
   mDockModel->reload( index1, index2 );
-}
-
-void DockFilterModel::resetModel()
-{
-  mDockModel->resetModel();
 }

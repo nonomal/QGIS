@@ -19,14 +19,14 @@
 #include "qgis_core.h"
 #include "qgis_sip.h"
 
-#include <QList>
 #include <QHash>
+#include <QList>
 
 class QgsExternalStorage;
 
 /**
  * \ingroup core
- * \brief Registry of external storage backends used by QgsExternalResourceWidget
+ * \brief Registry of external storage backends used by QgsExternalResourceWidget.
  *
  * QgsExternalStorageRegistry is not usually directly created, but rather accessed through
  * QgsApplication::projectStorageRegistry().
@@ -36,15 +36,11 @@ class QgsExternalStorage;
 class CORE_EXPORT QgsExternalStorageRegistry
 {
   public:
-
     /**
      * Constructor - creates a registry of external storage backends
      */
     QgsExternalStorageRegistry();
 
-    /**
-     * Destructor
-     */
     ~QgsExternalStorageRegistry();
 
     /**

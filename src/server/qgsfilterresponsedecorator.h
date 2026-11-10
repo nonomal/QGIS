@@ -19,22 +19,21 @@
 #ifndef QGSFILTERRESPONSEDECORATOR_H
 #define QGSFILTERRESPONSEDECORATOR_H
 
-#define SIP_NO_FILE
-
-
-#include "qgsserverresponse.h"
-#include "qgsserverfilter.h"
+#include "qgis.h"
 #include "qgsserverexception.h"
+#include "qgsserverfilter.h"
+#include "qgsserverresponse.h"
+
+#define SIP_NO_FILE
 
 /**
  * \ingroup server
  * \class QgsFilterResponseDecorator
- * \brief Class defining decorator for calling filter's hooks
+ * \brief A decorator for calling filter's hooks.
  */
-class QgsFilterResponseDecorator: public QgsServerResponse
+class QgsFilterResponseDecorator : public QgsServerResponse
 {
   public:
-
     /**
      * Constructor for QgsFilterResponseDecorator.
      * \param filters Map of filters to apply before terminating the response
@@ -55,13 +54,29 @@ class QgsFilterResponseDecorator: public QgsServerResponse
 
     // QgsServerResponse overrides
 
-    void setHeader( const QString &key, const QString &value ) override {  mResponse.setHeader( key, value ); }
+    void setHeader( const QString &key, const QString &value ) override { mResponse.setHeader( key, value ); }
+
+    void addHeader( const QString &key, const QString &value ) override { mResponse.addHeader( key, value ); }
 
     void removeHeader( const QString &key ) override { mResponse.removeHeader( key ); }
 
-    QString header( const QString &key ) const override { return mResponse.header( key ); }
+    Q_DECL_DEPRECATED QString header( const QString &key ) const override
+    {
+      Q_NOWARN_DEPRECATED_PUSH
+      return mResponse.header( key );
+      Q_NOWARN_DEPRECATED_POP
+    }
 
-    QMap<QString, QString> headers() const override { return mResponse.headers(); }
+    Q_DECL_DEPRECATED QMap<QString, QString> headers() const override
+    {
+      Q_NOWARN_DEPRECATED_PUSH
+      return mResponse.headers();
+      Q_NOWARN_DEPRECATED_POP
+    }
+
+    virtual QList<QString> fullHeader( const QString &key ) const override { return mResponse.fullHeader( key ); }
+
+    virtual QMap<QString, QList<QString> > fullHeaders() const override { return mResponse.fullHeaders(); }
 
     bool headersSent() const override { return mResponse.headersSent(); }
 
@@ -69,7 +84,7 @@ class QgsFilterResponseDecorator: public QgsServerResponse
 
     int statusCode() const override { return mResponse.statusCode(); }
 
-    void sendError( int code,  const QString &message ) override { mResponse.sendError( code, message ); }
+    void sendError( int code, const QString &message ) override { mResponse.sendError( code, message ); }
 
     QIODevice *io() override { return mResponse.io(); }
 
@@ -86,8 +101,8 @@ class QgsFilterResponseDecorator: public QgsServerResponse
     QgsFeedback *feedback() const override { return mResponse.feedback(); }
 
   private:
-    QgsServerFiltersMap  mFilters;
-    QgsServerResponse   &mResponse;
+    QgsServerFiltersMap mFilters;
+    QgsServerResponse &mResponse;
 };
 
 #endif

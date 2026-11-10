@@ -3,13 +3,14 @@
  *                                                                      *
  * src/gui/qgs3dsymbolwidget.h                                          *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/
 
 
 
 
-class Qgs3DSymbolWidget : QWidget
+
+class Qgs3DSymbolWidget : QgsPanelWidget
 {
 %Docstring(signature="appended")
 Base class for 3D symbol configuration widgets.
@@ -21,7 +22,6 @@ Base class for 3D symbol configuration widgets.
 #include "qgs3dsymbolwidget.h"
 %End
   public:
-
     Qgs3DSymbolWidget( QWidget *parent );
 %Docstring
 Constructor for Qgs3DSymbolWidget with the specified ``parent`` widget.
@@ -44,14 +44,41 @@ Caller takes ownership of the returned symbol.
 Returns the symbol type handled by the widget.
 %End
 
+    virtual Qgis::MaterialRenderingTechnique renderingTechnique() const = 0;
+%Docstring
+Returns associated rendering technique.
+
+.. warning::
+
+   This is not considered stable API, and may change in future QGIS releases. It is
+   exposed to the Python bindings as a tech preview only.
+
+.. versionadded:: 4.2
+%End
+
+    virtual void setMode( Qgis::MaterialWidgetMode mode ) = 0;
+%Docstring
+Sets the widget ``mode``, which controls whether the compact or full set
+of material settings controls are shown.
+
+.. versionadded:: 4.4
+%End
+
   signals:
 
-    void changed();
+    void renderingTechniqueChanged();
 %Docstring
-Emitted when the symbol is changed.
+Emitted when the rendering technique associated with the symbol is
+changed.
+
+.. warning::
+
+   This is not considered stable API, and may change in future QGIS releases. It is
+   exposed to the Python bindings as a tech preview only.
+
+.. versionadded:: 4.2
 %End
 };
-
 
 
 class Qgs3DSymbolDialog : QDialog
@@ -66,10 +93,10 @@ A dialog for configuring a 3D symbol.
 #include "qgs3dsymbolwidget.h"
 %End
   public:
-
     Qgs3DSymbolDialog( const QgsAbstract3DSymbol *symbol, QWidget *parent /TransferThis/ = 0 );
 %Docstring
-Constructor for Qgs3DSymbolDialog, initially showing the specified ``symbol``.
+Constructor for Qgs3DSymbolDialog, initially showing the specified
+``symbol``.
 %End
 
     QgsAbstract3DSymbol *symbol() const /Factory/;
@@ -91,5 +118,5 @@ Returns a reference to the dialog's button box.
  *                                                                      *
  * src/gui/qgs3dsymbolwidget.h                                          *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/

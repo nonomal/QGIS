@@ -18,13 +18,14 @@
 #define VECTOR3D_H
 
 #include <cmath>
+
 #include "qgis_analysis.h"
 
 #define SIP_NO_FILE
 
 /**
  * \ingroup analysis
- * \brief Class Vector3D represents a 3D-Vector, capable to store x-,y- and
+ * \brief Represents a 3D-Vector, capable of storing x, y and
  * z-coordinates in double values.
  *
  * In fact, the class is the same as QgsPoint.
@@ -45,7 +46,7 @@ class ANALYSIS_EXPORT Vector3D
   public:
     //! Constructor taking the three components as arguments
     Vector3D( double x, double y, double z );
-    //! Default constructor
+
     Vector3D() = default;
 
     // TODO c++20 - replace with = default
@@ -82,9 +83,7 @@ inline Vector3D::Vector3D( double x, double y, double z )
   : mX( x )
   , mY( y )
   , mZ( z )
-{
-
-}
+{}
 
 //-------------------------------------------setter and getters-------------------------------
 

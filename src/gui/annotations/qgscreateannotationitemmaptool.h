@@ -18,6 +18,11 @@
 #include "qgis_gui.h"
 #include "qgis_sip.h"
 #include "qgsmaptooladvanceddigitizing.h"
+#include "qgssettingstree.h"
+
+#include <QString>
+
+using namespace Qt::StringLiterals;
 
 class QgsAnnotationItem;
 class QgsAnnotationLayer;
@@ -42,7 +47,6 @@ class GUI_EXPORT QgsCreateAnnotationItemMapToolHandler : public QObject
     Q_OBJECT
 
   public:
-
     /**
      * Constructor for QgsCreateAnnotationItemMapToolHandler, with the specified \a parent object.
      */
@@ -80,11 +84,8 @@ class GUI_EXPORT QgsCreateAnnotationItemMapToolHandler : public QObject
     void itemCreated();
 
   private:
-
     QgsMapCanvas *mMapCanvas = nullptr;
-    QgsAdvancedDigitizingDockWidget *mCadDockWidget = nullptr;
-    std::unique_ptr< QgsAnnotationItem > mCreatedItem;
-
+    std::unique_ptr<QgsAnnotationItem> mCreatedItem;
 };
 
 /**
@@ -102,13 +103,16 @@ class GUI_EXPORT QgsCreateAnnotationItemMapToolHandler : public QObject
 class GUI_EXPORT QgsCreateAnnotationItemMapToolInterface
 {
   public:
+#ifndef SIP_RUN
+    static inline QgsSettingsTreeNode *sTreeAnnotationTools = QgsSettingsTree::sTreeGui->createChildNode( u"annotation-items"_s );
+#endif
 
     virtual ~QgsCreateAnnotationItemMapToolInterface() = default;
 
     /**
      * Returns the handler object for the map tool.
      */
-    virtual QgsCreateAnnotationItemMapToolHandler *handler() = 0;
+    virtual QgsCreateAnnotationItemMapToolHandler *handler() const = 0;
 
     /**
      * Returns a reference to the associated map tool.

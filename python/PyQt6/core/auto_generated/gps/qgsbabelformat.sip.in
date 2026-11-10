@@ -3,8 +3,9 @@
  *                                                                      *
  * src/core/gps/qgsbabelformat.h                                        *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/
+
 
 
 
@@ -21,7 +22,6 @@ Abstract base class for babel GPS formats.
 #include "qgsbabelformat.h"
 %End
   public:
-
     virtual ~QgsAbstractBabelFormat();
 
     QString name() const;
@@ -34,11 +34,7 @@ Returns the format's name.
 Returns the format's capabilities.
 %End
 
-    virtual QStringList importCommand( const QString &babel,
-                                       Qgis::GpsFeatureType featureType,
-                                       const QString &input,
-                                       const QString &output,
-                                       Qgis::BabelCommandFlags flags = Qgis::BabelCommandFlags() ) const;
+    virtual QStringList importCommand( const QString &babel, Qgis::GpsFeatureType featureType, const QString &input, const QString &output, Qgis::BabelCommandFlags flags = Qgis::BabelCommandFlags() ) const;
 %Docstring
 Generates a command for importing data into a GPS format using babel.
 
@@ -48,16 +44,14 @@ Generates a command for importing data into a GPS format using babel.
 :param output: output path
 :param flags: optional flags to control how babel command is generated
 
-Returns an empty list if the format does not support imports (see :py:func:`~QgsAbstractBabelFormat.capabilities`).
+Returns an empty list if the format does not support imports (see
+:py:func:`~QgsAbstractBabelFormat.capabilities`).
 %End
 
-    virtual QStringList exportCommand( const QString &babel,
-                                       Qgis::GpsFeatureType featureType,
-                                       const QString &input,
-                                       const QString &output,
-                                       Qgis::BabelCommandFlags flags = Qgis::BabelCommandFlags() ) const;
+    virtual QStringList exportCommand( const QString &babel, Qgis::GpsFeatureType featureType, const QString &input, const QString &output, Qgis::BabelCommandFlags flags = Qgis::BabelCommandFlags() ) const;
 %Docstring
-Generates a command for exporting GPS data into a different format using babel.
+Generates a command for exporting GPS data into a different format using
+babel.
 
 :param babel: path to the babel executable
 :param featureType: type of GPS feature to export
@@ -65,11 +59,11 @@ Generates a command for exporting GPS data into a different format using babel.
 :param output: output path
 :param flags: optional flags to control how babel command is generated
 
-Returns an empty list if the format does not support exports (see :py:func:`~QgsAbstractBabelFormat.capabilities`).
+Returns an empty list if the format does not support exports (see
+:py:func:`~QgsAbstractBabelFormat.capabilities`).
 %End
 
   protected:
-
     explicit QgsAbstractBabelFormat( const QString &name = QString() );
 %Docstring
 Constructor for QgsAbstractBabelFormat, with the specified ``name``.
@@ -96,21 +90,21 @@ A babel format capable of converting input files to GPX files.
 #include "qgsbabelformat.h"
 %End
   public:
-
-    QgsBabelSimpleImportFormat( const QString &format, const QString &description, Qgis::BabelFormatCapabilities capabilities,
-                                const QStringList extensions = QStringList() );
+    QgsBabelSimpleImportFormat( const QString &format, const QString &description, Qgis::BabelFormatCapabilities capabilities, const QStringList extensions = QStringList() );
 %Docstring
 Constructor for QgsBabelSimpleImportFormat.
 
-The ``format`` argument specifies the babel identifier for the input format.
+The ``format`` argument specifies the babel identifier for the input
+format.
 
-The ``description`` argument specified a descriptive name for the format.
+The ``description`` argument specified a descriptive name for the
+format.
 
-The ``capabilities`` argument must reflect whether the format is capable of handling
-waypoints, routes and/or tracks.
+The ``capabilities`` argument must reflect whether the format is capable
+of handling waypoints, routes and/or tracks.
 
-The optional ``extensions`` argument can be used to populate a list of known file
-extensions for the format (e.g. "csv", "txt").
+The optional ``extensions`` argument can be used to populate a list of
+known file extensions for the format (e.g. "csv", "txt").
 %End
 
     QString description() const;
@@ -123,11 +117,9 @@ Returns the friendly description for the format.
 Returns the list of known extensions for the format, e.g. "csv", "txt".
 %End
 
-     virtual QStringList importCommand( const QString &babel,
-                               Qgis::GpsFeatureType featureType,
-                               const QString &input,
-                               const QString &output,
-                               Qgis::BabelCommandFlags flags = Qgis::BabelCommandFlags() ) const;
+    virtual QStringList importCommand( const QString &babel, Qgis::GpsFeatureType featureType, const QString &input, const QString &output, Qgis::BabelCommandFlags flags = Qgis::BabelCommandFlags() ) const;
+
+
 };
 
 /************************************************************************
@@ -135,5 +127,5 @@ Returns the list of known extensions for the format, e.g. "csv", "txt".
  *                                                                      *
  * src/core/gps/qgsbabelformat.h                                        *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/

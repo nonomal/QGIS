@@ -14,11 +14,18 @@
  ***************************************************************************/
 
 #include "qgsfeaturepickermodelbase.h"
-#include "qgsfeatureexpressionvaluesgatherer.h"
 
-#include "qgsvectorlayer.h"
 #include "qgsconditionalstyle.h"
 #include "qgsexpressioncontextutils.h"
+#include "qgsfeatureexpressionvaluesgatherer.h"
+#include "qgsvaluerelationfieldformatter.h"
+#include "qgsvectorlayer.h"
+
+#include <QString>
+
+#include "moc_qgsfeaturepickermodelbase.cpp"
+
+using namespace Qt::StringLiterals;
 
 QgsFeaturePickerModelBase::QgsFeaturePickerModelBase( QObject *parent )
   : QAbstractItemModel( parent )
@@ -30,7 +37,6 @@ QgsFeaturePickerModelBase::QgsFeaturePickerModelBase( QObject *parent )
   // The fact that the feature changed is a combination of the 2 signals:
   // If the extra value is set to a feature currently not fetched, it will go through an intermediate step while the extra value does not exist (as it call reloadFeature)
   connect( this, &QgsFeaturePickerModelBase::extraIdentifierValueChanged, this, &QgsFeaturePickerModelBase::currentFeatureChanged );
-  connect( this, &QgsFeaturePickerModelBase::extraValueDoesNotExistChanged, this, &QgsFeaturePickerModelBase::currentFeatureChanged );
 }
 
 
@@ -114,6 +120,41 @@ void QgsFeaturePickerModelBase::setFilterExpression( const QString &filterExpres
   emit filterExpressionChanged();
 }
 
+QgsFeature QgsFeaturePickerModelBase::formFeature() const
+{
+  return mFormFeature;
+}
+
+void QgsFeaturePickerModelBase::setFormFeature( const QgsFeature &feature )
+{
+  if ( mFormFeature == feature )
+    return;
+
+  mFormFeature = feature;
+  if ( !mFilterExpression.isEmpty() && QgsValueRelationFieldFormatter::expressionRequiresFormScope( mFilterExpression ) )
+  {
+    reload();
+  }
+  emit formFeatureChanged();
+}
+
+QgsFeature QgsFeaturePickerModelBase::parentFormFeature() const
+{
+  return mParentFormFeature;
+}
+
+void QgsFeaturePickerModelBase::setParentFormFeature( const QgsFeature &feature )
+{
+  if ( mParentFormFeature == feature )
+    return;
+
+  mParentFormFeature = feature;
+  if ( !mFilterExpression.isEmpty() && QgsValueRelationFieldFormatter::expressionRequiresParentFormScope( mFilterExpression ) )
+  {
+    reload();
+  }
+  emit parentFormFeatureChanged();
+}
 
 bool QgsFeaturePickerModelBase::isLoading() const
 {
@@ -145,7 +186,6 @@ int QgsFeaturePickerModelBase::rowCount( const QModelIndex &parent ) const
   Q_UNUSED( parent )
   return mEntries.size();
 }
-
 
 
 QVariant QgsFeaturePickerModelBase::data( const QModelIndex &index, int role ) const
@@ -266,7 +306,33 @@ void QgsFeaturePickerModelBase::updateCompleter()
   else
   {
     // We got strings for a filter selection
-    std::sort( entries.begin(), entries.end(), []( const QgsFeatureExpressionValuesGatherer::Entry & a, const QgsFeatureExpressionValuesGatherer::Entry & b ) { return a.value.localeAwareCompare( b.value ) < 0; } );
+    std::sort( entries.begin(), entries.end(), [&]( const QgsFeatureExpressionValuesGatherer::Entry &a, const QgsFeatureExpressionValuesGatherer::Entry &b ) {
+      bool ok = false;
+      double aNumericOrderValue = a.orderValue.toDouble( &ok );
+      if ( ok )
+      {
+        double bNumericOrderValue = b.orderValue.toDouble( &ok );
+        if ( ok )
+        {
+          if ( mSortOrder == Qt::DescendingOrder )
+          {
+            return aNumericOrderValue > bNumericOrderValue;
+          }
+          else
+          {
+            return aNumericOrderValue < bNumericOrderValue;
+          }
+        }
+      }
+      if ( mSortOrder == Qt::DescendingOrder )
+      {
+        return a.orderValue.localeAwareCompare( b.orderValue ) > 0;
+      }
+      else
+      {
+        return a.orderValue.localeAwareCompare( b.orderValue ) < 0;
+      }
+    } );
 
     if ( mAllowNull && mSourceLayer )
     {
@@ -397,14 +463,26 @@ void QgsFeaturePickerModelBase::scheduledReload()
     if ( mFilterValue.isEmpty() && !mFilterExpression.isEmpty() )
       filterClause = mFilterExpression;
     else if ( mFilterExpression.isEmpty() && !mFilterValue.isEmpty() )
-      filterClause = QStringLiteral( "(%1) ILIKE '%%2%'" ).arg( mDisplayExpression, mFilterValue );
+      filterClause = u"(%1) ILIKE '%%2%'"_s.arg( mDisplayExpression, mFilterValue );
     else if ( !mFilterExpression.isEmpty() && !mFilterValue.isEmpty() )
-      filterClause = QStringLiteral( "(%1) AND ((%2) ILIKE '%%3%')" ).arg( mFilterExpression, mDisplayExpression, mFilterValue );
+      filterClause = u"(%1) AND ((%2) ILIKE '%%3%')"_s.arg( mFilterExpression, mDisplayExpression, mFilterValue );
 
     if ( !filterClause.isEmpty() )
     {
       request.setFilterExpression( filterClause );
       request.expressionContext()->appendScopes( QgsExpressionContextUtils::globalProjectLayerScopes( sourceLayer() ) );
+
+      if ( !mFilterExpression.isEmpty() )
+      {
+        if ( mFormFeature.isValid() && QgsValueRelationFieldFormatter::expressionRequiresFormScope( mFilterExpression ) )
+        {
+          request.expressionContext()->appendScope( QgsExpressionContextUtils::formScope( mFormFeature ) );
+        }
+        if ( mParentFormFeature.isValid() && QgsValueRelationFieldFormatter::expressionRequiresParentFormScope( mFilterExpression ) )
+        {
+          request.expressionContext()->appendScope( QgsExpressionContextUtils::parentFormScope( mParentFormFeature ) );
+        }
+      }
     }
   }
   QSet<QString> attributes = requestedAttributes();
@@ -434,6 +512,9 @@ void QgsFeaturePickerModelBase::scheduledReload()
 
 QSet<QString> QgsFeaturePickerModelBase::requestedAttributesForStyle() const
 {
+  if ( !mSourceLayer )
+    return {};
+
   QSet<QString> requestedAttrs;
 
   const auto rowStyles = mSourceLayer->conditionalStyles()->rowStyles();
@@ -527,14 +608,14 @@ QgsConditionalStyle QgsFeaturePickerModelBase::featureStyle( const QgsFeature &f
   const QgsFeatureId fid = feature.id();
   mExpressionContext.setFeature( feature );
 
-  auto styles = QgsConditionalStyle::matchingConditionalStyles( layer->conditionalStyles()->rowStyles(), QVariant(),  mExpressionContext );
+  auto styles = QgsConditionalStyle::matchingConditionalStyles( layer->conditionalStyles()->rowStyles(), QVariant(), mExpressionContext );
 
   if ( mDisplayExpression.referencedColumns().count() == 1 )
   {
     // Style specific for this field
     const QString fieldName = *mDisplayExpression.referencedColumns().constBegin();
     const auto allStyles = layer->conditionalStyles()->fieldStyles( fieldName );
-    const auto matchingFieldStyles = QgsConditionalStyle::matchingConditionalStyles( allStyles, feature.attribute( fieldName ),  mExpressionContext );
+    const auto matchingFieldStyles = QgsConditionalStyle::matchingConditionalStyles( allStyles, feature.attribute( fieldName ), mExpressionContext );
 
     styles += matchingFieldStyles;
   }
@@ -607,7 +688,7 @@ void QgsFeaturePickerModelBase::setExtraValueDoesNotExist( bool extraValueDoesNo
     return;
 
   mExtraValueDoesNotExist = extraValueDoesNotExist;
-  emit extraValueDoesNotExistChanged();
+  emit extraValueDoesNotExistChanged( mExtraValueDoesNotExist );
 }
 
 
@@ -642,3 +723,36 @@ void QgsFeaturePickerModelBase::setExtraIdentifierValue( const QVariant &extraId
   emit extraIdentifierValueChanged();
 }
 
+
+QString QgsFeaturePickerModelBase::orderExpression() const
+{
+  return mOrderExpression.expression();
+}
+
+
+void QgsFeaturePickerModelBase::setOrderExpression( const QString &orderExpression )
+{
+  if ( mOrderExpression.expression() == orderExpression )
+    return;
+
+  mOrderExpression = QgsExpression( orderExpression );
+  reload();
+  emit orderExpressionChanged();
+}
+
+
+Qt::SortOrder QgsFeaturePickerModelBase::sortOrder() const
+{
+  return mSortOrder;
+}
+
+
+void QgsFeaturePickerModelBase::setSortOrder( const Qt::SortOrder sortOrder )
+{
+  if ( mSortOrder == sortOrder )
+    return;
+
+  mSortOrder = sortOrder;
+  reload();
+  emit sortOrderChanged();
+}

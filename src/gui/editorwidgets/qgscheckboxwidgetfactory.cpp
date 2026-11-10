@@ -14,14 +14,14 @@
  ***************************************************************************/
 
 #include "qgscheckboxwidgetfactory.h"
+
+#include "qgscheckboxconfigdlg.h"
 #include "qgscheckboxsearchwidgetwrapper.h"
 #include "qgscheckboxwidgetwrapper.h"
-#include "qgscheckboxconfigdlg.h"
 
-QgsCheckboxWidgetFactory::QgsCheckboxWidgetFactory( const QString &name )
-  : QgsEditorWidgetFactory( name )
-{
-}
+QgsCheckboxWidgetFactory::QgsCheckboxWidgetFactory( const QString &name, const QIcon &icon )
+  : QgsEditorWidgetFactory( name, icon )
+{}
 
 QgsEditorWidgetWrapper *QgsCheckboxWidgetFactory::create( QgsVectorLayer *vl, int fieldIdx, QWidget *editor, QWidget *parent ) const
 {
@@ -48,6 +48,6 @@ QHash<const char *, int> QgsCheckboxWidgetFactory::supportedWidgetTypes()
 
 unsigned int QgsCheckboxWidgetFactory::fieldScore( const QgsVectorLayer *vl, int fieldIdx ) const
 {
-  const QVariant::Type type = vl->fields().field( fieldIdx ).type();
-  return type == QVariant::Bool ? 20 : 5;
+  const QMetaType::Type type = vl->fields().field( fieldIdx ).type();
+  return type == QMetaType::Type::Bool ? 20 : 5;
 }

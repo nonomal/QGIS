@@ -16,7 +16,6 @@
 #ifndef QGSVIRTUALPOINTCLOUDENTITY_P_H
 #define QGSVIRTUALPOINTCLOUDENTITY_P_H
 
-#define SIP_NO_FILE
 ///@cond PRIVATE
 
 //
@@ -28,21 +27,24 @@
 // version without notice, or even be removed.
 //
 
+#include "qgs3dmapsceneentity.h"
+#include "qgs3drendercontext.h"
+#include "qgschunkedentity.h"
 #include "qgscoordinatetransform.h"
-#include "qgschunkedentity_p.h"
-#include "qgs3dmapsceneentity_p.h"
+#include "qgspointcloudlayerchunkloader_p.h"
+
+#define SIP_NO_FILE
 
 class QgsAABB;
 class QgsChunkBoundsEntity;
 class QgsPointCloudLayer;
-class QgsPointCloudIndex;
 class QgsVirtualPointCloudProvider;
 class QgsPointCloud3DSymbol;
 class Qgs3DMapSettings;
 
 
 /**
- * \ingroup 3d
+ * \ingroup qgis_3d
  * \brief Implementation of entity that handles virtual point cloud sub indexes
  *
  * This entity is parent to a QgsChunkBoundsEntity that renders all sub indexes' bounding boxes, as well as all individual
@@ -56,8 +58,20 @@ class QgsVirtualPointCloudEntity : public Qgs3DMapSceneEntity
     Q_OBJECT
   public:
     //! Constructs
-    QgsVirtualPointCloudEntity( QgsPointCloudLayer *layer, const Qgs3DMapSettings &map, const QgsCoordinateTransform &coordinateTransform, QgsPointCloud3DSymbol *symbol, float maxScreenError, bool showBoundingBoxes,
-                                double zValueScale, double zValueOffset, int pointBudget );
+    QgsVirtualPointCloudEntity(
+      Qgs3DMapSettings *map,
+      QgsPointCloudLayer *layer,
+      const QgsCoordinateTransform &coordinateTransform,
+      QgsPointCloud3DSymbol *symbol,
+      float maxScreenError,
+      bool showBoundingBoxes,
+      double zValueScale,
+      double zValueOffset,
+      int pointBudget
+    );
+
+    //! Destructs
+    ~QgsVirtualPointCloudEntity() override;
 
     //! This is called when the camera moves. It's responsible for loading new indexes and decides if subindex will be rendered as bbox or chunked entity.
     void handleSceneUpdate( const SceneContext &sceneContext ) override;
@@ -88,17 +102,13 @@ class QgsVirtualPointCloudEntity : public Qgs3DMapSceneEntity
     //! Returns a pointer to the associated layer's provider
     QgsVirtualPointCloudProvider *provider() const;
 
-    //! Returns the bounding box for sub index i
-    QgsAABB boundingBox( int i ) const;
-
     QgsPointCloudLayer *mLayer = nullptr;
     QMap<int, QgsChunkedEntity *> mChunkedEntitiesMap;
     QgsChunkBoundsEntity *mBboxesEntity = nullptr;
-    QList<QgsAABB> mBboxes;
-    const Qgs3DMapSettings &mMap;
+    QList<QgsPointCloudLayerChunkedEntity *> mOverviewEntities;
+    QList<QgsBox3D> mBboxes;
     QgsCoordinateTransform mCoordinateTransform;
-    QgsPointCloudIndex *mPointCloudIndex;
-    std::unique_ptr< QgsPointCloud3DSymbol > mSymbol;
+    std::unique_ptr<QgsPointCloud3DSymbol> mSymbol;
     double mZValueScale = 1.0;
     double mZValueOffset = 0;
     int mPointBudget = 1000000;

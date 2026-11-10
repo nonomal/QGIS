@@ -18,9 +18,10 @@
 #ifndef QGSRASTERRANGE_H
 #define QGSRASTERRANGE_H
 
+#include "qgis.h"
 #include "qgis_core.h"
 #include "qgis_sip.h"
-#include "qgis.h"
+
 #include <QList>
 
 class QgsRasterRange;
@@ -29,20 +30,19 @@ typedef QList<QgsRasterRange> QgsRasterRangeList;
 
 /**
  * \ingroup core
- * \brief Raster values range container. Represents range of values between min and max
- * including min and max value.
+ * \brief Represents a range of raster values between min and max, optionally
+ * including the min and max value.
  */
 class CORE_EXPORT QgsRasterRange
 {
   public:
-
     //! Handling for min and max bounds
     enum BoundsType
     {
       IncludeMinAndMax = 0, //!< Min and max values are inclusive
-      IncludeMax, //!< Include the max value, but not the min value, e.g. min < value <= max
-      IncludeMin, //!< Include the min value, but not the max value, e.g. min <= value < max
-      Exclusive, //!< Don't include either the min or max value, e.g. min < value < max
+      IncludeMax,           //!< Include the max value, but not the min value, e.g. min < value <= max
+      IncludeMin,           //!< Include the min value, but not the max value, e.g. min <= value < max
+      Exclusive,            //!< Don't include either the min or max value, e.g. min < value < max
     };
 
     /**
@@ -113,13 +113,8 @@ class CORE_EXPORT QgsRasterRange
      */
     bool contains( double value ) const
     {
-      return ( value > mMin
-               || ( !std::isnan( mMin ) && qgsDoubleNear( value, mMin ) && ( mType == IncludeMinAndMax || mType == IncludeMin ) )
-               || std::isnan( mMin ) )
-             &&
-             ( value < mMax
-               || ( !std::isnan( mMax ) && qgsDoubleNear( value, mMax ) && ( mType == IncludeMinAndMax || mType == IncludeMax ) )
-               || std::isnan( mMax ) );
+      return ( value > mMin || ( !std::isnan( mMin ) && qgsDoubleNear( value, mMin ) && ( mType == IncludeMinAndMax || mType == IncludeMin ) ) || std::isnan( mMin ) )
+             && ( value < mMax || ( !std::isnan( mMax ) && qgsDoubleNear( value, mMax ) && ( mType == IncludeMinAndMax || mType == IncludeMax ) ) || std::isnan( mMax ) );
     }
 
     /**
@@ -159,5 +154,3 @@ class CORE_EXPORT QgsRasterRange
 };
 
 #endif
-
-

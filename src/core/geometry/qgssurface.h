@@ -30,16 +30,9 @@ class QgsPolygon;
  * \class QgsSurface
  * \brief Surface geometry type.
  */
-class CORE_EXPORT QgsSurface: public QgsAbstractGeometry
+class CORE_EXPORT QgsSurface : public QgsAbstractGeometry
 {
   public:
-
-    /**
-     * Gets a polygon representation of this surface.
-     * Ownership is transferred to the caller.
-     */
-    virtual QgsPolygon *surfaceToPolygon() const = 0 SIP_FACTORY;
-
     QgsBox3D boundingBox3D() const override
     {
       if ( mBoundingBox.isNull() )
@@ -58,7 +51,9 @@ class CORE_EXPORT QgsSurface: public QgsAbstractGeometry
      * Cast the \a geom to a QgsSurface.
      * Should be used by qgsgeometry_cast<QgsSurface *>( geometry ).
      *
-     * \note Not available in Python. Objects will be automatically be converted to the appropriate target type.
+     * Objects will be automatically converted to the appropriate target type.
+     *
+     * \note Not available in Python.
      */
     inline static const QgsSurface *cast( const QgsAbstractGeometry *geom )
     {
@@ -68,13 +63,37 @@ class CORE_EXPORT QgsSurface: public QgsAbstractGeometry
       const Qgis::WkbType flatType = QgsWkbTypes::flatType( geom->wkbType() );
       if ( flatType == Qgis::WkbType::CurvePolygon
            || flatType == Qgis::WkbType::Polygon
-           || flatType == Qgis::WkbType::Triangle )
+           || flatType == Qgis::WkbType::Triangle
+           || flatType == Qgis::WkbType::PolyhedralSurface
+           || flatType == Qgis::WkbType::TIN )
         return static_cast<const QgsSurface *>( geom );
+      return nullptr;
+    }
+
+    /**
+     * Cast the \a geom to a QgsSurface.
+     * Should be used by qgsgeometry_cast<QgsSurface *>( geometry ).
+     *
+     * Objects will be automatically converted to the appropriate target type.
+     *
+     * \note Not available in Python.
+     */
+    inline static QgsSurface *cast( QgsAbstractGeometry *geom )
+    {
+      if ( !geom )
+        return nullptr;
+
+      const Qgis::WkbType flatType = QgsWkbTypes::flatType( geom->wkbType() );
+      if ( flatType == Qgis::WkbType::CurvePolygon
+           || flatType == Qgis::WkbType::Polygon
+           || flatType == Qgis::WkbType::Triangle
+           || flatType == Qgis::WkbType::PolyhedralSurface
+           || flatType == Qgis::WkbType::TIN )
+        return static_cast<QgsSurface *>( geom );
       return nullptr;
     }
 #endif
   protected:
-
     void clearCache() const override;
 
     mutable QgsBox3D mBoundingBox;

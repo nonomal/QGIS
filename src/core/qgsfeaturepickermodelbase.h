@@ -37,13 +37,14 @@ class CORE_EXPORT QgsFeaturePickerModelBase : public QAbstractItemModel SIP_ABST
     Q_PROPERTY( QString displayExpression READ displayExpression WRITE setDisplayExpression NOTIFY displayExpressionChanged )
     Q_PROPERTY( QString filterValue READ filterValue WRITE setFilterValue NOTIFY filterValueChanged )
     Q_PROPERTY( QString filterExpression READ filterExpression WRITE setFilterExpression NOTIFY filterExpressionChanged )
+    Q_PROPERTY( QString orderExpression READ orderExpression WRITE setOrderExpression NOTIFY orderExpressionChanged )
+    Q_PROPERTY( Qt::SortOrder sortOrder READ sortOrder WRITE setSortOrder NOTIFY sortOrderChanged )
     Q_PROPERTY( bool allowNull READ allowNull WRITE setAllowNull NOTIFY allowNullChanged )
     Q_PROPERTY( bool fetchGeometry READ fetchGeometry WRITE setFetchGeometry NOTIFY fetchGeometryChanged )
     Q_PROPERTY( int fetchLimit READ fetchLimit WRITE setFetchLimit NOTIFY fetchLimitChanged )
     Q_PROPERTY( int extraIdentifierValueIndex READ extraIdentifierValueIndex NOTIFY extraIdentifierValueIndexChanged )
 
   public:
-
     // *INDENT-OFF*
 
     /**
@@ -54,11 +55,11 @@ class CORE_EXPORT QgsFeaturePickerModelBase : public QAbstractItemModel SIP_ABST
      */
     enum class CustomRole SIP_MONKEYPATCH_SCOPEENUM_UNNEST( QgsFeaturePickerModelBase, Role ) : int
     {
-      IdentifierValue SIP_MONKEYPATCH_COMPAT_NAME(IdentifierValueRole) = Qt::UserRole, //!< \deprecated Use IdentifierValuesRole instead
-      IdentifierValues SIP_MONKEYPATCH_COMPAT_NAME(IdentifierValuesRole), //!< Used to retrieve the identifierValues (primary keys) of a feature.
-      Value SIP_MONKEYPATCH_COMPAT_NAME(ValueRole), //!< Used to retrieve the displayExpression of a feature.
-      Feature SIP_MONKEYPATCH_COMPAT_NAME(FeatureRole), //!< Used to retrieve the feature, it might be incomplete if the request doesn't fetch all attributes or geometry.
-      FeatureId SIP_MONKEYPATCH_COMPAT_NAME(FeatureIdRole) //!< Used to retrieve the id of a feature.
+      IdentifierValue SIP_MONKEYPATCH_COMPAT_NAME( IdentifierValueRole ) = Qt::UserRole, //!< Used to retrieve the identifier value (primary key) of a feature. \deprecated QGIS 3.40. Use IdentifierValuesRole instead.
+      IdentifierValues SIP_MONKEYPATCH_COMPAT_NAME( IdentifierValuesRole ), //!< Used to retrieve the identifierValues (primary keys) of a feature.
+      Value SIP_MONKEYPATCH_COMPAT_NAME( ValueRole ),                       //!< Used to retrieve the displayExpression of a feature.
+      Feature SIP_MONKEYPATCH_COMPAT_NAME( FeatureRole ),                   //!< Used to retrieve the feature, it might be incomplete if the request doesn't fetch all attributes or geometry.
+      FeatureId SIP_MONKEYPATCH_COMPAT_NAME( FeatureIdRole )                //!< Used to retrieve the id of a feature.
     };
     Q_ENUM( CustomRole )
     // *INDENT-ON*
@@ -130,6 +131,55 @@ class CORE_EXPORT QgsFeaturePickerModelBase : public QAbstractItemModel SIP_ABST
      * Can be used for spatial filtering etc.
      */
     void setFilterExpression( const QString &filterExpression );
+
+    /**
+     * The order expression will be used for sort values in the combobox.
+     * \since QGIS 4.0
+     */
+    QString orderExpression() const;
+
+    /**
+     * The order expression will be used for sort values in the combobox.
+     * \since QGIS 4.0
+     */
+    void setOrderExpression( const QString &orderExpression );
+
+    /**
+     * The order direction will be used for sort values in the combobox. Ascending or descending.
+     * \since QGIS 4.0
+     */
+    Qt::SortOrder sortOrder() const;
+
+    /**
+     * The order direction will be used for sort values in the combobox. Ascending or descending.
+     * \since QGIS 4.0
+     */
+    void setSortOrder( const Qt::SortOrder sortOrder );
+
+
+    /**
+     * Returns an attribute form feature to be used with the filter expression.
+     * \since QGIS 3.42.2
+     */
+    QgsFeature formFeature() const;
+
+    /**
+     * Sets an attribute form \a feature to be used with the filter expression.
+     * \since QGIS 3.42.2
+     */
+    void setFormFeature( const QgsFeature &feature );
+
+    /**
+     * Returns a parent attribute form feature to be used with the filter expression.
+     * \since QGIS 3.42.2
+     */
+    QgsFeature parentFormFeature() const;
+
+    /**
+     * Sets a parent attribute form \a feature to be used with the filter expression.
+     * \since QGIS 3.42.2
+     */
+    void setParentFormFeature( const QgsFeature &feature );
 
     /**
      * Indicator if the model is currently performing any feature iteration in the background.
@@ -220,6 +270,32 @@ class CORE_EXPORT QgsFeaturePickerModelBase : public QAbstractItemModel SIP_ABST
     void filterExpressionChanged();
 
     /**
+     * An expression for generating values for sorting.
+     * Can be used for combo boxes etc.
+     * \since QGIS 4.0
+     */
+    void orderExpressionChanged();
+
+    /**
+     * The direction used for sorting.
+     * Can be used for combo boxes etc.
+     * \since QGIS 4.0
+     */
+    void sortOrderChanged();
+
+    /**
+     * An attribute form feature to be used alongside the filter expression.
+     * \since QGIS 3.42.2
+     */
+    void formFeatureChanged();
+
+    /**
+     * A parent attribute form feature to be used alongside the filter expression.
+     * \since QGIS 3.42.2
+     */
+    void parentFormFeatureChanged();
+
+    /**
      * Indicator if the model is currently performing any feature iteration in the background.
      */
     void isLoadingChanged();
@@ -241,9 +317,9 @@ class CORE_EXPORT QgsFeaturePickerModelBase : public QAbstractItemModel SIP_ABST
     void extraIdentifierValueIndexChanged( int index );
 
     /**
-     * Flag indicating that the extraIdentifierValue does not exist in the data.
+     * Notification whether the model has \a found a feature tied to the extraIdentifierValue or not.
      */
-    void extraValueDoesNotExistChanged();
+    void extraValueDoesNotExistChanged( bool found );
 
     /**
      * Notification that the model is about to be changed because a job was completed.
@@ -276,7 +352,6 @@ class CORE_EXPORT QgsFeaturePickerModelBase : public QAbstractItemModel SIP_ABST
     void scheduledReload();
 
   protected:
-
     /**
      * Allows specifying one value that does not need to match the filter criteria but will
      * still be available in the model.
@@ -301,7 +376,7 @@ class CORE_EXPORT QgsFeaturePickerModelBase : public QAbstractItemModel SIP_ABST
      * Returns the attributes to be fetched in the request.
      * Returns an empty set if all attributes should be fetched.
      */
-    virtual QSet<QString> requestedAttributes() const {return {};}
+    virtual QSet<QString> requestedAttributes() const { return {}; }
 
     //! Creates the value gatherer
     virtual QgsFeatureExpressionValuesGatherer *createValuesGatherer( const QgsFeatureRequest &request ) const = 0;
@@ -342,10 +417,15 @@ class CORE_EXPORT QgsFeaturePickerModelBase : public QAbstractItemModel SIP_ABST
 
     QgsConditionalStyle featureStyle( const QgsFeature &feature ) const;
 
-    QgsVectorLayer *mSourceLayer = nullptr;
+    QPointer< QgsVectorLayer > mSourceLayer;
     QgsExpression mDisplayExpression;
     QString mFilterValue;
     QString mFilterExpression;
+    QgsExpression mOrderExpression;
+    Qt::SortOrder mSortOrder = Qt::AscendingOrder;
+
+    QgsFeature mFormFeature;
+    QgsFeature mParentFormFeature;
 
     mutable QgsExpressionContext mExpressionContext;
     mutable QMap< QgsFeatureId, QgsConditionalStyle > mEntryStylesMap;

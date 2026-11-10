@@ -18,16 +18,21 @@
 #ifndef QGSRECTANGLE_H
 #define QGSRECTANGLE_H
 
-#include "qgis_core.h"
-#include "qgis.h"
 #include <iosfwd>
+
+#include "qgis.h"
+#include "qgis_core.h"
+#include "qgspointxy.h"
+
 #include <QDomDocument>
 #include <QRectF>
+#include <QString>
+
+using namespace Qt::StringLiterals;
 
 class QString;
 class QRectF;
 class QgsBox3D;
-#include "qgspointxy.h"
 
 
 /**
@@ -40,18 +45,37 @@ class QgsBox3D;
  */
 class CORE_EXPORT QgsRectangle
 {
-  public:
+    Q_GADGET
 
+    Q_PROPERTY( double xMinimum READ xMinimum WRITE setXMinimum )
+    Q_PROPERTY( double xMaximum READ xMaximum WRITE setXMaximum )
+    Q_PROPERTY( double yMinimum READ yMinimum WRITE setYMinimum )
+    Q_PROPERTY( double yMaximum READ yMaximum WRITE setYMaximum )
+    Q_PROPERTY( double width READ width )
+    Q_PROPERTY( double height READ height )
+    Q_PROPERTY( double area READ area )
+    Q_PROPERTY( double perimeter READ perimeter )
+    Q_PROPERTY( QgsPointXY center READ center )
+    Q_PROPERTY( bool isEmpty READ isEmpty )
+    Q_PROPERTY( bool isNull READ isNull )
+    Q_PROPERTY( bool isValid READ isValid )
+
+  public:
     //! Constructor for a null rectangle
     QgsRectangle() = default; // optimised constructor for null rectangle - no need to call normalize here
 
+    // clang-format off
     /**
      * Constructs a QgsRectangle from a set of x and y minimum and maximum coordinates.
      *
      * The rectangle will be normalized after creation. Since QGIS 3.20, if \a normalize is FALSE then
      * the normalization step will not be applied automatically.
+     *
+     * If the the rectangle represents a portion of the globe in geographic coordinates where the extent
+     * wraps around the antimeridian then \a normalize must be set to FALSE.
      */
     explicit QgsRectangle( double xMin, double yMin = 0, double xMax = 0, double yMax = 0, bool normalize = true ) SIP_HOLDGIL
+      // clang-format on
   : mXmin( xMin )
     , mYmin( yMin )
     , mXmax( xMax )
@@ -85,7 +109,6 @@ class CORE_EXPORT QgsRectangle
       mYmax = qRectF.bottomRight().y();
     }
 
-    //! Copy constructor
     QgsRectangle( const QgsRectangle &other ) SIP_HOLDGIL
     {
       mXmin = other.xMinimum();
@@ -110,6 +133,18 @@ class CORE_EXPORT QgsRectangle
      * and \a width and \a height.
      */
     static QgsRectangle fromCenterAndSize( const QgsPointXY &center, double width, double height );
+
+    /**
+     * Creates a rectangle from the \a left, \a top, \a right and \a bottom edges.
+     *
+     * The rectangle will not be normalized, permitting situations where the left edge > right
+     * or top < bottom. E.g. for use when the rectangle
+     * represents a portion of the globe in geographic coordinates where the extent
+     * wraps around the antimeridian.
+     *
+     * \since QGIS 4.4
+     */
+    static QgsRectangle fromEdges( double left, double top, double right, double bottom );
 
     /**
      * Sets the rectangle from two QgsPoints.
@@ -183,7 +218,7 @@ class CORE_EXPORT QgsRectangle
      * Set a rectangle so that min corner is at max
      * and max corner is at min. It is NOT normalized.
      *
-     * \deprecated since QGIS 3.34 - will be removed in QGIS 4.0. Use setNull().
+     * \deprecated QGIS 3.34. Will be removed in QGIS 5.0. Use setNull().
      */
     Q_DECL_DEPRECATED void setMinimal() SIP_DEPRECATED
     {
@@ -191,24 +226,94 @@ class CORE_EXPORT QgsRectangle
     }
 
     /**
-     * Returns the x maximum value (right side of rectangle).
+     * Returns the x maximum value.
+     *
+     * This usually corresponds to the right side of the rectangle, unless the rectangle
+     * was created using non-normalized coordinates. E.g. when the rectangle
+     * represents a portion of the globe in geographic coordinates where the extent
+     * wraps around the antimeridian.
+     *
+     * \see right()
      */
     double xMaximum() const SIP_HOLDGIL { return mXmax; }
 
     /**
-     * Returns the x minimum value (left side of rectangle).
+     * Returns the x minimum value.
+     *
+     * This usually corresponds to the left side of the rectangle, unless the rectangle
+     * was created using non-normalized coordinates. E.g. when the rectangle
+     * represents a portion of the globe in geographic coordinates where the extent
+     * wraps around the antimeridian.
+     *
+     * \see left()
      */
     double xMinimum() const SIP_HOLDGIL { return mXmin; }
 
     /**
-     * Returns the y maximum value (top side of rectangle).
+     * Returns the y maximum value.
+     *
+     * This usually corresponds to the top of the rectangle, unless the rectangle
+     * was created using non-normalized coordinates.
+     *
+     * \see top()
      */
     double yMaximum() const SIP_HOLDGIL { return mYmax; }
 
     /**
-     * Returns the y minimum value (bottom side of rectangle).
+     * Returns the y minimum value.
+     *
+     * This usually corresponds to the bottom of the rectangle, unless the rectangle
+     * was created using non-normalized coordinates.
+     *
+     * \see top()
      */
     double yMinimum() const SIP_HOLDGIL { return mYmin; }
+
+    /**
+     * Returns the left side of the rectangle.
+     *
+     * This usually corresponds to the minimum x value, unless the rectangle
+     * represents a portion of the globe in geographic coordinates where the extent
+     * wraps around the antimeridian.
+     *
+     * \see xMinimum()
+     * \since QGIS 4.4
+     */
+    double left() const SIP_HOLDGIL { return mXmin; }
+
+    /**
+     * Returns the right side of the rectangle.
+     *
+     * This usually corresponds to the maximum x value, unless the rectangle
+     * represents a portion of the globe in geographic coordinates where the extent
+     * wraps around the antimeridian.
+     *
+     * \see xMaximum()
+     * \since QGIS 4.4
+     */
+    double right() const SIP_HOLDGIL { return mXmax; }
+
+    /**
+     * Returns the top side of the rectangle.
+     *
+     * This usually corresponds to the maximum y value, unless the rectangle
+     * was created using non-normalized coordinates.
+     *
+     * \see yMaximum()
+     * \since QGIS 4.4
+     */
+    double top() const SIP_HOLDGIL { return mYmax; }
+
+    /**
+     * Returns the bottom side of the rectangle.
+     *
+     * This usually corresponds to the minimum y value, unless the rectangle
+     * was created using non-normalized coordinates.
+     *
+     * \see yMinimum()
+     * \since QGIS 4.4
+     */
+    double bottom() const SIP_HOLDGIL { return mYmin; }
 
     /**
      * Normalize the rectangle so it has non-negative width/height.
@@ -370,6 +475,11 @@ class CORE_EXPORT QgsRectangle
      */
     bool intersects( const QgsRectangle &rect ) const SIP_HOLDGIL
     {
+      if ( isNull() || rect.isNull() )
+      {
+        return false;
+      }
+
       const double x1 = ( mXmin > rect.mXmin ? mXmin : rect.mXmin );
       const double x2 = ( mXmax < rect.mXmax ? mXmax : rect.mXmax );
       if ( x1 > x2 )
@@ -384,7 +494,16 @@ class CORE_EXPORT QgsRectangle
      */
     bool contains( const QgsRectangle &rect ) const SIP_HOLDGIL
     {
-      return ( rect.mXmin >= mXmin && rect.mXmax <= mXmax && rect.mYmin >= mYmin && rect.mYmax <= mYmax );
+      // simple case, both rectangles are normalized
+      if ( isNormalized() && rect.isNormalized() )
+      {
+        return qgsDoubleGreaterThanOrNear( rect.mXmin, mXmin ) && qgsDoubleLessThanOrNear( rect.mXmax, mXmax )
+               && qgsDoubleGreaterThanOrNear( rect.mYmin, mYmin ) && qgsDoubleLessThanOrNear( rect.mYmax, mYmax );
+      }
+      else
+      {
+        return containsRange(mXmin, mXmax, rect.mXmin, rect.mXmax) && containsRange(mYmin, mYmax, rect.mYmin, rect.mYmax);
+      }
     }
 
     /**
@@ -483,21 +602,54 @@ class CORE_EXPORT QgsRectangle
     /**
      * Returns TRUE if the rectangle has no area.
      *
-     * An empty rectangle may still be non-null if it contains valid
-     * spatial information (e.g. bounding box of a point or of a vertical
-     * or horizontal segment).
+     * While a null rectangle is always considered empty, an empty rectangle
+     * may still be non-null if it contains valid spatial information (e.g. the
+     * bounding box of a point or of a vertical or horizontal segment).
+     *
+     * \warning Do not use this method to determine if the rectangle
+     * represents the bounding box of a point. The isPoint() method
+     * should be used instead.
      *
      * \see isNull()
+     * \see isPoint()
      */
     bool isEmpty() const
     {
-      return isNull() || mXmax <= mXmin || mYmax <= mYmin || qgsDoubleNear( mXmax, mXmin ) || qgsDoubleNear( mYmax, mYmin );
+      return isNull() || qgsDoubleNear( mXmax, mXmin ) || qgsDoubleNear( mYmax, mYmin );
+    }
+
+    /**
+     * Returns TRUE if the rectangle represents a point.
+     *
+     * A rectangle represents a point if both the x coordinates are an exact match and the y coordinates are
+     * an exact match.
+     *
+     * \see isNull()
+     * \since QGIS 4.4
+     */
+    bool isPoint() const
+    {
+      return qgsDoubleNear( mXmax, mXmin ) && qgsDoubleNear( mYmax, mYmin ) && !isNull();
+    }
+
+    /**
+     * Returns TRUE if the rectangle is normalized.
+     *
+     * A rectangle is normalized if the xMinimum() <= xMaximum() and yMinimum() <= yMaximum().
+     *
+     * \since QGIS 4.4
+     */
+    bool isNormalized() const
+    {
+      return qgsDoubleLessThanOrNear( mXmin, mXmax ) && qgsDoubleLessThanOrNear( mYmin, mYmax );
     }
 
     /**
      * Test if the rectangle is null (holding no spatial information).
      *
-     * A null rectangle is also an empty rectangle.
+     * A rectangle is considered null if all its coordinates are NaN,
+     * if it has not been defined yet, or if it has been explicitly initialized as null.
+     * A null rectangle is also an empty rectangle and an invalid rectangle.
      *
      * \see setNull()
      *
@@ -512,14 +664,52 @@ class CORE_EXPORT QgsRectangle
     }
 
     /**
+     * Test if the rectangle is valid
+     *
+     * A rectangle is considered invalid if at least one of its coordinates is NaN or infinite,
+     * or if a maximum coordinate is less than or equal to the corresponding minimum coordinate.
+     *
+     * \see isNull()
+     * \since QGIS 4.0
+     */
+    bool isValid() const
+    {
+      if ( ( !isFinite() ) || ( mXmax <= mXmin ) || ( mYmax <= mYmin ) )
+      {
+        return false;
+      }
+      return true;
+    }
+
+    /**
+     * Test if the rectangle is the maximal possible rectangle.
+     *
+     * A rectangle is considered maximal if all boundaries
+     * are either at their maximum possible values or are infinite values.
+     *
+     * \see isFinite()
+     * \see isNull()
+     * \see isEmpty()
+     *
+     * \since QGIS 3.44
+     */
+    bool isMaximal() const
+    {
+      return ( std::isinf( mXmin ) || mXmin == std::numeric_limits<double>::lowest() )
+             && ( std::isinf( mYmin ) || mYmin == std::numeric_limits<double>::lowest() )
+             && ( std::isinf( mXmax ) || mXmax == std::numeric_limits<double>::max() )
+             && ( std::isinf( mYmax ) || mYmax == std::numeric_limits<double>::max() );
+    }
+
+    /**
      * Returns a string representation of the rectangle in WKT format.
      */
-    QString asWktCoordinates() const;
+    Q_INVOKABLE QString asWktCoordinates() const;
 
     /**
      * Returns a string representation of the rectangle as a WKT Polygon.
      */
-    QString asWktPolygon() const;
+    Q_INVOKABLE QString asWktPolygon() const;
 
     /**
      * Returns a QRectF with same coordinates as the rectangle.
@@ -531,20 +721,16 @@ class CORE_EXPORT QgsRectangle
 
     /**
      * Returns a string representation of form xmin,ymin : xmax,ymax
-     * Coordinates will be truncated to the specified precision.
+     * Coordinates will be rounded to the specified precision.
      * If the specified precision is less than 0, a suitable minimum precision is used.
      */
-    QString toString( int precision = 16 ) const;
+    Q_INVOKABLE QString toString( int precision = 16 ) const;
 
     /**
      * Returns the rectangle as a polygon.
      */
     QString asPolygon() const;
 
-    /**
-     * Comparison operator
-     * \returns TRUE if rectangles are equal
-     */
     bool operator==( const QgsRectangle &r1 ) const
     {
       if ( isNull() ) return r1.isNull();
@@ -555,19 +741,11 @@ class CORE_EXPORT QgsRectangle
              qgsDoubleNear( r1.yMinimum(), yMinimum() );
     }
 
-    /**
-     * Comparison operator
-     * \returns FALSE if rectangles are equal
-     */
     bool operator!=( const QgsRectangle &r1 ) const
     {
       return ( ! operator==( r1 ) );
     }
 
-    /**
-     * Assignment operator
-     * \param r1 QgsRectangle to assign from
-     */
     QgsRectangle &operator=( const QgsRectangle &r1 )
     {
       if ( &r1 != this )
@@ -584,6 +762,10 @@ class CORE_EXPORT QgsRectangle
     /**
      * Returns TRUE if the rectangle has finite boundaries. Will
      * return FALSE if any of the rectangle boundaries are NaN or Inf.
+     *
+     * \see isMaximal()
+     * \see isNull()
+     * \see isEmpty()
      */
     bool isFinite() const
     {
@@ -613,6 +795,24 @@ class CORE_EXPORT QgsRectangle
      */
     QgsBox3D toBox3d( double zMin, double zMax ) const;
 
+    /**
+     * Splits the rectangle at the antimeridian (longitude 180 degrees).
+     *
+     * Returns two normalized rectangles, one representing the part to the west of the
+     * antimeridian and one which represents the part to the east.
+     *
+     * If the rectangle does not cross the antimeridian then the second returned
+     * rectangle will be a null rectangle.
+     *
+     * \warning This method is only valid for calling on rectangles which represent
+     * geographic extents (i.e. contain latitude/longitude coordinates). If the
+     * extent is in a projected CRS, then the results will be incorrect, even
+     * if that projected rectangle crosses the antimeridian.
+     *
+     * \since QGIS 4.4
+     */
+    std::pair< QgsRectangle, QgsRectangle > splitAtAntimeridian() const;
+
     //! Allows direct construction of QVariants from rectangles.
     operator QVariant() const
     {
@@ -628,15 +828,17 @@ class CORE_EXPORT QgsRectangle
     QgsRectangle snappedToGrid( double spacing ) const;
 
 #ifdef SIP_RUN
+// clang-format off
     SIP_PYOBJECT __repr__();
     % MethodCode
     QString str;
     if ( sipCpp->isNull() )
-      str = QStringLiteral( "<QgsRectangle()>" );
+      str = u"<QgsRectangle()>"_s;
     else
-      str = QStringLiteral( "<QgsRectangle: %1>" ).arg( sipCpp->asWktCoordinates() );
+      str = u"<QgsRectangle: %1>"_s.arg( sipCpp->asWktCoordinates() );
     sipRes = PyUnicode_FromString( str.toUtf8().constData() );
     % End
+// clang-format on
 #endif
 
   private:
@@ -645,6 +847,35 @@ class CORE_EXPORT QgsRectangle
     double mYmin = std::numeric_limits<double>::max();
     double mXmax = -std::numeric_limits<double>::max();
     double mYmax = -std::numeric_limits<double>::max();
+
+    /**
+     * Tests for range containment, handling non-normalized ranges where max < min
+     * (these are treated as "everything outside the value")
+     */
+    static bool containsRange(double aMin, double aMax, double bMin, double bMax)
+    {
+      const bool aNormalized = (aMax >= aMin);
+      const bool bNormalized = (bMax >= bMin);
+
+      if (aNormalized && bNormalized)
+      {
+        // both ranges normal, nice and easy
+        return qgsDoubleGreaterThanOrNear( bMin, aMin ) && qgsDoubleLessThanOrNear( bMax, aMax );
+      }
+      else if (!aNormalized && bNormalized)
+      {
+        return qgsDoubleGreaterThanOrNear( bMin, aMin ) || qgsDoubleLessThanOrNear( bMax, aMax );
+      }
+      else if ( aNormalized && !bNormalized )
+      {
+        // a cannot possibly contain b
+        return false;
+      }
+      else {
+        // both non-normalized
+        return qgsDoubleLessThanOrNear( aMin, bMin ) && qgsDoubleGreaterThanOrNear( aMax, bMax );
+      }
+    }
 
 };
 

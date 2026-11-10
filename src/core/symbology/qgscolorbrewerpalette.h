@@ -16,14 +16,15 @@
 #define QGSCOLORBREWERPALETTE_H
 
 #include "qgis_core.h"
-#include <QList>
-#include <QColor>
-
 #include "qgssymbollayerutils.h"
+
+#include <QColor>
+#include <QList>
 
 /**
  * \ingroup core
  * \class QgsColorBrewerPalette
+ * \brief Contains utility functions for working with Color Brewer color schemes.
  */
 class CORE_EXPORT QgsColorBrewerPalette
 {

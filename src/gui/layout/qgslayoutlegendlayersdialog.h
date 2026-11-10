@@ -16,13 +16,16 @@
 #define QGSLAYOUTLEGENDLAYERSDIALOG_H
 
 // We don't want to expose this in the public API
-#define SIP_NO_FILE
+
+#include "ui_qgslayoutlegendlayersdialogbase.h"
 
 #include "qgis_gui.h"
-#include "ui_qgslayoutlegendlayersdialogbase.h"
+
+#define SIP_NO_FILE
 
 class QgsMapLayer;
 class QgsMapLayerProxyModel;
+class QgsProject;
 
 /**
  * \ingroup gui
@@ -31,13 +34,16 @@ class QgsMapLayerProxyModel;
  * \note This class is not a part of public API
  * \since QGIS 3.12
  */
-class GUI_EXPORT QgsLayoutLegendLayersDialog: public QDialog, private Ui::QgsLayoutLegendLayersDialogBase
+class GUI_EXPORT QgsLayoutLegendLayersDialog : public QDialog, private Ui::QgsLayoutLegendLayersDialogBase
 {
     Q_OBJECT
 
   public:
-    //! constructor
-    QgsLayoutLegendLayersDialog( QWidget *parent = nullptr );
+    /**
+     * Constructor, taking layers from \a project.
+     * \since QGIS 4.4
+     */
+    QgsLayoutLegendLayersDialog( QWidget *parent, QgsProject *project );
 
     /**
      * Sets a list of visible \a layers, to use for filtering within the dialog.
@@ -45,7 +51,7 @@ class GUI_EXPORT QgsLayoutLegendLayersDialog: public QDialog, private Ui::QgsLay
     void setVisibleLayers( const QList<QgsMapLayer *> &layers );
 
     //! Returns the list of selected layers
-    QList< QgsMapLayer * > selectedLayers() const;
+    QList<QgsMapLayer *> selectedLayers() const;
 
   private slots:
 
@@ -53,9 +59,8 @@ class GUI_EXPORT QgsLayoutLegendLayersDialog: public QDialog, private Ui::QgsLay
     void showHelp();
 
   private:
-
     QgsMapLayerProxyModel *mModel = nullptr;
-    QList< QgsMapLayer * > mVisibleLayers;
+    QList<QgsMapLayer *> mVisibleLayers;
 };
 
 #endif //QGSLAYOUTLEGENDLAYERSDIALOG_H

@@ -13,18 +13,18 @@
  *                                                                         *
  ***************************************************************************/
 #include "qgsafsfeatureiterator.h"
-#include "qgsspatialindex.h"
-#include "qgsafsshareddata.h"
+
 #include "geometry/qgsgeometry.h"
-#include "qgsexception.h"
+#include "qgsafsshareddata.h"
 #include "qgsarcgisrestutils.h"
+#include "qgsexception.h"
 #include "qgsfeedback.h"
 #include "qgsgeometryengine.h"
+#include "qgsspatialindex.h"
 
 QgsAfsFeatureSource::QgsAfsFeatureSource( const std::shared_ptr<QgsAfsSharedData> &sharedData )
   : mSharedData( sharedData )
-{
-}
+{}
 
 QgsFeatureIterator QgsAfsFeatureSource::getFeatures( const QgsFeatureRequest &request )
 {
@@ -41,10 +41,7 @@ QgsAfsSharedData *QgsAfsFeatureSource::sharedData() const
 QgsAfsFeatureIterator::QgsAfsFeatureIterator( QgsAfsFeatureSource *source, bool ownSource, const QgsFeatureRequest &request )
   : QgsAbstractFeatureIteratorFromSource<QgsAfsFeatureSource>( source, ownSource, request )
 {
-  if ( mRequest.destinationCrs().isValid() && mRequest.destinationCrs() != mSource->sharedData()->crs() )
-  {
-    mTransform = QgsCoordinateTransform( mSource->sharedData()->crs(), mRequest.destinationCrs(), mRequest.transformContext() );
-  }
+  mTransform = mRequest.calculateTransform( mSource->sharedData()->crs() );
   try
   {
     mFilterRect = filterRectToSourceCrs( mTransform );
@@ -94,7 +91,7 @@ QgsAfsFeatureIterator::QgsAfsFeatureIterator( QgsAfsFeatureSource *source, bool 
       if ( !mRequest.referenceGeometry().isEmpty() )
       {
         mDistanceWithinGeom = mRequest.referenceGeometry();
-        mDistanceWithinEngine.reset( QgsGeometry::createGeometryEngine( mDistanceWithinGeom.constGet() ) );
+        mDistanceWithinEngine = QgsGeometry::createGeometryEngine( mDistanceWithinGeom.constGet() );
         mDistanceWithinEngine->prepareGeometry();
       }
       break;
@@ -122,7 +119,15 @@ bool QgsAfsFeatureIterator::fetchFeature( QgsFeature &f )
   if ( mInterruptionChecker && mInterruptionChecker->isCanceled() )
     return false;
 
-  if ( mFeatureIterator >= mSource->sharedData()->objectIdCount() )
+  QString errorMessage;
+  if ( !mSource->sharedData()->ensureObjectIdsFetched( errorMessage ) )
+  {
+    QgsDebugError( errorMessage );
+    return false;
+  }
+
+  const long long objectIdCount = mSource->sharedData()->objectIdCount();
+  if ( mFeatureIterator >= objectIdCount )
     return false;
 
   if ( mDeferredFeaturesInFilterRectCheck )
@@ -168,7 +173,7 @@ bool QgsAfsFeatureIterator::fetchFeature( QgsFeature &f )
       if ( mRemainingFeatureIds.empty() )
         return false;
 
-      bool result = mSource->sharedData()->getFeature( mRequest.filterFid(), f, QgsRectangle(), mInterruptionChecker );
+      bool result = mSource->sharedData()->getFeature( mRequest.filterFid(), f, mRemainingFeatureIds, mInterruptionChecker );
       if ( mInterruptionChecker && mInterruptionChecker->isCanceled() )
         return false;
 
@@ -187,7 +192,7 @@ bool QgsAfsFeatureIterator::fetchFeature( QgsFeature &f )
     case Qgis::FeatureRequestFilterType::Expression:
     case Qgis::FeatureRequestFilterType::NoFilter:
     {
-      while ( mFeatureIterator < mSource->sharedData()->objectIdCount() )
+      while ( mFeatureIterator < objectIdCount )
       {
         if ( mInterruptionChecker && mInterruptionChecker->isCanceled() )
           return false;
@@ -199,7 +204,7 @@ bool QgsAfsFeatureIterator::fetchFeature( QgsFeature &f )
         bool isDeleted = mSource->sharedData()->isDeleted( mFeatureIterator );
         if ( !isDeleted )
         {
-          success = mSource->sharedData()->getFeature( mFeatureIterator, f, QgsRectangle(), mInterruptionChecker );
+          success = mSource->sharedData()->getFeature( mFeatureIterator, f, mRemainingFeatureIds, mInterruptionChecker );
         }
 
         if ( !mFeatureIdList.empty() )

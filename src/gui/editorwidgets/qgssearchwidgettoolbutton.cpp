@@ -14,8 +14,15 @@
  ***************************************************************************/
 
 #include "qgssearchwidgettoolbutton.h"
+
 #include "qgsapplication.h"
+
 #include <QMenu>
+#include <QString>
+
+#include "moc_qgssearchwidgettoolbutton.cpp"
+
+using namespace Qt::StringLiterals;
 
 QgsSearchWidgetToolButton::QgsSearchWidgetToolButton( QWidget *parent )
   : QToolButton( parent )
@@ -182,7 +189,7 @@ void QgsSearchWidgetToolButton::aboutToShowMenu()
 
 void QgsSearchWidgetToolButton::actionSelected()
 {
-  const QgsSearchWidgetWrapper::FilterFlag flag = static_cast< QgsSearchWidgetWrapper::FilterFlag >( qobject_cast< QAction * >( sender() )->data().toInt() );
+  const QgsSearchWidgetWrapper::FilterFlag flag = static_cast<QgsSearchWidgetWrapper::FilterFlag>( qobject_cast<QAction *>( sender() )->data().toInt() );
   toggleFlag( flag );
 }
 
@@ -248,7 +255,7 @@ void QgsSearchWidgetToolButton::updateState()
 
   if ( active )
   {
-    const QString text = toolTips.join( QLatin1String( ", " ) );
+    const QString text = toolTips.join( ", "_L1 );
     setText( text );
     setToolTip( text );
   }

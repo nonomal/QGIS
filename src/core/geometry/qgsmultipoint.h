@@ -20,19 +20,24 @@ email                : marco.hugentobler at sourcepole dot com
 #include "qgis_sip.h"
 #include "qgsgeometrycollection.h"
 
+#include <QString>
+
+using namespace Qt::StringLiterals;
+
 /**
  * \ingroup core
  * \class QgsMultiPoint
  * \brief Multi point geometry collection.
  */
-class CORE_EXPORT QgsMultiPoint: public QgsGeometryCollection
+class CORE_EXPORT QgsMultiPoint : public QgsGeometryCollection
 {
   public:
-
+    // clang-format off
     /**
      * Constructor for an empty multipoint geometry.
      */
     QgsMultiPoint() SIP_HOLDGIL;
+    // clang-format on
 
 #ifndef SIP_RUN
 
@@ -64,6 +69,7 @@ class CORE_EXPORT QgsMultiPoint: public QgsGeometryCollection
     */
     QgsMultiPoint( const QVector<QgsPointXY> &points );
 #else
+// clang-format off
 
     /**
      * Construct a multipoint from a sequence of points (QgsPoint objects, QgsPointXY objects, or sequences of float values).
@@ -76,7 +82,7 @@ class CORE_EXPORT QgsMultiPoint: public QgsGeometryCollection
     % MethodCode
     if ( !PySequence_Check( a0 ) )
     {
-      PyErr_SetString( PyExc_TypeError, QStringLiteral( "A sequence of QgsPoint, QgsPointXY or array of floats is expected" ).toUtf8().constData() );
+      PyErr_SetString( PyExc_TypeError, u"A sequence of QgsPoint, QgsPointXY or array of floats is expected"_s.toUtf8().constData() );
       sipIsErr = 1;
     }
     else
@@ -94,7 +100,7 @@ class CORE_EXPORT QgsMultiPoint: public QgsGeometryCollection
         {
           qDeleteAll( pointList );
           pointList.clear();
-          PyErr_SetString( PyExc_TypeError, QStringLiteral( "Invalid type at index %1." ).arg( i ) .toUtf8().constData() );
+          PyErr_SetString( PyExc_TypeError, u"Invalid type at index %1."_s.arg( i ) .toUtf8().constData() );
           sipIsErr = 1;
           break;
         }
@@ -107,7 +113,7 @@ class CORE_EXPORT QgsMultiPoint: public QgsGeometryCollection
             qDeleteAll( pointList );
             pointList.clear();
             sipIsErr = 1;
-            PyErr_SetString( PyExc_TypeError, QStringLiteral( "Invalid sequence size at index %1. Expected an array of 2-4 float values, got %2." ).arg( i ).arg( elementSize ).toUtf8().constData() );
+            PyErr_SetString( PyExc_TypeError, u"Invalid sequence size at index %1. Expected an array of 2-4 float values, got %2."_s.arg( i ).arg( elementSize ).toUtf8().constData() );
             Py_DECREF( value );
             break;
           }
@@ -120,7 +126,7 @@ class CORE_EXPORT QgsMultiPoint: public QgsGeometryCollection
             {
               qDeleteAll( pointList );
               pointList.clear();
-              PyErr_SetString( PyExc_TypeError, QStringLiteral( "Invalid type at index %1." ).arg( i ) .toUtf8().constData() );
+              PyErr_SetString( PyExc_TypeError, u"Invalid type at index %1."_s.arg( i ) .toUtf8().constData() );
               sipIsErr = 1;
               break;
             }
@@ -143,7 +149,7 @@ class CORE_EXPORT QgsMultiPoint: public QgsGeometryCollection
               qDeleteAll( pointList );
               pointList.clear();
               Py_DECREF( value );
-              PyErr_SetString( PyExc_TypeError, QStringLiteral( "Invalid type at index %1." ).arg( i ) .toUtf8().constData() );
+              PyErr_SetString( PyExc_TypeError, u"Invalid type at index %1."_s.arg( i ) .toUtf8().constData() );
               sipIsErr = 1;
               break;
             }
@@ -160,7 +166,7 @@ class CORE_EXPORT QgsMultiPoint: public QgsGeometryCollection
               break;
             }
 
-            std::unique_ptr< QgsPoint > point = std::make_unique< QgsPoint >( x, y );
+            auto point = std::make_unique< QgsPoint >( x, y );
             if ( elementSize > 2 )
             {
               element = PySequence_GetItem( value, 2 );
@@ -169,7 +175,7 @@ class CORE_EXPORT QgsMultiPoint: public QgsGeometryCollection
                 qDeleteAll( pointList );
                 pointList.clear();
                 Py_DECREF( value );
-                PyErr_SetString( PyExc_TypeError, QStringLiteral( "Invalid type at index %1." ).arg( i ) .toUtf8().constData() );
+                PyErr_SetString( PyExc_TypeError, u"Invalid type at index %1."_s.arg( i ) .toUtf8().constData() );
                 sipIsErr = 1;
                 break;
               }
@@ -195,7 +201,7 @@ class CORE_EXPORT QgsMultiPoint: public QgsGeometryCollection
                 qDeleteAll( pointList );
                 pointList.clear();
                 Py_DECREF( value );
-                PyErr_SetString( PyExc_TypeError, QStringLiteral( "Invalid type at index %1." ).arg( i ) .toUtf8().constData() );
+                PyErr_SetString( PyExc_TypeError, u"Invalid type at index %1."_s.arg( i ) .toUtf8().constData() );
                 sipIsErr = 1;
                 break;
               }
@@ -258,7 +264,7 @@ class CORE_EXPORT QgsMultiPoint: public QgsGeometryCollection
             qDeleteAll( pointList );
             pointList.clear();
             // couldn't convert the sequence value to a QgsPoint or QgsPointXY
-            PyErr_SetString( PyExc_TypeError, QStringLiteral( "Invalid type at index %1. Expected QgsPoint, QgsPointXY or array of floats." ).arg( i ) .toUtf8().constData() );
+            PyErr_SetString( PyExc_TypeError, u"Invalid type at index %1. Expected QgsPoint, QgsPointXY or array of floats."_s.arg( i ) .toUtf8().constData() );
             break;
           }
         }
@@ -267,6 +273,7 @@ class CORE_EXPORT QgsMultiPoint: public QgsGeometryCollection
         sipCpp = new sipQgsMultiPoint( QgsMultiPoint( pointList ) );
     }
     % End
+// clang-format on
 #endif
 
     /**
@@ -293,6 +300,7 @@ class CORE_EXPORT QgsMultiPoint: public QgsGeometryCollection
      */
     QgsPoint *pointN( int index );
 #else
+// clang-format off
 
     /**
      * Returns the point with the specified \a index.
@@ -313,6 +321,7 @@ class CORE_EXPORT QgsMultiPoint: public QgsGeometryCollection
       return sipConvertFromType( sipCpp->pointN( a0 ), sipType_QgsPoint, NULL );
     }
     % End
+// clang-format on
 #endif
 
 #ifndef SIP_RUN
@@ -334,14 +343,16 @@ class CORE_EXPORT QgsMultiPoint: public QgsGeometryCollection
     void clear() override;
     QDomElement asGml2( QDomDocument &doc, int precision = 17, const QString &ns = "gml", QgsAbstractGeometry::AxisOrder axisOrder = QgsAbstractGeometry::AxisOrder::XY ) const override;
     QDomElement asGml3( QDomDocument &doc, int precision = 17, const QString &ns = "gml", QgsAbstractGeometry::AxisOrder axisOrder = QgsAbstractGeometry::AxisOrder::XY ) const override;
-    json asJsonObject( int precision = 17 ) const override SIP_SKIP;
+    json asJsonObject( int precision = 17, Qgis::GeoJsonProfile profile = Qgis::GeoJsonProfile::Legacy ) const override SIP_SKIP;
     int nCoordinates() const override SIP_HOLDGIL;
     bool addGeometry( QgsAbstractGeometry *g SIP_TRANSFER ) override;
+    bool addGeometries( const QVector< QgsAbstractGeometry * > &geometries SIP_TRANSFER ) final;
     bool insertGeometry( QgsAbstractGeometry *g SIP_TRANSFER, int index ) override;
     QgsAbstractGeometry *boundary() const override SIP_FACTORY;
     int vertexNumberFromVertexId( QgsVertexId id ) const override;
     double segmentLength( QgsVertexId startVertex ) const override;
     bool isValid( QString &error SIP_OUT, Qgis::GeometryValidityFlags flags = Qgis::GeometryValidityFlags() ) const override SIP_HOLDGIL;
+    QgsMultiPoint *simplifyByDistance( double tolerance ) const override SIP_FACTORY;
 
 #ifndef SIP_RUN
     void filterVertices( const std::function< bool( const QgsPoint & ) > &filter ) override;
@@ -350,12 +361,29 @@ class CORE_EXPORT QgsMultiPoint: public QgsGeometryCollection
      * Cast the \a geom to a QgsLineString.
      * Should be used by qgsgeometry_cast<QgsLineString *>( geometry ).
      *
-     * \note Not available in Python. Objects will be automatically be converted to the appropriate target type.
+     * Objects will be automatically converted to the appropriate target type.
+     *
+     * \note Not available in Python.
      */
-    inline static const QgsMultiPoint *cast( const QgsAbstractGeometry *geom )
+    inline static const QgsMultiPoint *cast( const QgsAbstractGeometry *geom ) // cppcheck-suppress duplInheritedMember
     {
       if ( geom && QgsWkbTypes::flatType( geom->wkbType() ) == Qgis::WkbType::MultiPoint )
         return static_cast<const QgsMultiPoint *>( geom );
+      return nullptr;
+    }
+
+    /**
+     * Cast the \a geom to a QgsLineString.
+     * Should be used by qgsgeometry_cast<QgsLineString *>( geometry ).
+     *
+     * Objects will be automatically converted to the appropriate target type.
+     *
+     * \note Not available in Python.
+     */
+    inline static QgsMultiPoint *cast( QgsAbstractGeometry *geom ) // cppcheck-suppress duplInheritedMember
+    {
+      if ( geom && QgsWkbTypes::flatType( geom->wkbType() ) == Qgis::WkbType::MultiPoint )
+        return static_cast<QgsMultiPoint *>( geom );
       return nullptr;
     }
 #endif
@@ -363,14 +391,16 @@ class CORE_EXPORT QgsMultiPoint: public QgsGeometryCollection
     QgsMultiPoint *createEmptyWithSameType() const override SIP_FACTORY;
 
 #ifdef SIP_RUN
+// clang-format off
     SIP_PYOBJECT __repr__();
     % MethodCode
     QString wkt = sipCpp->asWkt();
     if ( wkt.length() > 1000 )
-      wkt = wkt.left( 1000 ) + QStringLiteral( "..." );
-    QString str = QStringLiteral( "<QgsMultiPoint: %1>" ).arg( wkt );
+      wkt = wkt.left( 1000 ) + u"..."_s;
+    QString str = u"<QgsMultiPoint: %1>"_s.arg( wkt );
     sipRes = PyUnicode_FromString( str.toUtf8().constData() );
     % End
+// clang-format on
 #endif
 
   protected:

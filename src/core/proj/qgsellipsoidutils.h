@@ -19,7 +19,10 @@
 #include "qgis_core.h"
 #include "qgis_sip.h"
 #include "qgscoordinatereferencesystem.h"
+
+#include <QQuaternion>
 #include <QStringList>
+#include <QVector3D>
 
 class QgsCelestialBody;
 
@@ -32,29 +35,27 @@ class QgsCelestialBody;
 class CORE_EXPORT QgsEllipsoidUtils
 {
   public:
-
     /**
      * Contains parameters for an ellipsoid.
      */
     struct EllipsoidParameters
     {
-      //! Whether ellipsoid parameters are valid
-      bool valid{ true };
+        //! Whether ellipsoid parameters are valid
+        bool valid { true };
 
-      //! Semi-major axis
-      double semiMajor{ -1.0 };
-      //! Semi-minor axis
-      double semiMinor{ -1.0 };
+        //! Semi-major axis, in meters
+        double semiMajor { -1.0 };
+        //! Semi-minor axis, in meters
+        double semiMinor { -1.0 };
 
-      //! Whether custom parameters alone should be used (semiMajor/semiMinor only)
-      bool useCustomParameters{ false };
+        //! Whether custom parameters alone should be used (semiMajor/semiMinor only)
+        bool useCustomParameters { false };
 
-      //! Inverse flattening
-      double inverseFlattening{ -1.0 };
+        //! Inverse flattening
+        double inverseFlattening { -1.0 };
 
-      //! Associated coordinate reference system
-      QgsCoordinateReferenceSystem crs;
-
+        //! Associated coordinate reference system
+        QgsCoordinateReferenceSystem crs;
     };
 
     /**
@@ -62,21 +63,21 @@ class CORE_EXPORT QgsEllipsoidUtils
      */
     struct EllipsoidDefinition
     {
-      //! authority:code for QGIS builds with proj version 6 or greater, or custom acronym for ellipsoid for earlier proj builds
-      QString acronym;
-      //! Description of ellipsoid
-      QString description;
-      //! Ellipsoid parameters
-      QgsEllipsoidUtils::EllipsoidParameters parameters;
+        //! authority:code for QGIS builds with proj version 6 or greater, or custom acronym for ellipsoid for earlier proj builds
+        QString acronym;
+        //! Description of ellipsoid
+        QString description;
+        //! Ellipsoid parameters
+        QgsEllipsoidUtils::EllipsoidParameters parameters;
 
-      /**
+        /**
        * Name of the associated celestial body (e.g. "Earth").
        *
        * \warning This method requires PROJ 8.1 or later. On earlier PROJ builds the string will always be empty.
        *
        * \since QGIS 3.20
        */
-      QString celestialBodyName;
+        QString celestialBodyName;
     };
 
     /**
@@ -112,8 +113,27 @@ class CORE_EXPORT QgsEllipsoidUtils
      */
     static QList< QgsCelestialBody > celestialBodies();
 
-#ifndef SIP_RUN
+    /**
+     * Builds a rotation quaternion from an "up" direction and a "right" direction,
+     * with the remaining basis axis derived as their cross product.
+     *
+     * \since QGIS 4.4
+     */
+    static QQuaternion quaternionFromNormalUpRight( const QVector3D &normalUp, const QVector3D &normalRight );
 
+    /**
+     * Returns a rotation quaternion for the east-north-up (ENU) reference frame at \a position on
+     * the ellipsoid with the given \a semiMajorAxis and \a semiMinorAxis. The local axes are defined as:
+     *
+     * The x axis points in the local east direction.
+     * The y axis points in the local north direction.
+     * The z axis points in the direction of the ellipsoid surface normal which passes through the position.
+     *
+     * \since QGIS 4.4
+     */
+    static QQuaternion ellipsoidEastNorthUpRotation( const QgsVector3D &position, double semiMajorAxis, double semiMinorAxis );
+
+#ifndef SIP_RUN
     /**
      * Clears the internal cache used.
      *
@@ -127,4 +147,3 @@ class CORE_EXPORT QgsEllipsoidUtils
 };
 
 #endif // QGSELLIPSOIDUTILS_H
-

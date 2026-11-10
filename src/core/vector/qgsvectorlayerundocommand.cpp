@@ -15,14 +15,12 @@
 
 #include "qgsvectorlayerundocommand.h"
 
+#include "qgsfeature.h"
 #include "qgsfeatureiterator.h"
 #include "qgsgeometry.h"
-#include "qgsfeature.h"
+#include "qgslogger.h"
 #include "qgsvectorlayer.h"
 #include "qgsvectorlayereditbuffer.h"
-
-#include "qgslogger.h"
-
 
 QgsVectorLayerUndoCommandAddFeature::QgsVectorLayerUndoCommandAddFeature( QgsVectorLayerEditBuffer *buffer, QgsFeature &f )
   : QgsVectorLayerUndoCommand( buffer )
@@ -59,7 +57,6 @@ void QgsVectorLayerUndoCommandAddFeature::redo()
 
   emit mBuffer->featureAdded( mFeature.id() );
 }
-
 
 
 QgsVectorLayerUndoCommandDeleteFeature::QgsVectorLayerUndoCommandDeleteFeature( QgsVectorLayerEditBuffer *buffer, QgsFeatureId fid )
@@ -104,7 +101,6 @@ void QgsVectorLayerUndoCommandDeleteFeature::redo()
 }
 
 
-
 QgsVectorLayerUndoCommandChangeGeometry::QgsVectorLayerUndoCommandChangeGeometry( QgsVectorLayerEditBuffer *buffer, QgsFeatureId fid, const QgsGeometry &newGeom )
   : QgsVectorLayerUndoCommand( buffer )
   , mFid( fid )
@@ -121,7 +117,6 @@ QgsVectorLayerUndoCommandChangeGeometry::QgsVectorLayerUndoCommandChangeGeometry
     mOldGeom = mBuffer->mChangedGeometries.value( mFid, QgsGeometry() );
   }
 }
-
 
 
 bool QgsVectorLayerUndoCommandChangeGeometry::mergeWith( const QUndoCommand *other )
@@ -173,7 +168,6 @@ void QgsVectorLayerUndoCommandChangeGeometry::undo()
       emit mBuffer->geometryChanged( mFid, mOldGeom );
     }
   }
-
 }
 
 void QgsVectorLayerUndoCommandChangeGeometry::redo()
@@ -187,7 +181,7 @@ void QgsVectorLayerUndoCommandChangeGeometry::redo()
   }
   else
   {
-    mBuffer->mChangedGeometries[ mFid ] = mNewGeom;
+    mBuffer->mChangedGeometries[mFid] = mNewGeom;
   }
   emit mBuffer->geometryChanged( mFid, mNewGeom );
 }
@@ -199,7 +193,6 @@ QgsVectorLayerUndoCommandChangeAttribute::QgsVectorLayerUndoCommandChangeAttribu
   , mFieldIndex( fieldIndex )
   , mOldValue( oldValue )
   , mNewValue( newValue )
-  , mFirstChange( true )
 {
   if ( FID_IS_NEW( mFid ) )
   {
@@ -235,7 +228,6 @@ QgsVectorLayerUndoCommandChangeAttribute::QgsVectorLayerUndoCommandChangeAttribu
       // TODO: report a programmatic error ?
     }
   }
-
 }
 
 void QgsVectorLayerUndoCommandChangeAttribute::undo()
@@ -315,7 +307,7 @@ QgsVectorLayerUndoCommandAddAttribute::QgsVectorLayerUndoCommandAddAttribute( Qg
 {
   const QgsFields &fields = layer()->fields();
   int i;
-  for ( i = 0; i < fields.count() && fields.fieldOrigin( i ) != QgsFields::OriginJoin; i++ )
+  for ( i = 0; i < fields.count() && fields.fieldOrigin( i ) != Qgis::FieldOrigin::Join; i++ )
     ;
   mFieldIndex = i;
 }
@@ -334,7 +326,7 @@ void QgsVectorLayerUndoCommandAddAttribute::undo()
 void QgsVectorLayerUndoCommandAddAttribute::redo()
 {
   mBuffer->mAddedAttributes.append( mField );
-  mBuffer->handleAttributeAdded( mFieldIndex );
+  mBuffer->handleAttributeAdded( mFieldIndex, mField );
   mBuffer->updateLayerFields();
 
   emit mBuffer->attributeAdded( mFieldIndex );
@@ -346,9 +338,9 @@ QgsVectorLayerUndoCommandDeleteAttribute::QgsVectorLayerUndoCommandDeleteAttribu
   , mFieldIndex( fieldIndex )
 {
   const QgsFields &fields = layer()->fields();
-  const QgsFields::FieldOrigin origin = fields.fieldOrigin( mFieldIndex );
+  const Qgis::FieldOrigin origin = fields.fieldOrigin( mFieldIndex );
   mOriginIndex = fields.fieldOriginIndex( mFieldIndex );
-  mProviderField = ( origin == QgsFields::OriginProvider );
+  mProviderField = ( origin == Qgis::FieldOrigin::Provider );
   mFieldName = fields.field( mFieldIndex ).name();
 
   if ( !mProviderField )
@@ -391,11 +383,11 @@ void QgsVectorLayerUndoCommandDeleteAttribute::undo()
   }
 
   mBuffer->updateLayerFields();
-  mBuffer->handleAttributeAdded( mFieldIndex ); // update changed attributes + new features
+  mBuffer->handleAttributeAdded( mFieldIndex, mOldField ); // update changed attributes + new features
 
   if ( !mOldName.isEmpty() )
   {
-    mBuffer->mRenamedAttributes[ mFieldIndex ] = mOldName;
+    mBuffer->mRenamedAttributes[mFieldIndex] = mOldName;
     mBuffer->updateLayerFields();
   }
 
@@ -447,16 +439,16 @@ QgsVectorLayerUndoCommandRenameAttribute::QgsVectorLayerUndoCommandRenameAttribu
   , mNewName( newName )
 {
   const QgsFields &fields = layer()->fields();
-  const QgsFields::FieldOrigin origin = fields.fieldOrigin( mFieldIndex );
+  const Qgis::FieldOrigin origin = fields.fieldOrigin( mFieldIndex );
   mOriginIndex = fields.fieldOriginIndex( mFieldIndex );
-  mProviderField = ( origin == QgsFields::OriginProvider );
+  mProviderField = ( origin == Qgis::FieldOrigin::Provider );
 }
 
 void QgsVectorLayerUndoCommandRenameAttribute::undo()
 {
   if ( mProviderField )
   {
-    mBuffer->mRenamedAttributes[ mFieldIndex ] = mOldName;
+    mBuffer->mRenamedAttributes[mFieldIndex] = mOldName;
   }
   else
   {
@@ -471,7 +463,7 @@ void QgsVectorLayerUndoCommandRenameAttribute::redo()
 {
   if ( mProviderField )
   {
-    mBuffer->mRenamedAttributes[ mFieldIndex ] = mNewName;
+    mBuffer->mRenamedAttributes[mFieldIndex] = mNewName;
   }
   else
   {

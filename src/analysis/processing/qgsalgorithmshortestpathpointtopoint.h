@@ -18,10 +18,11 @@
 #ifndef QGSALGORITHMSHORTESTPATHPOINTTOPOINT_H
 #define QGSALGORITHMSHORTESTPATHPOINTTOPOINT_H
 
-#define SIP_NO_FILE
 
 #include "qgis_sip.h"
 #include "qgsalgorithmnetworkanalysisbase.h"
+
+#define SIP_NO_FILE
 
 ///@cond PRIVATE
 
@@ -30,22 +31,18 @@
  */
 class QgsShortestPathPointToPointAlgorithm : public QgsNetworkAnalysisAlgorithmBase
 {
-
   public:
-
     QgsShortestPathPointToPointAlgorithm() = default;
     void initAlgorithm( const QVariantMap &configuration = QVariantMap() ) override;
     QString name() const override;
     QString displayName() const override;
     QStringList tags() const override;
     QString shortHelpString() const override;
+    QString shortDescription() const override;
     QgsShortestPathPointToPointAlgorithm *createInstance() const override SIP_FACTORY;
 
   protected:
-
-    QVariantMap processAlgorithm( const QVariantMap &parameters,
-                                  QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
-
+    QVariantMap processAlgorithm( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
 };
 
 ///@endcond PRIVATE

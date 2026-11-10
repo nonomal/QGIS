@@ -15,15 +15,16 @@
 #ifndef QGSVECTORLAYERFEATURECOUNTER_H
 #define QGSVECTORLAYERFEATURECOUNTER_H
 
-#include "qgsvectorlayerfeatureiterator.h"
+#include "qgsfeatureid.h"
 #include "qgsrenderer.h"
 #include "qgstaskmanager.h"
-#include "qgsfeatureid.h"
+#include "qgsvectorlayerfeatureiterator.h"
 
 /**
  * \ingroup core
  *
  * \brief Counts the features in a QgsVectorLayer in task.
+ *
  * You should most likely not use this directly and instead call
  * QgsVectorLayer::countSymbolFeatures() and connect to the signal
  * QgsVectorLayer::symbolFeatureCountMapChanged().
@@ -34,7 +35,6 @@ class CORE_EXPORT QgsVectorLayerFeatureCounter : public QgsTask
     Q_OBJECT
 
   public:
-
     /**
      * Create a new feature counter for \a layer.
      * \param layer Target QgsVectorLayer to perform counting on.
@@ -99,7 +99,6 @@ class CORE_EXPORT QgsVectorLayerFeatureCounter : public QgsTask
     std::unique_ptr< QgsFeedback > mFeedback;
     bool mWithFids = false;
     long mFeatureCount = 0;
-
 };
 
 #endif // QGSVECTORLAYERFEATURECOUNTER_H

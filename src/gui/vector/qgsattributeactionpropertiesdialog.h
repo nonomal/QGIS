@@ -17,30 +17,43 @@
 #define QGSATTRIBUTEACTIONPROPERTIESDIALOG_H
 
 // We don't want to expose this in the public API
-#define SIP_NO_FILE
 
 #include "ui_qgsattributeactionpropertiesdialogbase.h"
-#include "qgsexpressioncontextgenerator.h"
 
-#include "qgshelp.h"
 #include "qgis_gui.h"
+#include "qgsexpressioncontextgenerator.h"
+#include "qgshelp.h"
 
 #include <QDialog>
+
+#define SIP_NO_FILE
 
 /**
  * \ingroup gui
  * \class QgsAttributeActionPropertiesDialog
+ * \brief A dialog for configuring a map layer action.
  */
-class GUI_EXPORT QgsAttributeActionPropertiesDialog: public QDialog, private Ui::QgsAttributeActionPropertiesDialogBase, public QgsExpressionContextGenerator
+class GUI_EXPORT QgsAttributeActionPropertiesDialog : public QDialog, private Ui::QgsAttributeActionPropertiesDialogBase, public QgsExpressionContextGenerator
 {
     Q_OBJECT
 
   public:
-
     /**
      * Constructor for QgsAttributeActionPropertiesDialog.
      */
-    QgsAttributeActionPropertiesDialog( Qgis::AttributeActionType type, const QString &description, const QString &shortTitle, const QString &iconPath, const QString &actionText, bool capture, const QSet<QString> &actionScopes, const QString &notificationMessage, bool isEnabledOnlyWhenEditable, QgsVectorLayer *layer, QWidget *parent = nullptr );
+    QgsAttributeActionPropertiesDialog(
+      Qgis::AttributeActionType type,
+      const QString &description,
+      const QString &shortTitle,
+      const QString &iconPath,
+      const QString &actionText,
+      bool capture,
+      const QSet<QString> &actionScopes,
+      const QString &notificationMessage,
+      bool isEnabledOnlyWhenEditable,
+      QgsVectorLayer *layer,
+      QWidget *parent = nullptr
+    );
 
     QgsAttributeActionPropertiesDialog( QgsVectorLayer *layer, QWidget *parent = nullptr );
 

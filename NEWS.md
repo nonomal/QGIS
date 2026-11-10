@@ -1,5 +1,430 @@
 Change history for the QGIS Project
 
+# What's new in Version 4.2 'Belém do Pará'?
+
+This release has following new features:
+
+- Breaking Changes: Move QGIS4 settings storage location with automated migration from QGIS3
+- User Interface: Add layer menu to load and save styles
+- Symbology: Add categorized renderer for 3D Symbols
+- Symbology: Add physically based material with texture support
+- Symbology: Add trim distance start and end to Hashes/Markers line symbol layer
+- Symbology: Add data-defined control for metal rough base, emission color
+- Symbology: Data defined control over phong/metal rough texture scale, rotation and offset
+- Symbology: Add optional solid emission color to metal rough material
+- Symbology: Add opacity support to metal rough materials
+- Symbology: Add 3d material settings to style database
+- Symbology: Allow choice of up/forward axis for 3d point model symbols
+- Symbology: Add extra items for templated line symbol layer
+- 3D Features: Generate environmental lighting from skybox
+- 3D Features: Support 3D model instancing
+- 3D Features: Allow control over 3d map color grading effects
+- 3D Features: Optional light bloom effects
+- 3D Features: Add multisample anti aliasing (MSAA)
+- 3D Features: Add gradient background to 3D scene
+- 3D Features: 3D Tiles: add instancing support
+- 3D Features: Add implicit tiling for 3D Tiles
+- 3D Features: Add camera controls dialog to control the 3D camera in map coordinates
+- 3D Features: Add support for 3D composite tiles ("cmpt")
+- 3D Features: Improve 3D map view "Invert vertical axis" setting.
+- 3D Features: 3d export stl
+- Point Clouds: Add overview-length optional parameter to build vpc algorithm
+- Point Clouds: Add reading support for multi-overview VPC files
+- Point Clouds: Add support for a vpc-in-zip (.vpz) virtual point cloud format
+- Point Clouds: Add per layer elevation shading
+- Point Clouds: Support arithmetic operators on color objects in expressions
+- Point Clouds: Modify renderer color by expression
+- Print Layouts: Add new layout chart item functionality to derive plot data and styling from the source vector layer renderer
+- Print Layouts: Add new option to clip a picture item by a shape-based item
+- Print Layouts: Geospatial PDF layer management enhancement
+- Expressions: Add scale_cubic_bezier expression function, handle bezier-cubic interpolation when converting MapBox styles
+- Expressions: Add concat_ws expression function
+- Data Management: Adding "Field Calculator" menu item to the attribute table header
+- Processing: Dynamically show child step feature counts as model progresses
+- Processing: Add an area threshold parameter
+- Processing: Add support for the SFCGAL extend to edges parameter in medial axis algorithm
+- Processing: Add processing in user defined menu or toolbar
+- Processing: Random subset algorithms ported to C++
+- Application and Project Options: Topocentric projection
+- Sensors: Add support for SensorThings 2.0, including Sensing, Sampling and Relations extensions
+- Profile Plots: Display elevation profile curve in 3D
+- Browser: Rework how ESRI REST services are exposed in the browser
+- Data Providers: Greatly speed up the FeatureServer provider for map viewing
+- Data Providers: Enable parallel provider load for AFS, AMS providers, and some related fixes
+- Data Providers: Support STAC assets from other cloud optimized data types and blob stores
+- QGIS Server: Add support for HIGHLIGHT_LABELFRAME options WMS params
+- QGIS Server: FlatGeobuf OAPIF export plus various fixes
+- Programmability: Expose concave hull of polygons functionality
+- Notable Fixes: Bug fixes by Even Rouault (Spatialys)
+- Notable Fixes: Bug fixes by Denis Rouzaud (OPENGIS.ch)
+- Notable Fixes: Bug fixes by Alessandro Pasotti (QCooperative)
+- Notable Fixes: Bug fixes by Julien Cabieces (Oslandia)
+- Notable Fixes: Bug fixes by Germán Carrillo (OPENGIS.ch)
+- Notable Fixes: Bug fixes by David Signer (OPENGIS.ch)
+- Notable Fixes: Bug fixes by Stefanos Natsis (Lutra Consulting)
+- Notable Fixes: Bug fixes by Loïc Bartoletti (Oslandia)
+-
+
+
+# What's new in Version 4.0 'Norrköping'?
+
+This release has following new features:
+
+- Temporal: Add new accumulate pixels setting to the represent temporal values mode
+- Map Tools: Add map tool to edit blank segments
+- Map Tools: Copy features in an array along a line
+- User Interface: New Design for the Welcome Page
+- User Interface: Unlock shipping themes through plugins
+- User Interface: Create user defined ToolBar and Menu
+- User Interface: Attribute table double click zoom
+- Symbology: Allow copying/pasting all styles from a layer to another
+- Symbology: Introduce additional grouped style categories in copy/pasting UI
+- Annotations: Brand new annotations selection tool
+- Annotations: Show text annotations in 3D map views
+- Annotations: Support rendering annotation layer markers as 3D billboards
+- Labelling: Add option to ignore whitespace when detecting label collisions
+- Labelling: Rework multipart geometry labeling
+- Labelling: Placement modes for curved label placement
+- Rendering: Introduce selective masking presets
+- 3D Features: Add an option to disable terrain export on 3D scene exports
+- 3D Features: Highlight identified features in 3d views
+- 3D Features: Cross sections: use fixed tolerance (width) and nudge left/right
+- 3D Features: Dynamic vector chunking
+- 3D Features: Render floors of extruded polygons
+- 3D Features: Add support for a 2d map overlay
+- 3D Features: Esri Scene Layers
+- 3D Features: Make orthographic camera work
+- Point Clouds: Build virtual point cloud (VPC) algorithm enhancements
+- Point Clouds: New processing algorithm: Compare point clouds (M3C2)
+- Point Clouds: Choose at what zoom level VPC will show actual points
+- Point Clouds: Add virtual point cloud remote dataset support
+- Point Clouds: Editing of virtual point clouds
+- Point Clouds: New processing algorithm: Height above ground
+- Point Clouds: New processing algorithm: Classify ground points
+- Point Clouds: New processing algorithm: Filter noise
+- Point Clouds: New processing algorithm: Transform point cloud
+- Print Layouts: Add horizontal alignment control for layout map grid annotations
+- Print Layouts: Rework handling of initial layer set and synchronization on Layout Legends
+- Print Layouts: Add data-defined control over layout map grid annotation visibility, and additional expression variables for grids
+- Print Layouts: Allow for atlas geometries to reshape the frame of map items
+- Print Layouts: Brand new pie chart plot type
+- Print Layouts: Print Layout Charts Implementation
+- Print Layouts: Add an atlas option to limit coverage layer rendering to the current feature only
+- Print Layouts: Add set extent to layer item in the map item's toolbar menu
+- Print Layouts: Brand new layout item rotation handles
+- Expressions: Add "equals" geometry function
+- Expressions: Add expression functions for working with magnetic models
+- Expressions: Add extract_degrees, extract_minutes, extract_seconds functions
+- Expressions: Add unaccent function based on PostgreSQL unaccent
+- Expressions: Add substr_count expression
+- Expressions: Add some timezone related expression functions
+- Digitising: Bézier maptool
+- Digitising: Add area and total length/perimeter CAD dock floater values
+- Digitising: Add Maptool to handle chamfer and fillet of polygons
+- Data Management: Enhanced COG support for raster exports
+- Data Management: Copy raw attribute values
+- Data Management: Allow storing Comments in QGIS Projects stored in PostgreSQL
+- Data Management: Allow named layers as temporary output
+- Data Management: Possibility to change the layer name in the layer panel when saving a scratch layer
+- Data Management: Suggest a file name when exporting layer or group as layer definition file
+- Forms and Widgets: Add the ability to preview the attributes form within the vector layer properties dialog
+- Forms and Widgets: Refine reuse of last value and introduce remembrance toggle
+- Layer Legend: Add control over whether layers are included in automatic print layout legends
+- Layer Legend: Custom Elevation Profile Sources
+- Processing: Native polygon orientation algorithms
+- Processing: Configure model components using an inline panel instead of modal dialogs
+- Processing: Add network analysis validation algorithms
+- Processing: Add feature preserving raster smoothing algorithm
+- Processing: Add native raster gaussian blur algorithm
+- Processing: Add native total curvature algorithm from the terrain analysis library
+- Processing: Expose NODATA and raster creation options for outputs in the terrain analysis tools
+- Processing: Add Dataset Identification GDAL Processing Algorithm
+- Processing: Add a way to specify the raster format in processing algorithm outputs
+- Processing: Show the feature count flowing through a model inside the model designer
+- Processing: support max-triangle-edge-length in PDAL Export to raster (TIN) algorithm
+- Processing: Model designer update
+- Processing: Allow Reproject Layer algorithm to transform Z coordinates
+- Processing: Add algorithm to create Cloud Optimized GeoTiffs from directory source
+- Processing: Add SFCGAL approximate medial axis processing algorithm
+- Processing: Scale and Resolution settings for WMS extraction
+- Processing: Add duplicate features output layer parameter to Delete duplicate geometries Algorithm
+- Processing: Add algorithms to filter parts by length/area
+- Processing: Add optional destination CRS for Package Layers algorithm
+- Processing: Package Layers algorithm - only export features intersecting a given extent
+- Processing: Unlimited model canvas size in the model designer
+- Application and Project Options: OAuth2 auto refresh
+- Application and Project Options: Project trust for embedded code enhancement
+- Application and Project Options: Elevation Profile Manager
+- Application and Project Options: Project/layer metadata localization support
+- Application and Project Options: Add project setting to enable HTML GetFeatureInfo maptip-only mode
+- Profile Plots: Add option to sync elevation profile layers with project layers
+- Profile Plots: Render point cloud as a continuous elevation line
+- Profile Plots: Show distance:elevation scale ratio in profile settings menu
+- Browser: Move multiple tables in Database to another Schema
+- Browser: Browser DB Table Comment
+- Browser: Add create or delete Spatial Index to the Manage menu in Browser
+- Data Providers: Add support for GML as a feature format for OAPIF
+- Data Providers: Allow OAPIF users to select an alternate format than GeoJSON with which to download features
+- Data Providers: Allow update and delete for Field Domains in GPKG
+- Data Providers: Save QGIS projects to PostgreSQL
+- Data Providers: Add Layer Properties info to PostgreSQL provider
+- Data Providers: Add auth method for Planetary computer
+- Data Providers: QGIS Project Versioning in PostgreSQL
+- QGIS Server: Try to reload invalid project layers
+- QGIS Server: Implement GetFeatureInfo for mesh layers
+- Programmability: Add support for area3D to QgsGeometry
+- Programmability: Add support for 3d points in pointsAreCollinear method of QgsGeometryutils
+- Programmability: Implement QgsVectorLayer.as_geopandas()
+- Programmability: Expose 3D map tools to PyQgis API
+- Programmability: Expose 3D map canvas cross section mode to PyQgis API
+- Programmability: Refactor ray casting and expose to PyQgis API
+- Programmability: TemplatedLineSymbolLayer to enable blank areas implementation
+- Programmability: Port Hub distance algorithm to C++
+- Programmability: Add support for SFCGAL library
+- Notable Fixes: Bug fixes by Alessandro Pasotti (QCooperative)
+- Notable Fixes: Bug fixes by Even Rouault (Spatialys)
+- Notable Fixes: Bug fixes by Julien Cabieces (Oslandia)
+- Notable Fixes: Bug Fixes by Denis Rouzaud (OPENGIS)
+- Notable Fixes: Bug Fixes by Germán Carrillo (OPENGIS)
+- Notable Fixes: Bug Fixes by Till Frankenbach (OPENGIS)
+- Notable Fixes: Bug fixes by Stefanos Natsis (LutraConsulting)
+-
+
+
+# What's new in Version 3.44 'Solothurn'?
+
+This release has following new features:
+
+- Temporal: Allow WMS-T group node to expose time dimension
+- Temporal: Add fixed date/time to raster temporal mode
+- User Interface: Open a specific tab in the Message Log Panel
+- Symbology: Add an option to delete unused categories in the categorized symbol renderer widget
+- Labelling: Add settings for controlling margin around labels and preventing duplicate labels
+- 3D Features: Clipping planes tool
+- Point Clouds: Update pdal_wrench to v1.2
+- Print Layouts: Add auto-wrap after setting for layout legends
+- Expressions: Add repeat function and reverse variant for strings
+- Expressions: Expression functions to create CRS from string definition and to get authid from CRS
+- Digitising: Add merge policies
+- Data Management: Use HEIGHT_AVERAGE from RPC when available
+- Data Management: Allow field customisation when importing db tables
+- Data Management: Add optional extent, expression based filter when importing tables to database
+- Data Management: Add stored query support to Execute SQL window
+- Data Management: Saving/Loading SQL queries from Execute SQL/Update SQL dialogs
+- Data Management: Allow for extra OAuth2 token(s) to be added into headers
+- Data Management: Convert field name Casing when importing vector layers
+- Data Management: Import selected features only to database table
+- Forms and Widgets: Switch between field names and field aliases in forms
+- Forms and Widgets: Add a search box to Atrributes Form Designer
+- Analysis Tools: Add input parameters to the toolbox in the modeler
+- Processing: Port SAGA "Fill Sinks Wang & Liu" to native tool
+- Processing: Add creation options UI to raster calculator
+- Processing: Batch processing temporary output
+- Processing: Add basic drag and drop support in the model designer
+- Processing: Processing raster rank algorithm
+- Application and Project Options: Add project setting for scale calculation, including new "scale at equator" method
+- Application and Project Options: Add multiple country codes filter to Nominatim Geocoder Locator
+- Profile Plots: Add support for subsections indicator
+- Browser: Port SQL Query History to Browser
+- Browser: Improved project management for PostgreSQL stored Projects
+- Browser: Show dialog when importing tables via browser and give users options to control import
+- Browser: Move table to another schema for PostgreSQL Provider
+- Browser: Enable field rename for PostgreSQL
+- Data Providers: Add a WFS parameter for featureMode
+- Data Providers: Add connection setting for restricting PostgreSQL Schema
+- Data Providers: Add option to use POST requests for WFS connections
+- Data Providers: Allow SQL queries as layer sources from SQL Server
+- QGIS Server: Allow configuring the server project cache size
+- QGIS Server: Add server properties on layer tree group
+- Programmability: Add method to convert shapely geometry to QGIS Geometry
+- Programmability: Expose QGIS GPS Tools to Python API and Plugins
+- Notable Fixes: Bug fixes by Even Rouault (Spatialys)
+-
+
+
+# What's new in Version 3.42 'Münster'?
+
+This release has following new features:
+
+- Symbology: Add configurable extent buffer to symbols
+- Labelling: Raster labeling
+- Labelling: Custom tab distances for labels
+- Labelling: Support CSS background property in labels/text renderer
+- Labelling: Support CSS margins for block elements in HTML labels
+- Labelling: Support CSS line-height in HTML labels
+- Mesh: Mesh Render Extent Settings
+- Mesh: Mesh editing delaunay refinement
+- Mesh: Dataset group controls for mesh layers
+- Mesh: Mesh selection actions
+- Mesh: Elevation assignment modes for added mesh vertices
+- 3D Features: Debug widget for 3D views
+- Point Clouds: Virtual point cloud overviews in 2D
+- Print Layouts: Double-clicking a mouse handle for a layout label resizes to fit text
+- Print Layouts: Action on double click layout item
+- Print Layouts: Layout better node item creation
+- Print Layouts: Apply layout page size to all pages
+- Print Layouts: New quality parameter for layout JPG exports
+- Digitising: Highlight Trim/Extend plane of intersection
+- Data Management: Enable snapping in Georeferencer
+- Data Management: Data Source Manager STAC enhancements
+- Forms and Widgets: Additional sorting options on value relation widget
+- Processing: Processing metadata tools
+- Processing: Expression based hover content in Scatterplots
+- Processing: Add option to include 'layer' and 'path' attributes in Merge Vector Layers tool
+- Processing: Move Geometry Checker into processing tools
+- Processing: Add title, axis titles, and logarithmic axes to plots
+- Processing: Raster zonal min/max algorithm
+- Processing: Algorithm to extract min/max pixel from raster
+- Processing: New algorithm to generate elevation profile images
+- Processing: New Mesh: Surface to Polygon Algorithm
+- Profile Plots: Introduce custom tolerance for vector layers
+- Data Providers: Execute SQL from layer context menu
+- Programmability: Expose QgsGeos class to PyQGIS
+- Programmability: Make Z and M values accessible via QgsGeometry.as_numpy()
+- Programmability: Python console interactive help
+- Notable Fixes: Bug fixes by Even Rouault (Spatialys)
+- Notable Fixes: Bug fixes by Alessandro Pasotti (QCooperative)
+- Notable Fixes: Bug fixes by Julien Cabieces (Oslandia)
+- Notable Fixes: Bug fixes by Jacky Volpes (Oslandia)
+- Notable Fixes: Bug fixes by Nyall Dawson (North Road)
+- Notable Fixes: Bug fixes by Alexander Bruy (QCooperative)
+- Notable Fixes: Bug fixes by Mathieu Pellerin (OPENGIS)
+- Notable Fixes: Bug fixes by Stefanos Natsis (LutraConsulting)
+- Notable Fixes: Bug Fixes by Loïc Bartoletti (Oslandia)
+- Notable Fixes: Bug Fixes by Germán Carrillo (OPENGIS)
+-
+
+
+# What's new in Version 3.40 'Bratislava'?
+
+This release has following new features:
+
+- Map Tools: Respect layer/project vert datum in identify results
+- Map Tools: Present referencing relations in info tool
+- User Interface: Optionally autosize all columns by default when opening an attribute table
+- User Interface: Actions Dialogue Duplicate Button
+- Symbology: Provide style categories for raster layers
+- Symbology: Add "Linear Referencing" symbol layer type
+- Symbology: Implement color ramp interpolation for CMYK
+- Symbology: CMYK color preview
+- Symbology: Select color component as float
+- Symbology: Allow end point marker symbols for balloon callout style
+- Symbology: Buffers for marker symbols
+- Symbology: Support tolerances for QgsRasterTransparency pixel values
+- Annotations: Auto upgrade SVG and text annotations to annotation layer items on project load
+- Annotations: Add support for callouts to point text, rect text and picture items
+- Annotations: Add linked layer option for annotation layers
+- Annotations: Text inside rectangle annotation item
+- Annotations: Add picture annotation item type
+- Labelling: Support horizontal alignment in HTML labels
+- Labelling: HTML header formatting in HTML labels
+- Labelling: Add support for word-spacing CSS in html labels
+- Labelling: Implementation of labeling engine rules
+- Diagrams: Introduce stacked diagrams
+- Mesh: Add GUI for adding Quantized Mesh layers
+- Rendering: Support multiple sources for vector tiles
+- 3D Features: Respect vector layer vertical CRS settings in 3D map views
+- 3D Features: 3D Scene Clip Distance
+- Print Layouts: Add support merging cells in manual tables
+- Print Layouts: Generate valid PDF/X-4 files
+- Print Layouts: Add option to set geospatial PDF group name for items
+- Print Layouts: Add Page Properties to layout main menu
+- Print Layouts: Add scale method option for layout scale bars
+- Expressions: Add 'Custom Expression' numeric format
+- Expressions: Add line_interpolate_point_by_m and line_locate_m expressions
+- Expressions: Extended color value support
+- Expressions: Allow users to save expression functions in QGIS project file
+- Expressions: Add info about usable "expression dialect" to filter dialog
+- Expressions: Add project_color_object and ramp_color_object functions
+- Digitising: Add circles intersection digitizing tool
+- Digitising: Visual construction guides for advanced digitizing
+- Data Management: Allow setting VSI credentials when loading OGR/GDAL layers
+- Forms and Widgets: Allow reordering fields in new vector layer dialogs
+- Forms and Widgets: Add metadata setting to override widget wrapper used for a parameter
+- Forms and Widgets: Support img tags in HTML label text
+- Processing: Open file or URL Algorithm
+- Processing: Add processing parameter types for Area and Volume
+- Processing: Updated "Vector information" algorithms
+- Processing: Allow adding Processing tools to Favorites
+- Processing: Add creation options support to some native raster Processing algorithms
+- Processing: Support drag and drop for multi-layer parameters
+- Application and Project Options: Smart cache size implementation
+- Application and Project Options: Add vertical CRS selection widget to vector layer properties
+- Application and Project Options: Project color mode properties widget
+- Profile Plots: Change elevation profile name
+- Profile Plots: Ensure vector layer elevation profiles respect layer/map vert datums
+- Browser: add UX to load MVT layers from style URL only
+- Browser: Add duplicate functionality to Browser connection items
+- Browser: Adjust "Create Database" context menu actions on GeoPackage
+- Browser: Add connections to cloud storage providers to browser
+- Browser: STAC integration
+- Data Providers: Support for polyhedral surface and TIN
+- QGIS Server: WFS title definition for layers
+- Programmability: Exceptions raised on QgsDistanceArea methods
+- Programmability: Convert QgsRasterLayer to NumPy Array
+- Programmability: Convert QgsGeometry to Shapely and NumPy
+-
+
+
+# What's new in Version 3.38 'Grenoble'?
+
+This release has following new features:
+
+- Temporal: New temporal mode: pixel value as temporal datetime
+- Map Tools: Add Elevation Controller for filtering vertical data in 2d maps
+- Map Tools: Add Z range support to map canvas / map settings items
+- Map Tools: Add option to set a fixed elevation slice width for elevation controller
+- User Interface: Add search option for regular expression based searching
+- User Interface: Data defined override: use middle-click to open the Expression Builder dialog window
+- Symbology: New single color renderer for rasters
+- Symbology: Add support for Wind Barb rendering for mesh vector datasets
+- Labelling: Add maximum distance setting for point labels
+- Labelling: Add 'over point' placement option for cartographic label mode
+- Rendering: Add data defined control over heatmap radius and maximum value
+- Print Layouts: Tab character support for QgsTextFormat and QgsTextRenderer
+- Print Layouts: Copy composer grids
+- Print Layouts: Add z range filter option for layout maps
+- Print Layouts: Add buttons to expand or collapse layout legend tree
+- Expressions: Add @map_z_range variables reflecting the map's z range values
+- Data Management: Duplicate policy on fields when duplicating features
+- Data Management: Add "Fixed Time Range Per Band" mode for raster temporal control
+- Data Management: Introduce fixed elevation range for raster layers
+- Data Management: Introduce fixed elevation range for mesh layers
+- Data Management: Add a "fixed range per band" elevation mode for rasters
+- Data Management: Add "dynamic elevation range per band" mode for rasters
+- Data Management: Add fixed elevation range per dataset group mode for mesh layers
+- Data Management: Add option to export all lines with minimal width in dxf exports
+- Data Management: Allow users to override the layer names exported to DXF
+- Data Management: Create DXF blocks for point symbols with data defined properties
+- Data Management: Add option 'Use only selected features' to DXF export
+- Data Management: Import/ Export 'DXF Export' dialog settings
+- Forms and Widgets: Add CMYK support for Color Widget
+- Forms and Widgets: Add parent feature scope when adding/editing a child feature through the relation editor widget
+- Forms and Widgets: Add "match contains" to autocompleter in value relation widget
+- Forms and Widgets: Implement value relation's grouping functionality
+- Layer Legend: Show a color ramp legend for vector heatmap layers
+- Layer Legend: Add layer tree filter for "Show Broken Layers Only"
+- Processing: Show more detail in history dialog
+- Processing: Add "Run Selected Steps" option to model designer
+- Processing: Add "View Output Layers" option for model child algorithms
+- Processing: Endpoint distance threshold for network analysis
+- Processing: Add support for pure date and time decorators
+- Application and Project Options: Add vertical crs option for projects
+- Application and Project Options: Add elevation range to project properties
+- Sensors: Support feature expansion
+- Sensors: Add support for SensorThings Multidatastreams
+- Sensors: Serial port sensor's data frame delimiter
+- Sensors: Add an optional feature limit setting
+- Sensors: Implement subset string support for SensorThings
+- Profile Plots: Add tolerance for lines and polygons
+- Data Providers: Add extent based filtering for SensorThings layers
+- Data Providers: Web proxy prefix support for ArcGIS URLs
+- QGIS Server: Default limit for GetFeatureInfo results
+- QGIS Server: Add crs information in WMS GetFeatureInfo output when it differs from WGS84
+- Programmability: Add replace/ replace all functionality to QgsCodeEditorWidget
+-
+
+
 # What's new in Version 3.36 'Maidenhead'?
 
 This release has following new features:

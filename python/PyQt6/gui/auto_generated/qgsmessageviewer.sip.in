@@ -3,14 +3,14 @@
  *                                                                      *
  * src/gui/qgsmessageviewer.h                                           *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/
 
 
 
 
 
-class QgsMessageViewer: QDialog, QgsMessageOutput
+class QgsMessageViewer : QDialog, QgsMessageOutput
 {
 %Docstring(signature="appended")
 A generic message view for displaying QGIS messages.
@@ -22,7 +22,7 @@ A generic message view for displaying QGIS messages.
   public:
     QgsMessageViewer( QWidget *parent /TransferThis/ = 0, Qt::WindowFlags fl = QgsGuiUtils::ModalDialogFlags, bool deleteOnClose = true );
 
-    virtual void setMessage( const QString &message, MessageType msgType );
+    virtual void setMessage( const QString &message, Qgis::StringFormat format );
 
 
     virtual void appendMessage( const QString &message );
@@ -50,5 +50,5 @@ A generic message view for displaying QGIS messages.
  *                                                                      *
  * src/gui/qgsmessageviewer.h                                           *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/

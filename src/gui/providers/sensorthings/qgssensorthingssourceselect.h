@@ -18,13 +18,15 @@
 #ifndef QGSSENSORTHINGSSOURCESELECT_H
 #define QGSSENSORTHINGSSOURCESELECT_H
 
-#include "qgsabstractdatasourcewidget.h"
 #include "ui_qgssensorthingssourceselectbase.h"
+
+#include "qgsabstractdatasourcewidget.h"
+
+#define SIP_NO_FILE
 
 class QgsSensorThingsSourceWidget;
 class QgsSensorThingsConnectionWidget;
 
-#define SIP_NO_FILE
 
 ///@cond PRIVATE
 class QgsSensorThingsSourceSelect : public QgsAbstractDataSourceWidget, private Ui::QgsSensorThingsSourceSelectBase
@@ -32,7 +34,7 @@ class QgsSensorThingsSourceSelect : public QgsAbstractDataSourceWidget, private 
     Q_OBJECT
 
   public:
-    QgsSensorThingsSourceSelect( QWidget *parent = nullptr, Qt::WindowFlags fl = QgsGuiUtils::ModalDialogFlags, QgsProviderRegistry::WidgetMode widgetMode = QgsProviderRegistry::WidgetMode::None );
+    QgsSensorThingsSourceSelect( QWidget *parent = nullptr, Qt::WindowFlags fl = QgsGuiUtils::ModalDialogFlags, QgsProviderRegistry::WidgetMode widgetMode = QgsProviderRegistry::WidgetMode::Standalone );
     void addButtonClicked() override;
     void setMapCanvas( QgsMapCanvas *mapCanvas ) override;
 

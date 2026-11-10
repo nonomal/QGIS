@@ -17,11 +17,10 @@
 #define QGSRULEBASED3DRENDERER_H
 
 #include "qgis_3d.h"
-
 #include "qgs3drendererregistry.h"
-#include "qgsabstractvectorlayer3drenderer.h"
 #include "qgsabstract3dsymbol.h"
-#include "qgsmaplayerref.h"
+#include "qgsabstractvectorlayer3drenderer.h"
+
 #include <QUuid>
 
 class Qgs3DRenderContext;
@@ -29,8 +28,8 @@ class QgsFeature3DHandler;
 
 
 /**
- * \ingroup 3d
- * \brief Metadata for rule-based 3D renderer to allow creation of its instances from XML
+ * \ingroup qgis_3d
+ * \brief Metadata for rule-based 3D renderer to allow creation of its instances from XML.
  *
  * \warning This is not considered stable API, and may change in future QGIS releases. It is
  * exposed to the Python bindings as a tech preview only.
@@ -48,7 +47,7 @@ class _3D_EXPORT QgsRuleBased3DRendererMetadata : public Qgs3DRendererAbstractMe
 
 
 /**
- * \ingroup 3d
+ * \ingroup qgis_3d
  * \brief Rule-based 3D renderer.
  *
  * Similar to rule-based 2D renderer and rule-based labeling, it allows specification of rules for 3D symbols.
@@ -61,14 +60,13 @@ class _3D_EXPORT QgsRuleBased3DRendererMetadata : public Qgs3DRendererAbstractMe
 class _3D_EXPORT QgsRuleBased3DRenderer : public QgsAbstractVectorLayer3DRenderer
 {
   public:
-
     class Rule;
     typedef QList<QgsRuleBased3DRenderer::Rule *> RuleList;
     typedef QHash<const QgsRuleBased3DRenderer::Rule *, QgsFeature3DHandler *> RuleToHandlerMap;
 
     /**
-     * \ingroup 3d
-     * \brief A child rule for a QgsRuleBased3DRenderer
+     * \ingroup qgis_3d
+     * \brief A child rule for a QgsRuleBased3DRenderer.
      * \since QGIS 3.6
      */
     class _3D_EXPORT Rule
@@ -78,9 +76,7 @@ class _3D_EXPORT QgsRuleBased3DRenderer : public QgsAbstractVectorLayer3DRendere
         Rule( QgsAbstract3DSymbol *symbol SIP_TRANSFER, const QString &filterExp = QString(), const QString &description = QString(), bool elseRule = false );
         ~Rule();
 
-        //! Rules cannot be copied.
         Rule( const Rule &rh ) = delete;
-        //! Rules cannot be copied.
         Rule &operator=( const Rule &rh ) = delete;
 
         //! The result of registering a rule
@@ -134,7 +130,11 @@ class _3D_EXPORT QgsRuleBased3DRenderer : public QgsAbstractVectorLayer3DRendere
          *
          * \param filterExp An expression
          */
-        void setFilterExpression( const QString &filterExp ) { mFilterExp = filterExp; initFilter(); }
+        void setFilterExpression( const QString &filterExp )
+        {
+          mFilterExp = filterExp;
+          initFilter();
+        }
 
         /**
          * Set a human readable description for this rule
@@ -244,13 +244,13 @@ class _3D_EXPORT QgsRuleBased3DRenderer : public QgsAbstractVectorLayer3DRendere
          * call prepare() on handlers and populate attributeNames
          * \note not available in Python bindings
          */
-        void prepare( const Qgs3DRenderContext &context, QSet<QString> &attributeNames, RuleToHandlerMap &handlers ) const SIP_SKIP;
+        void prepare( const Qgs3DRenderContext &context, QSet<QString> &attributeNames, const QgsBox3D &chunkExtent, RuleToHandlerMap &handlers ) const SIP_SKIP;
 
         /**
          * register individual features
          * \note not available in Python bindings
          */
-        RegisterResult registerFeature( QgsFeature &feature, Qgs3DRenderContext &context, RuleToHandlerMap &handlers ) const SIP_SKIP;
+        RegisterResult registerFeature( const QgsFeature &feature, Qgs3DRenderContext &context, const RuleToHandlerMap &handlers ) const SIP_SKIP;
 
       private:
 #ifdef SIP_RUN
@@ -264,7 +264,7 @@ class _3D_EXPORT QgsRuleBased3DRenderer : public QgsAbstractVectorLayer3DRendere
          * \param context   The context in which the rendering happens
          * \returns          TRUE if the feature shall be rendered
          */
-        bool isFilterOK( QgsFeature &f, Qgs3DRenderContext &context ) const;
+        bool isFilterOK( const QgsFeature &f, Qgs3DRenderContext &context ) const;
 
         /**
          * Initialize filters. Automatically called by setFilterExpression.
@@ -297,20 +297,28 @@ class _3D_EXPORT QgsRuleBased3DRenderer : public QgsAbstractVectorLayer3DRendere
     ~QgsRuleBased3DRenderer() override;
 
     //! Returns pointer to the root rule
-    QgsRuleBased3DRenderer::Rule *rootRule() { return mRootRule; }
+    QgsRuleBased3DRenderer::Rule *rootRule() { return mRootRule.get(); }
     //! Returns pointer to the root rule
-    const Rule *rootRule() const SIP_SKIP { return mRootRule; }
+    const Rule *rootRule() const SIP_SKIP { return mRootRule.get(); }
 
     QString type() const override { return "rulebased"; }
     QgsRuleBased3DRenderer *clone() const override SIP_FACTORY;
-    Qt3DCore::QEntity *createEntity( const Qgs3DMapSettings &map ) const override SIP_SKIP;
+    Qt3DCore::QEntity *createEntity( Qgs3DMapSettings *map ) const override SIP_SKIP;
 
     void writeXml( QDomElement &elem, const QgsReadWriteContext &context ) const override;
     void readXml( const QDomElement &elem, const QgsReadWriteContext &context ) override;
 
-  private:
-    Rule *mRootRule = nullptr;
+    /**
+     * Creates a new QgsRuleBased3DRenderer from an existing \a renderer.
+     *
+     * \returns a new renderer if the conversion was possible, otherwise NULLPTR.
+     *
+     * \since QGIS 4.2
+     */
+    static std::unique_ptr< QgsRuleBased3DRenderer > convertFromRenderer( const QgsAbstractVectorLayer3DRenderer *renderer, QgsVectorLayer *layer = nullptr );
 
+  private:
+    std::unique_ptr<Rule> mRootRule;
 };
 
 #endif // QGSRULEBASED3DRENDERER_H

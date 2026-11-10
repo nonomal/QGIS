@@ -18,12 +18,14 @@
 #ifndef QGSLOCATORMODELBRIDGE_H
 #define QGSLOCATORMODELBRIDGE_H
 
-#include <QObject>
-
 #include "qgis_core.h"
 #include "qgscoordinatereferencesystem.h"
 #include "qgscoordinatetransformcontext.h"
 #include "qgsrectangle.h"
+
+#include <QObject>
+
+class QItemSelection;
 
 class QgsLocatorResult;
 class QgsLocator;
@@ -34,8 +36,7 @@ class QgsLocatorProxyModel;
 
 /**
  * \ingroup core
- * \brief The QgsLocatorModelBridge class provides the core functionality
- * to be used in a locator widget.
+ * \brief Provides the core functionality to be used in a locator widget.
  * \since QGIS 3.6
  */
 class CORE_EXPORT QgsLocatorModelBridge : public QObject
@@ -45,7 +46,7 @@ class CORE_EXPORT QgsLocatorModelBridge : public QObject
   public:
     //! Constructor of QgsLocatorModelBridge
     explicit QgsLocatorModelBridge( QObject *parent = nullptr );
-    virtual ~QgsLocatorModelBridge() = default;
+    ~QgsLocatorModelBridge() override = default;
 
     //! Perform a search
     Q_INVOKABLE void performSearch( const QString &text );
@@ -63,7 +64,7 @@ class CORE_EXPORT QgsLocatorModelBridge : public QObject
     bool isRunning() const;
 
     //! Triggers the result at given \a index and with optional \a actionId if an additional action was triggered
-    void triggerResult( const QModelIndex &index,  const int actionId = -1 );
+    void triggerResult( const QModelIndex &index, const int actionId = -1 );
 
     /**
      * Returns the coordinate transform context, which should be used whenever the
@@ -102,6 +103,12 @@ class CORE_EXPORT QgsLocatorModelBridge : public QObject
 
     //! Update the canvas CRS used to create search context
     void updateCanvasCrs( const QgsCoordinateReferenceSystem &crs );
+
+    /**
+     * This will call filters implementation of selection/deselection of results
+     * \since QGIS 3.40
+     */
+    void selectionChanged( const QItemSelection &selected, const QItemSelection &deselected );
 
   private slots:
     void searchFinished();

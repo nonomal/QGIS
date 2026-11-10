@@ -16,26 +16,26 @@
  ***************************************************************************/
 
 #include "qgsdxfpaintdevice.h"
+
 #include "qgsdxfpaintengine.h"
 #include "qgspoint.h"
 
 QgsDxfPaintDevice::QgsDxfPaintDevice( QgsDxfExport *dxf )
 {
-  mPaintEngine = new QgsDxfPaintEngine( this, dxf );
+  mPaintEngine = std::make_unique<QgsDxfPaintEngine>( this, dxf );
 }
 
 QgsDxfPaintDevice::~QgsDxfPaintDevice()
-{
-  delete mPaintEngine;
-}
+{}
 
 QPaintEngine *QgsDxfPaintDevice::paintEngine() const
 {
-  return mPaintEngine;
+  return mPaintEngine.get();
 }
 
 int QgsDxfPaintDevice::metric( PaintDeviceMetric metric ) const
 {
+  // NOLINTBEGIN(bugprone-branch-clone)
   switch ( metric )
   {
     case QPaintDevice::PdmWidth:
@@ -58,8 +58,15 @@ int QgsDxfPaintDevice::metric( PaintDeviceMetric metric ) const
     case QPaintDevice::PdmDevicePixelRatio:
       return 1;
     case QPaintDevice::PdmDevicePixelRatioScaled:
-      return 1;
+      return static_cast<int>( 1 * QPaintDevice::devicePixelRatioFScale() );
+#if ( QT_VERSION >= QT_VERSION_CHECK( 6, 8, 0 ) )
+    case PdmDevicePixelRatioF_EncodedA:
+      return QPaintDevice::encodeMetricF( PdmDevicePixelRatioF_EncodedA, 1.0 );
+    case PdmDevicePixelRatioF_EncodedB:
+      return QPaintDevice::encodeMetricF( PdmDevicePixelRatioF_EncodedB, 1.0 );
+#endif
   }
+  // NOLINTEND(bugprone-branch-clone)
   return 0;
 }
 
@@ -102,5 +109,3 @@ void QgsDxfPaintDevice::setShift( QPointF shift )
     mPaintEngine->setShift( shift );
   }
 }
-
-

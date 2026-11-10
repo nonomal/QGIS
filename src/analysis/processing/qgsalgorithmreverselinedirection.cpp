@@ -16,14 +16,19 @@
  ***************************************************************************/
 
 #include "qgsalgorithmreverselinedirection.h"
+
 #include "qgscurve.h"
 #include "qgsgeometrycollection.h"
+
+#include <QString>
+
+using namespace Qt::StringLiterals;
 
 ///@cond PRIVATE
 
 QString QgsReverseLineDirectionAlgorithm ::name() const
 {
-  return QStringLiteral( "reverselinedirection" );
+  return u"reverselinedirection"_s;
 }
 
 QString QgsReverseLineDirectionAlgorithm ::displayName() const
@@ -43,7 +48,7 @@ QString QgsReverseLineDirectionAlgorithm ::group() const
 
 QString QgsReverseLineDirectionAlgorithm ::groupId() const
 {
-  return QStringLiteral( "vectorgeometry" );
+  return u"vectorgeometry"_s;
 }
 
 QString QgsReverseLineDirectionAlgorithm ::outputName() const
@@ -61,7 +66,7 @@ QString QgsReverseLineDirectionAlgorithm::shortDescription() const
   return QObject::tr( "Reverses the direction of curve or LineString geometries." );
 }
 
-QgsReverseLineDirectionAlgorithm  *QgsReverseLineDirectionAlgorithm ::createInstance() const
+QgsReverseLineDirectionAlgorithm *QgsReverseLineDirectionAlgorithm ::createInstance() const
 {
   return new QgsReverseLineDirectionAlgorithm();
 }
@@ -73,7 +78,7 @@ Qgis::ProcessingSourceType QgsReverseLineDirectionAlgorithm::outputLayerType() c
 
 QList<int> QgsReverseLineDirectionAlgorithm::inputLayerTypes() const
 {
-  return QList<int>() << static_cast< int >( Qgis::ProcessingSourceType::VectorLine );
+  return QList<int>() << static_cast<int>( Qgis::ProcessingSourceType::VectorLine );
 }
 
 Qgis::ProcessingFeatureSourceFlags QgsReverseLineDirectionAlgorithm ::sourceFlags() const
@@ -84,16 +89,18 @@ Qgis::ProcessingFeatureSourceFlags QgsReverseLineDirectionAlgorithm ::sourceFlag
 
 QgsFeatureList QgsReverseLineDirectionAlgorithm ::processFeature( const QgsFeature &f, QgsProcessingContext &, QgsProcessingFeedback * )
 {
+  QGS_MARK_ALGORITHM_SOURCE
+
   QgsFeature feature = f;
   if ( feature.hasGeometry() )
   {
     const QgsGeometry geom = feature.geometry();
     if ( !geom.isMultipart() )
     {
-      const QgsCurve *curve = qgsgeometry_cast< const QgsCurve * >( geom.constGet() );
+      const QgsCurve *curve = qgsgeometry_cast<const QgsCurve *>( geom.constGet() );
       if ( curve )
       {
-        std::unique_ptr< QgsCurve > reversed( curve->reversed() );
+        std::unique_ptr<QgsCurve> reversed( curve->reversed() );
         if ( !reversed )
         {
           // can this even happen?
@@ -105,16 +112,15 @@ QgsFeatureList QgsReverseLineDirectionAlgorithm ::processFeature( const QgsFeatu
     }
     else
     {
-      std::unique_ptr< QgsAbstractGeometry > dest( geom.constGet()->createEmptyWithSameType() );
-      const QgsGeometryCollection *collection = qgsgeometry_cast< const QgsGeometryCollection * >( geom.constGet() );
-      QgsGeometryCollection *destCollection = qgsgeometry_cast< QgsGeometryCollection * >( dest.get() );
+      const QgsGeometryCollection *collection = qgis::down_cast<const QgsGeometryCollection *>( geom.constGet() );
+      std::unique_ptr<QgsGeometryCollection> destCollection( collection->createEmptyWithSameType() );
       destCollection->reserve( collection->numGeometries() );
       for ( int i = 0; i < collection->numGeometries(); ++i )
       {
-        const QgsCurve *curve = qgsgeometry_cast< const QgsCurve *>( collection->geometryN( i ) );
+        const QgsCurve *curve = qgsgeometry_cast<const QgsCurve *>( collection->geometryN( i ) );
         if ( curve )
         {
-          std::unique_ptr< QgsCurve > reversed( curve->reversed() );
+          std::unique_ptr<QgsCurve> reversed( curve->reversed() );
           if ( !reversed )
           {
             // can this even happen?
@@ -123,7 +129,7 @@ QgsFeatureList QgsReverseLineDirectionAlgorithm ::processFeature( const QgsFeatu
           destCollection->addGeometry( reversed.release() );
         }
       }
-      const QgsGeometry outGeom( std::move( dest ) );
+      const QgsGeometry outGeom( std::move( destCollection ) );
       feature.setGeometry( outGeom );
     }
   }

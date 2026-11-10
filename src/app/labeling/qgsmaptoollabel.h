@@ -18,13 +18,13 @@
 #ifndef QGSMAPTOOLLABEL_H
 #define QGSMAPTOOLLABEL_H
 
+#include "qgis_app.h"
+#include "qgscallout.h"
+#include "qgscalloutposition.h"
+#include "qgsdiagramrenderer.h"
+#include "qgslabelposition.h"
 #include "qgsmaptooladvanceddigitizing.h"
 #include "qgspallabeling.h"
-#include "qgslabelposition.h"
-#include "qgscalloutposition.h"
-#include "qgscallout.h"
-#include "qgsdiagramrenderer.h"
-#include "qgis_app.h"
 
 class QgsRubberBand;
 
@@ -33,14 +33,13 @@ typedef QMap<QgsDiagramLayerSettings::Property, int> QgsDiagramIndexes;
 typedef QMap<QgsCallout::Property, int> QgsCalloutIndexes;
 
 //! Base class for map tools that modify label properties
-class APP_EXPORT QgsMapToolLabel: public QgsMapToolAdvancedDigitizing
+class APP_EXPORT QgsMapToolLabel : public QgsMapToolAdvancedDigitizing
 {
     Q_OBJECT
 
   public:
     QgsMapToolLabel( QgsMapCanvas *canvas, QgsAdvancedDigitizingDockWidget *cadDock );
     ~QgsMapToolLabel() override;
-
 
 
     void deactivate() override;
@@ -65,13 +64,6 @@ class APP_EXPORT QgsMapToolLabel: public QgsMapToolAdvancedDigitizing
     */
     bool labelCanShowHide( QgsVectorLayer *vlayer, int &showCol ) const;
 
-    enum class PropertyStatus
-    {
-      Valid,
-      DoesNotExist,
-      CurrentExpressionInvalid
-    };
-
     /**
      * Checks if labels in a layer can be rotated
      * \param rotationCol out: attribute column for data defined label rotation
@@ -89,12 +81,12 @@ class APP_EXPORT QgsMapToolLabel: public QgsMapToolAdvancedDigitizing
 
     struct APP_EXPORT LabelDetails
     {
-      LabelDetails() = default;
-      explicit LabelDetails( const QgsLabelPosition &p, QgsMapCanvas *canvas );
-      bool valid = false;
-      QgsLabelPosition pos;
-      QgsVectorLayer *layer = nullptr;
-      QgsPalLayerSettings settings;
+        LabelDetails() = default;
+        explicit LabelDetails( const QgsLabelPosition &p, QgsMapCanvas *canvas );
+        bool valid = false;
+        QgsLabelPosition pos;
+        QgsVectorLayer *layer = nullptr;
+        QgsPalLayerSettings settings;
     };
 
     //! Currently dragged label position
@@ -186,7 +178,7 @@ class APP_EXPORT QgsMapToolLabel: public QgsMapToolAdvancedDigitizing
     QVariant evaluateDataDefinedProperty( QgsPalLayerSettings::Property property, const QgsPalLayerSettings &labelSettings, const QgsFeature &feature, const QVariant &defaultValue ) const;
 
     //! Returns whether to preserve predefined rotation data during label pin/unpin operations
-    bool currentLabelPreserveRotation();
+    bool currentLabelPreserveRotation() const;
 
     /**
      * Gets data defined position of current label
@@ -205,10 +197,19 @@ class APP_EXPORT QgsMapToolLabel: public QgsMapToolAdvancedDigitizing
      * Label anchor
      */
     bool currentLabelDataDefinedLineAnchorPercent(
-      double &lineAnchorPercent, bool &lineAnchorPercentSuccess, int &lineAnchorPercentCol,
-      QString &lineAnchorClipping, bool &lineAnchorClippingSuccess, int &lineAnchorClippingCol,
-      QString &lineAnchorType, bool &lineAnchorTypeSuccess, int &lineAnchorTypeCol,
-      QString &lineAnchorTextPoint, bool &lineAnchorTextPointSuccess, int &lineAnchorTextPointCol ) const;
+      double &lineAnchorPercent,
+      bool &lineAnchorPercentSuccess,
+      int &lineAnchorPercentCol,
+      QString &lineAnchorClipping,
+      bool &lineAnchorClippingSuccess,
+      int &lineAnchorClippingCol,
+      QString &lineAnchorType,
+      bool &lineAnchorTypeSuccess,
+      int &lineAnchorTypeCol,
+      QString &lineAnchorTextPoint,
+      bool &lineAnchorTextPointSuccess,
+      int &lineAnchorTextPointCol
+    ) const;
 
     /**
     * Returns data defined rotation of current label
@@ -230,7 +231,7 @@ class APP_EXPORT QgsMapToolLabel: public QgsMapToolAdvancedDigitizing
 
     /**
      * Change the data defined line anchor percent of current label
-     * \param anchorPercent data defined line anchor percent
+     * \param lineAnchorPercent data defined line anchor percent
      * \returns TRUE if data defined curved offset could be changed
      */
     bool changeCurrentLabelDataDefinedLineAnchorPercent( const QVariant &lineAnchorPercent );
@@ -253,7 +254,9 @@ class APP_EXPORT QgsMapToolLabel: public QgsMapToolAdvancedDigitizing
     bool isPinned();
 
     bool labelMoveable( QgsVectorLayer *vlayer, const QgsPalLayerSettings &settings, int &xCol, int &yCol, int &pointCol ) const;
-    bool labelAnchorPercentMovable( QgsVectorLayer *vlayer, const QgsPalLayerSettings &settings, int &lineAnchorPercentCol, int &lineAnchorClippingCol, int &lineAnchorTypeCol, int &lineAnchorTextPointCol ) const;
+    bool labelAnchorPercentMovable(
+      QgsVectorLayer *vlayer, const QgsPalLayerSettings &settings, int &lineAnchorPercentCol, int &lineAnchorClippingCol, int &lineAnchorTypeCol, int &lineAnchorTextPointCol
+    ) const;
 
     bool createAuxiliaryFields( QgsPalIndexes &palIndexes );
     bool createAuxiliaryFields( LabelDetails &details, QgsPalIndexes &palIndexes ) const;

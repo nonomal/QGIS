@@ -16,16 +16,21 @@
  ***************************************************************************/
 
 #include "qgsalgorithmkeepnbiggestparts.h"
+
 #include "qgsgeometrycollection.h"
-#include "qgsmultisurface.h"
 #include "qgsmultipolygon.h"
+#include "qgsmultisurface.h"
+
+#include <QString>
 #include <queue>
+
+using namespace Qt::StringLiterals;
 
 ///@cond PRIVATE
 
 QString QgsKeepNBiggestPartsAlgorithm::name() const
 {
-  return QStringLiteral( "keepnbiggestparts" );
+  return u"keepnbiggestparts"_s;
 }
 
 QString QgsKeepNBiggestPartsAlgorithm::displayName() const
@@ -45,7 +50,7 @@ QString QgsKeepNBiggestPartsAlgorithm::group() const
 
 QString QgsKeepNBiggestPartsAlgorithm::groupId() const
 {
-  return QStringLiteral( "vectorgeometry" );
+  return u"vectorgeometry"_s;
 }
 
 QString QgsKeepNBiggestPartsAlgorithm::outputName() const
@@ -55,7 +60,7 @@ QString QgsKeepNBiggestPartsAlgorithm::outputName() const
 
 QList<int> QgsKeepNBiggestPartsAlgorithm::inputLayerTypes() const
 {
-  return QList<int>() << static_cast< int >( Qgis::ProcessingSourceType::VectorPolygon );
+  return QList<int>() << static_cast<int>( Qgis::ProcessingSourceType::VectorPolygon );
 }
 
 Qgis::ProcessingSourceType QgsKeepNBiggestPartsAlgorithm::outputLayerType() const
@@ -65,8 +70,18 @@ Qgis::ProcessingSourceType QgsKeepNBiggestPartsAlgorithm::outputLayerType() cons
 
 QString QgsKeepNBiggestPartsAlgorithm::shortHelpString() const
 {
-  return QObject::tr( "This algorithm takes a polygon layer and creates a new polygon layer in which multipart "
-                      "geometries have been removed, leaving only the n largest (in terms of area) parts." );
+  return QObject::tr(
+    "This algorithm takes a polygon layer and creates a new polygon layer in which multipart "
+    "geometries have been removed, leaving only the n largest (in terms of area) parts."
+  );
+}
+
+QString QgsKeepNBiggestPartsAlgorithm::shortDescription() const
+{
+  return QObject::tr(
+    "Creates a polygon layer in which multipart geometries have been removed, "
+    "leaving only the n largest (in terms of area) parts."
+  );
 }
 
 QgsKeepNBiggestPartsAlgorithm *QgsKeepNBiggestPartsAlgorithm::createInstance() const
@@ -82,50 +97,45 @@ Qgis::ProcessingFeatureSourceFlags QgsKeepNBiggestPartsAlgorithm::sourceFlags() 
 
 void QgsKeepNBiggestPartsAlgorithm::initParameters( const QVariantMap & )
 {
-  std::unique_ptr< QgsProcessingParameterNumber > partsToKeep = std::make_unique< QgsProcessingParameterNumber >( QStringLiteral( "PARTS" ),
-      QObject::tr( "Parts to keep" ), Qgis::ProcessingNumberParameterType::Integer,
-      1.0, false, 1.0 );
+  auto partsToKeep = std::make_unique<QgsProcessingParameterNumber>( u"PARTS"_s, QObject::tr( "Parts to keep" ), Qgis::ProcessingNumberParameterType::Integer, 1.0, false, 1.0 );
   partsToKeep->setIsDynamic( true );
-  partsToKeep->setDynamicPropertyDefinition( QgsPropertyDefinition( QStringLiteral( "PARTS" ), QObject::tr( "Parts to keep" ), QgsPropertyDefinition::IntegerPositive ) );
-  partsToKeep->setDynamicLayerParameterName( QStringLiteral( "POLYGONS" ) );
+  partsToKeep->setDynamicPropertyDefinition( QgsPropertyDefinition( u"PARTS"_s, QObject::tr( "Parts to keep" ), QgsPropertyDefinition::IntegerPositive ) );
+  partsToKeep->setDynamicLayerParameterName( u"POLYGONS"_s );
   addParameter( partsToKeep.release() );
 }
 
 QString QgsKeepNBiggestPartsAlgorithm::inputParameterName() const
 {
-  return QStringLiteral( "POLYGONS" );
+  return u"POLYGONS"_s;
 }
 
 bool QgsKeepNBiggestPartsAlgorithm::prepareAlgorithm( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback * )
 {
-  mPartsToKeep = parameterAsInt( parameters, QStringLiteral( "PARTS" ), context );
-  mDynamicPartsToKeep = QgsProcessingParameters::isDynamic( parameters, QStringLiteral( "PARTS" ) );
+  mPartsToKeep = parameterAsInt( parameters, u"PARTS"_s, context );
+  mDynamicPartsToKeep = QgsProcessingParameters::isDynamic( parameters, u"PARTS"_s );
   if ( mDynamicPartsToKeep )
-    mPartsToKeepProperty = parameters.value( QStringLiteral( "PARTS" ) ).value< QgsProperty >();
+    mPartsToKeepProperty = parameters.value( u"PARTS"_s ).value<QgsProperty>();
 
   return true;
 }
 
 QgsFeatureList QgsKeepNBiggestPartsAlgorithm::processFeature( const QgsFeature &feature, QgsProcessingContext &context, QgsProcessingFeedback * )
 {
+  QGS_MARK_ALGORITHM_SOURCE
+
   QgsFeature f = feature;
   if ( f.hasGeometry() )
   {
     const QgsGeometry geometry = f.geometry();
 
     QgsGeometry outputGeometry;
-    if ( !geometry.isMultipart() )
-    {
-      outputGeometry = geometry;
-      outputGeometry.convertToMultiType();
-    }
-    else
+
+    if ( const QgsGeometryCollection *collection = qgsgeometry_cast<const QgsGeometryCollection *>( geometry.constGet() ) )
     {
       int nPartsToKeep = mPartsToKeep;
       if ( mDynamicPartsToKeep )
         nPartsToKeep = mPartsToKeepProperty.valueAsInt( context.expressionContext(), nPartsToKeep );
 
-      const QgsGeometryCollection *collection = qgsgeometry_cast< const QgsGeometryCollection * >( geometry.constGet() );
       const int numParts = collection->numGeometries();
       if ( nPartsToKeep >= numParts )
       {
@@ -136,14 +146,11 @@ QgsFeatureList QgsKeepNBiggestPartsAlgorithm::processFeature( const QgsFeature &
       {
         struct GreaterThanByArea
         {
-          bool operator()( const QgsAbstractGeometry *lhs, const QgsAbstractGeometry *rhs ) const
-          {
-            return lhs->area() < rhs->area();
-          }
+            bool operator()( const QgsAbstractGeometry *lhs, const QgsAbstractGeometry *rhs ) const { return lhs->area() < rhs->area(); }
         };
 
-        std::unique_ptr< QgsMultiSurface > res = QgsWkbTypes::isCurvedType( collection->wkbType() ) ? std::make_unique< QgsMultiSurface >() : std::make_unique< QgsMultiPolygon >();
-        std::priority_queue< const QgsAbstractGeometry *, std::vector<const QgsAbstractGeometry *>, GreaterThanByArea > areaQueue;
+        std::unique_ptr<QgsMultiSurface> res = QgsWkbTypes::isCurvedType( collection->wkbType() ) ? std::make_unique<QgsMultiSurface>() : std::make_unique<QgsMultiPolygon>();
+        std::priority_queue<const QgsAbstractGeometry *, std::vector<const QgsAbstractGeometry *>, GreaterThanByArea> areaQueue;
         for ( int i = 0; i < numParts; ++i )
         {
           areaQueue.push( collection->geometryN( i ) );
@@ -159,6 +166,11 @@ QgsFeatureList QgsKeepNBiggestPartsAlgorithm::processFeature( const QgsFeature &
         outputGeometry = QgsGeometry( std::move( res ) );
       }
     }
+    else
+    {
+      outputGeometry = geometry;
+      outputGeometry.convertToMultiType();
+    }
 
     f.setGeometry( outputGeometry );
   }
@@ -167,5 +179,3 @@ QgsFeatureList QgsKeepNBiggestPartsAlgorithm::processFeature( const QgsFeature &
 
 
 ///@endcond
-
-

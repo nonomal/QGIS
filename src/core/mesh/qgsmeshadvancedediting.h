@@ -28,20 +28,17 @@ class QgsExpressionContext;
 /**
  * \ingroup core
  *
- * \brief Abstract class that can be derived to implement advanced editing on mesh
+ * \brief Abstract class that can be derived to implement advanced editing on mesh.
  *
  * To apply the advanced editing, a pointer to an instance of a derived class is passed
  * in the method QgsMeshEditor::advancedEdit().
  *
  * \since QGIS 3.22
  */
-class CORE_EXPORT QgsMeshAdvancedEditing : protected QgsTopologicalMesh::Changes SIP_ABSTRACT
+class CORE_EXPORT QgsMeshAdvancedEditing : public QgsTopologicalMesh::Changes SIP_ABSTRACT
 {
   public:
-
-    //! Constructor
     QgsMeshAdvancedEditing();
-    //! Destructor
     virtual ~QgsMeshAdvancedEditing();
 
     //! Sets the input vertices indexes that will be used for the editing
@@ -76,7 +73,7 @@ class CORE_EXPORT QgsMeshAdvancedEditing : protected QgsTopologicalMesh::Changes
      *
      * The method has to be implemented in the derived class to provide the changes of the advanced editing
      */
-    virtual QgsTopologicalMesh::Changes apply( QgsMeshEditor *meshEditor ) = 0; SIP_SKIP
+    virtual QgsTopologicalMesh::Changes apply( QgsMeshEditor *meshEditor ) SIP_SKIP = 0;
 
     friend class QgsMeshEditor;
 };
@@ -84,10 +81,13 @@ class CORE_EXPORT QgsMeshAdvancedEditing : protected QgsTopologicalMesh::Changes
 /**
  * \ingroup core
  *
- * \brief Class that can do a refinement of faces of a mesh.
+ * \brief Performs refinement of faces of a mesh.
+ *
  * This refinement is operated only on faces with 3 or 4 vertices (triangles or quads) by adding a vertex on the middle of each refined face.
  * For quad faces, a vertex is added on the centroid of the original face.
+ *
  * New vertices Z value are interpolated between original vertices.
+ *
  * Original triangle faces are replaced by four triangles, and original quad faces are replaced by four quads.
  * Neighboring faces are triangulated to take account of the new vertex in the shared edge.
  *
@@ -96,8 +96,6 @@ class CORE_EXPORT QgsMeshAdvancedEditing : protected QgsTopologicalMesh::Changes
 class CORE_EXPORT QgsMeshEditRefineFaces : public QgsMeshAdvancedEditing
 {
   public:
-
-    //! Constructor
     QgsMeshEditRefineFaces();
 
     QString text() const override;
@@ -107,31 +105,26 @@ class CORE_EXPORT QgsMeshEditRefineFaces : public QgsMeshAdvancedEditing
 
     struct FaceRefinement
     {
-      QList<int> newVerticesLocalIndex; // new vertices in the same order of the vertex index (ccw)
-      QList<bool> refinedFaceNeighbor;
-      QList<bool> borderFaceNeighbor;
-      int newCenterVertexIndex;
-      QList<int> newFacesChangesIndex;
+        QList<int> newVerticesLocalIndex; // new vertices in the same order of the vertex index (ccw)
+        QList<bool> refinedFaceNeighbor;
+        QList<bool> borderFaceNeighbor;
+        int newCenterVertexIndex;
+        QList<int> newFacesChangesIndex;
     };
 
     struct BorderFace
     {
-      QList<bool> refinedFacesNeighbor;
-      QList<bool> borderFacesNeighbor;
-      QList<bool> unchangeFacesNeighbor;
-      QList<int> newVerticesLocalIndex;
-      QList<int> edgeFace; //global index of the dirst face exposed on edge
+        QList<bool> refinedFacesNeighbor;
+        QList<bool> borderFacesNeighbor;
+        QList<bool> unchangeFacesNeighbor;
+        QList<int> newVerticesLocalIndex;
+        QList<int> edgeFace; //global index of the dirst face exposed on edge
     };
 
     //! Create new vertices of the refinement and populate helper containers
-    void createNewVerticesAndRefinedFaces( QgsMeshEditor *meshEditor,
-                                           QSet<int> &facesToRefine,
-                                           QHash<int, FaceRefinement> &facesRefinement );
+    void createNewVerticesAndRefinedFaces( QgsMeshEditor *meshEditor, QSet<int> &facesToRefine, QHash<int, FaceRefinement> &facesRefinement );
 
-    bool createNewBorderFaces( QgsMeshEditor *meshEditor,
-                               const QSet<int> &facesToRefine,
-                               QHash<int, FaceRefinement> &facesRefinement,
-                               QHash<int, BorderFace> &borderFaces );
+    bool createNewBorderFaces( QgsMeshEditor *meshEditor, const QSet<int> &facesToRefine, QHash<int, FaceRefinement> &facesRefinement, QHash<int, BorderFace> &borderFaces );
 
     friend class TestQgsMeshEditor;
 };
@@ -140,7 +133,7 @@ class CORE_EXPORT QgsMeshEditRefineFaces : public QgsMeshAdvancedEditing
 /**
  * \ingroup core
  *
- * \brief Class that can transform vertices of a mesh by expression
+ * \brief Transforms vertices of a mesh by expression.
  *
  * Each coordinates are associated with an expression that can be defined with function
  * returning the current coordinates (see setExpressions()):
@@ -162,8 +155,6 @@ class CORE_EXPORT QgsMeshEditRefineFaces : public QgsMeshAdvancedEditing
 class CORE_EXPORT QgsMeshTransformVerticesByExpression : public QgsMeshAdvancedEditing
 {
   public:
-
-    //! Constructor
     QgsMeshTransformVerticesByExpression() = default;
 
     QString text() const override;
@@ -179,10 +170,13 @@ class CORE_EXPORT QgsMeshTransformVerticesByExpression : public QgsMeshAdvancedE
      * Calculates the transformed vertices of the mesh \a layer, returns FALSE if this leads to topological or geometrical errors.
      * The mesh layer must be in edit mode.
      *
-     * \note this method not apply new vertices to the mesh layer but only store the calculated transformation
-     *       that can be apply later with QgsMeshEditor::advancedEdit()
+     * \note This method does not apply new vertices to the mesh layer but only stores the calculated transformation
+     * that can be applied later with QgsMeshEditor.advancedEdit()
+     *
+     * \param layer
+     * \param project QgsProject if it is necessary for the calculation ( for example with \see setZFromTerrain() ) \since QGIS 3.44
      */
-    bool calculate( QgsMeshLayer *layer );
+    bool calculate( QgsMeshLayer *layer, QgsProject *project = nullptr );
 
     /**
      * Returns the transformed vertex from its index \a vertexIndex for the mesh \a layer
@@ -191,11 +185,24 @@ class CORE_EXPORT QgsMeshTransformVerticesByExpression : public QgsMeshAdvancedE
      */
     QgsMeshVertex transformedVertex( QgsMeshLayer *layer, int vertexIndex ) const;
 
+    /**
+     * Sets if Z values for vertices should be obtained from project terrain, instead of expression.
+     *
+     * \note If \a enable is True, the Z value of the vertex will be obtained from the terrain of the project.
+     * The optional parameter \a project is necessary for function calculate ( \see calculate() ).
+     *
+     * \param enable
+     *
+     * \since QGIS 3.44
+     */
+    void setZFromTerrain( bool enable );
+
   private:
     QString mExpressionX;
     QString mExpressionY;
     QString mExpressionZ;
     QHash<int, int> mChangingVertexMap;
+    bool mZFromTerrain = false;
 
     QgsTopologicalMesh::Changes apply( QgsMeshEditor *meshEditor ) override;
 

@@ -3,9 +3,8 @@
  *                                                                      *
  * src/core/fieldformatter/qgscheckboxfieldformatter.h                  *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/
-
 
 
 class QgsCheckBoxFieldFormatter : QgsFieldFormatter
@@ -20,7 +19,6 @@ Field formatter for a checkbox field.
 #include "qgscheckboxfieldformatter.h"
 %End
   public:
-
     enum TextDisplayMethod /BaseType=IntEnum/
     {
       ShowTrueFalse,
@@ -28,9 +26,6 @@ Field formatter for a checkbox field.
     };
 
     QgsCheckBoxFieldFormatter();
-%Docstring
-Constructor for QgsCheckBoxFieldFormatter.
-%End
 
     virtual QString id() const;
 
@@ -45,5 +40,5 @@ Constructor for QgsCheckBoxFieldFormatter.
  *                                                                      *
  * src/core/fieldformatter/qgscheckboxfieldformatter.h                  *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/

@@ -18,11 +18,12 @@
 #ifndef QGSMAPTOOLSHAPEREGISTRY_H
 #define QGSMAPTOOLSHAPEREGISTRY_H
 
-#define SIP_NO_FILE
 
+#include "qgis_gui.h"
 #include "qgsabstractrelationeditorwidget.h"
 #include "qgsmaptoolshapeabstract.h"
-#include "qgis_gui.h"
+
+#define SIP_NO_FILE
 
 class QgsMapToolShapeMetadata;
 class QgsMapToolCapture;
@@ -36,7 +37,6 @@ class GUI_EXPORT QgsMapToolShapeRegistry
 {
     Q_GADGET
   public:
-
     /**
      * Constructor
      */
@@ -56,7 +56,7 @@ class GUI_EXPORT QgsMapToolShapeRegistry
     void removeMapTool( const QString &id );
 
     //! Returns the list of map tools
-    QList<QgsMapToolShapeMetadata *> mapToolMetadatas() const {return mMapTools;}
+    QList<QgsMapToolShapeMetadata *> mapToolMetadatas() const { return mMapTools; }
 
     //! Returns the map tool metadata for the given \a id
     QgsMapToolShapeMetadata *mapToolMetadata( const QString &id ) const;
@@ -68,20 +68,17 @@ class GUI_EXPORT QgsMapToolShapeRegistry
     QgsMapToolShapeAbstract *mapTool( const QString &id, QgsMapToolCapture *parentTool ) const SIP_FACTORY;
 
   private:
-
     QList<QgsMapToolShapeMetadata *> mMapTools;
-
 };
 
 /**
  * \ingroup gui
- * \brief QgsMapToolShapeMetadata is a base class for shape map tools metadata to be used in QgsMapToolShapeRegistry
+ * \brief Base class for shape map tools metadata to be used in QgsMapToolShapeRegistry
  * \since QGIS 3.26
  */
 class GUI_EXPORT QgsMapToolShapeMetadata
 {
   public:
-    //! Constructor
     QgsMapToolShapeMetadata() = default;
 
     virtual ~QgsMapToolShapeMetadata() = default;

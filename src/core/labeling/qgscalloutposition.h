@@ -18,7 +18,6 @@
 
 #include "qgis_core.h"
 #include "qgis_sip.h"
-
 #include "qgsfeatureid.h"
 
 #include <QPointF>
@@ -32,7 +31,6 @@
 class CORE_EXPORT QgsCalloutPosition
 {
   public:
-
     /**
      * Constructor for QgsCalloutPosition.
      * \param id associated feature ID
@@ -45,7 +43,6 @@ class CORE_EXPORT QgsCalloutPosition
       , providerID( providerId )
     {}
 
-    //! Constructor for QgsCalloutPosition
     QgsCalloutPosition() = default;
 
     /**
@@ -144,7 +141,6 @@ class CORE_EXPORT QgsCalloutPosition
     void setDestinationIsPinned( bool pinned ) { mDestinationIsPinned = pinned; }
 
   private:
-
     QPointF mOrigin;
 
     QPointF mDestination;

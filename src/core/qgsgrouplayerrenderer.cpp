@@ -16,12 +16,19 @@
  ***************************************************************************/
 
 #include "qgsgrouplayerrenderer.h"
-#include "qgsgrouplayer.h"
-#include "qgsfeedback.h"
-#include "qgspainteffect.h"
-#include "qgsrendercontext.h"
-#include "qgslogger.h"
+
 #include <optional>
+
+#include "qgsfeedback.h"
+#include "qgsgrouplayer.h"
+#include "qgslogger.h"
+#include "qgspainteffect.h"
+#include "qgspainting.h"
+#include "qgsrendercontext.h"
+
+#include <QString>
+
+using namespace Qt::StringLiterals;
 
 QgsGroupLayerRenderer::QgsGroupLayerRenderer( QgsGroupLayer *layer, QgsRenderContext &context )
   : QgsMapLayerRenderer( layer->id(), &context )
@@ -44,7 +51,7 @@ QgsGroupLayerRenderer::QgsGroupLayerRenderer( QgsGroupLayer *layer, QgsRenderCon
     }
     catch ( QgsCsException & )
     {
-      QgsDebugError( QStringLiteral( "Error transforming extent of %1 to destination CRS" ).arg( childLayer->id() ) );
+      QgsDebugError( u"Error transforming extent of %1 to destination CRS"_s.arg( childLayer->id() ) );
       continue;
     }
 
@@ -70,7 +77,7 @@ bool QgsGroupLayerRenderer::render()
 {
   QgsRenderContext &context = *renderContext();
 
-  context.painter()->save();
+  QgsScopedQPainterState painterState( context.painter() );
   if ( mPaintEffect )
   {
     mPaintEffect->begin( context );
@@ -94,8 +101,10 @@ bool QgsGroupLayerRenderer::render()
     context.setExtent( extentInChildLayerCrs );
 
     QImage image;
-    if ( context.useAdvancedEffects() )
+    if ( context.rasterizedRenderingPolicy() != Qgis::RasterizedRenderingPolicy::ForceVector )
+    {
       context.painter()->setCompositionMode( mRendererCompositionModes[i] );
+    }
 
     QPainter *prevPainter = context.painter();
     std::unique_ptr< QPainter > imagePainter;
@@ -129,15 +138,20 @@ bool QgsGroupLayerRenderer::render()
     mPaintEffect->end( context );
   }
 
-  context.painter()->restore();
-
   return !canceled;
 }
 
 bool QgsGroupLayerRenderer::forceRasterRender() const
 {
-  if ( !renderContext()->testFlag( Qgis::RenderContextFlag::UseAdvancedEffects ) )
-    return false;
+  switch ( renderContext()->rasterizedRenderingPolicy() )
+  {
+    case Qgis::RasterizedRenderingPolicy::Default:
+    case Qgis::RasterizedRenderingPolicy::PreferVector:
+      break;
+
+    case Qgis::RasterizedRenderingPolicy::ForceVector:
+      return false;
+  }
 
   if ( mForceRasterRender || !qgsDoubleNear( mLayerOpacity, 1.0 ) )
     return true;

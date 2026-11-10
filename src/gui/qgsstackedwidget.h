@@ -16,10 +16,12 @@
 #ifndef QGSSTACKEDWIDGET_H
 #define QGSSTACKEDWIDGET_H
 
-#define SIP_NO_FILE
+
+#include "qgis_gui.h"
 
 #include <QStackedWidget>
-#include "qgis_gui.h"
+
+#define SIP_NO_FILE
 
 class QSize;
 
@@ -39,7 +41,6 @@ class GUI_EXPORT QgsStackedWidget : public QStackedWidget
     Q_OBJECT
 
   public:
-
     /**
      * Possible modes for calculating a QgsStackedWidget's size
      */
@@ -47,7 +48,7 @@ class GUI_EXPORT QgsStackedWidget : public QStackedWidget
     {
       //! The sizes of all pages are considered when calculating the stacked widget size
       ConsiderAllPages, //#spellok
-      CurrentPageOnly, //!< Only the size of the current page is considered when calculating the stacked widget size
+      CurrentPageOnly,  //!< Only the size of the current page is considered when calculating the stacked widget size
     };
 
     /**
@@ -74,7 +75,7 @@ class GUI_EXPORT QgsStackedWidget : public QStackedWidget
     QSize minimumSizeHint() const override;
 
   private:
-    SizeMode mSizeMode;
+    SizeMode mSizeMode = SizeMode::ConsiderAllPages; //#spellok
 };
 
 #endif // QGSSTACKEDWIDGET_H

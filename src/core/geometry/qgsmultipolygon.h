@@ -20,6 +20,10 @@ email                : marco.hugentobler at sourcepole dot com
 #include "qgis_sip.h"
 #include "qgsmultisurface.h"
 
+#include <QString>
+
+using namespace Qt::StringLiterals;
+
 class QgsPolygon;
 
 /**
@@ -27,15 +31,33 @@ class QgsPolygon;
  * \class QgsMultiPolygon
  * \brief Multi polygon geometry collection.
  */
-class CORE_EXPORT QgsMultiPolygon: public QgsMultiSurface
+class CORE_EXPORT QgsMultiPolygon : public QgsMultiSurface
 {
   public:
-
+    // clang-format off
     /**
      * Constructor for an empty multipolygon geometry.
      */
     QgsMultiPolygon() SIP_HOLDGIL;
+    // clang-format on
 
+    /**
+     * Constructor for a multipolygon containing the specified \a polygons.
+     *
+     * The \a polygons will be internally cloned.
+     *
+     * \since QGIS 3.38
+     */
+    QgsMultiPolygon( const QList< QgsPolygon > &polygons ) SIP_HOLDGIL;
+
+    /**
+     * Constructor for a multipolygon containing the specified \a polygons.
+     *
+     * Ownership of the \a polygons will be transferred to the multipolygon.
+     *
+     * \since QGIS 3.38
+     */
+    QgsMultiPolygon( const QList< QgsPolygon * > &polygons SIP_TRANSFER ) SIP_HOLDGIL;
 
 #ifndef SIP_RUN
 
@@ -46,6 +68,7 @@ class CORE_EXPORT QgsMultiPolygon: public QgsMultiSurface
      */
     QgsPolygon *polygonN( int index );
 #else
+// clang-format off
 
     /**
      * Returns the polygon with the specified \a index.
@@ -66,6 +89,7 @@ class CORE_EXPORT QgsMultiPolygon: public QgsMultiSurface
       return sipConvertFromType( sipCpp->polygonN( a0 ), sipType_QgsPolygon, NULL );
     }
     % End
+// clang-format on
 #endif
 
 #ifndef SIP_RUN
@@ -86,9 +110,11 @@ class CORE_EXPORT QgsMultiPolygon: public QgsMultiSurface
     bool fromWkt( const QString &wkt ) override;
     QDomElement asGml2( QDomDocument &doc, int precision = 17, const QString &ns = "gml", QgsAbstractGeometry::AxisOrder axisOrder = QgsAbstractGeometry::AxisOrder::XY ) const override;
     QDomElement asGml3( QDomDocument &doc, int precision = 17, const QString &ns = "gml", QgsAbstractGeometry::AxisOrder axisOrder = QgsAbstractGeometry::AxisOrder::XY ) const override;
-    json asJsonObject( int precision  = 17 ) const override SIP_SKIP;
+    json asJsonObject( int precision  = 17, Qgis::GeoJsonProfile profile = Qgis::GeoJsonProfile::Legacy ) const override SIP_SKIP;
     bool addGeometry( QgsAbstractGeometry *g SIP_TRANSFER ) override;
+    bool addGeometries( const QVector< QgsAbstractGeometry * > &geometries SIP_TRANSFER ) final;
     bool insertGeometry( QgsAbstractGeometry *g SIP_TRANSFER, int index ) override;
+    QgsMultiPolygon *simplifyByDistance( double tolerance ) const override SIP_FACTORY;
 
     /**
      * Returns the geometry converted to the more generic curve type QgsMultiSurface
@@ -100,15 +126,32 @@ class CORE_EXPORT QgsMultiPolygon: public QgsMultiSurface
 #ifndef SIP_RUN
 
     /**
-     * Cast the \a geom to a QgsMultiPolygonV2.
+     * Cast the \a geom to a QgsMultiPolygon.
      * Should be used by qgsgeometry_cast<QgsMultiPolygon *>( geometry ).
      *
-     * \note Not available in Python. Objects will be automatically be converted to the appropriate target type.
+     * Objects will be automatically converted to the appropriate target type.
+     *
+     * \note Not available in Python.
      */
-    inline static const QgsMultiPolygon *cast( const QgsAbstractGeometry *geom )
+    inline static const QgsMultiPolygon *cast( const QgsAbstractGeometry *geom ) // cppcheck-suppress duplInheritedMember
     {
       if ( geom && QgsWkbTypes::flatType( geom->wkbType() ) == Qgis::WkbType::MultiPolygon )
         return static_cast<const QgsMultiPolygon *>( geom );
+      return nullptr;
+    }
+
+    /**
+     * Cast the \a geom to a QgsMultiPolygon.
+     * Should be used by qgsgeometry_cast<QgsMultiPolygon *>( geometry ).
+     *
+     * Objects will be automatically converted to the appropriate target type.
+     *
+     * \note Not available in Python.
+     */
+    inline static QgsMultiPolygon *cast( QgsAbstractGeometry *geom ) // cppcheck-suppress duplInheritedMember
+    {
+      if ( geom && QgsWkbTypes::flatType( geom->wkbType() ) == Qgis::WkbType::MultiPolygon )
+        return static_cast<QgsMultiPolygon *>( geom );
       return nullptr;
     }
 #endif
@@ -116,14 +159,16 @@ class CORE_EXPORT QgsMultiPolygon: public QgsMultiSurface
     QgsMultiPolygon *createEmptyWithSameType() const override SIP_FACTORY;
 
 #ifdef SIP_RUN
+// clang-format off
     SIP_PYOBJECT __repr__();
     % MethodCode
     QString wkt = sipCpp->asWkt();
     if ( wkt.length() > 1000 )
-      wkt = wkt.left( 1000 ) + QStringLiteral( "..." );
-    QString str = QStringLiteral( "<QgsMultiPolygon: %1>" ).arg( wkt );
+      wkt = wkt.left( 1000 ) + u"..."_s;
+    QString str = u"<QgsMultiPolygon: %1>"_s.arg( wkt );
     sipRes = PyUnicode_FromString( str.toUtf8().constData() );
     % End
+// clang-format on
 #endif
 
   protected:

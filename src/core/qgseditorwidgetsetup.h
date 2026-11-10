@@ -17,6 +17,7 @@
 #define QGSEDITORWIDGETSETUP_H
 
 #include "qgis_core.h"
+
 #include <QVariantMap>
 
 /**
@@ -27,7 +28,6 @@
 class CORE_EXPORT QgsEditorWidgetSetup
 {
   public:
-
     /**
      * Constructor
      */
@@ -36,29 +36,25 @@ class CORE_EXPORT QgsEditorWidgetSetup
       , mConfig( config )
     {}
 
-    //! Constructor for QgsEditorWidgetSetup
     QgsEditorWidgetSetup() = default;
 
     /**
-     * \returns the widget type to use
+     * Returns the widget type to use.
      */
     QString type() const { return mType; }
 
     /**
-     * \returns the widget configuration to used
+     * Returns the widget configuration.
      */
     QVariantMap config() const { return mConfig; }
 
     /**
-     * \returns TRUE if there is no widget configured.
+     * Returns TRUE if there is no widget configured.
      */
     bool isNull() const { return mType.isEmpty(); }
 
     // TODO c++20 - replace with = default
-    bool operator==( const QgsEditorWidgetSetup &other ) const
-    {
-      return mType == other.mType && mConfig == other.mConfig;
-    }
+    bool operator==( const QgsEditorWidgetSetup &other ) const { return mType == other.mType && mConfig == other.mConfig; }
 
   private:
     QString mType;

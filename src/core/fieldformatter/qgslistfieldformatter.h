@@ -30,10 +30,6 @@
 class CORE_EXPORT QgsListFieldFormatter : public QgsFieldFormatter
 {
   public:
-
-    /**
-      * Default constructor of field formatter for a list field.
-      */
     QgsListFieldFormatter() = default;
     QString id() const override;
 

@@ -1,8 +1,4 @@
-
-/**
- * \brief The qgsrasterlayerproperties class is used to set up how raster layers are displayed.
- */
-/* **************************************************************************
+/***************************************************************************
                           qgsrasterlayerproperties.h  -  description
                              -------------------
     begin                : Sun Aug 11 2002
@@ -21,13 +17,14 @@
 #ifndef QGSRASTERLAYERPROPERTIES_H
 #define QGSRASTERLAYERPROPERTIES_H
 
-#include "qgslayerpropertiesdialog.h"
 #include "ui_qgsrasterlayerpropertiesbase.h"
-#include "qgsguiutils.h"
+
 #include "qgis_gui.h"
-#include "qgsresamplingutils.h"
-#include "qgsrasterpipe.h"
 #include "qgsexpressioncontextgenerator.h"
+#include "qgsguiutils.h"
+#include "qgslayerpropertiesdialog.h"
+#include "qgsrasterpipe.h"
+#include "qgsresamplingutils.h"
 
 class QgsPointXY;
 class QgsMapLayer;
@@ -46,20 +43,19 @@ class QgsPropertyOverrideButton;
 class QgsRasterTransparencyWidget;
 class QgsRasterAttributeTableWidget;
 class QgsWebView;
+class QgsRasterLabelingWidget;
 
 /**
  * \ingroup gui
  * \class QgsRasterLayerProperties
- * \brief Property sheet for a raster map layer
+ * \brief A dialog for raster layer properties.
  * \since QGIS 3.12 (in the GUI API)
  */
-
 class GUI_EXPORT QgsRasterLayerProperties : public QgsLayerPropertiesDialog, private Ui::QgsRasterLayerPropertiesBase, private QgsExpressionContextGenerator
 {
     Q_OBJECT
 
   public:
-
     /**
      * enumeration for the different types of style
      */
@@ -81,7 +77,7 @@ class GUI_EXPORT QgsRasterLayerProperties : public QgsLayerPropertiesDialog, pri
      */
     QgsRasterLayerProperties( QgsMapLayer *lyr, QgsMapCanvas *canvas, QWidget *parent = nullptr, Qt::WindowFlags = QgsGuiUtils::ModalDialogFlags );
 
-    void addPropertiesPageFactory( const QgsMapLayerConfigWidgetFactory *factory ) FINAL;
+    void addPropertiesPageFactory( const QgsMapLayerConfigWidgetFactory *factory ) final;
 
     QgsExpressionContext createExpressionContext() const override;
 
@@ -90,17 +86,16 @@ class GUI_EXPORT QgsRasterLayerProperties : public QgsLayerPropertiesDialog, pri
     /**
      * Saves the default style when appropriate button is pressed
      *
-     * \deprecated use saveStyleAsDefault() instead
+     * \deprecated QGIS 3.40. Use saveStyleAsDefault() instead.
      */
     Q_DECL_DEPRECATED void saveDefaultStyle() SIP_DEPRECATED;
 
   protected slots:
-    void optionsStackedWidget_CurrentChanged( int index ) FINAL;
-    void apply() FINAL;
-    void rollback() FINAL;
+    void optionsStackedWidget_CurrentChanged( int index ) final;
+    void apply() final;
+    void rollback() final;
 
   private:
-
     // TODO -- consider moving these to a common raster widget base class
 
     /**
@@ -135,10 +130,6 @@ class GUI_EXPORT QgsRasterLayerProperties : public QgsLayerPropertiesDialog, pri
     //! \brief slot executed when user changes the layer's CRS
     void mCrsSelector_crsChanged( const QgsCoordinateReferenceSystem &crs );
 
-    // Server properties
-    void addMetadataUrl();
-    void removeSelectedMetadataUrl();
-
     /**
      * updates gamma spinbox on slider changes
      * \since QGIS 3.16
@@ -170,13 +161,10 @@ class GUI_EXPORT QgsRasterLayerProperties : public QgsLayerPropertiesDialog, pri
     //! Enable or disable colorize controls depending on checkbox
     void toggleColorizeControls( bool colorizeEnabled );
 
-    //! Transparency cell changed
-    void transparencyCellTextEdited( const QString &text );
-
     void aboutToShowStyleMenu();
 
     //! Make GUI reflect the layer's state
-    void syncToLayer() FINAL;
+    void syncToLayer() final;
 
     // Update the preview of the map tip
     void updateMapTipPreview();
@@ -184,11 +172,8 @@ class GUI_EXPORT QgsRasterLayerProperties : public QgsLayerPropertiesDialog, pri
     void resizeMapTip();
 
   private:
-
     QAction *mActionLoadMetadata = nullptr;
     QAction *mActionSaveMetadataAs = nullptr;
-
-    QStandardItemModel *mMetadataUrlModel = nullptr;
 
     //! \brief  A constant that signals property not used
     const QString TRSTRING_NOT_SET;
@@ -197,12 +182,12 @@ class GUI_EXPORT QgsRasterLayerProperties : public QgsLayerPropertiesDialog, pri
     QString mDefaultContrastEnhancementAlgorithm;
 
     //! \brief default standard deviation
-    double mDefaultStandardDeviation;
+    double mDefaultStandardDeviation = 0;
 
     //! \brief Default band combination
-    int mDefaultRedBand;
-    int mDefaultGreenBand;
-    int mDefaultBlueBand;
+    int mDefaultRedBand = 0;
+    int mDefaultGreenBand = 0;
+    int mDefaultBlueBand = 0;
 
     //! \brief Flag to indicate if Gray minimum maximum values are actual minimum maximum values
     bool mGrayMinimumMaximumEstimated;
@@ -218,6 +203,8 @@ class GUI_EXPORT QgsRasterLayerProperties : public QgsLayerPropertiesDialog, pri
 
     QgsRasterTransparencyWidget *mRasterTransparencyWidget = nullptr;
 
+    QgsRasterLabelingWidget *mLabelingWidget = nullptr;
+
     /**
      * Widget with temporal inputs, to be used by temporal based raster layers.
      */
@@ -229,12 +216,6 @@ class GUI_EXPORT QgsRasterLayerProperties : public QgsLayerPropertiesDialog, pri
      * Updates the information tab by reloading metadata
      */
     void updateInformationContent();
-
-    void setTransparencyCell( int row, int column, double value );
-    void setTransparencyCellValue( int row, int column, double value );
-    double transparencyCellValue( int row, int column );
-    void setTransparencyToEdited( int row );
-    void adjustTransparencyCellWidth( int row, int column );
 
     void setRendererWidget( const QString &rendererName );
 
@@ -250,16 +231,14 @@ class GUI_EXPORT QgsRasterLayerProperties : public QgsLayerPropertiesDialog, pri
     QLinearGradient blueGradient();
     QLinearGradient grayGradient();
     QLinearGradient highlightGradient();
-    qreal mGradientHeight;
-    qreal mGradientWidth;
+    qreal mGradientHeight = 0.0;
+    qreal mGradientWidth = 0.0;
 
     QgsRasterHistogramWidget *mHistogramWidget = nullptr;
 
-    QVector<bool> mTransparencyToEdited;
-
     bool mDisableRenderTypeComboBoxCurrentIndexChanged = false;
 
-    bool mMetadataFilled;
+    bool mMetadataFilled = false;
 
     //! Synchronize state with associated raster layer
     void sync();

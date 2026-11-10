@@ -18,8 +18,8 @@
 #ifndef QGSMAPRENDERERJOBPROXY_H
 #define QGSMAPRENDERERJOBPROXY_H
 
-#include "qgsmapsettings.h"
 #include "qgsmaprendererjob.h"
+#include "qgsmapsettings.h"
 
 class QgsFeatureFilterProvider;
 
@@ -34,19 +34,15 @@ namespace QgsWms
   class QgsMapRendererJobProxy
   {
     public:
-
       /**
        * Constructor for QgsMapRendererJobProxy. Does not take ownership of
        * \a featureFilterProvider.
        * \param parallelRendering TRUE to activate parallel rendering, FALSE otherwise
        * \param maxThreads The number of threads to use in case of parallel rendering
        * \param featureFilterProvider Features filtering
+       * \param perLayerTemporalRange temporal ranges to be used when rendering map layers
        */
-      QgsMapRendererJobProxy(
-        bool parallelRendering
-        , int maxThreads
-        , QgsFeatureFilterProvider *featureFilterProvider
-      );
+      QgsMapRendererJobProxy( bool parallelRendering, int maxThreads, QgsFeatureFilterProvider *featureFilterProvider, QHash<QgsMapLayer *, QgsDateTimeRange> perLayerTemporalRange );
 
       /**
        * Sequential or parallel map rendering.
@@ -71,6 +67,7 @@ namespace QgsWms
     private:
       bool mParallelRendering;
       QgsFeatureFilterProvider *mFeatureFilterProvider = nullptr;
+      QHash<QgsMapLayer *, QgsDateTimeRange> mPerLayerTemporalRange;
       std::unique_ptr<QPainter> mPainter;
 
       void getRenderErrors( const QgsMapRendererJob *job );
@@ -80,5 +77,5 @@ namespace QgsWms
   };
 
 
-}
+} // namespace QgsWms
 #endif

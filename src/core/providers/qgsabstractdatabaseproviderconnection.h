@@ -16,14 +16,17 @@
 #ifndef QGSABSTRACTDATABASEPROVIDERCONNECTION_H
 #define QGSABSTRACTDATABASEPROVIDERCONNECTION_H
 
+#include "qgis_core.h"
+#include "qgsabstractlayermetadataprovider.h"
 #include "qgsabstractproviderconnection.h"
 #include "qgscoordinatereferencesystem.h"
-#include "qgis_core.h"
 #include "qgsfields.h"
 #include "qgsvectordataprovider.h"
-#include "qgsabstractlayermetadataprovider.h"
 
 #include <QObject>
+#include <QString>
+
+using namespace Qt::StringLiterals;
 
 class QgsFeedback;
 class QgsFieldDomain;
@@ -32,8 +35,7 @@ class QgsProviderSqlQueryBuilder;
 
 
 /**
- * \brief The QgsAbstractDatabaseProviderConnection class provides common functionality
- * for DB based connections.
+ * \brief Provides common functionality for database based connections.
  *
  * This class performs low level DB operations without asking
  * the user for confirmation or handling currently opened layers and the registry
@@ -46,11 +48,9 @@ class QgsProviderSqlQueryBuilder;
  */
 class CORE_EXPORT QgsAbstractDatabaseProviderConnection : public QgsAbstractProviderConnection
 {
-
     Q_GADGET
 
   public:
-
     /**
      * Flags for table properties.
      *
@@ -59,13 +59,13 @@ class CORE_EXPORT QgsAbstractDatabaseProviderConnection : public QgsAbstractProv
      */
     enum class TableFlag SIP_MONKEYPATCH_SCOPEENUM_UNNEST( QgsAbstractDatabaseProviderConnection, TableFlag ) : int SIP_ENUM_BASETYPE( IntFlag )
     {
-      Aspatial = 1 << 1,          //!< Aspatial table (it does not contain any geometry column)
-      Vector = 1 << 2,            //!< Vector table (it does contain one geometry column)
-      Raster = 1 << 3,            //!< Raster table
-      View = 1 << 4,              //!< View table
-      MaterializedView = 1 << 5,  //!< Materialized view table
-      Foreign = 1 << 6,           //!< Foreign data wrapper
-      IncludeSystemTables = 1 << 7, //!< Include system tables (since QGIS 3.30)
+      Aspatial = 1 << 1,            //!< Aspatial table (it does not contain any geometry column)
+      Vector = 1 << 2,              //!< Vector table (it does contain one geometry column)
+      Raster = 1 << 3,              //!< Raster table
+      View = 1 << 4,                //!< View table
+      MaterializedView = 1 << 5,    //!< Materialized view table
+      Foreign = 1 << 6,             //!< Foreign data wrapper
+      IncludeSystemTables = 1 << 7, //!< Include system tables \since QGIS 3.30
     };
 
     Q_ENUM( TableFlag )
@@ -86,7 +86,6 @@ class CORE_EXPORT QgsAbstractDatabaseProviderConnection : public QgsAbstractProv
      */
     struct CORE_EXPORT QueryResult
     {
-
         /**
          * Returns the column names.
          */
@@ -122,17 +121,18 @@ class CORE_EXPORT QgsAbstractDatabaseProviderConnection : public QgsAbstractProv
          *
          * \see rowCount()
          */
-        long long fetchedRowCount( ) const;
+        long long fetchedRowCount() const;
 
         /**
          * Returns the number of rows returned by a SELECT query or Qgis::FeatureCountState::UnknownCount if unknown.
          *
          * \see fetchedRowCount()
          */
-        long long rowCount( ) const;
+        long long rowCount() const;
 
 
 #ifdef SIP_RUN
+        // clang-format off
         // Python iterator
         QueryResult *__iter__();
         % MethodCode
@@ -155,16 +155,17 @@ class CORE_EXPORT QgsAbstractDatabaseProviderConnection : public QgsAbstractProv
           PyErr_SetString( PyExc_StopIteration, "" );
         }
         % End
+// clang-format on
 #endif
 
-///@cond private
+          ///@cond private
 
-        /**
+          /**
          * The QueryResultIterator struct is an abstract interface for provider query result iterators.
          * Providers must implement their own concrete iterator over query results.
          *
          */
-        struct CORE_EXPORT QueryResultIterator SIP_SKIP
+          struct CORE_EXPORT QueryResultIterator SIP_SKIP
         {
             //! Returns the next result row
             QVariantList nextRow();
@@ -181,14 +182,12 @@ class CORE_EXPORT QgsAbstractDatabaseProviderConnection : public QgsAbstractProv
             virtual ~QueryResultIterator() = default;
 
           private:
-
             virtual QVariantList nextRowPrivate() = 0;
             virtual bool hasNextRowPrivate() const = 0;
             virtual long long rowCountPrivate() const = 0;
 
             mutable qlonglong mFetchedRowCount = 0;
             mutable QMutex mMutex;
-
         };
 
         /**
@@ -209,28 +208,39 @@ class CORE_EXPORT QgsAbstractDatabaseProviderConnection : public QgsAbstractProv
          * Default constructor, used to return empty results
          * \note Not available in Python bindings
          */
-        QueryResult( ) = default SIP_SKIP;
+        QueryResult() = default SIP_SKIP;
 
         /**
          * Returns the query execution time in milliseconds.
          */
-        double queryExecutionTime( ) const;
+        double queryExecutionTime() const;
 
         /**
          * Sets the query execution time to \a queryExecutionTime milliseconds.
          */
         void setQueryExecutionTime( double queryExecutionTime );
 
-///@endcond private
+        ///@endcond private
 
       private:
-
         mutable std::shared_ptr<QueryResultIterator> mResultIterator;
         QStringList mColumns;
         //! Query execution time in milliseconds
         double mQueryExecutionTime = 0;
-
     };
+
+    /**
+     * Splits a simple query in the form "SELECT column(s) FROM table(s) [WHERE ...]" into its components
+     * \param sql the SQL query
+     * \param columns output list of columns
+     * \param tables output list of tables
+     * \param where output where clause (without the "WHERE" keyword)
+     * \return TRUE in case of success
+     * \note Not available in Python bindings
+     * \since QGIS 4.0
+     */
+    static bool splitSimpleQuery( const QString &sql, QStringList &columns, QStringList &tables, QString &where ) SIP_SKIP;
+
 
     /**
      * \brief The SqlVectorLayerOptions stores all information required to create a SQL (query) layer.
@@ -240,19 +250,18 @@ class CORE_EXPORT QgsAbstractDatabaseProviderConnection : public QgsAbstractProv
      */
     struct CORE_EXPORT SqlVectorLayerOptions
     {
-      //! The SQL expression that defines the SQL (query) layer
-      QString sql;
-      //! Additional subset string (provider-side filter), not all data providers support this feature: check support with SqlLayerDefinitionCapability::Filters capability
-      QString filter;
-      //! Optional name for the new layer
-      QString layerName;
-      //! List of primary key column names
-      QStringList primaryKeyColumns;
-      //! Name of the geometry column
-      QString geometryColumn;
-      //! If SelectAtId is disabled (default is false), not all data providers support this feature: check support with SqlLayerDefinitionCapability::SelectAtId capability
-      bool disableSelectAtId = false;
-
+        //! The SQL expression that defines the SQL (query) layer
+        QString sql;
+        //! Additional subset string (provider-side filter), not all data providers support this feature: check support with SqlLayerDefinitionCapability::Filters capability
+        QString filter;
+        //! Optional name for the new layer
+        QString layerName;
+        //! List of primary key column names
+        QStringList primaryKeyColumns;
+        //! Name of the geometry column
+        QString geometryColumn;
+        //! If SelectAtId is disabled (default is false), not all data providers support this feature: check support with SqlLayerDefinitionCapability::SelectAtId capability
+        bool disableSelectAtId = false;
     };
 
     /**
@@ -268,40 +277,39 @@ class CORE_EXPORT QgsAbstractDatabaseProviderConnection : public QgsAbstractProv
      */
     struct CORE_EXPORT TableProperty
     {
-
 #ifdef SIP_RUN
+        // clang-format off
         SIP_PYOBJECT __repr__();
         % MethodCode
-        QString str = QStringLiteral( "<QgsAbstractDatabaseProviderConnection.TableProperty: '%1'>" ).arg( sipCpp->tableName() );
+        QString str = u"<QgsAbstractDatabaseProviderConnection.TableProperty: '%1'>"_s.arg( sipCpp->tableName() );
         sipRes = PyUnicode_FromString( str.toUtf8().constData() );
         % End
+// clang-format on
 #endif
 
-        /**
+          /**
          * The GeometryColumnType struct represents the combination
          * of geometry type and CRS for the table geometry column.
          */
-        struct CORE_EXPORT GeometryColumnType
+          struct CORE_EXPORT GeometryColumnType
         {
 #ifdef SIP_RUN
+            // clang-format off
           SIP_PYOBJECT __repr__();
           % MethodCode
-          QString str = QStringLiteral( "<QgsAbstractDatabaseProviderConnection.TableProperty.GeometryColumnType: '%1, %2'>" ).arg( QgsWkbTypes::displayString( sipCpp->wkbType ), sipCpp->crs.authid() );
+          QString str = u"<QgsAbstractDatabaseProviderConnection.TableProperty.GeometryColumnType: '%1, %2'>"_s.arg( QgsWkbTypes::displayString( sipCpp->wkbType ), sipCpp->crs.authid() );
           sipRes = PyUnicode_FromString( str.toUtf8().constData() );
           % End
+// clang-format on
 #endif
-          Qgis::WkbType wkbType;
-          QgsCoordinateReferenceSystem crs;
+                Qgis::WkbType wkbType;
+            QgsCoordinateReferenceSystem crs;
 
-          // TODO c++20 - replace with = default
-          inline bool operator==( const GeometryColumnType &other ) const
-          {
-            return this->crs == other.crs && this->wkbType == other.wkbType;
-          }
+            // TODO c++20 - replace with = default
+            inline bool operator==( const GeometryColumnType &other ) const { return this->crs == other.crs && this->wkbType == other.wkbType; }
         };
 
       public:
-
         /**
          * Returns the table name.
          *
@@ -447,23 +455,22 @@ class CORE_EXPORT QgsAbstractDatabaseProviderConnection : public QgsAbstractProv
         bool operator==( const QgsAbstractDatabaseProviderConnection::TableProperty &other ) const;
 
       private:
-
         //! Holds the list of geometry wkb types and srids supported by the table
-        QList<GeometryColumnType>     mGeometryColumnTypes;
+        QList<GeometryColumnType> mGeometryColumnTypes;
         //! Table schema
-        QString                       mSchema;
+        QString mSchema;
         //! Table name
-        QString                       mTableName;
+        QString mTableName;
         //! Name of the geometry column
-        QString                       mGeometryColumn;
+        QString mGeometryColumn;
         //! The number of geometry columns in the table
-        int                           mGeometryColumnCount;
+        int mGeometryColumnCount = 0;
         //! PK columns
-        QStringList                   mPkColumns;
-        TableFlags                    mFlags;
-        QString                       mComment;
+        QStringList mPkColumns;
+        TableFlags mFlags;
+        QString mComment;
         //! Additional unstructured information about the table
-        QVariantMap                   mInfo;
+        QVariantMap mInfo;
     };
 
     /**
@@ -473,8 +480,8 @@ class CORE_EXPORT QgsAbstractDatabaseProviderConnection : public QgsAbstractProv
      */
     struct CORE_EXPORT SpatialIndexOptions
     {
-      //! Specifies the name of the geometry column to create the index for
-      QString geometryColumnName;
+        //! Specifies the name of the geometry column to create the index for
+        QString geometryColumnName;
     };
 
     /**
@@ -484,36 +491,37 @@ class CORE_EXPORT QgsAbstractDatabaseProviderConnection : public QgsAbstractProv
      */
     enum Capability SIP_ENUM_BASETYPE( IntFlag )
     {
-      CreateVectorTable = 1 << 1,                     //!< Can CREATE a vector (or aspatial) table/layer
-      DropRasterTable = 1 << 2,                       //!< Can DROP a raster table/layer
-      DropVectorTable = 1 << 3,                       //!< Can DROP a vector (or aspatial) table/layer
-      RenameVectorTable = 1 << 4,                     //!< Can RENAME a vector (or aspatial) table/layer
-      RenameRasterTable = 1 << 5,                     //!< Can RENAME a raster table/layer
-      CreateSchema = 1 << 6,                          //!< Can CREATE a schema
-      DropSchema = 1 << 7,                            //!< Can DROP a schema
-      RenameSchema = 1 << 8,                          //!< Can RENAME a schema
-      ExecuteSql = 1 << 9,                            //!< Can execute raw SQL queries (without returning results)
-      Vacuum = 1 << 10,                               //!< Can run vacuum
-      Tables = 1 << 11,                               //!< Can list tables
-      Schemas = 1 << 12,                              //!< Can list schemas (if not set, the connection does not support schemas)
-      SqlLayers = 1 << 13,                            //!< Can create vector layers from SQL SELECT queries
-      TableExists = 1 << 14,                          //!< Can check if table exists
-      Spatial = 1 << 15,                              //!< The connection supports spatial tables
-      CreateSpatialIndex = 1 << 16,                   //!< The connection can create spatial indices
-      SpatialIndexExists = 1 << 17,                   //!< The connection can determine if a spatial index exists
-      DeleteSpatialIndex = 1 << 18,                   //!< The connection can delete spatial indices for tables
-      DeleteField = 1 << 19,                          //!< Can delete an existing field/column
-      DeleteFieldCascade = 1 << 20,                   //!< Can delete an existing field/column with cascade
-      AddField = 1 << 21,                             //!< Can add a new field/column
-      ListFieldDomains = 1 << 22,                     //!< Can return a list of field domain names via fieldDomainNames() (since QGIS 3.26)
-      RetrieveFieldDomain = 1 << 23,                  //!< Can retrieve field domain details from provider via fieldDomain() (since QGIS 3.26)
-      SetFieldDomain = 1 << 24,                       //!< Can set the domain for an existing field via setFieldDomainName() (since QGIS 3.26)
-      AddFieldDomain = 1 << 25,                       //!< Can add new field domains to the database via addFieldDomain() (since QGIS 3.26)
-      RenameField = 1 << 26,                          //!< Can rename existing fields via renameField() (since QGIS 3.28)
-      RetrieveRelationships = 1 << 27,                //!< Can retrieve relationships from the database (since QGIS 3.28)
-      AddRelationship = 1 << 28,                      //!< Can add new relationships to the database via addRelationship() (since QGIS 3.30)
-      UpdateRelationship = 1 << 29,                   //!< Can update existing relationships in the database via updateRelationship() (since QGIS 3.30)
-      DeleteRelationship = 1 << 30,                   //!< Can delete existing relationships from the database via deleteRelationship() (since QGIS 3.30)
+      CreateVectorTable = 1 << 1,      //!< Can CREATE a vector (or aspatial) table/layer
+      DropRasterTable = 1 << 2,        //!< Can DROP a raster table/layer
+      DropVectorTable = 1 << 3,        //!< Can DROP a vector (or aspatial) table/layer
+      RenameVectorTable = 1 << 4,      //!< Can RENAME a vector (or aspatial) table/layer
+      RenameRasterTable = 1 << 5,      //!< Can RENAME a raster table/layer
+      CreateSchema = 1 << 6,           //!< Can CREATE a schema
+      DropSchema = 1 << 7,             //!< Can DROP a schema
+      RenameSchema = 1 << 8,           //!< Can RENAME a schema
+      ExecuteSql = 1 << 9,             //!< Can execute raw SQL queries (without returning results)
+      Vacuum = 1 << 10,                //!< Can run vacuum
+      Tables = 1 << 11,                //!< Can list tables
+      Schemas = 1 << 12,               //!< Can list schemas (if not set, the connection does not support schemas)
+      SqlLayers = 1 << 13,             //!< Can create vector layers from SQL SELECT queries
+      TableExists = 1 << 14,           //!< Can check if table exists
+      Spatial = 1 << 15,               //!< The connection supports spatial tables
+      CreateSpatialIndex = 1 << 16,    //!< The connection can create spatial indices
+      SpatialIndexExists = 1 << 17,    //!< The connection can determine if a spatial index exists
+      DeleteSpatialIndex = 1 << 18,    //!< The connection can delete spatial indices for tables
+      DeleteField = 1 << 19,           //!< Can delete an existing field/column
+      DeleteFieldCascade = 1 << 20,    //!< Can delete an existing field/column with cascade
+      AddField = 1 << 21,              //!< Can add a new field/column
+      ListFieldDomains = 1 << 22,      //!< Can return a list of field domain names via fieldDomainNames() \since QGIS 3.26
+      RetrieveFieldDomain = 1 << 23,   //!< Can retrieve field domain details from provider via fieldDomain() \since QGIS 3.26
+      SetFieldDomain = 1 << 24,        //!< Can set the domain for an existing field via setFieldDomainName() \since QGIS 3.26
+      AddFieldDomain = 1 << 25,        //!< Can add new field domains to the database via addFieldDomain() \since QGIS 3.26
+      RenameField = 1 << 26,           //!< Can rename existing fields via renameField() \since QGIS 3.28
+      RetrieveRelationships = 1 << 27, //!< Can retrieve relationships from the database \since QGIS 3.28
+      AddRelationship = 1 << 28,       //!< Can add new relationships to the database via addRelationship() \since QGIS 3.30
+      UpdateRelationship = 1 << 29,    //!< Can update existing relationships in the database via updateRelationship() \since QGIS 3.30
+      DeleteRelationship = 1 << 30,    //!< Can delete existing relationships from the database via deleteRelationship() \since QGIS 3.30
+      MoveTableToSchema = 1u << 31,    //!< Can move table to another schema via moveTableToAnotherSchema() \since QGIS 3.44
     };
     Q_ENUM( Capability )
     Q_DECLARE_FLAGS( Capabilities, Capability )
@@ -526,15 +534,16 @@ class CORE_EXPORT QgsAbstractDatabaseProviderConnection : public QgsAbstractProv
      */
     enum GeometryColumnCapability SIP_ENUM_BASETYPE( IntFlag )
     {
-      Z = 1 << 1,                    //!< Supports Z dimension
-      M = 1 << 2,                    //!< Supports M dimension
-      SinglePart = 1 << 3,           //!< Multi and single part types are distinct types. Deprecated since QGIS 3.28 -- use the granular SinglePoint/SingleLineString/SinglePolygon capabilities instead.
-      Curves = 1 << 4,                //!< Supports curves
-      SinglePoint = 1 << 5,            //!< Supports single point types (as distinct from multi point types) (since QGIS 3.28)
-      SingleLineString = 1 << 6,       //!< Supports single linestring types (as distinct from multi line types) (since QGIS 3.28)
-      SinglePolygon = 1 << 7,          //!< Supports single polygon types (as distinct from multi polygon types) (since QGIS 3.28)
+      Z = 1 << 1,                  //!< Supports Z dimension
+      M = 1 << 2,                  //!< Supports M dimension
+      SinglePart = 1 << 3,         //!< Multi and single part types are distinct types. Deprecated since QGIS 3.28 -- use the granular SinglePoint/SingleLineString/SinglePolygon capabilities instead.
+      Curves = 1 << 4,             //!< Supports curves
+      SinglePoint = 1 << 5,        //!< Supports single point types (as distinct from multi point types) \since QGIS 3.28
+      SingleLineString = 1 << 6,   //!< Supports single linestring types (as distinct from multi line types) \since QGIS 3.28
+      SinglePolygon = 1 << 7,      //!< Supports single polygon types (as distinct from multi polygon types) \since QGIS 3.28
+      PolyhedralSurfaces = 1 << 8, //!< Supports polyhedral surfaces (PolyhedralSurface, TIN) types (as distinct from multi polygon types) \since QGIS 3.40
     };
-    // TODO QGIS 4.0 -- remove SinglePart
+    // TODO QGIS 5.0 -- remove SinglePart
 
     Q_ENUM( GeometryColumnCapability )
     Q_DECLARE_FLAGS( GeometryColumnCapabilities, GeometryColumnCapability )
@@ -581,6 +590,13 @@ class CORE_EXPORT QgsAbstractDatabaseProviderConnection : public QgsAbstractProv
     virtual GeometryColumnCapabilities geometryColumnCapabilities();
 
     /**
+     * Represents capabilities of the database provider connection when importing table data.
+     *
+     * \since QGIS 3.44
+     */
+    virtual Qgis::DatabaseProviderTableImportCapabilities tableImportCapabilities() const = 0;
+
+    /**
      * Returns SQL layer definition capabilities (Filters, GeometryColumn, PrimaryKeys).
      * \since QGIS 3.22
      */
@@ -597,11 +613,64 @@ class CORE_EXPORT QgsAbstractDatabaseProviderConnection : public QgsAbstractProv
     virtual QString tableUri( const QString &schema, const QString &name ) const SIP_THROW( QgsProviderConnectionException );
 
     /**
+     * Returns the URI string to use when saving a layer style to the database for the given \a schema and \a tableName.
+     *
+     * The base class implementation appends the \a geometryColumn and \a wkbType to the URI returned
+     * by tableUri(). Providers for which the plain table URI is sufficient and necessary (e.g. OGR based
+     * ones) override this method accordingly.
+     *
+     * \throws QgsProviderConnectionException if any errors are encountered.
+     * \since QGIS 4.4
+     */
+    virtual QString styleStorageUri( const QString &schema, const QString &tableName, const QString &geometryColumn = QString(), Qgis::WkbType wkbType = Qgis::WkbType::Unknown ) const SIP_THROW(
+      QgsProviderConnectionException
+    );
+
+    /**
      * Creates an empty table with \a name in the given \a schema (schema is ignored if not supported by the backend).
      *
      * \throws QgsProviderConnectionException if any errors are encountered.
      */
-    virtual void createVectorTable( const QString &schema, const QString &name, const QgsFields &fields, Qgis::WkbType wkbType, const QgsCoordinateReferenceSystem &srs, bool overwrite, const QMap<QString, QVariant> *options ) const SIP_THROW( QgsProviderConnectionException );
+    virtual void createVectorTable(
+      const QString &schema, const QString &name, const QgsFields &fields, Qgis::WkbType wkbType, const QgsCoordinateReferenceSystem &srs, bool overwrite, const QMap<QString, QVariant> *options
+    ) const SIP_THROW( QgsProviderConnectionException );
+
+    /**
+     * \brief Stores all information required to create a QgsVectorLayerExporter for the backend.
+     * \see createVectorLayerExporterDestinationUri()
+     *
+     * \since QGIS 3.44
+     */
+    struct CORE_EXPORT VectorLayerExporterOptions
+    {
+        //! Name for the new layer
+        QString layerName;
+
+        //! Optional schema for the new layer. May not be supported by all providers.
+        QString schema;
+
+        //! WKB type for destination layer geometry
+        Qgis::WkbType wkbType = Qgis::WkbType::NoGeometry;
+
+        //! List of primary key column names. Note that some providers may ignore this if not supported.
+        QStringList primaryKeyColumns;
+
+        //! Preferred name for the geometry column, if required. Note that some providers may ignore this if a specific geometry column name is required.
+        QString geometryColumn;
+    };
+
+    /**
+     * Creates a URI for use with QgsVectorLayerExporter corresponding to given destination table \a options for the backend.
+     *
+     * \param options defines the desired destination table details
+     * \param providerOptions will be set to a map of options to pass to createVectorTable() or the provider's createEmptyTable method.
+     * \returns destination URI for use with QgsVectorLayerExporter
+     *
+     * \throws QgsProviderConnectionException if any errors are encountered.
+     */
+    virtual QString createVectorLayerExporterDestinationUri( const QgsAbstractDatabaseProviderConnection::VectorLayerExporterOptions &options, QVariantMap &providerOptions SIP_OUT ) const SIP_THROW(
+      QgsProviderConnectionException
+    );
 
     /**
      * Checks whether a table \a name exists in the given \a schema.
@@ -716,11 +785,34 @@ class CORE_EXPORT QgsAbstractDatabaseProviderConnection : public QgsAbstractProv
     virtual QList<QList<QVariant>> executeSql( const QString &sql, QgsFeedback *feedback = nullptr ) const SIP_THROW( QgsProviderConnectionException );
 
     /**
-     * Creates and returns a (possibly invalid) vector layer based on the \a sql statement and optional \a options.
+     * Creates and returns a (possibly invalid) vector layer based on a SQL statement and \a options.
+     *
+     * The validateSqlVectorLayer() method can be used in advance to test whether the options are valid
+     * for the provider, and retrieve a user-friendly explanation if not.
+     *
      * \throws QgsProviderConnectionException if any errors are encountered or if SQL layer creation is not supported.
+     * \see validateSqlVectorLayer()
+     *
      * \since QGIS 3.22
      */
     virtual QgsVectorLayer *createSqlVectorLayer( const SqlVectorLayerOptions &options ) const SIP_THROW( QgsProviderConnectionException ) SIP_FACTORY;
+
+    /**
+     * Validates the SQL query \a options to determine if it is possible to create a vector layer based on a SQL statement and \a options.
+     *
+     * The base class method returns TRUE and does not do any checks.
+     *
+     * \param options SQL statement and options
+     * \param message will be set to a translated, user-friendly explanation if the SQL is not valid for the provider.
+     *
+     * \returns TRUE if the SQL is valid for the provider.
+     *
+     * \throws QgsProviderConnectionException if any errors are encountered or if SQL layer creation is not supported.
+     * \see createSqlVectorLayer()
+     *
+     * \since QGIS 3.44
+     */
+    virtual bool validateSqlVectorLayer( const SqlVectorLayerOptions &options, QString &message SIP_OUT ) const SIP_THROW( QgsProviderConnectionException );
 
     /**
      * Returns the SQL layer options from a \a layerSource.
@@ -755,7 +847,9 @@ class CORE_EXPORT QgsAbstractDatabaseProviderConnection : public QgsAbstractProv
      * \throws QgsProviderConnectionException if any errors are encountered.
      * \since QGIS 3.14
      */
-    virtual void createSpatialIndex( const QString &schema, const QString &name, const QgsAbstractDatabaseProviderConnection::SpatialIndexOptions &options = QgsAbstractDatabaseProviderConnection::SpatialIndexOptions() ) const SIP_THROW( QgsProviderConnectionException );
+    virtual void createSpatialIndex(
+      const QString &schema, const QString &name, const QgsAbstractDatabaseProviderConnection::SpatialIndexOptions &options = QgsAbstractDatabaseProviderConnection::SpatialIndexOptions()
+    ) const SIP_THROW( QgsProviderConnectionException );
 
     /**
      * Determines whether a spatial index exists for the database table with given \a schema, \a name and \a geometryColumn (\a schema and \a geometryColumn are
@@ -784,7 +878,9 @@ class CORE_EXPORT QgsAbstractDatabaseProviderConnection : public QgsAbstractProv
      * \throws QgsProviderConnectionException if any errors are encountered.
      * \note Not available in Python bindings
      */
-    virtual QList<QgsAbstractDatabaseProviderConnection::TableProperty> tables( const QString &schema = QString(), const QgsAbstractDatabaseProviderConnection::TableFlags &flags = QgsAbstractDatabaseProviderConnection::TableFlags(), QgsFeedback *feedback = nullptr ) const SIP_SKIP;
+    virtual QList<QgsAbstractDatabaseProviderConnection::TableProperty> tables(
+      const QString &schema = QString(), const QgsAbstractDatabaseProviderConnection::TableFlags &flags = QgsAbstractDatabaseProviderConnection::TableFlags(), QgsFeedback *feedback = nullptr
+    ) const SIP_SKIP;
 
     /**
      * Returns information on a \a table in the given \a schema.
@@ -865,6 +961,28 @@ class CORE_EXPORT QgsAbstractDatabaseProviderConnection : public QgsAbstractProv
     virtual QSet< QString > illegalFieldNames() const;
 
     /**
+     * Returns the default name to use for a primary key column for the connection.
+     *
+     * The returned name will match common practice for the database backend.
+     *
+     * The base class method returns "pk".
+     *
+     * \since QGIS 3.44
+     */
+    virtual QString defaultPrimaryKeyColumnName() const;
+
+    /**
+     * Returns the default name to use for a geometry column for the connection.
+     *
+     * The returned name will match common practice for the database backend.
+     *
+     * The base class method returns "geom".
+     *
+     * \since QGIS 3.44
+     */
+    virtual QString defaultGeometryColumnName() const;
+
+    /**
      * Returns a list of field domain names present on the provider.
      *
      * This is supported on providers with the Capability::ListFieldDomains capability only.
@@ -922,6 +1040,30 @@ class CORE_EXPORT QgsAbstractDatabaseProviderConnection : public QgsAbstractProv
     virtual void addFieldDomain( const QgsFieldDomain &domain, const QString &schema ) const SIP_THROW( QgsProviderConnectionException );
 
     /**
+     * Update an existing field \a domain in the database, the domain is identified by name.
+     *
+     * \param domain field domain to update
+     * \param schema name of the schema (schema is ignored if not supported by the backend).
+     *
+     * \throws QgsProviderConnectionException if any errors are encountered.
+     * \since QGIS 4.0
+     */
+    virtual void updateFieldDomain( QgsFieldDomain *domain, const QString &schema ) const SIP_THROW( QgsProviderConnectionException );
+
+    /**
+     * Deletes the field domain with the specified \a name from the provider.
+     *
+     * \param name name of the field domain to be deleted
+     * \param schema name of the schema (schema is ignored if not supported by the backend).
+     *
+     * \throws QgsProviderConnectionException if any errors are encountered.
+     *
+     * \see fieldDomainNames()
+     * \since QGIS 4.0
+     */
+    virtual void deleteFieldDomain( const QString &name, const QString &schema ) const SIP_THROW( QgsProviderConnectionException );
+
+    /**
      * Sets the \a alias for the existing field with the specified name.
      *
      * \param fieldName name of the field to be modified
@@ -933,6 +1075,18 @@ class CORE_EXPORT QgsAbstractDatabaseProviderConnection : public QgsAbstractProv
      * \since QGIS 3.32
      */
     virtual void setFieldAlias( const QString &fieldName, const QString &schema, const QString &tableName, const QString &alias ) const SIP_THROW( QgsProviderConnectionException );
+
+    /**
+     * Sets the \a comment for the existing table with the specified name.
+     *
+     * \param schema name of the schema (schema is ignored if not supported by the backend).
+     * \param tableName name of the table
+     * \param comment comment to set for the table. Set to an empty string to remove a previously set comment.
+     *
+     * \throws QgsProviderConnectionException if any errors are encountered.
+     * \since QGIS 3.44
+     */
+    virtual void setTableComment( const QString &schema, const QString &tableName, const QString &comment ) const SIP_THROW( QgsProviderConnectionException );
 
     /**
      * Sets the \a comment for the existing field with the specified name.
@@ -948,6 +1102,19 @@ class CORE_EXPORT QgsAbstractDatabaseProviderConnection : public QgsAbstractProv
     virtual void setFieldComment( const QString &fieldName, const QString &schema, const QString &tableName, const QString &comment ) const SIP_THROW( QgsProviderConnectionException );
 
     /**
+     * Move table to a different schema.
+     *
+     * \param sourceSchema name of the source schema.
+     * \param tableName name of the table.
+     * \param targetSchema name of the target schema to move table to.
+     *
+     * \throws QgsProviderConnectionException if any errors are encountered.
+     * \since QGIS 3.44
+     */
+    virtual void moveTableToSchema( const QString &sourceSchema, const QString &tableName, const QString &targetSchema ) const SIP_THROW( QgsProviderConnectionException );
+
+
+    /**
      * Returns a list of relationship cardinalities which are supported by the provider.
      *
      * \since QGIS 3.30
@@ -955,6 +1122,7 @@ class CORE_EXPORT QgsAbstractDatabaseProviderConnection : public QgsAbstractProv
 #ifndef SIP_RUN
     virtual QList< Qgis::RelationshipCardinality > supportedRelationshipCardinalities() const;
 #else
+    // clang-format off
     SIP_PYOBJECT supportedRelationshipCardinalities() const SIP_TYPEHINT( List[Qgis.RelationshipCardinality] );
     % MethodCode
     // adapted from the qpymultimedia_qlist.sip file from the PyQt6 sources
@@ -990,6 +1158,7 @@ class CORE_EXPORT QgsAbstractDatabaseProviderConnection : public QgsAbstractProv
       }
     }
     % End
+// clang-format on
 #endif
 
     /**
@@ -1000,6 +1169,7 @@ class CORE_EXPORT QgsAbstractDatabaseProviderConnection : public QgsAbstractProv
 #ifndef SIP_RUN
     virtual QList< Qgis::RelationshipStrength > supportedRelationshipStrengths() const;
 #else
+        // clang-format off
     SIP_PYOBJECT supportedRelationshipStrengths() const SIP_TYPEHINT( List[Qgis.RelationshipStrength] );
     % MethodCode
     // adapted from the qpymultimedia_qlist.sip file from the PyQt6 sources
@@ -1035,6 +1205,7 @@ class CORE_EXPORT QgsAbstractDatabaseProviderConnection : public QgsAbstractProv
       }
     }
     % End
+// clang-format on
 #endif
 
     /**
@@ -1123,11 +1294,12 @@ class CORE_EXPORT QgsAbstractDatabaseProviderConnection : public QgsAbstractProv
      * \throws QgsNotSupportedException
      * \since QGIS 3.28
      */
-    virtual QList<QgsLayerMetadataProviderResult> searchLayerMetadata( const QgsMetadataSearchContext &searchContext, const QString &searchString = QString(), const QgsRectangle &geographicExtent = QgsRectangle(), QgsFeedback *feedback = nullptr ) const SIP_THROW( QgsProviderConnectionException, QgsNotSupportedException );
+    virtual QList<QgsLayerMetadataProviderResult> searchLayerMetadata(
+      const QgsMetadataSearchContext &searchContext, const QString &searchString = QString(), const QgsRectangle &geographicExtent = QgsRectangle(), QgsFeedback *feedback = nullptr
+    ) const SIP_THROW( QgsProviderConnectionException, QgsNotSupportedException );
 
   protected:
-
-///@cond PRIVATE
+    ///@cond PRIVATE
 
     /**
      * Checks if \a capability is supported.
@@ -1142,7 +1314,11 @@ class CORE_EXPORT QgsAbstractDatabaseProviderConnection : public QgsAbstractProv
      * \throws QgsProviderConnectionException if the capability is not supported
      */
     void checkCapability( Qgis::DatabaseProviderConnectionCapability2 capability ) const;
-///@endcond
+
+    //! Trim and remove any trailing semicolon
+    QString sanitizeSqlForQueryLayer( const QString &sql ) const SIP_SKIP;
+
+    ///@endcond
 
     Capabilities mCapabilities = Capabilities() SIP_SKIP;
     Qgis::DatabaseProviderConnectionCapabilities2 mCapabilities2 = Qgis::DatabaseProviderConnectionCapabilities2() SIP_SKIP;
@@ -1151,7 +1327,6 @@ class CORE_EXPORT QgsAbstractDatabaseProviderConnection : public QgsAbstractProv
     Qgis::SqlLayerDefinitionCapabilities mSqlLayerDefinitionCapabilities = Qgis::SqlLayerDefinitionCapabilities() SIP_SKIP;
     QString mProviderKey;
     QSet<QString> mIllegalFieldNames SIP_SKIP;
-
 };
 
 Q_DECLARE_OPERATORS_FOR_FLAGS( QgsAbstractDatabaseProviderConnection::Capabilities )

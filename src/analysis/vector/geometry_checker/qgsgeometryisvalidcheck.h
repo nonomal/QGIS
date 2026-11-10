@@ -16,9 +16,10 @@ email                : matthias@opengis.ch
 #ifndef QGSGEOMETRYISVALIDCHECK_H
 #define QGSGEOMETRYISVALIDCHECK_H
 
-#define SIP_NO_FILE
 
 #include "qgssinglegeometrycheck.h"
+
+#define SIP_NO_FILE
 
 /**
  * \ingroup analysis
@@ -32,7 +33,6 @@ email                : matthias@opengis.ch
 class ANALYSIS_EXPORT QgsGeometryIsValidCheckError : public QgsSingleGeometryCheckError
 {
   public:
-
     /**
      * Creates a new is valid check error.
      */
@@ -56,7 +56,6 @@ class ANALYSIS_EXPORT QgsGeometryIsValidCheck : public QgsSingleGeometryCheck
 {
     Q_DECLARE_TR_FUNCTIONS( QgsGeometryIsValidCheck )
   public:
-
     /**
      * Creates a new is valid check with the provided \a context. No options are supported in \a configuration.
      */
@@ -69,14 +68,14 @@ class ANALYSIS_EXPORT QgsGeometryIsValidCheck : public QgsSingleGeometryCheck
     QString id() const override { return factoryId(); }
     QgsGeometryCheck::CheckType checkType() const override { return factoryCheckType(); }
 
-///@cond private
+    ///@cond private
     static QList<Qgis::GeometryType> factoryCompatibleGeometryTypes() SIP_SKIP;
     static bool factoryIsCompatible( QgsVectorLayer *layer ) SIP_SKIP;
     static QString factoryDescription() SIP_SKIP;
     static QString factoryId() SIP_SKIP;
     static QgsGeometryCheck::Flags factoryFlags() SIP_SKIP;
     static QgsGeometryCheck::CheckType factoryCheckType() SIP_SKIP;
-///@endcond
+    ///@endcond
 };
 
 #endif // QGSGEOMETRYISVALIDCHECK_H

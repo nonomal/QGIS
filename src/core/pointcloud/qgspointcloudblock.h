@@ -20,16 +20,16 @@
 
 #include "qgis.h"
 #include "qgis_core.h"
+#include "qgspointcloudattribute.h"
+
+#include <QByteArray>
 #include <QPair>
 #include <QString>
 #include <QVector>
-#include <QByteArray>
-
-#include "qgspointcloudattribute.h"
 
 /**
  * \ingroup core
- * \brief Base class for storing raw data from point cloud nodes
+ * \brief Base class for storing raw data from point cloud nodes.
  *
  * \note The API is considered EXPERIMENTAL and can be changed without a notice
  *
@@ -39,10 +39,8 @@ class CORE_EXPORT QgsPointCloudBlock
 {
   public:
     //! Ctor
-    QgsPointCloudBlock( int count,
-                        const QgsPointCloudAttributeCollection &attributes,
-                        const QByteArray &data, const QgsVector3D &scale, const QgsVector3D &offset );
-    //! Dtor
+    QgsPointCloudBlock( int count, const QgsPointCloudAttributeCollection &attributes, const QByteArray &data, const QgsVector3D &scale, const QgsVector3D &offset );
+
     virtual ~QgsPointCloudBlock() = default;
 
     /**
@@ -50,7 +48,7 @@ class CORE_EXPORT QgsPointCloudBlock
      * Caller takes ownership of the returned object.
      * \since QGIS 3.36
      */
-    QgsPointCloudBlock *clone() const SIP_FACTORY;
+    std::unique_ptr<QgsPointCloudBlock> clone() const;
 
     //! Returns raw pointer to data
     const char *data() const;
@@ -76,15 +74,16 @@ class CORE_EXPORT QgsPointCloudBlock
 
     /**
      * Changes the number of points in the block.
+     *
      * This is used in order to remove all points after point \a size.
-     * If a \a size larger than \a pointCount() is used, data for the new points will be uninitialized
+     *
+     * If a \a size larger than pointCount() is used, data for the new points will be uninitialized.
      *
      * \since QGIS 3.26
      */
     void setPointCount( int size );
 
   private:
-
     int mPointCount = 0;
     QgsPointCloudAttributeCollection mAttributes;
     int mRecordSize = 0;

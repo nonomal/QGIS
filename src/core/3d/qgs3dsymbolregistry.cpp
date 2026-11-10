@@ -14,11 +14,15 @@
  ***************************************************************************/
 
 #include "qgs3dsymbolregistry.h"
+
 #include "qgsabstract3dsymbol.h"
 
+#include <QString>
+
+using namespace Qt::StringLiterals;
+
 Qgs3DSymbolRegistry::Qgs3DSymbolRegistry()
-{
-}
+{}
 
 Qgs3DSymbolRegistry::~Qgs3DSymbolRegistry()
 {
@@ -34,38 +38,39 @@ bool Qgs3DSymbolRegistry::addSymbolType( Qgs3DSymbolAbstractMetadata *metadata )
   return true;
 }
 
-QgsAbstract3DSymbol *Qgs3DSymbolRegistry::createSymbol( const QString &type ) const
+std::unique_ptr<QgsAbstract3DSymbol> Qgs3DSymbolRegistry::createSymbol( const QString &type ) const
 {
   if ( !mMetadata.contains( type ) )
     return nullptr;
 
-  return mMetadata[type]->create();
+  return std::unique_ptr<QgsAbstract3DSymbol>( mMetadata[type]->create() );
 }
 
-QgsAbstract3DSymbol *Qgs3DSymbolRegistry::defaultSymbolForGeometryType( Qgis::GeometryType type )
+std::unique_ptr<QgsAbstract3DSymbol> Qgs3DSymbolRegistry::defaultSymbolForGeometryType( Qgis::GeometryType type )
 {
   switch ( type )
   {
     case Qgis::GeometryType::Point:
-      return createSymbol( QStringLiteral( "point" ) );
+      return createSymbol( u"point"_s );
     case Qgis::GeometryType::Line:
-      return createSymbol( QStringLiteral( "line" ) );
+      return createSymbol( u"line"_s );
     case Qgis::GeometryType::Polygon:
-      return createSymbol( QStringLiteral( "polygon" ) );
+      return createSymbol( u"polygon"_s );
     default:
       return nullptr;
   }
 }
 
-QgsFeature3DHandler *Qgs3DSymbolRegistry::createHandlerForSymbol( QgsVectorLayer *layer, const QgsAbstract3DSymbol *symbol )
+QgsFeature3DHandler *Qgs3DSymbolRegistry::createHandlerForSymbol( const QgsVectorLayer *layer, const QgsAbstract3DSymbol *symbol )
 {
   if ( !symbol )
     return nullptr;
 
-  if ( !mMetadata.contains( symbol->type() ) )
+  auto it = mMetadata.constFind( symbol->type() );
+  if ( it == mMetadata.constEnd() )
     return nullptr;
 
-  return mMetadata.value( symbol->type() )->createFeatureHandler( layer, symbol );
+  return it.value()->createFeatureHandler( layer, symbol );
 }
 
 Qgs3DSymbolAbstractMetadata *Qgs3DSymbolRegistry::symbolMetadata( const QString &type ) const

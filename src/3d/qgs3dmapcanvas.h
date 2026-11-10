@@ -16,10 +16,12 @@
 #ifndef QGS3DMAPCANVAS_H
 #define QGS3DMAPCANVAS_H
 
-#include "qgis_3d.h"
-
 #include "qgis.h"
+#include "qgis_3d.h"
+#include "qgs3dhighlightfeaturehandler.h"
+#include "qgscrosssection.h"
 #include "qgsrange.h"
+#include "qgsraycastresult.h"
 
 #include <QtGui/QWindow>
 
@@ -29,7 +31,7 @@ namespace Qt3DCore
   class QAspectEngine;
   class QAbstractAspect;
   class QEntity;
-}
+} // namespace Qt3DCore
 
 namespace Qt3DRender
 {
@@ -37,7 +39,7 @@ namespace Qt3DRender
   class QFrameGraphNode;
   class QRenderAspect;
   class QRenderSettings;
-}
+} // namespace Qt3DRender
 
 namespace Qt3DExtras
 {
@@ -48,7 +50,7 @@ namespace Qt3DInput
 {
   class QInputAspect;
   class QInputSettings;
-}
+} // namespace Qt3DInput
 
 namespace Qt3DLogic
 {
@@ -56,19 +58,26 @@ namespace Qt3DLogic
 }
 #endif
 
-class QgsRectangle;
-class QgsWindow3DEngine;
-class Qgs3DMapTool;
-class QgsPointXY;
-class QgsCameraController;
-class QgsTemporalController;
+class Qgs3DHighlightFeatureHandler;
 class Qgs3DMapScene;
+class Qgs3DMapSceneEntity;
 class Qgs3DMapSettings;
+class Qgs3DMapTool;
+class QgsCameraController;
+class QgsFeature3DHandler;
+class QgsFeature;
+class QgsMapLayer;
+class QgsPointXY;
+class QgsRayCastContext;
+class QgsRectangle;
+class QgsRubberBand3D;
+class QgsTemporalController;
+class QgsWindow3DEngine;
 
 
 /**
- * \ingroup 3d
- * \brief Qgs3DMapCanvas is a convenience wrapper to simplify the creation of a 3D window ready to be used with QGIS.
+ * \ingroup qgis_3d
+ * \brief Convenience wrapper to simplify the creation of a 3D window ready to be used with QGIS.
  *
  * \note This is a port of qtwindow3d which does not set the default surface when initialized.
  * \note The default surface must be set before the construction of the QApplication when using shared OpenGL context.
@@ -80,16 +89,8 @@ class _3D_EXPORT Qgs3DMapCanvas : public QWindow
 {
     Q_OBJECT
   public:
-
-    /**
-     * Constructor for Qgs3DMapCanvas.
-     */
     Qgs3DMapCanvas();
-
-    /**
-     * Destructor for Qgs3DMapCanvas.
-     */
-    ~Qgs3DMapCanvas();
+    ~Qgs3DMapCanvas() override;
 
     //! Returns access to the 3D scene configuration
     Qgs3DMapSettings *mapSettings() { return mMapSettings; }
@@ -99,6 +100,51 @@ class _3D_EXPORT Qgs3DMapCanvas : public QWindow
 
     //! Returns access to the view's camera controller. Returns NULLPTR if the scene has not been initialized yet with setMapSettings()
     QgsCameraController *cameraController();
+
+    /**
+     * Sets the active map \a tool that will receive events from the 3D canvas. Does not transfer ownership.
+     * If the tool is NULLPTR, events will be used for camera manipulation.
+     * \since QGIS 4.0
+     */
+    void setMapTool( Qgs3DMapTool *tool );
+
+    /**
+     * Returns the active map tool that will receive events from the 3D canvas.
+     * If the tool is NULLPTR, events will be used for camera manipulation.
+     * \since QGIS 4.0
+     */
+    Qgs3DMapTool *mapTool() const { return mMapTool; }
+
+    /**
+     * Casts a ray towards the 3d scene and returns information about the intersected 3d entities.
+     * \param screenPoint The ray starts from the current camera center and goes through this point (in pixel coordinates, originating at top left corner).
+     * \param context A context object defining parameters for the ray casting.
+     * \since QGIS 4.0
+     */
+    QgsRayCastResult castRay( const QPoint &screenPoint, QgsRayCastContext context );
+
+    /**
+     * Returns TRUE if the cross section mode is enabled or the 3d scene has other clipping planes applied
+     *
+     * \since QGIS 4.0
+     */
+    bool crossSectionEnabled() const;
+
+    /**
+     * Sets the cross section definition for the 3D map canvas.
+     * The 3D scene will be clipped by four clipping planes, defined by a cross section line segment and
+     * two parallel segments at cross section half width to each side.
+     * Passing an invalid cross section will disable the clipping.
+     * \param crossSection The cross section definition
+     * \since QGIS 4.0
+     */
+    void setCrossSection( const QgsCrossSection &crossSection );
+
+    /**
+     * Returns the current cross section definition for the 3D map canvas.
+     * \since QGIS 4.0
+     */
+    QgsCrossSection crossSection() const { return mCrossSection; }
 
 #ifndef SIP_RUN
 
@@ -140,18 +186,6 @@ class _3D_EXPORT Qgs3DMapCanvas : public QWindow
     void saveAsImage( const QString &fileName, const QString &fileFormat );
 
     /**
-     * Sets the active map \a tool that will receive events from the 3D canvas. Does not transfer ownership.
-     * If the tool is NULLPTR, events will be used for camera manipulation.
-     */
-    void setMapTool( Qgs3DMapTool *tool );
-
-    /**
-     * Returns the active map tool that will receive events from the 3D canvas.
-     * If the tool is NULLPTR, events will be used for camera manipulation.
-     */
-    Qgs3DMapTool *mapTool() const { return mMapTool; }
-
-    /**
      * Returns the 3D engine.
      */
     QgsWindow3DEngine *engine() const { return mEngine; }
@@ -175,7 +209,7 @@ class _3D_EXPORT Qgs3DMapCanvas : public QWindow
     //! Emitted when the 3D map canvas was successfully saved as image
     void savedAsImage( const QString &fileName );
 
-    //! Emitted when the the map setting is changed
+    //! Emitted when the map setting is changed
     void mapSettingsChanged();
 
     //! Emitted when the FPS count changes (at most every frame)
@@ -191,6 +225,29 @@ class _3D_EXPORT Qgs3DMapCanvas : public QWindow
     void cameraNavigationSpeedChanged( double speed );
 
 #endif
+    /**
+     *  Emitted when the cross section mode is enabled or disabled
+     *  \since QGIS 4.0
+     */
+    void crossSectionEnabledChanged( bool enabled );
+
+#ifndef SIP_RUN
+  public slots:
+    /**
+     * Add a highlight 3d entity for \a feature of \a layer.
+     * \note Currently only supports vector layers with polygon features and point cloud layers with features generated by QgsIdentifyResultsDialog.
+     * \note Not available in Python bindings.
+     * \since QGIS 4.0
+     */
+    void highlightFeature( const QgsFeature &feature, QgsMapLayer *layer );
+
+    /**
+     * Removes all highlight entities
+     * \note Not available in Python bindings.
+     * \since QGIS 4.0
+     */
+    void clearHighlights();
+#endif
 
   private slots:
     void captureDepthBuffer();
@@ -198,7 +255,6 @@ class _3D_EXPORT Qgs3DMapCanvas : public QWindow
     void onNavigationModeChanged( Qgis::NavigationMode mode );
 
   protected:
-
     /**
      * Manages the display events specified in e.
      */
@@ -212,8 +268,7 @@ class _3D_EXPORT Qgs3DMapCanvas : public QWindow
     bool eventFilter( QObject *watched, QEvent *event ) override;
 
   private:
-
-    Qt3DCore::QAspectEngine *m_aspectEngine;
+    std::unique_ptr<Qt3DCore::QAspectEngine> m_aspectEngine;
 
     // Aspects
     Qt3DRender::QRenderAspect *m_renderAspect;
@@ -229,9 +284,9 @@ class _3D_EXPORT Qgs3DMapCanvas : public QWindow
 
     // Scene
     Qt3DCore::QEntity *m_root;
-    Qt3DCore::QEntity *m_userRoot;
+    Qt3DCore::QEntity *m_userRoot = nullptr;
 
-    bool m_initialized;
+    bool m_initialized = false;
 
     QgsWindow3DEngine *mEngine = nullptr;
 
@@ -247,6 +302,10 @@ class _3D_EXPORT Qgs3DMapCanvas : public QWindow
     QString mCaptureFileFormat;
 
     QgsTemporalController *mTemporalController = nullptr;
+
+    std::unique_ptr<Qgs3DHighlightFeatureHandler> mHighlightsHandler = nullptr;
+
+    QgsCrossSection mCrossSection;
 };
 
 #endif //QGS3DMAPCANVAS_H

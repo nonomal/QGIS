@@ -15,16 +15,22 @@
  ***************************************************************************/
 
 #include "qgssteppedlinescalebarrenderer.h"
+
+#include "qgslinesymbol.h"
+#include "qgspainting.h"
 #include "qgsscalebarsettings.h"
 #include "qgssymbol.h"
 #include "qgstextrenderer.h"
-#include "qgslinesymbol.h"
+
 #include <QList>
 #include <QPainter>
+#include <QString>
+
+using namespace Qt::StringLiterals;
 
 QString QgsSteppedLineScaleBarRenderer::id() const
 {
-  return QStringLiteral( "stepped" );
+  return u"stepped"_s;
 }
 
 QString QgsSteppedLineScaleBarRenderer::visibleName() const
@@ -39,14 +45,14 @@ int QgsSteppedLineScaleBarRenderer::sortKey() const
 
 QgsScaleBarRenderer::Flags QgsSteppedLineScaleBarRenderer::flags() const
 {
-  return Flag::FlagUsesLineSymbol |
-         Flag::FlagRespectsUnits |
-         Flag::FlagRespectsMapUnitsPerScaleBarUnit |
-         Flag::FlagUsesUnitLabel |
-         Flag::FlagUsesSegments |
-         Flag::FlagUsesLabelBarSpace |
-         Flag::FlagUsesLabelVerticalPlacement |
-         Flag::FlagUsesLabelHorizontalPlacement;
+  return Flag::FlagUsesLineSymbol
+         | Flag::FlagRespectsUnits
+         | Flag::FlagRespectsMapUnitsPerScaleBarUnit
+         | Flag::FlagUsesUnitLabel
+         | Flag::FlagUsesSegments
+         | Flag::FlagUsesLabelBarSpace
+         | Flag::FlagUsesLabelVerticalPlacement
+         | Flag::FlagUsesLabelHorizontalPlacement;
 }
 
 QgsSteppedLineScaleBarRenderer *QgsSteppedLineScaleBarRenderer::clone() const
@@ -63,15 +69,12 @@ void QgsSteppedLineScaleBarRenderer::draw( QgsRenderContext &context, const QgsS
   QPainter *painter = context.painter();
 
   std::unique_ptr< QgsLineSymbol > sym( settings.lineSymbol()->clone() );
-  sym->startRender( context ) ;
+  sym->startRender( context );
 
-  const double scaledLabelBarSpace = context.convertToPainterUnits( settings.labelBarSpace(), Qgis::RenderUnit::Millimeters );
-  const double scaledBoxContentSpace = context.convertToPainterUnits( settings.boxContentSpace(), Qgis::RenderUnit::Millimeters );
-  const QFontMetricsF fontMetrics = QgsTextRenderer::fontMetrics( context, settings.textFormat() );
-  const double barTopPosition = scaledBoxContentSpace + ( settings.labelVerticalPlacement() == QgsScaleBarSettings::LabelAboveSegment ? fontMetrics.ascent() + scaledLabelBarSpace : 0 );
+  const double barTopPosition = verticalOffset( context, settings );
   const double barBottomPosition = barTopPosition + context.convertToPainterUnits( settings.height(), Qgis::RenderUnit::Millimeters );
 
-  painter->save();
+  QgsScopedQPainterState painterState( painter );
   context.setPainterFlagsUsingContext( painter );
 
   painter->setPen( Qt::NoPen );
@@ -87,26 +90,25 @@ void QgsSteppedLineScaleBarRenderer::draw( QgsRenderContext &context, const QgsS
   {
     // we render one extra place, corresponding to the final position + width (i.e. the "end" of the bar)
     const double x = i < positions.size() ? context.convertToPainterUnits( positions.at( i ), Qgis::RenderUnit::Millimeters ) + xOffset
-                     : context.convertToPainterUnits( positions.at( i - 1 ), Qgis::RenderUnit::Millimeters ) + xOffset + context.convertToPainterUnits( widths.at( i - 1 ), Qgis::RenderUnit::Millimeters );
+                                          : context.convertToPainterUnits( positions.at( i - 1 ), Qgis::RenderUnit::Millimeters )
+                                              + xOffset
+                                              + context.convertToPainterUnits( widths.at( i - 1 ), Qgis::RenderUnit::Millimeters );
     if ( i % 2 == 0 )
     {
       points << QPointF( x, barBottomPosition ) << QPointF( x, barTopPosition );
     }
     else
     {
-      points << QPointF( x, barTopPosition ) << QPointF( x, barBottomPosition ) ;
+      points << QPointF( x, barTopPosition ) << QPointF( x, barBottomPosition );
     }
   }
 
   sym->renderPolyline( points, nullptr, context );
 
-  painter->restore();
+  painterState.restore();
 
   sym->stopRender( context );
 
   //draw labels using the default method
   drawDefaultLabels( context, settings, scaleContext );
 }
-
-
-

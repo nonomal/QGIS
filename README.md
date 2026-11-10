@@ -6,7 +6,7 @@
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/qgis/QGIS/badge)](https://securityscorecards.dev/viewer/?uri=github.com/qgis/QGIS)
 [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/1581/badge)](https://www.bestpractices.dev/projects/1581)
 [![🪟 MingW64 Windows 64bit Build](https://github.com/qgis/QGIS/actions/workflows/mingw64.yml/badge.svg)](https://github.com/qgis/QGIS/actions/workflows/mingw64.yml?query=branch%3Amaster+event%3Apush)
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.5869837.svg)](https://doi.org/10.5281/zenodo.5869837)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.6139224.svg)](https://doi.org/10.5281/zenodo.6139224)
 
 QGIS is a full-featured, user-friendly, free-and-open-source (FOSS) geographical information system (GIS) that runs on Unix platforms, Windows, and MacOS.
 
@@ -25,10 +25,6 @@ QGIS is a full-featured, user-friendly, free-and-open-source (FOSS) geographical
   - [Documentation](#documentation)
   - [Help and support channels](#help-and-support-channels)
 - [Get involved with the community](#get-involved-with-the-community)
-  - [Bug reporting and bug fixing](#bug-reporting-and-bug-fixing)
-  - [New features and enhancements](#new-features-and-enhancements)
-  - [Translations](#translations)
-  - [Other ways to contribute](#other-ways-to-contribute)
 
 ## Features
 
@@ -71,7 +67,16 @@ QGIS is a full-featured, user-friendly, free-and-open-source (FOSS) geographical
 
 ![Map of Bogota, Colombia in the style of Starry Starry Night](https://live.staticflickr.com/65535/50327326323_3da28f0d86_b.jpg "Map of Bogota, Colombia in the style of Starry Starry Night")
 
-For more maps created with QGIS, visit the [QGIS Map Showcase Flickr Group](https://www.flickr.com/groups/2244553@N22/pool/with/50355460063/).
+For more maps created with QGIS, visit the following pages:
+- [Amazing maps created using QGIS](https://qgis.org/project/overview/maps/)
+  
+![Amazing maps created using QGIS](images/README-md/qgis_org_map_gallery.webp "Amazing maps created using QGIS")
+
+- [Map Gallery on QGIS Hub](https://maps.qgis.org/)
+
+![Map Gallery on QGIS Hub](images/README-md/maps_qgis_org_map_gallery.webp "Map Gallery on QGIS Hub")
+
+- [QGIS Map Showcase Flickr Group](https://www.flickr.com/groups/2244553@N22/pool/with/50355460063/).
 
 ![QGIS Map Showcase](images/README-md/qgis_map_showcase.png "QGIS Map Showcase")
 
@@ -164,12 +169,12 @@ For installation of QGIS Server, see its [getting started documentation](https:/
 
 ### Documentation
 
-A range of [documentation](https://qgis.org/en/docs/index.html) is available. This includes:
+A range of [documentation](https://qgis.org/resources/hub/#documentation) is available. This includes:
 
 - [Training Manual](https://docs.qgis.org/latest/en/docs/training_manual/index.html)
 - [QGIS User Guide](https://docs.qgis.org/latest/en/docs/user_manual/index.html)
 - [QGIS Server Guide](https://docs.qgis.org/latest/en/docs/server_manual/index.html)
-- [Visual Changelog](https://qgis.org/en/site/forusers/visualchangelogs.html)
+- [Visual Changelog](https://qgis.org/project/visual-changelogs/)
 - [Documentation Guidelines](https://docs.qgis.org/latest/en/docs/documentation_guidelines/index.html)
 - [QGIS Python (PyQGIS) Cookbook](https://docs.qgis.org/latest/en/docs/pyqgis_developer_cookbook/index.html)
 - [QGIS Python (PyQGIS) API](https://qgis.org/pyqgis/)
@@ -183,39 +188,12 @@ There are several channels where you can find help and support for QGIS:
 - Using the [QGIS community site](https://qgis.org)
 - Joining the [qgis-users mailing list](https://lists.osgeo.org/mailman/listinfo/qgis-user)
 - Chatting with other users real-time. *Please wait around for a response to your question as many folks on the channel are doing other things and it may take a while for them to notice your question. The following paths all take you to the same chat room:*
-    - Using an IRC client and joining the [#qgis](https://webchat.freenode.net/?channels=#qgis) channel on irc.freenode.net.
-    - Using a Matrix client and joining the [#qgis:matrix.org](https://matrix.to/#/#qgis:matrix.org) room.
-    - Using [Gitter](https://gitter.im/qgis/QGIS) chat.
+    - Using an IRC client and joining the
+      [#qgis](https://web.libera.chat/?channels=#qgis) channel on irc.libera.chat.
+    - Using a Matrix client and joining the [#qgis:osgeo.org](https://matrix.to/#/#qgis:osgeo.org) room.
  - At the [GIS stackexchange](https://gis.stackexchange.com/) or [r/QGIS reddit](https://www.reddit.com/r/QGIS/), which are not maintained by the QGIS team, but where the QGIS and broader GIS community provides lots of advice
-- [Other support channels](https://qgis.org/en/site/forusers/support.html)
+- [Other support channels](https://qgis.org/resources/support/)
 
 ## Get involved with the community
 
-### Bug reporting and bug fixing
-
-You can help us **by submitting bug reports or fixing bugs** in the [QGIS bug tracker](https://github.com/qgis/QGIS/issues/).
-
-### New features and enhancements
-
-If you wish to contribute patches you can:
-
-1. [fork the project](https://help.github.com/forking/)
-1. make your changes
-1. commit to your repository
-1. and then [create a pull request](https://help.github.com/articles/creating-a-pull-request-from-a-fork/).
-
- The development team can then review your contribution and commit it upstream as appropriate.
-
-If you commit a new feature, add `[FEATURE]` to your commit message AND give a clear description of the new feature. The label `Needs documentation` will be added by maintainers and will automatically create an issue on the QGIS-Documentation repo, where you or others should write documentation about it.
-
-For large-scale changes, you can open a [QEP (QGIS Enhancement Proposal)](https://github.com/qgis/QGIS-Enhancement-Proposals). QEPs are used in the process of creating and discussing new enhancements or policy for QGIS.
-
-### Translations
-
-Please help translate QGIS to your language. At this moment about forty languages are already available in the Desktop user interface and about eighty languages are available in transifex ready to be translated.
-
-The [translation](https://qgis.org/en/site/getinvolved/translate.html) process is managed by the [Translation Team](https://qgis.org/en/site/getinvolved/governance/governance.html#gui-translation) and all the activities are done under the [Transifex](https://www.transifex.com/qgis/) platform.
-
-### Other ways to contribute
-
-If you are not a developer, there are many other possibilities that do not require programming skills to help QGIS to evolve. Check our [project homepage for more information](https://qgis.org/en/site/getinvolved/index.html).
+[Contribution guidelines for this project](CONTRIBUTING.md)

@@ -5,11 +5,11 @@ it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or
 (at your option) any later version.
 """
-__author__ = 'Nyall Dawson'
-__date__ = '2015-09'
-__copyright__ = 'Copyright 2015, The QGIS Project'
 
-from qgis.PyQt.QtCore import QSize
+__author__ = "Nyall Dawson"
+__date__ = "2015-09"
+__copyright__ = "Copyright 2015, The QGIS Project"
+
 from qgis.core import (
     QgsMapSettings,
     QgsMapUnitScale,
@@ -17,11 +17,11 @@ from qgis.core import (
     QgsRenderContext,
     QgsSymbolLayerUtils,
 )
+from qgis.PyQt.QtCore import QSize
 from qgis.testing import unittest
 
 
 class PyQgsMapUnitScale(unittest.TestCase):
-
     def testConstructor(self):
         # test creating QgsMapUnitScale
         c = QgsMapUnitScale()
@@ -72,6 +72,35 @@ class PyQgsMapUnitScale(unittest.TestCase):
         c2.maxSizeMM = 8
 
         self.assertEqual(c1, c2)
+
+    def testIsNull(self):
+        # test isNull
+        c1 = QgsMapUnitScale()
+        self.assertTrue(c1.isNull())
+
+        c1 = QgsMapUnitScale()
+        c1.minScale = 1000
+        self.assertFalse(c1.isNull())
+
+        c1 = QgsMapUnitScale()
+        c1.maxScale = 1000
+        self.assertFalse(c1.isNull())
+
+        c1 = QgsMapUnitScale()
+        c1.minSizeMMEnabled = True
+        self.assertFalse(c1.isNull())
+
+        c1 = QgsMapUnitScale()
+        c1.maxSizeMMEnabled = True
+        self.assertFalse(c1.isNull())
+
+        c1 = QgsMapUnitScale()
+        c1.minSizeMM = 3
+        self.assertFalse(c1.isNull())
+
+        c1 = QgsMapUnitScale()
+        c1.maxSizeMM = 3
+        self.assertFalse(c1.isNull())
 
     def testMapUnitsPerPixel(self):
         # test computeMapUnitsPerPixel
@@ -139,7 +168,7 @@ class PyQgsMapUnitScale(unittest.TestCase):
         self.assertEqual(s, r)
 
         # check old style encoding
-        encode = '9,78.3'
+        encode = "9,78.3"
         r = QgsSymbolLayerUtils.decodeMapUnitScale(encode)
         self.assertAlmostEqual(r.minScale, 1.0 / 9, 3)
         self.assertAlmostEqual(r.maxScale, 1.0 / 78.3, 3)
@@ -149,5 +178,5 @@ class PyQgsMapUnitScale(unittest.TestCase):
         self.assertEqual(r.maxSizeMM, 0)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

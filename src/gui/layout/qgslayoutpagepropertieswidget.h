@@ -17,17 +17,18 @@
 #define QGSLAYOUTPAGEPROPERTIESWIDGET_H
 
 // We don't want to expose this in the public API
-#define SIP_NO_FILE
+
+#include "ui_qgslayoutpagepropertieswidget.h"
 
 #include "qgis_gui.h"
 #include "qgis_sip.h"
-#include "ui_qgslayoutpagepropertieswidget.h"
-
-#include "qgslayoutsize.h"
-#include "qgslayoutpoint.h"
 #include "qgslayoutitemwidget.h"
 #include "qgslayoutmeasurementconverter.h"
 #include "qgslayoutpagecollection.h"
+#include "qgslayoutpoint.h"
+#include "qgslayoutsize.h"
+
+#define SIP_NO_FILE
 
 class QgsLayoutItem;
 class QgsLayoutItemPage;
@@ -44,7 +45,6 @@ class GUI_EXPORT QgsLayoutPagePropertiesWidget : public QgsLayoutItemBaseWidget,
     Q_OBJECT
 
   public:
-
     /**
      * Constructor for QgsLayoutPagePropertiesWidget.
      */
@@ -64,9 +64,9 @@ class GUI_EXPORT QgsLayoutPagePropertiesWidget : public QgsLayoutItemBaseWidget,
     void symbolChanged();
     void excludeExportsToggled( bool checked );
     void refreshLayout();
+    void applyToAll();
 
   private:
-
     QgsLayoutItemPage *mPage = nullptr;
 
     QgsLayoutMeasurementConverter mConverter;
@@ -75,7 +75,6 @@ class GUI_EXPORT QgsLayoutPagePropertiesWidget : public QgsLayoutItemBaseWidget,
     bool mBlockPageUpdate = false;
 
     void showCurrentPageSize();
-
 };
 
 #endif // QGSLAYOUTPAGEPROPERTIESWIDGET_H

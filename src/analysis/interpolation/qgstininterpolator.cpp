@@ -16,29 +16,28 @@
  ***************************************************************************/
 
 #include "qgstininterpolator.h"
-#include "qgsfeatureiterator.h"
-#include "CloughTocherInterpolator.h"
-#include "qgsdualedgetriangulation.h"
-#include "NormVecDecorator.h"
-#include "LinTriangleInterpolator.h"
-#include "qgspoint.h"
-#include "qgsfeature.h"
-#include "qgsgeometry.h"
-#include "qgsvectorlayer.h"
-#include "qgsvariantutils.h"
-#include "qgsfeedback.h"
-#include "qgscurve.h"
-#include "qgsmulticurve.h"
-#include "qgscurvepolygon.h"
-#include "qgsmultisurface.h"
 
-QgsTinInterpolator::QgsTinInterpolator( const QList<LayerData> &inputData, TinInterpolation interpolation, QgsFeedback *feedback )
+#include "CloughTocherInterpolator.h"
+#include "LinTriangleInterpolator.h"
+#include "NormVecDecorator.h"
+#include "qgscurve.h"
+#include "qgscurvepolygon.h"
+#include "qgsdualedgetriangulation.h"
+#include "qgsfeature.h"
+#include "qgsfeatureiterator.h"
+#include "qgsfeedback.h"
+#include "qgsgeometry.h"
+#include "qgsmulticurve.h"
+#include "qgsmultisurface.h"
+#include "qgspoint.h"
+#include "qgsvariantutils.h"
+#include "qgsvectorlayer.h"
+
+QgsTinInterpolator::QgsTinInterpolator( const QList<LayerData> &inputData, QgsTinInterpolator::TinInterpolation interpolation, QgsFeedback *feedback )
   : QgsInterpolator( inputData )
-  , mIsInitialized( false )
   , mFeedback( feedback )
   , mInterpolation( interpolation )
-{
-}
+{}
 
 QgsTinInterpolator::~QgsTinInterpolator()
 {
@@ -80,7 +79,7 @@ void QgsTinInterpolator::setTriangulationSink( QgsFeatureSink *sink )
 void QgsTinInterpolator::initialize()
 {
   QgsDualEdgeTriangulation *dualEdgeTriangulation = new QgsDualEdgeTriangulation( 100000 );
-  if ( mInterpolation == CloughTocher )
+  if ( mInterpolation == QgsTinInterpolator::TinInterpolation::CloughTocher )
   {
     NormVecDecorator *dec = new NormVecDecorator();
     dec->addTriangulation( dualEdgeTriangulation );
@@ -96,7 +95,7 @@ void QgsTinInterpolator::initialize()
   long long nProcessedFeatures = 0;
   if ( mFeedback )
   {
-    for ( const LayerData &layer :  std::as_const( mLayerData ) )
+    for ( const LayerData &layer : std::as_const( mLayerData ) )
     {
       if ( layer.source )
       {
@@ -115,12 +114,12 @@ void QgsTinInterpolator::initialize()
       QgsAttributeList attList;
       switch ( layer.valueSource )
       {
-        case QgsInterpolator::ValueAttribute:
+        case Qgis::InterpolationValueSource::Attribute:
           attList.push_back( layer.interpolationAttribute );
           break;
 
-        case QgsInterpolator::ValueM:
-        case QgsInterpolator::ValueZ:
+        case Qgis::InterpolationValueSource::M:
+        case Qgis::InterpolationValueSource::Z:
           break;
       }
 
@@ -135,7 +134,7 @@ void QgsTinInterpolator::initialize()
             break;
           }
           if ( nFeatures > 0 )
-            mFeedback->setProgress( 100.0 * static_cast< double >( nProcessedFeatures ) / nFeatures );
+            mFeedback->setProgress( 100.0 * static_cast<double>( nProcessedFeatures ) / nFeatures );
         }
         insertData( f, layer.valueSource, layer.interpolationAttribute, layer.sourceType );
         ++nProcessedFeatures;
@@ -143,7 +142,7 @@ void QgsTinInterpolator::initialize()
     }
   }
 
-  if ( mInterpolation == CloughTocher )
+  if ( mInterpolation == QgsTinInterpolator::TinInterpolation::CloughTocher )
   {
     NormVecDecorator *dec = dynamic_cast<NormVecDecorator *>( mTriangulation );
     if ( dec )
@@ -168,7 +167,7 @@ void QgsTinInterpolator::initialize()
   }
 }
 
-int QgsTinInterpolator::insertData( const QgsFeature &f, QgsInterpolator::ValueSource source, int attr, SourceType type )
+int QgsTinInterpolator::insertData( const QgsFeature &f, Qgis::InterpolationValueSource source, int attr, Qgis::InterpolationSourceType type )
 {
   QgsGeometry g = f.geometry();
   if ( g.isNull() || g.isEmpty() )
@@ -181,7 +180,7 @@ int QgsTinInterpolator::insertData( const QgsFeature &f, QgsInterpolator::ValueS
   bool attributeConversionOk = false;
   switch ( source )
   {
-    case ValueAttribute:
+    case Qgis::InterpolationValueSource::Attribute:
     {
       QVariant attributeVariant = f.attribute( attr );
       if ( QgsVariantUtils::isNull( attributeVariant ) ) //attribute not found, something must be wrong (e.g. NULL value)
@@ -196,31 +195,30 @@ int QgsTinInterpolator::insertData( const QgsFeature &f, QgsInterpolator::ValueS
       break;
     }
 
-    case ValueM:
+    case Qgis::InterpolationValueSource::M:
       if ( !g.constGet()->isMeasure() )
         return 3;
       else
         break;
 
-    case ValueZ:
+    case Qgis::InterpolationValueSource::Z:
       if ( !g.constGet()->is3D() )
         return 3;
       else
         break;
   }
 
-
   switch ( type )
   {
-    case SourcePoints:
+    case Qgis::InterpolationSourceType::Points:
     {
       if ( addPointsFromGeometry( g, source, attributeValue ) != 0 )
         return -1;
       break;
     }
 
-    case SourceBreakLines:
-    case SourceStructureLines:
+    case Qgis::InterpolationSourceType::BreakLines:
+    case Qgis::InterpolationSourceType::StructureLines:
     {
       switch ( QgsWkbTypes::geometryType( g.wkbType() ) )
       {
@@ -238,18 +236,18 @@ int QgsTinInterpolator::insertData( const QgsFeature &f, QgsInterpolator::ValueS
           std::vector<const QgsCurve *> curves;
           if ( QgsWkbTypes::geometryType( g.wkbType() ) == Qgis::GeometryType::Polygon )
           {
-            std::vector< const QgsCurvePolygon * > polygons;
+            std::vector<const QgsCurvePolygon *> polygons;
             if ( g.isMultipart() )
             {
-              const QgsMultiSurface *ms = qgsgeometry_cast< const QgsMultiSurface * >( g.constGet() );
+              const QgsMultiSurface *ms = qgsgeometry_cast<const QgsMultiSurface *>( g.constGet() );
               for ( int i = 0; i < ms->numGeometries(); ++i )
               {
-                polygons.emplace_back( qgsgeometry_cast< const QgsCurvePolygon * >( ms->geometryN( i ) ) );
+                polygons.emplace_back( qgsgeometry_cast<const QgsCurvePolygon *>( ms->geometryN( i ) ) );
               }
             }
             else
             {
-              polygons.emplace_back( qgsgeometry_cast< const QgsCurvePolygon * >( g.constGet() ) );
+              polygons.emplace_back( qgsgeometry_cast<const QgsCurvePolygon *>( g.constGet() ) );
             }
 
             for ( const QgsCurvePolygon *polygon : polygons )
@@ -270,7 +268,7 @@ int QgsTinInterpolator::insertData( const QgsFeature &f, QgsInterpolator::ValueS
           {
             if ( g.isMultipart() )
             {
-              const QgsMultiCurve *mc = qgsgeometry_cast< const QgsMultiCurve * >( g.constGet() );
+              const QgsMultiCurve *mc = qgsgeometry_cast<const QgsMultiCurve *>( g.constGet() );
               for ( int i = 0; i < mc->numGeometries(); ++i )
               {
                 curves.emplace_back( mc->curveN( i ) );
@@ -278,7 +276,7 @@ int QgsTinInterpolator::insertData( const QgsFeature &f, QgsInterpolator::ValueS
             }
             else
             {
-              curves.emplace_back( qgsgeometry_cast< const QgsCurve * >( g.constGet() ) );
+              curves.emplace_back( qgsgeometry_cast<const QgsCurve *>( g.constGet() ) );
             }
           }
 
@@ -293,21 +291,21 @@ int QgsTinInterpolator::insertData( const QgsFeature &f, QgsInterpolator::ValueS
             {
               switch ( source )
               {
-                case ValueAttribute:
+                case Qgis::InterpolationValueSource::Attribute:
                   if ( point.is3D() )
                     point.setZ( attributeValue );
                   else
                     point.addZValue( attributeValue );
                   break;
 
-                case ValueM:
+                case Qgis::InterpolationValueSource::M:
                   if ( point.is3D() )
                     point.setZ( point.m() );
                   else
                     point.addZValue( point.m() );
                   break;
 
-                case ValueZ:
+                case Qgis::InterpolationValueSource::Z:
                   break;
               }
             }
@@ -327,7 +325,7 @@ int QgsTinInterpolator::insertData( const QgsFeature &f, QgsInterpolator::ValueS
 }
 
 
-int QgsTinInterpolator::addPointsFromGeometry( const QgsGeometry &g, ValueSource source, double attributeValue )
+int QgsTinInterpolator::addPointsFromGeometry( const QgsGeometry &g, Qgis::InterpolationValueSource source, double attributeValue )
 {
   // loop through all vertices and add to triangulation
   for ( auto point = g.vertices_begin(); point != g.vertices_end(); ++point )
@@ -336,15 +334,15 @@ int QgsTinInterpolator::addPointsFromGeometry( const QgsGeometry &g, ValueSource
     double z = 0;
     switch ( source )
     {
-      case ValueAttribute:
+      case Qgis::InterpolationValueSource::Attribute:
         z = attributeValue;
         break;
 
-      case ValueZ:
+      case Qgis::InterpolationValueSource::Z:
         z = p.z();
         break;
 
-      case ValueM:
+      case Qgis::InterpolationValueSource::M:
         z = p.m();
         break;
     }

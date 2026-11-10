@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/pointcloud/qgspointcloudrgbrenderer.h                       *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/
 
 
@@ -15,7 +15,8 @@
 class QgsPointCloudRgbRenderer : QgsPointCloudRenderer
 {
 %Docstring(signature="appended")
-An RGB renderer for 2d visualisation of point clouds using embedded red, green and blue attributes.
+An RGB renderer for 2d visualisation of point clouds using embedded red,
+green and blue attributes.
 
 .. versionadded:: 3.18
 %End
@@ -24,7 +25,6 @@ An RGB renderer for 2d visualisation of point clouds using embedded red, green a
 #include "qgspointcloudrgbrenderer.h"
 %End
   public:
-
     QgsPointCloudRgbRenderer();
 %Docstring
 Constructor for QgsPointCloudRgbRenderer.
@@ -41,7 +41,7 @@ Constructor for QgsPointCloudRgbRenderer.
     virtual QSet< QString > usedAttributes( const QgsPointCloudRenderContext &context ) const;
 
 
-    static QgsPointCloudRenderer *create( QDomElement &element, const QgsReadWriteContext &context ) /Factory/;
+    static std::unique_ptr<QgsPointCloudRenderer> create( QDomElement &element, const QgsReadWriteContext &context );
 %Docstring
 Creates an RGB renderer from an XML ``element``.
 %End
@@ -191,5 +191,5 @@ Ownership of ``enhancement`` is transferred.
  *                                                                      *
  * src/core/pointcloud/qgspointcloudrgbrenderer.h                       *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/

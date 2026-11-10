@@ -16,20 +16,18 @@
 #ifndef QGSGRADUATEDSYMBOLRENDERERWIDGET_H
 #define QGSGRADUATEDSYMBOLRENDERERWIDGET_H
 
-#include <QStandardItem>
-
-
-#include "qgsgraduatedsymbolrenderer.h"
-#include "qgis_sip.h"
-#include "qgsrendererwidget.h"
-#include "qgsproxystyle.h"
-#include "qgsprocessingwidgetwrapper.h"
-#include "qgsdoublevalidator.h"
-
-#include "qtimer.h"
 #include "ui_qgsgraduatedsymbolrendererwidget.h"
 
 #include "qgis_gui.h"
+#include "qgis_sip.h"
+#include "qgsdoublevalidator.h"
+#include "qgsgraduatedsymbolrenderer.h"
+#include "qgsprocessingwidgetwrapper.h"
+#include "qgsproxystyle.h"
+#include "qgsrendererwidget.h"
+
+#include <QStandardItem>
+#include <qtimer.h>
 
 class QgsSymbolSelectorWidget;
 
@@ -69,13 +67,16 @@ class GUI_EXPORT QgsGraduatedSymbolRendererModel : public QAbstractItemModel
     void rowsMoved();
 
   private:
+    QString formatRangeValue( double value ) const;
+    QString tooltip( const QModelIndex &index ) const;
+
     QgsGraduatedSymbolRenderer *mRenderer = nullptr;
     QString mMimeFormat;
-    QPointer< QScreen > mScreen;
+    QPointer<QScreen> mScreen;
 };
 
-// View style which shows drop indicator line between items
-class QgsGraduatedSymbolRendererViewStyle: public QgsProxyStyle
+// View style which shows a drop indicator line between items
+class QgsGraduatedSymbolRendererViewStyle : public QgsProxyStyle
 {
     Q_OBJECT
 
@@ -91,8 +92,9 @@ class QgsGraduatedSymbolRendererViewStyle: public QgsProxyStyle
 /**
  * \ingroup gui
  * \class QgsGraduatedSymbolRendererWidget
+ * \brief A widget for configuring a QgsGraduatedSymbolRenderer.
  */
-class GUI_EXPORT QgsGraduatedSymbolRendererWidget : public QgsRendererWidget, private Ui::QgsGraduatedSymbolRendererWidget, private QgsExpressionContextGenerator
+class GUI_EXPORT QgsGraduatedSymbolRendererWidget : public QgsRendererWidget, private Ui::QgsGraduatedSymbolRendererWidget
 {
     Q_OBJECT
 
@@ -105,6 +107,7 @@ class GUI_EXPORT QgsGraduatedSymbolRendererWidget : public QgsRendererWidget, pr
     QgsFeatureRenderer *renderer() override;
     void setContext( const QgsSymbolWidgetContext &context ) override;
     void disableSymbolLevels() override SIP_SKIP;
+    QgsExpressionContext createExpressionContext() const override;
 
   public slots:
     void graduatedColumnChanged( const QString &field );
@@ -186,14 +189,13 @@ class GUI_EXPORT QgsGraduatedSymbolRendererWidget : public QgsRendererWidget, pr
       SizeMode
     };
 
-    QgsExpressionContext createExpressionContext() const override;
     void toggleMethodWidgets( MethodMode mode );
 
     void clearParameterWidgets();
 
-    std::unique_ptr< QgsGraduatedSymbolRenderer > mRenderer;
+    std::unique_ptr<QgsGraduatedSymbolRenderer> mRenderer;
 
-    std::unique_ptr< QgsSymbol > mGraduatedSymbol;
+    std::unique_ptr<QgsSymbol> mGraduatedSymbol;
 
     int mRowSelected;
 
@@ -203,7 +205,9 @@ class GUI_EXPORT QgsGraduatedSymbolRendererWidget : public QgsRendererWidget, pr
 
     QgsDoubleValidator *mSymmetryPointValidator = nullptr;
     QAction *mActionLevels = nullptr;
-    std::vector< std::unique_ptr< QgsAbstractProcessingParameterWidgetWrapper >> mParameterWidgetWrappers;
+
+    std::unique_ptr< QgsClassificationMethod > mClassificationMethod;
+    std::vector<std::unique_ptr<QgsAbstractProcessingParameterWidgetWrapper>> mParameterWidgetWrappers;
 
     int mBlockUpdates = 0;
 

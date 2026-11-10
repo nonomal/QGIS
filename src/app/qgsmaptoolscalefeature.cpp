@@ -13,31 +13,36 @@
  *                                                                         *
  ***************************************************************************/
 
-#include <QSettings>
-#include <QEvent>
-#include <QHBoxLayout>
-#include <QKeyEvent>
-#include <QLabel>
+#include "qgsmaptoolscalefeature.h"
 
-#include <limits>
 #include <cmath>
+#include <limits>
 
+#include "qgisapp.h"
 #include "qgsadvanceddigitizingdockwidget.h"
 #include "qgsavoidintersectionsoperation.h"
-#include "qgsmaptoolscalefeature.h"
+#include "qgsdoublespinbox.h"
 #include "qgsfeatureiterator.h"
 #include "qgsgeometry.h"
 #include "qgslogger.h"
 #include "qgsmapcanvas.h"
-#include "qgsrubberband.h"
-#include "qgsvectorlayer.h"
-#include "qgstolerance.h"
-#include "qgisapp.h"
-#include "qgsspinbox.h"
-#include "qgsdoublespinbox.h"
-#include "qgssnapindicator.h"
 #include "qgsmapmouseevent.h"
+#include "qgsrubberband.h"
+#include "qgssnapindicator.h"
+#include "qgsspinbox.h"
+#include "qgstolerance.h"
+#include "qgsvectorlayer.h"
 
+#include <QEvent>
+#include <QHBoxLayout>
+#include <QKeyEvent>
+#include <QLabel>
+#include <QSettings>
+#include <QString>
+
+#include "moc_qgsmaptoolscalefeature.cpp"
+
+using namespace Qt::StringLiterals;
 
 QgsScaleMagnetWidget::QgsScaleMagnetWidget( const QString &label, QWidget *parent )
   : QWidget( parent )
@@ -64,7 +69,7 @@ QgsScaleMagnetWidget::QgsScaleMagnetWidget( const QString &label, QWidget *paren
 
   // connect signals
   mScaleSpinBox->installEventFilter( this );
-  connect( mScaleSpinBox, static_cast < void ( QgsDoubleSpinBox::* )( double ) > ( &QgsDoubleSpinBox::valueChanged ), this, &QgsScaleMagnetWidget::scaleSpinBoxValueChanged );
+  connect( mScaleSpinBox, static_cast<void ( QgsDoubleSpinBox::* )( double )>( &QgsDoubleSpinBox::valueChanged ), this, &QgsScaleMagnetWidget::scaleSpinBoxValueChanged );
 
   // config focus
   setFocusProxy( mScaleSpinBox );
@@ -111,7 +116,7 @@ void QgsScaleMagnetWidget::scaleSpinBoxValueChanged( double scale )
 
 QgsMapToolScaleFeature::QgsMapToolScaleFeature( QgsMapCanvas *canvas )
   : QgsMapToolAdvancedDigitizing( canvas, QgisApp::instance()->cadDockWidget() )
-  , mSnapIndicator( std::make_unique< QgsSnapIndicator>( canvas ) )
+  , mSnapIndicator( std::make_unique<QgsSnapIndicator>( canvas ) )
 {
   mToolName = tr( "Scale feature" );
 }
@@ -203,8 +208,7 @@ void QgsMapToolScaleFeature::cadCanvasReleaseEvent( QgsMapMouseEvent *e )
 
     const QgsPointXY layerCoords = toLayerCoordinates( vlayer, e->mapPoint() );
     const double searchRadius = QgsTolerance::vertexSearchRadius( mCanvas->currentLayer(), mCanvas->mapSettings() );
-    const QgsRectangle selectRect( layerCoords.x() - searchRadius, layerCoords.y() - searchRadius,
-                                   layerCoords.x() + searchRadius, layerCoords.y() + searchRadius );
+    const QgsRectangle selectRect( layerCoords.x() - searchRadius, layerCoords.y() - searchRadius, layerCoords.x() + searchRadius, layerCoords.y() + searchRadius );
 
     mAutoSetAnchorPoint = false;
     if ( !mAnchorPoint )
@@ -258,29 +262,33 @@ void QgsMapToolScaleFeature::cadCanvasReleaseEvent( QgsMapMouseEvent *e )
       }
       else
       {
-        mFeatureCenterMapCoords =  mAnchorPoint->center();
+        mFeatureCenterMapCoords = mAnchorPoint->center();
       }
 
       mScaledFeatures.clear();
       mScaledFeatures << cf.id(); //todo: take the closest feature, not the first one...
       mOriginalGeometries << cf.geometry();
 
-      mRubberBand = createRubberBand( vlayer->geometryType() );
+      mRubberBand = createRubberBandForLayer( vlayer, { cf.id() } );
       mRubberBand->setToGeometry( cf.geometry(), vlayer );
     }
     else
     {
       mScaledFeatures = vlayer->selectedFeatureIds();
 
-      mRubberBand = createRubberBand( vlayer->geometryType() );
-
       QgsFeature feat;
       QgsFeatureIterator it = vlayer->getSelectedFeatures();
+      QList< QgsFeatureId > ids;
+      QVector< QgsGeometry > selectedGeometries;
       while ( it.nextFeature( feat ) )
       {
-        mRubberBand->addGeometry( feat.geometry(), vlayer, false );
         mOriginalGeometries << feat.geometry();
+        selectedGeometries << feat.geometry();
+        ids << feat.id();
       }
+      mRubberBand = createRubberBandForLayer( vlayer, ids );
+      mRubberBand->setToGeometry( QgsGeometry::collectGeometry( selectedGeometries ), vlayer );
+
       mRubberBand->updatePosition();
       mRubberBand->update();
     }
@@ -374,7 +382,7 @@ void QgsMapToolScaleFeature::applyScaling( double scale )
   connect( &avoidIntersections, &QgsAvoidIntersectionsOperation::messageEmitted, this, &QgsMapTool::messageEmitted );
 
   // when removing intersections don't check for intersections with selected features
-  const QHash<QgsVectorLayer *, QSet<QgsFeatureId> > ignoreFeatures {{vlayer, mScaledFeatures}};
+  const QHash<QgsVectorLayer *, QSet<QgsFeatureId>> ignoreFeatures { { vlayer, mScaledFeatures } };
 
   while ( fi.nextFeature( feat ) )
   {
@@ -393,9 +401,7 @@ void QgsMapToolScaleFeature::applyScaling( double scale )
 
       if ( res.operationResult == Qgis::GeometryOperationResult::InvalidInputGeometryType || geom.isEmpty() )
       {
-        const QString errorMessage = ( geom.isEmpty() ) ?
-                                     tr( "The feature cannot be scaled because the resulting geometry would be empty" ) :
-                                     tr( "An error was reported during intersection removal" );
+        const QString errorMessage = ( geom.isEmpty() ) ? tr( "The feature cannot be scaled because the resulting geometry would be empty" ) : tr( "An error was reported during intersection removal" );
 
         emit messageEmitted( errorMessage, Qgis::MessageLevel::Warning );
         vlayer->destroyEditCommand();
@@ -482,7 +488,7 @@ void QgsMapToolScaleFeature::createScalingWidget()
 
   deleteScalingWidget();
 
-  mScalingWidget = new QgsScaleMagnetWidget( QStringLiteral( "Scaling:" ) );
+  mScalingWidget = new QgsScaleMagnetWidget( u"Scaling:"_s );
   QgisApp::instance()->addUserInputWidget( mScalingWidget );
   mScalingWidget->setFocus( Qt::TabFocusReason );
 
@@ -504,4 +510,3 @@ void QgsMapToolScaleFeature::deleteScalingWidget()
   }
   mScalingWidget = nullptr;
 }
-

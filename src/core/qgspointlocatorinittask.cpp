@@ -14,24 +14,37 @@
  ***************************************************************************/
 
 #include "qgspointlocatorinittask.h"
+
 #include "qgspointlocator.h"
 #include "qgsvectorlayer.h"
+
+#include "moc_qgspointlocatorinittask.cpp"
 
 /// @cond PRIVATE
 
 QgsPointLocatorInitTask::QgsPointLocatorInitTask( QgsPointLocator *loc )
   : QgsTask( tr( "Indexing %1" ).arg( loc->layer()->id() ), QgsTask::Silent )
   , mLoc( loc )
-{}
+{
+  mFeedback = std::make_unique< QgsFeedback >();
+}
 
 bool QgsPointLocatorInitTask::isBuildOK() const
 {
   return mBuildOK;
 }
 
+void QgsPointLocatorInitTask::cancel()
+{
+  if ( mFeedback )
+    mFeedback->cancel();
+
+  QgsTask::cancel();
+}
+
 bool QgsPointLocatorInitTask::run()
 {
-  mBuildOK = mLoc->rebuildIndex();
+  mBuildOK = mLoc->rebuildIndex( -1, mFeedback.get() );
   return true;
 }
 

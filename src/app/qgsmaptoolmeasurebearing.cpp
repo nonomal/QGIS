@@ -14,16 +14,24 @@
  ***************************************************************************/
 
 #include "qgsmaptoolmeasurebearing.h"
+
+#include <cmath>
+
 #include "qgsdisplayangle.h"
 #include "qgsdistancearea.h"
 #include "qgsmapcanvas.h"
+#include "qgsmapmouseevent.h"
 #include "qgsproject.h"
 #include "qgsrubberband.h"
-#include "qgssettings.h"
+#include "qgssettingsentryimpl.h"
+#include "qgssettingsregistrygui.h"
 #include "qgssnapindicator.h"
-#include "qgsmapmouseevent.h"
 
-#include <cmath>
+#include <QString>
+
+#include "moc_qgsmaptoolmeasurebearing.cpp"
+
+using namespace Qt::StringLiterals;
 
 QgsMapToolMeasureBearing::QgsMapToolMeasureBearing( QgsMapCanvas *canvas )
   : QgsMapTool( canvas )
@@ -31,8 +39,7 @@ QgsMapToolMeasureBearing::QgsMapToolMeasureBearing( QgsMapCanvas *canvas )
 {
   mToolName = tr( "Measure bearing" );
 
-  connect( canvas, &QgsMapCanvas::destinationCrsChanged,
-           this, &QgsMapToolMeasureBearing::updateSettings );
+  connect( canvas, &QgsMapCanvas::destinationCrsChanged, this, &QgsMapToolMeasureBearing::updateSettings );
 }
 
 QgsMapToolMeasureBearing::~QgsMapToolMeasureBearing()
@@ -64,9 +71,7 @@ void QgsMapToolMeasureBearing::canvasMoveEvent( QgsMapMouseEvent *e )
       }
     }
     catch ( QgsCsException & )
-    {
-
-    }
+    {}
   }
 }
 
@@ -161,11 +166,8 @@ void QgsMapToolMeasureBearing::createRubberBand()
   delete mRubberBand;
   mRubberBand = new QgsRubberBand( mCanvas, Qgis::GeometryType::Line );
 
-  const QgsSettings settings;
-  const int myRed = settings.value( QStringLiteral( "qgis/default_measure_color_red" ), 180 ).toInt();
-  const int myGreen = settings.value( QStringLiteral( "qgis/default_measure_color_green" ), 180 ).toInt();
-  const int myBlue = settings.value( QStringLiteral( "qgis/default_measure_color_blue" ), 180 ).toInt();
-  mRubberBand->setColor( QColor( myRed, myGreen, myBlue, 100 ) );
+  const QColor measureColor = QgsSettingsRegistryGui::settingsDefaultMeasureColor->value();
+  mRubberBand->setColor( QColor( measureColor.red(), measureColor.green(), measureColor.blue(), 100 ) );
   mRubberBand->setWidth( 3 );
 }
 

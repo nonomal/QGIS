@@ -18,14 +18,17 @@
 #ifndef QGSPROCESSINGWIDGETWRAPPER_H
 #define QGSPROCESSINGWIDGETWRAPPER_H
 
-#include <QObject>
-#include <QWidget>
-#include <QPointer>
 #include <memory>
+
 #include "qgis_gui.h"
 #include "qgis_sip.h"
 #include "qgsprocessinggui.h"
+#include "qgsprocessingwidgetcontext.h"
 #include "qgsvectorlayer.h"
+
+#include <QObject>
+#include <QPointer>
+#include <QWidget>
 
 class QgsProcessingParameterDefinition;
 class QgsProcessingContext;
@@ -40,6 +43,9 @@ class QgsProcessingAlgorithm;
 class QgsProcessingAbstractParameterDefinitionWidget;
 class QgsMessageBar;
 class QgsBrowserGuiModel;
+class QgsModelGraphicsScene;
+class QgsModelDesignerDialog;
+class QgsAbstractProcessingParameterWidgetWrapper;
 
 /**
  * \class QgsProcessingContextGenerator
@@ -51,15 +57,14 @@ class QgsBrowserGuiModel;
 class GUI_EXPORT QgsProcessingContextGenerator
 {
   public:
-
     /**
      * This method needs to be reimplemented in all classes which implement this interface
      * and return a Processing context.
      *
-     * Note that ownership of the context is not transferred - it is intended that subclasses
+     * \note Ownership of the context is not transferred - it is intended that subclasses
      * return a pointer to a context which they have already created and own.
      */
-    virtual QgsProcessingContext *processingContext() = 0;
+    virtual QgsProcessingContext *processingContext() const = 0;
 
     virtual ~QgsProcessingContextGenerator() = default;
 };
@@ -75,7 +80,6 @@ class GUI_EXPORT QgsProcessingContextGenerator
 class GUI_EXPORT QgsProcessingParametersGenerator
 {
   public:
-
     /**
      * Flags controlling parameter generation.
      *
@@ -84,6 +88,7 @@ class GUI_EXPORT QgsProcessingParametersGenerator
     enum class Flag : int SIP_ENUM_BASETYPE( IntFlag )
     {
       SkipDefaultValueParameters = 1 << 0, //!< Parameters which are unchanged from their default values should not be included
+      SkipValidation = 1 << 1,             //!< Skip validation of parameters. \since QGIS 3.44
     };
     Q_DECLARE_FLAGS( Flags, Flag )
 
@@ -97,164 +102,53 @@ class GUI_EXPORT QgsProcessingParametersGenerator
     virtual QVariantMap createProcessingParameters( QgsProcessingParametersGenerator::Flags flags = QgsProcessingParametersGenerator::Flags() ) = 0;
 
     virtual ~QgsProcessingParametersGenerator() = default;
+
+    /**
+     * Results of validating a parameter.
+     *
+     * \since QGIS 4.4
+     */
+    enum class ValidationResult
+    {
+      Valid,                  //!< Parameter value is valid
+      InvalidOutputExtension, //!< Output parameter extension is invalid
+      InvalidValue,           //!< Generic result for invalid parameter values
+    };
+
+    /**
+     * Encapsulates the result of validating parameters shown in the generator.
+     *
+     * \ingroup gui
+     * \since QGIS 4.4
+     */
+    class ParameterValidationResult
+    {
+      public:
+        //! Associated parameter name
+        QString parameterName;
+
+        //! Validation result
+        QgsProcessingParametersGenerator::ValidationResult result = QgsProcessingParametersGenerator::ValidationResult::Valid;
+
+        //! Validation message
+        QString message;
+    };
 };
 
 Q_DECLARE_OPERATORS_FOR_FLAGS( QgsProcessingParametersGenerator::Flags )
 
 
-/**
- * \ingroup gui
- * \class QgsProcessingParameterWidgetContext
- * \brief Contains settings which reflect the context in which a Processing parameter widget is shown, e.g., the
- * parent model algorithm, a linked map canvas, and other relevant information which allows the widget
- * to fine-tune its behavior.
- *
- * \since QGIS 3.4
- */
-class GUI_EXPORT QgsProcessingParameterWidgetContext
-{
-  public:
-
-    /**
-     * Constructor for QgsProcessingParameterWidgetContext.
-     */
-    QgsProcessingParameterWidgetContext() = default;
-
-    /**
-     * Sets the map \a canvas associated with the widget. This allows the widget to retrieve the current
-     * map scale and other properties from the canvas.
-     * \see mapCanvas()
-     */
-    void setMapCanvas( QgsMapCanvas *canvas );
-
-    /**
-     * Returns the map canvas associated with the widget.
-     * \see setMapCanvas()
-     */
-    QgsMapCanvas *mapCanvas() const;
-
-    /**
-     * Sets the message \a bar associated with the widget. This allows the widget to push feedback messages
-     * to the user.
-     * \see messageBar()
-     * \since QGIS 3.12
-     */
-    void setMessageBar( QgsMessageBar *bar );
-
-    /**
-     * Returns the message bar associated with the widget. This allows the widget to push feedback messages
-     * to the user.
-     * \see setMessageBar()
-     * \since QGIS 3.12
-     */
-    QgsMessageBar *messageBar() const;
-
-    /**
-     * Sets the browser \a model associated with the widget. This will usually be the shared app instance of the browser model
-     * \see browserModel()
-     * \since QGIS 3.14
-     */
-    void setBrowserModel( QgsBrowserGuiModel *model );
-
-    /**
-     * Returns the browser model associated with the widget.
-     * \see setBrowserModel()
-     * \since QGIS 3.12
-     */
-    QgsBrowserGuiModel *browserModel() const;
-
-    /**
-     * Sets the \a project associated with the widget. This allows the widget to retrieve the map layers
-     * and other properties from the correct project.
-     * \see project()
-     * \since QGIS 3.8
-     */
-    void setProject( QgsProject *project );
-
-    /**
-     * Returns the project associated with the widget.
-     * \see setProject()
-     */
-    QgsProject *project() const;
-
-    /**
-     * Returns the model which the parameter widget is associated with.
-     *
-     * \see setModel()
-     * \see modelChildAlgorithmId()
-     */
-    QgsProcessingModelAlgorithm *model() const;
-
-    /**
-     * Sets the \a model which the parameter widget is associated with.
-     *
-     * \see model()
-     * \see setModelChildAlgorithmId()
-     */
-    void setModel( QgsProcessingModelAlgorithm *model );
-
-    /**
-     * Returns the child algorithm ID within the model which the parameter widget is associated with.
-     *
-     * \see setModelChildAlgorithmId()
-     * \see model()
-     */
-    QString modelChildAlgorithmId() const;
-
-    /**
-     * Sets the child algorithm \a id within the model which the parameter widget is associated with.
-     *
-     * \see modelChildAlgorithmId()
-     * \see setModel()
-     */
-    void setModelChildAlgorithmId( const QString &id );
-
-    /**
-     * Returns the current active layer.
-     *
-     * \see setActiveLayer()
-     * \since QGIS 3.14
-     */
-    QgsMapLayer *activeLayer() const;
-
-    /**
-     * Sets the current active \a layer.
-     *
-     * \see activeLayer()
-     * \since QGIS 3.14
-     */
-    void setActiveLayer( QgsMapLayer *layer );
-
-  private:
-
-    QgsProcessingModelAlgorithm *mModel = nullptr;
-
-    QString mModelChildAlgorithmId;
-
-    QgsMapCanvas *mMapCanvas = nullptr;
-
-    QgsMessageBar *mMessageBar = nullptr;
-
-    QgsProject *mProject = nullptr;
-
-    QgsBrowserGuiModel *mBrowserModel = nullptr;
-
-    QgsMapLayer *mActiveLayer = nullptr;
-
-};
-
 #ifndef SIP_RUN
 ///@cond PRIVATE
-class GUI_EXPORT QgsProcessingGuiUtils
+class GUI_EXPORT QgsProcessingWidgetWrapperUtils
 {
   public:
-
-    static QgsExpressionContext createExpressionContext( QgsProcessingContextGenerator *processingContextGenerator = nullptr,
-        const QgsProcessingParameterWidgetContext &widgetContext = QgsProcessingParameterWidgetContext(),
-        const QgsProcessingAlgorithm *algorithm = nullptr,
-        const QgsVectorLayer *linkedLayer = nullptr );
-
-
+    static QgsExpressionContext createExpressionContext(
+      QgsProcessingContextGenerator *processingContextGenerator = nullptr,
+      const QgsProcessingParameterWidgetContext &widgetContext = QgsProcessingParameterWidgetContext(),
+      const QgsProcessingAlgorithm *algorithm = nullptr,
+      const QgsVectorLayer *linkedLayer = nullptr
+    );
 };
 ///@endcond
 #endif
@@ -283,18 +177,18 @@ class GUI_EXPORT QgsAbstractProcessingParameterWidgetWrapper : public QObject, p
     Q_OBJECT
 
   public:
-
     /**
      * Constructor for QgsAbstractProcessingParameterWidgetWrapper, for the specified
      * \a parameter definition and dialog \a type.
      */
-    QgsAbstractProcessingParameterWidgetWrapper( const QgsProcessingParameterDefinition *parameter = nullptr,
-        QgsProcessingGui::WidgetType type = QgsProcessingGui::Standard, QObject *parent SIP_TRANSFERTHIS = nullptr );
+    QgsAbstractProcessingParameterWidgetWrapper(
+      const QgsProcessingParameterDefinition *parameter = nullptr, Qgis::ProcessingMode type = Qgis::ProcessingMode::Standard, QObject *parent SIP_TRANSFERTHIS = nullptr
+    );
 
     /**
      * Returns the dialog type for which widgets and labels will be created by this wrapper.
      */
-    QgsProcessingGui::WidgetType type() const;
+    Qgis::ProcessingMode type() const;
 
     /**
      * Sets the \a context in which the Processing parameter widget is shown, e.g., the
@@ -326,7 +220,7 @@ class GUI_EXPORT QgsAbstractProcessingParameterWidgetWrapper : public QObject, p
      *
      * \see createWrappedLabel()
      */
-    QWidget *createWrappedWidget( QgsProcessingContext &context ) SIP_FACTORY;
+    QWidget *createWrappedWidget( QgsProcessingContext &context ) SIP_TRANSFERBACK;
 
     /**
      * Creates and returns a new label to accompany widgets created by the wrapper.
@@ -359,12 +253,12 @@ class GUI_EXPORT QgsAbstractProcessingParameterWidgetWrapper : public QObject, p
      */
     const QgsProcessingParameterDefinition *parameterDefinition() const;
 
-    // TODO QGIS 4.0 -- remove
+    // TODO QGIS 5.0 -- remove
 #ifdef SIP_RUN
     % Property( name = param, get = parameterDefinition )
 #endif
 
-    /**
+      /**
      * Sets the current \a value for the parameter.
      *
      * The \a context argument is used to specify the wider Processing context which the
@@ -372,7 +266,7 @@ class GUI_EXPORT QgsAbstractProcessingParameterWidgetWrapper : public QObject, p
      *
      * \see parameterValue()
      */
-    void setParameterValue( const QVariant &value, QgsProcessingContext &context );
+      void setParameterValue( const QVariant &value, QgsProcessingContext &context );
 
     /**
      * Returns the current value of the parameter.
@@ -407,7 +301,7 @@ class GUI_EXPORT QgsAbstractProcessingParameterWidgetWrapper : public QObject, p
      * Called after all wrappers have been created within a particular dialog or context,
      * allowing the wrapper to connect to the wrappers of other, related parameters.
      */
-    virtual void postInitialize( const QList< QgsAbstractProcessingParameterWidgetWrapper * > &wrappers );
+    virtual void postInitialize( const QList<QgsAbstractProcessingParameterWidgetWrapper *> &wrappers );
 
     /**
      * Returns the Qt layout "stretch" factor to use when adding this widget to a layout.
@@ -421,15 +315,15 @@ class GUI_EXPORT QgsAbstractProcessingParameterWidgetWrapper : public QObject, p
     QgsExpressionContext createExpressionContext() const override;
 
     /**
-     * Sets the parent \a dialog in which the wrapper is shown.
+     * Sets the parent \a dialog (or widget) in which the wrapper is shown.
      *
      * \since QGIS 3.8
      */
-    virtual void setDialog( QDialog *dialog );
+    virtual void setDialog( QWidget *dialog );
 
   signals:
 
-    // TODO QGIS 4.0 - remove wrapper parameter - this is kept for compatibility with 3.x API,
+    // TODO QGIS 5.0 - remove wrapper parameter - this is kept for compatibility with 3.x API,
     // yet can easily be retrieved by checking the sender()
 
     /**
@@ -438,7 +332,6 @@ class GUI_EXPORT QgsAbstractProcessingParameterWidgetWrapper : public QObject, p
     void widgetValueHasChanged( QgsAbstractProcessingParameterWidgetWrapper *wrapper );
 
   protected:
-
     /**
      * Creates a new widget which allows customization of the parameter's value.
      *
@@ -489,7 +382,6 @@ class GUI_EXPORT QgsAbstractProcessingParameterWidgetWrapper : public QObject, p
     virtual const QgsVectorLayer *linkedVectorLayer() const;
 
   protected:
-
     QgsProcessingContextGenerator *mProcessingContextGenerator = nullptr;
     QgsProcessingParametersGenerator *mParametersGenerator = nullptr;
     QgsProcessingParameterWidgetContext mWidgetContext;
@@ -499,19 +391,17 @@ class GUI_EXPORT QgsAbstractProcessingParameterWidgetWrapper : public QObject, p
     void parentLayerChanged( QgsAbstractProcessingParameterWidgetWrapper *wrapper );
 
   private:
-
-    QgsProcessingGui::WidgetType mType = QgsProcessingGui::Standard;
+    Qgis::ProcessingMode mType = Qgis::ProcessingMode::Standard;
     const QgsProcessingParameterDefinition *mParameterDefinition = nullptr;
 
     void setDynamicParentLayerParameter( const QgsAbstractProcessingParameterWidgetWrapper *parentWrapper );
 
-    QPointer< QWidget > mWidget;
-    QPointer< QgsPropertyOverrideButton > mPropertyButton;
-    QPointer< QLabel > mLabel;
-    std::unique_ptr< QgsVectorLayer > mDynamicLayer;
+    QPointer<QWidget> mWidget;
+    QPointer<QgsPropertyOverrideButton> mPropertyButton;
+    QPointer<QLabel> mLabel;
+    std::unique_ptr<QgsVectorLayer> mDynamicLayer;
 
     friend class TestProcessingGui;
-
 };
 
 
@@ -530,9 +420,7 @@ class GUI_EXPORT QgsAbstractProcessingParameterWidgetWrapper : public QObject, p
  */
 class GUI_EXPORT QgsProcessingParameterWidgetFactoryInterface
 {
-
   public:
-
     virtual ~QgsProcessingParameterWidgetFactoryInterface() = default;
 
     /**
@@ -547,8 +435,7 @@ class GUI_EXPORT QgsProcessingParameterWidgetFactoryInterface
      *
      * \see createModelerWidgetWrapper()
      */
-    virtual QgsAbstractProcessingParameterWidgetWrapper *createWidgetWrapper( const QgsProcessingParameterDefinition *parameter,
-        QgsProcessingGui::WidgetType type ) = 0 SIP_FACTORY;
+    virtual QgsAbstractProcessingParameterWidgetWrapper *createWidgetWrapper( const QgsProcessingParameterDefinition *parameter, Qgis::ProcessingMode type ) = 0 SIP_FACTORY;
 
     /**
      * Creates a new modeler parameter widget for the given \a parameter. This widget allows
@@ -565,10 +452,9 @@ class GUI_EXPORT QgsProcessingParameterWidgetFactoryInterface
      *
      * \see createWidgetWrapper()
      */
-    virtual QgsProcessingModelerParameterWidget *createModelerWidgetWrapper( QgsProcessingModelAlgorithm *model,
-        const QString &childId,
-        const QgsProcessingParameterDefinition *parameter,
-        QgsProcessingContext &context );
+    virtual QgsProcessingModelerParameterWidget *createModelerWidgetWrapper(
+      QgsProcessingModelAlgorithm *model, const QString &childId, const QgsProcessingParameterDefinition *parameter, QgsProcessingContext &context
+    );
 
     /**
      * Creates a new parameter definition widget allowing for configuration of an instance of
@@ -595,12 +481,27 @@ class GUI_EXPORT QgsProcessingParameterWidgetFactoryInterface
      * \since QGIS 3.10
      */
     virtual QgsProcessingAbstractParameterDefinitionWidget *createParameterDefinitionWidget(
-      QgsProcessingContext &context,
-      const QgsProcessingParameterWidgetContext &widgetContext,
-      const QgsProcessingParameterDefinition *definition = nullptr,
-      const QgsProcessingAlgorithm *algorithm = nullptr ) SIP_FACTORY;
+      QgsProcessingContext &context, const QgsProcessingParameterWidgetContext &widgetContext, const QgsProcessingParameterDefinition *definition = nullptr, const QgsProcessingAlgorithm *algorithm = nullptr
+    ) SIP_TRANSFERBACK;
 
   protected:
+    /**
+     * Returns a list of compatible Processing parameter types for inputs
+     * for this parameter.
+     *
+     * In order to determine the available sources for the parameter in a model
+     * the types returned by this method are checked. The returned list corresponds to the
+     * various available values for QgsProcessingParameterDefinition::type().
+     *
+     * Subclasses should return a list of all QgsProcessingParameterDefinition::type()
+     * values which can be used as input values for the parameter.
+     *
+     * \see compatibleOutputTypes()
+     * \see compatibleDataTypes()
+     *
+     * \deprecated QGIS 4.4. Use the version with QgsProcessingParameterDefinition argument instead.
+     */
+    Q_DECL_DEPRECATED virtual QStringList compatibleParameterTypes() const SIP_DEPRECATED;
 
     /**
      * Returns a list of compatible Processing parameter types for inputs
@@ -615,8 +516,10 @@ class GUI_EXPORT QgsProcessingParameterWidgetFactoryInterface
      *
      * \see compatibleOutputTypes()
      * \see compatibleDataTypes()
+     *
+     * \since QGIS 4.4
      */
-    virtual QStringList compatibleParameterTypes() const = 0;
+    virtual QStringList compatibleParameterTypes( const QgsProcessingParameterDefinition *parameter ) const;
 
     /**
      * Returns a list of compatible Processing output types for inputs
@@ -631,8 +534,28 @@ class GUI_EXPORT QgsProcessingParameterWidgetFactoryInterface
      *
      * \see compatibleParameterTypes()
      * \see compatibleDataTypes()
+     *
+     * \deprecated QGIS 4.4. Use the version with QgsProcessingParameterDefinition argument instead.
      */
-    virtual QStringList compatibleOutputTypes() const = 0;
+    Q_DECL_DEPRECATED virtual QStringList compatibleOutputTypes() const SIP_DEPRECATED;
+
+    /**
+     * Returns a list of compatible Processing output types for inputs
+     * for this parameter.
+     *
+     * In order to determine the available sources for the parameter in a model
+     * the types returned by this method are checked. The returned list corresponds to the
+     * various available values for QgsProcessingOutputDefinition::type().
+     *
+     * Subclasses should return a list of all QgsProcessingOutputDefinition::type()
+     * values which can be used as values for the parameter.
+     *
+     * \see compatibleParameterTypes()
+     * \see compatibleDataTypes()
+     *
+     * \since QGIS 4.4
+     */
+    virtual QStringList compatibleOutputTypes( const QgsProcessingParameterDefinition *parameter ) const;
 
     /**
      * Returns a list of compatible Processing data types for inputs
@@ -648,7 +571,7 @@ class GUI_EXPORT QgsProcessingParameterWidgetFactoryInterface
      * \see compatibleParameterTypes()
      * \see compatibleOutputTypes()
      */
-    virtual QList< int > compatibleDataTypes( const QgsProcessingParameterDefinition *parameter ) const;
+    virtual QList<int> compatibleDataTypes( const QgsProcessingParameterDefinition *parameter ) const;
 
     /**
      * Returns the expected expression format string for expression results for the parameter
@@ -668,12 +591,14 @@ class GUI_EXPORT QgsProcessingParameterWidgetFactoryInterface
      */
     virtual Qgis::ProcessingModelChildParameterSource defaultModelSource( const QgsProcessingParameterDefinition *parameter ) const;
 
+  private:
+    mutable bool mPreventRecursion = false;
 };
 
 /**
  * \class QgsProcessingHiddenWidgetWrapper
  *
- * \brief An widget wrapper for hidden widgets.
+ * \brief A widget wrapper for hidden widgets.
  *
  * The hidden widget wrapper allows for creation of a widget wrapper which does not provide
  * a graphical widget, yet still implements the QgsAbstractProcessingParameterWidgetWrapper
@@ -682,18 +607,15 @@ class GUI_EXPORT QgsProcessingParameterWidgetFactoryInterface
  * \ingroup gui
  * \since QGIS 3.14
  */
-class GUI_EXPORT QgsProcessingHiddenWidgetWrapper: public QgsAbstractProcessingParameterWidgetWrapper
+class GUI_EXPORT QgsProcessingHiddenWidgetWrapper : public QgsAbstractProcessingParameterWidgetWrapper
 {
     Q_OBJECT
   public:
-
     /**
      * Constructor for QgsProcessingHiddenWidgetWrapper, for the specified
      * \a parameter definition and dialog \a type.
      */
-    QgsProcessingHiddenWidgetWrapper( const QgsProcessingParameterDefinition *parameter = nullptr,
-                                      QgsProcessingGui::WidgetType type = QgsProcessingGui::Standard,
-                                      QObject *parent SIP_TRANSFERTHIS = nullptr );
+    QgsProcessingHiddenWidgetWrapper( const QgsProcessingParameterDefinition *parameter = nullptr, Qgis::ProcessingMode type = Qgis::ProcessingMode::Standard, QObject *parent SIP_TRANSFERTHIS = nullptr );
 
     void setWidgetValue( const QVariant &value, QgsProcessingContext &context ) override;
     QVariant widgetValue() const override;
@@ -710,10 +632,8 @@ class GUI_EXPORT QgsProcessingHiddenWidgetWrapper: public QgsAbstractProcessingP
     QLabel *createLabel() override;
 
   private:
-
     QVariant mValue;
-    QPointer < const QgsVectorLayer > mLayer;
-
+    QPointer<const QgsVectorLayer> mLayer;
 };
 
 #endif // QGSPROCESSINGWIDGETWRAPPER_H

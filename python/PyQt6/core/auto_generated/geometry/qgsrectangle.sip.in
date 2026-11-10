@@ -3,8 +3,11 @@
  *                                                                      *
  * src/core/geometry/qgsrectangle.h                                     *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/
+
+
+
 
 
 
@@ -16,8 +19,9 @@ class QgsRectangle
 %Docstring(signature="appended")
 A rectangle specified with double values.
 
-:py:class:`QgsRectangle` is used to store a rectangle when double values are required.
-Examples are storing a layer extent or the current view extent of a map
+:py:class:`QgsRectangle` is used to store a rectangle when double values
+are required. Examples are storing a layer extent or the current view
+extent of a map
 
 .. seealso:: :py:class:`QgsBox3D`
 %End
@@ -26,23 +30,32 @@ Examples are storing a layer extent or the current view extent of a map
 #include "qgsrectangle.h"
 %End
   public:
+    static const QMetaObject staticMetaObject;
 
+  public:
     QgsRectangle(); // optimised constructor for null rectangle - no need to call normalize here
 
     explicit QgsRectangle( double xMin, double yMin = 0, double xMax = 0, double yMax = 0, bool normalize = true ) /HoldGIL/;
 %Docstring
-Constructs a QgsRectangle from a set of x and y minimum and maximum coordinates.
+Constructs a QgsRectangle from a set of x and y minimum and maximum
+coordinates.
 
-The rectangle will be normalized after creation. Since QGIS 3.20, if ``normalize`` is ``False`` then
-the normalization step will not be applied automatically.
+The rectangle will be normalized after creation. Since QGIS 3.20, if
+``normalize`` is ``False`` then the normalization step will not be
+applied automatically.
+
+If the the rectangle represents a portion of the globe in geographic
+coordinates where the extent wraps around the antimeridian then
+``normalize`` must be set to ``False``.
 %End
 
     QgsRectangle( const QgsPointXY &p1, const QgsPointXY &p2, bool normalize = true ) /HoldGIL/;
 %Docstring
 Construct a rectangle from two points.
 
-The rectangle is normalized after construction. Since QGIS 3.20, if ``normalize`` is ``False`` then
-the normalization step will not be applied automatically.
+The rectangle is normalized after construction. Since QGIS 3.20, if
+``normalize`` is ``False`` then the normalization step will not be
+applied automatically.
 %End
 
     QgsRectangle( const QRectF &qRectF ) /HoldGIL/;
@@ -53,38 +66,50 @@ The rectangle is NOT normalized after construction.
 %End
 
     QgsRectangle( const QgsRectangle &other ) /HoldGIL/;
-%Docstring
-Copy constructor
-%End
 
     ~QgsRectangle();
 
     static QgsRectangle fromWkt( const QString &wkt );
 %Docstring
-Creates a new rectangle from a ``wkt`` string.
-The WKT must contain only 5 vertices, representing a rectangle aligned with X and Y axes.
+Creates a new rectangle from a ``wkt`` string. The WKT must contain only
+5 vertices, representing a rectangle aligned with X and Y axes.
 %End
 
     static QgsRectangle fromCenterAndSize( const QgsPointXY &center, double width, double height );
 %Docstring
-Creates a new rectangle, given the specified ``center`` point
-and ``width`` and ``height``.
+Creates a new rectangle, given the specified ``center`` point and
+``width`` and ``height``.
+%End
+
+    static QgsRectangle fromEdges( double left, double top, double right, double bottom );
+%Docstring
+Creates a rectangle from the ``left``, ``top``, ``right`` and ``bottom``
+edges.
+
+The rectangle will not be normalized, permitting situations where the
+left edge > right or top < bottom. E.g. for use when the rectangle
+represents a portion of the globe in geographic coordinates where the
+extent wraps around the antimeridian.
+
+.. versionadded:: 4.4
 %End
 
     void set( const QgsPointXY &p1, const QgsPointXY &p2, bool normalize = true );
 %Docstring
 Sets the rectangle from two :py:class:`QgsPoints`.
 
-The rectangle is normalised after construction. Since QGIS 3.20, if ``normalize`` is ``False`` then
-the normalization step will not be applied automatically.
+The rectangle is normalised after construction. Since QGIS 3.20, if
+``normalize`` is ``False`` then the normalization step will not be
+applied automatically.
 %End
 
     void set( double xMin, double yMin, double xMax, double yMax, bool normalize = true );
 %Docstring
 Sets the rectangle from four points.
 
-The rectangle is normalised after construction. Since QGIS 3.20, if ``normalize`` is ``False`` then
-the normalization step will not be applied automatically.
+The rectangle is normalised after construction. Since QGIS 3.20, if
+``normalize`` is ``False`` then the normalization step will not be
+applied automatically.
 %End
 
     void setXMinimum( double x ) /HoldGIL/;
@@ -120,33 +145,108 @@ A null rectangle is also empty by definition.
 .. versionadded:: 3.34
 %End
 
- void setMinimal() /Deprecated/;
+ void setMinimal() /Deprecated="Since 3.34. Will be removed in QGIS 5.0. Use setNull()."/;
 %Docstring
-Set a rectangle so that min corner is at max
-and max corner is at min. It is NOT normalized.
+Set a rectangle so that min corner is at max and max corner is at min.
+It is NOT normalized.
 
-.. deprecated:: QGIS 3.34
-   - will be removed in QGIS 4.0. Use :py:func:`~QgsRectangle.setNull`.
+.. deprecated:: 3.34
+
+   Will be removed in QGIS 5.0. Use :py:func:`~QgsRectangle.setNull`.
 %End
 
     double xMaximum() const /HoldGIL/;
 %Docstring
-Returns the x maximum value (right side of rectangle).
+Returns the x maximum value.
+
+This usually corresponds to the right side of the rectangle, unless the
+rectangle was created using non-normalized coordinates. E.g. when the
+rectangle represents a portion of the globe in geographic coordinates
+where the extent wraps around the antimeridian.
+
+.. seealso:: :py:func:`right`
 %End
 
     double xMinimum() const /HoldGIL/;
 %Docstring
-Returns the x minimum value (left side of rectangle).
+Returns the x minimum value.
+
+This usually corresponds to the left side of the rectangle, unless the
+rectangle was created using non-normalized coordinates. E.g. when the
+rectangle represents a portion of the globe in geographic coordinates
+where the extent wraps around the antimeridian.
+
+.. seealso:: :py:func:`left`
 %End
 
     double yMaximum() const /HoldGIL/;
 %Docstring
-Returns the y maximum value (top side of rectangle).
+Returns the y maximum value.
+
+This usually corresponds to the top of the rectangle, unless the
+rectangle was created using non-normalized coordinates.
+
+.. seealso:: :py:func:`top`
 %End
 
     double yMinimum() const /HoldGIL/;
 %Docstring
-Returns the y minimum value (bottom side of rectangle).
+Returns the y minimum value.
+
+This usually corresponds to the bottom of the rectangle, unless the
+rectangle was created using non-normalized coordinates.
+
+.. seealso:: :py:func:`top`
+%End
+
+    double left() const /HoldGIL/;
+%Docstring
+Returns the left side of the rectangle.
+
+This usually corresponds to the minimum x value, unless the rectangle
+represents a portion of the globe in geographic coordinates where the
+extent wraps around the antimeridian.
+
+.. seealso:: :py:func:`xMinimum`
+
+.. versionadded:: 4.4
+%End
+
+    double right() const /HoldGIL/;
+%Docstring
+Returns the right side of the rectangle.
+
+This usually corresponds to the maximum x value, unless the rectangle
+represents a portion of the globe in geographic coordinates where the
+extent wraps around the antimeridian.
+
+.. seealso:: :py:func:`xMaximum`
+
+.. versionadded:: 4.4
+%End
+
+    double top() const /HoldGIL/;
+%Docstring
+Returns the top side of the rectangle.
+
+This usually corresponds to the maximum y value, unless the rectangle
+was created using non-normalized coordinates.
+
+.. seealso:: :py:func:`yMaximum`
+
+.. versionadded:: 4.4
+%End
+
+    double bottom() const /HoldGIL/;
+%Docstring
+Returns the bottom side of the rectangle.
+
+This usually corresponds to the minimum y value, unless the rectangle
+was created using non-normalized coordinates.
+
+.. seealso:: :py:func:`yMinimum`
+
+.. versionadded:: 4.4
 %End
 
     void normalize();
@@ -264,24 +364,28 @@ Returns ``True`` when rectangle contains the point at (``x``, ``y``).
 
     void combineExtentWith( const QgsRectangle &rect );
 %Docstring
-Expands the rectangle so that it covers both the original rectangle and the given rectangle.
+Expands the rectangle so that it covers both the original rectangle and
+the given rectangle.
 %End
 
     void combineExtentWith( double x, double y );
 %Docstring
-Expands the rectangle so that it covers both the original rectangle and the given point.
+Expands the rectangle so that it covers both the original rectangle and
+the given point.
 %End
 
     void combineExtentWith( const QgsPointXY &point );
 %Docstring
-Expands the rectangle so that it covers both the original rectangle and the given point.
+Expands the rectangle so that it covers both the original rectangle and
+the given point.
 
 .. versionadded:: 3.2
 %End
 
     double distance( const QgsPointXY &point ) const;
 %Docstring
-Returns the distance from ``point`` to the nearest point on the boundary of the rectangle.
+Returns the distance from ``point`` to the nearest point on the boundary
+of the rectangle.
 
 .. versionadded:: 3.14
 %End
@@ -298,20 +402,82 @@ Returns the distance from ``point`` to the nearest point on the boundary of the 
 %Docstring
 Returns ``True`` if the rectangle has no area.
 
-An empty rectangle may still be non-null if it contains valid
-spatial information (e.g. bounding box of a point or of a vertical
-or horizontal segment).
+While a null rectangle is always considered empty, an empty rectangle
+may still be non-null if it contains valid spatial information (e.g. the
+bounding box of a point or of a vertical or horizontal segment).
+
+.. warning::
+
+   Do not use this method to determine if the rectangle
+   represents the bounding box of a point. The :py:func:`~QgsRectangle.isPoint` method
+   should be used instead.
 
 .. seealso:: :py:func:`isNull`
+
+.. seealso:: :py:func:`isPoint`
+%End
+
+    bool isPoint() const;
+%Docstring
+Returns ``True`` if the rectangle represents a point.
+
+A rectangle represents a point if both the x coordinates are an exact
+match and the y coordinates are an exact match.
+
+.. seealso:: :py:func:`isNull`
+
+.. versionadded:: 4.4
+%End
+
+    bool isNormalized() const;
+%Docstring
+Returns ``True`` if the rectangle is normalized.
+
+A rectangle is normalized if the :py:func:`~QgsRectangle.xMinimum` <=
+:py:func:`~QgsRectangle.xMaximum` and :py:func:`~QgsRectangle.yMinimum`
+<= :py:func:`~QgsRectangle.yMaximum`.
+
+.. versionadded:: 4.4
 %End
 
     bool isNull() const;
 %Docstring
 Test if the rectangle is null (holding no spatial information).
 
-A null rectangle is also an empty rectangle.
+A rectangle is considered null if all its coordinates are NaN, if it has
+not been defined yet, or if it has been explicitly initialized as null.
+A null rectangle is also an empty rectangle and an invalid rectangle.
 
 .. seealso:: :py:func:`setNull`
+%End
+
+    bool isValid() const;
+%Docstring
+Test if the rectangle is valid
+
+A rectangle is considered invalid if at least one of its coordinates is
+NaN or infinite, or if a maximum coordinate is less than or equal to the
+corresponding minimum coordinate.
+
+.. seealso:: :py:func:`isNull`
+
+.. versionadded:: 4.0
+%End
+
+    bool isMaximal() const;
+%Docstring
+Test if the rectangle is the maximal possible rectangle.
+
+A rectangle is considered maximal if all boundaries are either at their
+maximum possible values or are infinite values.
+
+.. seealso:: :py:func:`isFinite`
+
+.. seealso:: :py:func:`isNull`
+
+.. seealso:: :py:func:`isEmpty`
+
+.. versionadded:: 3.44
 %End
 
     QString asWktCoordinates() const;
@@ -332,8 +498,8 @@ Returns a QRectF with same coordinates as the rectangle.
     QString toString( int precision = 16 ) const;
 %Docstring
 Returns a string representation of form xmin,ymin : xmax,ymax
-Coordinates will be truncated to the specified precision.
-If the specified precision is less than 0, a suitable minimum precision is used.
+Coordinates will be rounded to the specified precision. If the specified
+precision is less than 0, a suitable minimum precision is used.
 %End
 
     QString asPolygon() const;
@@ -348,8 +514,14 @@ Returns the rectangle as a polygon.
 
     bool isFinite() const;
 %Docstring
-Returns ``True`` if the rectangle has finite boundaries. Will
-return ``False`` if any of the rectangle boundaries are NaN or Inf.
+Returns ``True`` if the rectangle has finite boundaries. Will return
+``False`` if any of the rectangle boundaries are NaN or Inf.
+
+.. seealso:: :py:func:`isMaximal`
+
+.. seealso:: :py:func:`isNull`
+
+.. seealso:: :py:func:`isEmpty`
 %End
 
     void invert();
@@ -359,16 +531,36 @@ Swap x/y coordinates in the rectangle.
 
     QgsBox3D toBox3d( double zMin, double zMax ) const;
 %Docstring
-Converts the rectangle to a 3D box, with the specified
-``zMin`` and ``zMax`` z values.
+Converts the rectangle to a 3D box, with the specified ``zMin`` and
+``zMax`` z values.
+%End
+
+    std::pair< QgsRectangle, QgsRectangle > splitAtAntimeridian() const;
+%Docstring
+Splits the rectangle at the antimeridian (longitude 180 degrees).
+
+Returns two normalized rectangles, one representing the part to the west
+of the antimeridian and one which represents the part to the east.
+
+If the rectangle does not cross the antimeridian then the second
+returned rectangle will be a null rectangle.
+
+.. warning::
+
+   This method is only valid for calling on rectangles which represent
+   geographic extents (i.e. contain latitude/longitude coordinates). If the
+   extent is in a projected CRS, then the results will be incorrect, even
+   if that projected rectangle crosses the antimeridian.
+
+.. versionadded:: 4.4
 %End
 
     operator QVariant() const;
 
     QgsRectangle snappedToGrid( double spacing ) const;
 %Docstring
-Returns a copy of this rectangle that is snapped to a grid with
-the specified ``spacing`` between the grid lines.
+Returns a copy of this rectangle that is snapped to a grid with the
+specified ``spacing`` between the grid lines.
 
 .. versionadded:: 3.4
 %End
@@ -392,5 +584,5 @@ the specified ``spacing`` between the grid lines.
  *                                                                      *
  * src/core/geometry/qgsrectangle.h                                     *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/

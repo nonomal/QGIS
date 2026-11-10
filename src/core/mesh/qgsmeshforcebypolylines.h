@@ -18,15 +18,15 @@
 
 
 #include "qgis_core.h"
-#include "qgstopologicalmesh.h"
-#include "qgstriangularmesh.h"
 #include "qgsabstractgeometry.h"
 #include "qgsmeshadvancedediting.h"
+#include "qgstopologicalmesh.h"
+#include "qgstriangularmesh.h"
 
 /**
  * \ingroup core
  *
- * \brief Class derived from QgsMeshAdvancedEditing that forces mesh based on a line
+ * \brief Forces mesh editing based on a line.
  *
  * Forcing lines consist of line that the faces are forced to follow, that is edges of encountered faces have to be on theses lines.
  *
@@ -39,8 +39,6 @@
 class CORE_EXPORT QgsMeshEditForceByLine : public QgsMeshAdvancedEditing
 {
   public:
-
-    //! Constructor
     QgsMeshEditForceByLine() = default;
 
     //! Sets the input forcing line in rendering coordinates
@@ -77,10 +75,10 @@ class CORE_EXPORT QgsMeshEditForceByLine : public QgsMeshAdvancedEditing
     //members and method used for the calculation
     QgsMeshEditor *mEditor = nullptr;
     QList<int> mRemovedFaces;
-    QList<int> mHoleOnLeft; // contains the border vertices of hole to fill on the right of the line (line go up)
-    QList<int> mNeighborOnLeft; //contains the neighbor face on the right of the line (line go up)
-    QList<int> mHoleOnRight; // contains the border vertices of hole to fill on the right of the line (line go up)
-    QList<int> mNeighborOnRight; // contains the neighbor face on the right of the line (line go up)
+    QList<int> mHoleOnLeft;               // contains the border vertices of hole to fill on the right of the line (line go up)
+    QList<int> mNeighborOnLeft;           //contains the neighbor face on the right of the line (line go up)
+    QList<int> mHoleOnRight;              // contains the border vertices of hole to fill on the right of the line (line go up)
+    QList<int> mNeighborOnRight;          // contains the neighbor face on the right of the line (line go up)
     QList<int> mNewVerticesIndexesOnLine; //the new vertices intersecting edges except
     bool mEndOnPoint2 = false;
     int mPoint2VertexIndex = -1;
@@ -97,28 +95,16 @@ class CORE_EXPORT QgsMeshEditForceByLine : public QgsMeshAdvancedEditing
 
     bool buildForcedElements();
 
-    bool edgeIntersection( int vertex1,
-                           int vertex2,
-                           int &closestSnappedVertex,
-                           QgsPoint &intersectionPoint,
-                           bool outAllowed );
+    bool edgeIntersection( int vertex1, int vertex2, int &closestSnappedVertex, QgsPoint &intersectionPoint, bool outAllowed );
 
     bool searchIntersectionEdgeFromSnappedVertex(
-      int &intersectionFaceIndex,
-      int &previousSnappedVertex,
-      int &currentSnappedVertexIndex,
-      QgsPoint &intersectionPoint,
-      int &edgePosition,
-      QSet<int> &treatedFaces );
+      int &intersectionFaceIndex, int &previousSnappedVertex, int &currentSnappedVertexIndex, QgsPoint &intersectionPoint, int &edgePosition, QSet<int> &treatedFaces
+    );
 
     // Insert a new vertex and returns its local index (0 is first index in th
     int insertNewVertex( const QgsMeshVertex &vertex );
 
-    bool triangulateHoles( const QList<int> &holeOnLeft,
-                           const QList<int> &neighborOnLeft,
-                           bool isLeftHole,
-                           QList<std::array<int, 2> > &newFacesOnLine,
-                           std::array<int, 2> &extremeFaces );
+    bool triangulateHoles( const QList<int> &holeOnLeft, const QList<int> &neighborOnLeft, bool isLeftHole, QList<std::array<int, 2> > &newFacesOnLine, std::array<int, 2> &extremeFaces );
 
     bool finishForcingLine();
 
@@ -127,11 +113,10 @@ class CORE_EXPORT QgsMeshEditForceByLine : public QgsMeshAdvancedEditing
 };
 
 
-
 /**
  * \ingroup core
  *
- * \brief Class derived from QgsMeshEditForceByLine that forces mesh based on polyline.
+ * \brief Derived from QgsMeshEditForceByLine that forces mesh based on polyline.
  *
  * Forcing lines consist of line that the faces are forced to follow, that is edges of encountered faces have to be on theses lines.
  *
@@ -144,8 +129,6 @@ class CORE_EXPORT QgsMeshEditForceByLine : public QgsMeshAdvancedEditing
 class CORE_EXPORT QgsMeshEditForceByPolylines : public QgsMeshEditForceByLine
 {
   public:
-
-    //! Constructor
     QgsMeshEditForceByPolylines() = default;
 
     QString text() const override;
@@ -176,7 +159,6 @@ class CORE_EXPORT QgsMeshEditForceByPolylines : public QgsMeshEditForceByLine
 
     using QgsMeshEditForceByLine::setInputLine;
     QgsTopologicalMesh::Changes apply( QgsMeshEditor *meshEditor ) override;
-
 };
 
 #endif // QGSMESHFORCEBYPOLYLINES_H

@@ -35,11 +35,12 @@ class QgsProject;
 class QgsScaleWidget;
 
 
+#include "qgis_app.h"
 #include "qgssnappingconfig.h"
 
-#include <QWidget>
+#include <QMenu>
 #include <QSettings>
-#include "qgis_app.h"
+#include <QWidget>
 
 /**
   * A widget which lets the user defines settings for snapping on a project
@@ -51,7 +52,6 @@ class APP_EXPORT QgsSnappingWidget : public QWidget
     Q_OBJECT
 
   public:
-
     /**
      * Constructor
      * \param project The project with which this widget configuration will be synchronized
@@ -106,9 +106,7 @@ class APP_EXPORT QgsSnappingWidget : public QWidget
 
     void changeTolerance( double tolerance );
 
-    void changeMinScale( double minScale );
-
-    void changeMaxScale( double maxScale );
+    void changeScale( double boundary1, double boundary2 );
 
     void changeUnit( int idx );
 
@@ -157,7 +155,7 @@ class APP_EXPORT QgsSnappingWidget : public QWidget
     QAction *mEditAdvancedConfigAction = nullptr;
     QToolButton *mTypeButton = nullptr;
     QAction *mTypeAction = nullptr; // hide widget does not work on toolbar, action needed
-    QList< QAction * > mSnappingFlagActions;
+    QList<QAction *> mSnappingFlagActions;
     QgsDoubleSpinBox *mToleranceSpinBox = nullptr;
     QgsScaleWidget *mMinScaleWidget = nullptr;
     QgsScaleWidget *mMaxScaleWidget = nullptr;
@@ -175,21 +173,23 @@ class APP_EXPORT QgsSnappingWidget : public QWidget
     QAction *mSelfSnappingAction = nullptr;
     QTreeView *mLayerTreeView = nullptr;
     QWidget *mAdvancedConfigWidget = nullptr;
-    QgsFloatingWidget *mAdvancedConfigContainer = nullptr;
 
     bool mRequireLayerTreeViewUpdate = false;
+
+    int mBlockChangeUpdates = 0;
 
     void cleanGroup( QgsLayerTreeNode *node );
 };
 
-class SnapTypeMenu: public QMenu
+class SnapTypeMenu : public QMenu
 {
     Q_OBJECT
   public:
     SnapTypeMenu( const QString &title, QWidget *parent = nullptr )
-      : QMenu( title, parent ) {}
+      : QMenu( title, parent )
+    {}
 
-    void mouseReleaseEvent( QMouseEvent *e )
+    void mouseReleaseEvent( QMouseEvent *e ) override
     {
       QAction *action = activeAction();
       if ( action )

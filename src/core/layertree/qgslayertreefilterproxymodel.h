@@ -17,18 +17,18 @@
 #ifndef QGSLAYERTREEFILTERPROXYMODEL_H
 #define QGSLAYERTREEFILTERPROXYMODEL_H
 
-#include <QSortFilterProxyModel>
-
 #include "qgis_core.h"
 #include "qgsmaplayer.h"
 #include "qgsmaplayerproxymodel.h"
+
+#include <QSortFilterProxyModel>
 
 class QgsLayerTreeModel;
 class QgsLayerTreeNode;
 
 /**
  * \ingroup core
- * \brief QgsLayerTreeFilterProxyModel is a sort filter proxy model to easily reproduce the legend/layer tree in a tree view.
+ * \brief A sort filter proxy model to easily reproduce the legend/layer tree in a tree view.
  *
  * Layers are checkable by default.
  * Symbology nodes will not be shown.
@@ -52,7 +52,7 @@ class CORE_EXPORT QgsLayerTreeFilterProxyModel : public QSortFilterProxyModel
     void setCheckedLayers( const QList<QgsMapLayer *> layers );
 
     //! Returns the checked layers
-    QList<QgsMapLayer *> checkedLayers() const {return mCheckedLayers;}
+    QList<QgsMapLayer *> checkedLayers() const { return mCheckedLayers; }
 
     //! Returns the map layer at a given index
     QgsMapLayer *mapLayer( const QModelIndex &idx ) const;
@@ -63,18 +63,43 @@ class CORE_EXPORT QgsLayerTreeFilterProxyModel : public QSortFilterProxyModel
     void setLayerTreeModel( QgsLayerTreeModel *layerTreeModel );
 
     /**
+     * Returns if private layers are shown.
+     *
+     * Defaults to TRUE.
+     *
+     * \since QGIS 3.40
+     */
+    bool showPrivateLayers() const;
+
+    /**
+     * Determines if private layers are shown.
+     *
+     * Defaults to TRUE.
+     *
+     * \since QGIS 3.40
+     */
+    void setShowPrivateLayers( bool showPrivate );
+
+    /**
      * Defines the type layers (vector, raster, etc) shown in the tree
      * If the list is empty, all types are shown.
      */
     void setFilters( Qgis::LayerFilters filters );
 
-    virtual int columnCount( const QModelIndex &parent ) const override;
-    virtual Qt::ItemFlags flags( const QModelIndex &idx ) const override;
+    int columnCount( const QModelIndex &parent ) const override;
+    Qt::ItemFlags flags( const QModelIndex &idx ) const override;
     QModelIndex index( int row, int column, const QModelIndex &parent = QModelIndex() ) const override;
     QModelIndex parent( const QModelIndex &child ) const override;
     QModelIndex sibling( int row, int column, const QModelIndex &idx ) const override;
-    virtual QVariant data( const QModelIndex &index, int role ) const override;
-    virtual bool setData( const QModelIndex &index, const QVariant &value, int role ) override;
+    QVariant data( const QModelIndex &index, int role ) const override;
+    bool setData( const QModelIndex &index, const QVariant &value, int role ) override;
+
+    /**
+     * Returns TRUE if the specified \a node will be shown in the model.
+     *
+     * \since QGIS 3.40
+     */
+    bool nodeShown( QgsLayerTreeNode *node ) const;
 
   public slots:
     //! Sets the filter text to search for a layer in the tree
@@ -90,14 +115,11 @@ class CORE_EXPORT QgsLayerTreeFilterProxyModel : public QSortFilterProxyModel
     bool filterAcceptsRow( int sourceRow, const QModelIndex &sourceParent ) const override;
 
   private:
-
     /**
      * Reimplement to determine which layer are shown in the model
      * \note even when reimplemented, the layer type filter and the filter text will respected.
      */
     virtual bool layerShown( QgsMapLayer *layer ) const;
-
-    bool nodeShown( QgsLayerTreeNode *node ) const;
 
     //! This will call the virtual method and takes care of emitting dataChanged signal
     void setLayerCheckedPrivate( QgsMapLayer *layer, bool checked );
@@ -105,6 +127,8 @@ class CORE_EXPORT QgsLayerTreeFilterProxyModel : public QSortFilterProxyModel
     QgsLayerTreeModel *mLayerTreeModel = nullptr;
     QList<QgsMapLayer *> mCheckedLayers;
     QString mFilterText;
+    // for compatibility this defaults to true
+    bool mShowPrivateLayers = true;
     Qgis::LayerFilters mFilters = Qgis::LayerFilter::All;
 };
 

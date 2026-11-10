@@ -3,9 +3,8 @@
  *                                                                      *
  * src/3d/symbols/qgsline3dsymbol.h                                     *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/
-
 
 
 
@@ -13,7 +12,8 @@
 class QgsLine3DSymbol : QgsAbstract3DSymbol /NoDefaultCtors/
 {
 %Docstring(signature="appended")
-3D symbol that draws linestring geometries as planar polygons (created from lines using a buffer with given thickness).
+3D symbol that draws linestring geometries as planar polygons (created
+from lines using a buffer with given thickness).
 
 .. warning::
 
@@ -26,9 +26,6 @@ class QgsLine3DSymbol : QgsAbstract3DSymbol /NoDefaultCtors/
 %End
   public:
     QgsLine3DSymbol();
-%Docstring
-Constructor for QgsLine3DSymbol
-%End
     ~QgsLine3DSymbol();
 
     static QgsAbstract3DSymbol *create() /Factory/;
@@ -46,23 +43,26 @@ Caller takes ownership of the returned symbol.
 
     virtual void readXml( const QDomElement &elem, const QgsReadWriteContext &context );
 
-    virtual QList< Qgis::GeometryType > compatibleGeometryTypes() const;
+    virtual QList<Qgis::GeometryType> compatibleGeometryTypes() const;
 
     virtual void setDefaultPropertiesFromLayer( const QgsVectorLayer *layer );
 
 
     Qgis::AltitudeClamping altitudeClamping() const;
 %Docstring
-Returns method that determines altitude (whether to clamp to feature to terrain)
+Returns method that determines altitude (whether to clamp to feature to
+terrain)
 %End
     void setAltitudeClamping( Qgis::AltitudeClamping altClamping );
 %Docstring
-Sets method that determines altitude (whether to clamp to feature to terrain)
+Sets method that determines altitude (whether to clamp to feature to
+terrain)
 %End
 
     Qgis::AltitudeBinding altitudeBinding() const;
 %Docstring
-Returns method that determines how altitude is bound to individual vertices
+Returns method that determines how altitude is bound to individual
+vertices
 %End
     void setAltitudeBinding( Qgis::AltitudeBinding altBinding );
 %Docstring
@@ -78,19 +78,21 @@ Returns width of the line symbol (in map units)
 Sets width of the line symbol (in map units)
 %End
 
- float height() const /Deprecated/;
+ float height() const /Deprecated="Since 3.36. Use offset() instead."/;
 %Docstring
 Returns height (altitude) of the symbol (in map units)
 
-.. deprecated:: QGIS 3.36.
+.. deprecated:: 3.36
+
    Use :py:func:`~QgsLine3DSymbol.offset` instead.
 %End
 
- void setHeight( float height ) /Deprecated/;
+ void setHeight( float height ) /Deprecated="Since 3.36. Use setOffset() instead."/;
 %Docstring
 Sets height (altitude) of the symbol (in map units)
 
-.. deprecated:: QGIS 3.36.
+.. deprecated:: 3.36
+
    Use :py:func:`~QgsLine3DSymbol.setOffset` instead.
 %End
 
@@ -119,19 +121,23 @@ Sets extrusion height (in map units)
 
     bool renderAsSimpleLines() const;
 %Docstring
-Returns whether the renderer will render data with simple lines (otherwise it uses buffer)
+Returns whether the renderer will render data with simple lines
+(otherwise it uses buffer)
 %End
     void setRenderAsSimpleLines( bool enabled );
 %Docstring
-Sets whether the renderer will render data with simple lines (otherwise it uses buffer)
+Sets whether the renderer will render data with simple lines (otherwise
+it uses buffer)
 %End
 
-    QgsAbstractMaterialSettings *materialSettings() const;
+    virtual QgsAbstractMaterialSettings *materialSettings() const;
+
 %Docstring
 Returns material settings used for shading of the symbol
 %End
 
-    void setMaterialSettings( QgsAbstractMaterialSettings *materialSettings /Transfer/ );
+    virtual void setMaterialSettings( QgsAbstractMaterialSettings *materialSettings /Transfer/ );
+
 %Docstring
 Sets the ``material`` settings used for shading of the symbol.
 
@@ -147,5 +153,5 @@ Ownership of ``material`` is transferred to the symbol.
  *                                                                      *
  * src/3d/symbols/qgsline3dsymbol.h                                     *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/

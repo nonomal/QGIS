@@ -5,12 +5,13 @@ Content-Type: application/json; charset=utf-8
   "crs":
     {
       "properties": {
-        "name": "urn:ogc:def:crs:EPSG:0:3857"
+        "name": "urn:ogc:def:crs:EPSG::3857"
       },
       "type": "name"
     },
   "features": [
     {
+      "featureType": "testlayer èé",
       "geometry": {
         "coordinates": [
           913204.9128,

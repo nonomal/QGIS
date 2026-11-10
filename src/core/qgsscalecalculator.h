@@ -19,29 +19,47 @@
 #ifndef QGSSCALECALCULATOR_H
 #define QGSSCALECALCULATOR_H
 
+#include "qgis.h"
 #include "qgis_core.h"
 #include "qgis_sip.h"
-#include "qgis.h"
+#include "qgsellipsoidutils.h"
 
 class QString;
 class QgsRectangle;
-
 /**
  * \ingroup core
  * \brief Calculates scale for a given combination of canvas size, map extent,
  * and monitor dpi.
+ *
+ * The calculation defaults to using the scale calculated horizontally across the
+ * center of the map, however this may be changed by calling setMethod().
  */
 class CORE_EXPORT QgsScaleCalculator
 {
   public:
-
     /**
      * Constructor
      * \param dpi Monitor resolution in dots per inch
      * \param mapUnits Units of the data on the map
      */
-    QgsScaleCalculator( double dpi = 0,
-                        Qgis::DistanceUnit mapUnits = Qgis::DistanceUnit::Meters );
+    QgsScaleCalculator( double dpi = 0, Qgis::DistanceUnit mapUnits = Qgis::DistanceUnit::Meters );
+
+
+    /**
+     * Returns the method to use for map scale calculations.
+     *
+     * \see setMethod()
+     * \since QGIS 3.44
+     */
+    Qgis::ScaleCalculationMethod method() const { return mMethod; }
+
+    /**
+     * Sets the \a method to use for map scale calculations.
+     *
+     * \see method()
+     * \since QGIS 3.44
+     */
+    void setMethod( Qgis::ScaleCalculationMethod method );
 
     /**
      * Sets the \a dpi (dots per inch) for the output resolution, to be used in scale calculations.
@@ -70,6 +88,21 @@ class CORE_EXPORT QgsScaleCalculator
     Qgis::DistanceUnit mapUnits() const;
 
     /**
+     * Sets the \a ellipsoid by its acronym. Known ellipsoid acronyms can be
+     * retrieved using QgsEllipsoidUtils::acronyms().
+     * \see ellipsoid()
+     * \since QGIS 4.2
+     */
+    void setEllipsoid( const QString &ellipsoid );
+
+    /**
+     * Returns ellipsoid's acronym.
+     * \see setEllipsoid()
+     * \since QGIS 4.2
+     */
+    QString ellipsoid() const { return mEllipsoidDefinition.acronym; }
+
+    /**
      * Calculate the scale denominator.
      *
      * \param mapExtent QgsRectangle containing the current map extent. Units are specified by mapUnits().
@@ -91,23 +124,49 @@ class CORE_EXPORT QgsScaleCalculator
     QSizeF calculateImageSize( const QgsRectangle &mapExtent, double scale ) const;
 
     /**
-     * Calculate the distance between two points in geographic coordinates.
+     * Calculate the distance in meters, horizontally across the specified map extent (in geographic coordinates).
+     *
      * Used to calculate scale for map views with geographic (decimal degree)
      * data.
-     * \param mapExtent QgsRectangle containing the current map extent
+     *
+     * This method respects the scale method().
+     *
+     * \param mapExtent the map extent, in geographic (degrees) coordinates
+     * \returns distance in meters across the map extent
      */
     double calculateGeographicDistance( const QgsRectangle &mapExtent ) const;
 
-  private:
+    /**
+     * Calculate the distance in meters, horizontally between two longitudes at a specified \a latitude.
+     *
+     * Used to calculate scale for map views with geographic (decimal degree)
+     * data.
+     *
+     * \param latitude latitude (in degrees) to calculate distance at
+     * \param longitude1 first longitude (left side of map, or x-minimum) to calculate distance between
+     * \param longitude2 second longitude (right side of map, or x-maximum) to calculate distance between
+     *
+     * \returns distance in meters between the two longitudes
+     *
+     * \since QGIS 3.44
+     */
+    double calculateGeographicDistanceAtLatitude( double latitude, double longitude1, double longitude2 ) const;
 
+  private:
     //! Calculate the \a delta and \a conversionFactor values based on the provided \a mapExtent.
     void calculateMetrics( const QgsRectangle &mapExtent, double &delta, double &conversionFactor ) const;
+
+    // Must be horizontal middle by default, for stable API compatibility
+    Qgis::ScaleCalculationMethod mMethod = Qgis::ScaleCalculationMethod::HorizontalMiddle;
 
     //! dpi member
     double mDpi = 96;
 
     //! map unit member
     Qgis::DistanceUnit mMapUnits = Qgis::DistanceUnit::Unknown;
+
+    //! ellipsoid definition (name + parameters) associated with the scale calculator
+    QgsEllipsoidUtils::EllipsoidDefinition mEllipsoidDefinition;
 };
 
 #endif // #ifndef QGSSCALECALCULATOR_H

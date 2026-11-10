@@ -15,20 +15,19 @@
 ***************************************************************************
 """
 
-__author__ = 'Hugo Mercier'
-__date__ = 'July 2013'
-__copyright__ = '(C) 2013, Hugo Mercier'
+__author__ = "Hugo Mercier"
+__date__ = "July 2013"
+__copyright__ = "(C) 2013, Hugo Mercier"
 
 import os
 
 
 class Test:
-
     def __init__(self, iface):
         plugin_dir = os.path.dirname(__file__)
 
         # write to a file
-        f = open(plugin_dir + '/../plugin_started.txt', 'w')
+        f = open(plugin_dir + "/../plugin_started.txt", "w")
         f.write("OK\n")
         f.close()
 

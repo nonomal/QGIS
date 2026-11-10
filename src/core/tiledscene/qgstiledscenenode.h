@@ -35,7 +35,6 @@ class QgsTiledSceneTile;
 class QgsTiledSceneNode
 {
   public:
-
     /**
      * Constructor for QgsTiledSceneNode, for the specified \a tile.
      *
@@ -43,9 +42,7 @@ class QgsTiledSceneNode
      */
     QgsTiledSceneNode( QgsTiledSceneTile *tile SIP_TRANSFER );
 
-    //! QgsTiledSceneNode cannot be copied
     QgsTiledSceneNode( const QgsTiledSceneNode &other ) = delete;
-    //! QgsTiledSceneNode cannot be copied
     QgsTiledSceneNode &operator=( const QgsTiledSceneNode &other ) = delete;
 
     ~QgsTiledSceneNode();
@@ -74,7 +71,6 @@ class QgsTiledSceneNode
     QList< QgsTiledSceneNode * > children() const { return mChildren; }
 
   private:
-
 #ifdef SIP_RUN
     QgsTiledSceneNode( const QgsTiledSceneNode &other );
 #endif
@@ -83,7 +79,6 @@ class QgsTiledSceneNode
 
     QgsTiledSceneNode *mParent = nullptr;
     QList< QgsTiledSceneNode * > mChildren;
-
 };
 
 #endif // QGSTILEDSCENENODE_H

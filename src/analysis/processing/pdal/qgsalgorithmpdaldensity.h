@@ -18,10 +18,11 @@
 #ifndef QGSALGORITHMPDALDENSITY_H
 #define QGSALGORITHMPDALDENSITY_H
 
-#define SIP_NO_FILE
 
 #include "qgis_sip.h"
 #include "qgspdalalgorithmbase.h"
+
+#define SIP_NO_FILE
 
 ///@cond PRIVATE
 
@@ -30,9 +31,7 @@
  */
 class QgsPdalDensityAlgorithm : public QgsPdalAlgorithmBase
 {
-
   public:
-
     QgsPdalDensityAlgorithm() = default;
     void initAlgorithm( const QVariantMap &configuration = QVariantMap() ) override;
     QString name() const override;
@@ -41,10 +40,10 @@ class QgsPdalDensityAlgorithm : public QgsPdalAlgorithmBase
     QString groupId() const override;
     QStringList tags() const override;
     QString shortHelpString() const override;
+    QString shortDescription() const override;
     QgsPdalDensityAlgorithm *createInstance() const override SIP_FACTORY;
 
-    QStringList createArgumentLists( const QVariantMap &parameters,
-                                     QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
+    QStringList createArgumentLists( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
 
     friend class TestQgsProcessingPdalAlgs;
 };

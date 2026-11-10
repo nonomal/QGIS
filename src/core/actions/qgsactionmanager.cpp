@@ -23,23 +23,29 @@
  ***************************************************************************/
 
 #include "qgsactionmanager.h"
+
+#include "qgsaction.h"
+#include "qgsdataprovider.h"
+#include "qgsexpression.h"
+#include "qgsexpressioncontextutils.h"
+#include "qgslogger.h"
+#include "qgsproject.h"
 #include "qgsrunprocess.h"
 #include "qgsvectorlayer.h"
-#include "qgsproject.h"
-#include "qgslogger.h"
-#include "qgsexpression.h"
-#include "qgsdataprovider.h"
-#include "qgsexpressioncontextutils.h"
-#include "qgsaction.h"
 
-#include <QList>
-#include <QStringList>
-#include <QDomElement>
-#include <QSettings>
 #include <QDesktopServices>
-#include <QUrl>
+#include <QDomElement>
 #include <QFileInfo>
+#include <QList>
 #include <QRegularExpression>
+#include <QSettings>
+#include <QString>
+#include <QStringList>
+#include <QUrl>
+
+#include "moc_qgsactionmanager.cpp"
+
+using namespace Qt::StringLiterals;
 
 QgsActionManager::QgsActionManager( QgsVectorLayer *layer )
   : mLayer( layer )
@@ -68,7 +74,7 @@ void QgsActionManager::addAction( const QgsAction &action )
     mLayer->dataProvider()->setListening( true );
     if ( !mOnNotifyConnected )
     {
-      QgsDebugMsgLevel( QStringLiteral( "connecting to notify" ), 3 );
+      QgsDebugMsgLevel( u"connecting to notify"_s, 3 );
       connect( mLayer->dataProvider(), &QgsDataProvider::notify, this, &QgsActionManager::onNotifyRunActions );
       mOnNotifyConnected = true;
     }
@@ -130,10 +136,10 @@ void QgsActionManager::doAction( QUuid actionId, const QgsFeature &feature, int 
 {
   QgsExpressionContext context = createExpressionContext();
   QgsExpressionContextScope *actionScope = new QgsExpressionContextScope( scope );
-  actionScope->addVariable( QgsExpressionContextScope::StaticVariable( QStringLiteral( "field_index" ), defaultValueIndex, true ) );
+  actionScope->addVariable( QgsExpressionContextScope::StaticVariable( u"field_index"_s, defaultValueIndex, true ) );
   if ( defaultValueIndex >= 0 && defaultValueIndex < feature.fields().size() )
-    actionScope->addVariable( QgsExpressionContextScope::StaticVariable( QStringLiteral( "field_name" ), feature.fields().at( defaultValueIndex ).name(), true ) );
-  actionScope->addVariable( QgsExpressionContextScope::StaticVariable( QStringLiteral( "field_value" ), feature.attribute( defaultValueIndex ), true ) );
+    actionScope->addVariable( QgsExpressionContextScope::StaticVariable( u"field_name"_s, feature.fields().at( defaultValueIndex ).name(), true ) );
+  actionScope->addVariable( QgsExpressionContextScope::StaticVariable( u"field_value"_s, feature.attribute( defaultValueIndex ), true ) );
   context << actionScope;
   doAction( actionId, feature, context );
 }
@@ -225,8 +231,17 @@ void QgsActionManager::runAction( const QgsAction &action )
 QgsExpressionContext QgsActionManager::createExpressionContext() const
 {
   QgsExpressionContext context;
-  context << QgsExpressionContextUtils::globalScope()
-          << QgsExpressionContextUtils::projectScope( QgsProject::instance() );
+
+  if ( mLayer && mLayer->project() )
+  {
+    context << QgsExpressionContextUtils::globalScope() << QgsExpressionContextUtils::projectScope( mLayer->project() );
+  }
+  // TODO QGIS 5.0 -- remove this fallback for layers without an associated project
+  else
+  {
+    context << QgsExpressionContextUtils::globalScope() << QgsExpressionContextUtils::projectScope( QgsProject::instance() ); // skip-keyword-check
+  }
+
   if ( mLayer )
     context << QgsExpressionContextUtils::layerScope( mLayer );
 
@@ -235,12 +250,12 @@ QgsExpressionContext QgsActionManager::createExpressionContext() const
 
 bool QgsActionManager::writeXml( QDomNode &layer_node ) const
 {
-  QDomElement aActions = layer_node.ownerDocument().createElement( QStringLiteral( "attributeactions" ) );
-  for ( QMap<QString, QUuid>::const_iterator defaultAction = mDefaultActions.constBegin(); defaultAction != mDefaultActions.constEnd(); ++ defaultAction )
+  QDomElement aActions = layer_node.ownerDocument().createElement( u"attributeactions"_s );
+  for ( QMap<QString, QUuid>::const_iterator defaultAction = mDefaultActions.constBegin(); defaultAction != mDefaultActions.constEnd(); ++defaultAction )
   {
-    QDomElement defaultActionElement = layer_node.ownerDocument().createElement( QStringLiteral( "defaultAction" ) );
-    defaultActionElement.setAttribute( QStringLiteral( "key" ), defaultAction.key() );
-    defaultActionElement.setAttribute( QStringLiteral( "value" ), defaultAction.value().toString() );
+    QDomElement defaultActionElement = layer_node.ownerDocument().createElement( u"defaultAction"_s );
+    defaultActionElement.setAttribute( u"key"_s, defaultAction.key() );
+    defaultActionElement.setAttribute( u"value"_s, defaultAction.value().toString() );
     aActions.appendChild( defaultActionElement );
   }
 
@@ -253,28 +268,28 @@ bool QgsActionManager::writeXml( QDomNode &layer_node ) const
   return true;
 }
 
-bool QgsActionManager::readXml( const QDomNode &layer_node )
+bool QgsActionManager::readXml( const QDomNode &layer_node, const QgsReadWriteContext &context )
 {
   clearActions();
 
-  QDomNode aaNode = layer_node.namedItem( QStringLiteral( "attributeactions" ) );
+  QDomNode aaNode = layer_node.namedItem( u"attributeactions"_s );
 
   if ( !aaNode.isNull() )
   {
-    QDomNodeList actionsettings = aaNode.toElement().elementsByTagName( QStringLiteral( "actionsetting" ) );
+    QDomNodeList actionsettings = aaNode.toElement().elementsByTagName( u"actionsetting"_s );
     for ( int i = 0; i < actionsettings.size(); ++i )
     {
       QgsAction action;
-      action.readXml( actionsettings.item( i ) );
+      action.readXml( actionsettings.item( i ), context );
       addAction( action );
     }
 
-    QDomNodeList defaultActionNodes = aaNode.toElement().elementsByTagName( QStringLiteral( "defaultAction" ) );
+    QDomNodeList defaultActionNodes = aaNode.toElement().elementsByTagName( u"defaultAction"_s );
 
     for ( int i = 0; i < defaultActionNodes.size(); ++i )
     {
       QDomElement defaultValueElem = defaultActionNodes.at( i ).toElement();
-      mDefaultActions.insert( defaultValueElem.attribute( QStringLiteral( "key" ) ), QUuid( defaultValueElem.attribute( QStringLiteral( "value" ) ) ) );
+      mDefaultActions.insert( defaultValueElem.attribute( u"key"_s ), QUuid( defaultValueElem.attribute( u"value"_s ) ) );
     }
   }
   return true;
@@ -304,7 +319,7 @@ QgsAction QgsActionManager::action( const QString &id ) const
 
 void QgsActionManager::setDefaultAction( const QString &actionScope, QUuid actionId )
 {
-  mDefaultActions[ actionScope ] = actionId;
+  mDefaultActions[actionScope] = actionId;
 }
 
 QgsAction QgsActionManager::defaultAction( const QString &actionScope )

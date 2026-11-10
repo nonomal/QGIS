@@ -13,10 +13,14 @@
  *                                                                         *
  ***************************************************************************/
 #include "qgstest.h"
-#include <QObject>
-#include <QStringList>
+
 #include <QApplication>
 #include <QFileInfo>
+#include <QObject>
+#include <QString>
+#include <QStringList>
+
+using namespace Qt::StringLiterals;
 
 //qgis includes...
 #include "qgssqliteutils.h"
@@ -31,17 +35,16 @@ class TestQgsSqliteUtils : public QObject
     Q_OBJECT
 
   public:
-
     TestQgsSqliteUtils() = default;
 
 
   private slots:
 
     // init / cleanup
-    void initTestCase();// will be called before the first testfunction is executed.
-    void cleanupTestCase();// will be called after the last testfunction was executed.
-    void init() {}// will be called before each testfunction is executed.
-    void cleanup() {}// will be called after every testfunction.
+    void initTestCase();    // will be called before the first testfunction is executed.
+    void cleanupTestCase(); // will be called after the last testfunction was executed.
+    void init() {}          // will be called before each testfunction is executed.
+    void cleanup() {}       // will be called after every testfunction.
     // void initStyles();
 
     void testPrintfAscii();
@@ -65,13 +68,6 @@ void TestQgsSqliteUtils::initTestCase()
 
   // output test environment
   QgsApplication::showSettings();
-
-  // Set up the QgsSettings environment
-  QCoreApplication::setOrganizationName( QStringLiteral( "QGIS" ) );
-  QCoreApplication::setOrganizationDomain( QStringLiteral( "qgis.org" ) );
-  QCoreApplication::setApplicationName( QStringLiteral( "QGIS-TEST" ) );
-
-
 }
 
 void TestQgsSqliteUtils::cleanupTestCase()

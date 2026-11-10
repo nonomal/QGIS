@@ -15,22 +15,27 @@
 
 #include "qgsauthawss3method.h"
 
-#include <QUrlQuery>
-#include <QDateTime>
-#include <QCryptographicHash>
-#include <QMessageAuthenticationCode>
-
+#include "qgsapplication.h"
 #include "qgsauthmanager.h"
 #include "qgslogger.h"
-#include "qgsapplication.h"
+
+#include <QCryptographicHash>
+#include <QDateTime>
+#include <QMessageAuthenticationCode>
+#include <QString>
+#include <QUrlQuery>
+
+#include "moc_qgsauthawss3method.cpp"
+
+using namespace Qt::StringLiterals;
 
 #ifdef HAVE_GUI
 #include "qgsauthawss3edit.h"
 #endif
 
 
-const QString QgsAuthAwsS3Method::AUTH_METHOD_KEY = QStringLiteral( "AWSS3" );
-const QString QgsAuthAwsS3Method::AUTH_METHOD_DESCRIPTION = QStringLiteral( "AWS S3" );
+const QString QgsAuthAwsS3Method::AUTH_METHOD_KEY = u"AWSS3"_s;
+const QString QgsAuthAwsS3Method::AUTH_METHOD_DESCRIPTION = u"AWS S3"_s;
 const QString QgsAuthAwsS3Method::AUTH_METHOD_DISPLAY_DESCRIPTION = tr( "AWS S3" );
 
 QMap<QString, QgsAuthMethodConfig> QgsAuthAwsS3Method::sAuthConfigCache = QMap<QString, QgsAuthMethodConfig>();
@@ -40,7 +45,7 @@ QgsAuthAwsS3Method::QgsAuthAwsS3Method()
 {
   setVersion( 4 );
   setExpansions( QgsAuthMethod::NetworkRequest );
-  setDataProviders( QStringList() << QStringLiteral( "awss3" ) );
+  setDataProviders( QStringList() << u"awss3"_s );
 }
 
 QString QgsAuthAwsS3Method::key() const
@@ -58,28 +63,27 @@ QString QgsAuthAwsS3Method::displayDescription() const
   return AUTH_METHOD_DISPLAY_DESCRIPTION;
 }
 
-bool QgsAuthAwsS3Method::updateNetworkRequest( QNetworkRequest &request, const QString &authcfg,
-    const QString &dataprovider )
+bool QgsAuthAwsS3Method::updateNetworkRequest( QNetworkRequest &request, const QString &authcfg, const QString &dataprovider )
 {
   Q_UNUSED( dataprovider )
   const QgsAuthMethodConfig config = getMethodConfig( authcfg );
   if ( !config.isValid() )
   {
-    QgsDebugError( QStringLiteral( "Update request config FAILED for authcfg: %1: config invalid" ).arg( authcfg ) );
+    QgsDebugError( u"Update request config FAILED for authcfg: %1: config invalid"_s.arg( authcfg ) );
     return false;
   }
 
-  const QByteArray username = config.config( QStringLiteral( "username" ) ).toLocal8Bit();
-  const QByteArray password = config.config( QStringLiteral( "password" ) ).toLocal8Bit();
-  const QByteArray region = config.config( QStringLiteral( "region" ) ).toLocal8Bit();
+  const QByteArray username = config.config( u"username"_s ).toUtf8();
+  const QByteArray password = config.config( u"password"_s ).toUtf8();
+  const QByteArray region = config.config( u"region"_s ).toUtf8();
 
   const QByteArray headerList = "host;x-amz-content-sha256;x-amz-date";
   const QByteArray encryptionMethod = "AWS4-HMAC-SHA256";
   const QDateTime currentDateTime = QDateTime::currentDateTime().toUTC();
-  const QByteArray date = currentDateTime.toString( "yyyyMMdd" ).toLocal8Bit();
-  const QByteArray dateTime = currentDateTime.toString( "yyyyMMddThhmmssZ" ).toLocal8Bit();
+  const QByteArray date = currentDateTime.toString( "yyyyMMdd" ).toUtf8();
+  const QByteArray dateTime = currentDateTime.toString( "yyyyMMddThhmmssZ" ).toUtf8();
 
-  QByteArray canonicalPath = QUrl::toPercentEncoding( request.url().path(), "/" );  // Don't encode slash
+  QByteArray canonicalPath = QUrl::toPercentEncoding( request.url().path(), "/" ); // Don't encode slash
   if ( canonicalPath.isEmpty() )
   {
     canonicalPath = "/";
@@ -95,41 +99,45 @@ bool QgsAuthAwsS3Method::updateNetworkRequest( QNetworkRequest &request, const Q
   else
   {
     method = "GET";
-    payloadHash = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";  // Sha256 of empty payload
+    payloadHash = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"; // Sha256 of empty payload
     request.setRawHeader( QByteArray( "X-Amz-Content-SHA256" ), payloadHash );
   }
 
-  const QByteArray canonicalRequest = method + '\n' +
-                                      canonicalPath + '\n' +
-                                      '\n' +
-                                      "host:" + request.url().host().toLocal8Bit() + '\n' +
-                                      "x-amz-content-sha256:" + payloadHash + '\n' +
-                                      "x-amz-date:" + dateTime + '\n' +
-                                      '\n' +
-                                      headerList + '\n' +
-                                      payloadHash;
+  const QByteArray canonicalRequest = method
+                                      + '\n'
+                                      + canonicalPath
+                                      + '\n'
+                                      + '\n'
+                                      + "host:"
+                                      + request.url().host().toUtf8()
+                                      + '\n'
+                                      + "x-amz-content-sha256:"
+                                      + payloadHash
+                                      + '\n'
+                                      + "x-amz-date:"
+                                      + dateTime
+                                      + '\n'
+                                      + '\n'
+                                      + headerList
+                                      + '\n'
+                                      + payloadHash;
 
   const QByteArray canonicalRequestHash = QCryptographicHash::hash( canonicalRequest, QCryptographicHash::Sha256 ).toHex();
-  const QByteArray stringToSign = encryptionMethod + '\n' +
-                                  dateTime + '\n' +
-                                  date + "/" + region + "/s3/aws4_request" + '\n' +
-                                  canonicalRequestHash;
+  const QByteArray stringToSign = encryptionMethod + '\n' + dateTime + '\n' + date + "/" + region + "/s3/aws4_request" + '\n' + canonicalRequestHash;
 
-  const QByteArray signingKey = QMessageAuthenticationCode::hash( "aws4_request",
-                                QMessageAuthenticationCode::hash( "s3",
-                                    QMessageAuthenticationCode::hash( region,
-                                        QMessageAuthenticationCode::hash( date, QByteArray( "AWS4" + password ),
-                                            QCryptographicHash::Sha256 ),
-                                        QCryptographicHash::Sha256 ),
-                                    QCryptographicHash::Sha256 ),
-                                QCryptographicHash::Sha256 );
+  const QByteArray signingKey = QMessageAuthenticationCode::hash(
+    "aws4_request",
+    QMessageAuthenticationCode::
+      hash( "s3", QMessageAuthenticationCode::hash( region, QMessageAuthenticationCode::hash( date, QByteArray( "AWS4" + password ), QCryptographicHash::Sha256 ), QCryptographicHash::Sha256 ), QCryptographicHash::Sha256 ),
+    QCryptographicHash::Sha256
+  );
 
   const QByteArray signature = QMessageAuthenticationCode::hash( stringToSign, signingKey, QCryptographicHash::Sha256 ).toHex();
+  const QByteArray authorizationHeader = QString( "%1 Credential=%2/%3/%4/s3/aws4_request, SignedHeaders=%5, Signature=%6" ).arg( encryptionMethod, username, date, region, headerList, signature ).toUtf8();
 
-  request.setRawHeader( QByteArray( "Host" ), request.url().host().toLocal8Bit() );
+  request.setRawHeader( QByteArray( "Host" ), request.url().host().toUtf8() );
   request.setRawHeader( QByteArray( "X-Amz-Date" ), dateTime );
-  request.setRawHeader( QByteArray( "Authorization" ),
-                        encryptionMethod + "Credential=" + username + '/' + date + "/" + region + "/s3/aws4_request, SignedHeaders=" + headerList + ", Signature=" + signature );
+  request.setRawHeader( QByteArray( "Authorization" ), authorizationHeader );
 
   return true;
 }
@@ -154,14 +162,14 @@ QgsAuthMethodConfig QgsAuthAwsS3Method::getMethodConfig( const QString &authcfg,
   if ( sAuthConfigCache.contains( authcfg ) )
   {
     config = sAuthConfigCache.value( authcfg );
-    QgsDebugMsgLevel( QStringLiteral( "Retrieved config for authcfg: %1" ).arg( authcfg ), 2 );
+    QgsDebugMsgLevel( u"Retrieved config for authcfg: %1"_s.arg( authcfg ), 2 );
     return config;
   }
 
   // else build bundle
   if ( !QgsApplication::authManager()->loadAuthenticationConfig( authcfg, config, fullconfig ) )
   {
-    QgsDebugMsgLevel( QStringLiteral( "Retrieved config for authcfg: %1" ).arg( authcfg ), 2 );
+    QgsDebugMsgLevel( u"Retrieved config for authcfg: %1"_s.arg( authcfg ), 2 );
     return QgsAuthMethodConfig();
   }
 
@@ -174,7 +182,7 @@ QgsAuthMethodConfig QgsAuthAwsS3Method::getMethodConfig( const QString &authcfg,
 void QgsAuthAwsS3Method::putMethodConfig( const QString &authcfg, const QgsAuthMethodConfig &mconfig )
 {
   const QMutexLocker locker( &mMutex );
-  QgsDebugMsgLevel( QStringLiteral( "Putting AWS S3 config for authcfg: %1" ).arg( authcfg ), 2 );
+  QgsDebugMsgLevel( u"Putting AWS S3 config for authcfg: %1"_s.arg( authcfg ), 2 );
   sAuthConfigCache.insert( authcfg, mconfig );
 }
 
@@ -184,7 +192,7 @@ void QgsAuthAwsS3Method::removeMethodConfig( const QString &authcfg )
   if ( sAuthConfigCache.contains( authcfg ) )
   {
     sAuthConfigCache.remove( authcfg );
-    QgsDebugMsgLevel( QStringLiteral( "Removed Aws S3 config for authcfg: %1" ).arg( authcfg ), 2 );
+    QgsDebugMsgLevel( u"Removed Aws S3 config for authcfg: %1"_s.arg( authcfg ), 2 );
   }
 }
 

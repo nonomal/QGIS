@@ -16,13 +16,14 @@
 #ifndef QGSDATETIMEEDIT_H
 #define QGSDATETIMEEDIT_H
 
-#include <QDateTimeEdit>
-#include "qgis_sip.h"
 #include "qgis_gui.h"
+#include "qgis_sip.h"
+
+#include <QDateTimeEdit>
 
 /**
  * \ingroup gui
- * \brief The QgsDateTimeEdit class is a QDateTimeEdit with the capability of setting/reading null date/times.
+ * \brief A QDateTimeEdit with the capability of setting/reading null date/times.
  *
  * \warning You should use the signal valueChanged of this subclass
  * rather than QDateTimeEdit::dateTimeChanged. (If you consequently connect parent's
@@ -39,7 +40,6 @@ class GUI_EXPORT QgsDateTimeEdit : public QDateTimeEdit
     Q_PROPERTY( bool allowNull READ allowNull WRITE setAllowNull )
 
   public:
-
     /**
      * Constructor for QgsDateTimeEdit.
      * The current date and time is used by default.
@@ -58,7 +58,7 @@ class GUI_EXPORT QgsDateTimeEdit : public QDateTimeEdit
      * If the widget allows setting null date/time.
      * \see setAllowNull
      */
-    bool allowNull() const {return mAllowNull;}
+    bool allowNull() const { return mAllowNull; }
 
     /**
      * \brief Set the date time in the widget and handles null date times.
@@ -138,12 +138,8 @@ class GUI_EXPORT QgsDateTimeEdit : public QDateTimeEdit
     void showEvent( QShowEvent *event ) override;
 
 #ifndef SIP_RUN
-///@cond PRIVATE
-#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
-    QgsDateTimeEdit( const QVariant &var, QVariant::Type parserType, QWidget *parent );
-#else
+    ///@cond PRIVATE
     QgsDateTimeEdit( const QVariant &var, QMetaType::Type parserType, QWidget *parent );
-#endif
 ///@endcond
 #endif
 
@@ -201,14 +197,12 @@ class GUI_EXPORT QgsDateTimeEdit : public QDateTimeEdit
     /**
      * Set the lowest Date that can be stored in a Shapefile or Geopackage Date field
      *
-     * - uses QDateTimeEdit::setDateTimeRange (since Qt 4.4)
+     * Uses QDateTimeEdit::setDateTimeRange (since Qt 4.4)
      *
-     * \note
+     * \note QDate and QDateTime does not support minus years for the Qt::ISODate format
+     * -> returns empty (toString) or invalid (fromString) values
      *
-     * - QDate and QDateTime does not support minus years for the Qt::ISODate format
-     *   -> returns empty (toString) or invalid (fromString) values
-    *
-    * \note not available in Python bindings
+     * \note not available in Python bindings
     */
     void setMinimumEditDateTime();
 
@@ -218,7 +212,7 @@ class GUI_EXPORT QgsDateTimeEdit : public QDateTimeEdit
 
 /**
  * \ingroup gui
- * \brief The QgsTimeEdit class is a QTimeEdit widget with the capability of setting/reading null date/times.
+ * \brief A QTimeEdit widget with the capability of setting/reading null date/times.
  *
  * \warning You should use the signal timeValueChanged of this subclass
  * rather than QDateTimeEdit::timeChanged. (If you consequently connect parent's
@@ -235,7 +229,6 @@ class GUI_EXPORT QgsTimeEdit : public QgsDateTimeEdit
     Q_OBJECT
 
   public:
-
     /**
      * Constructor for QgsTimeEdit.
      * The current time is used by default.
@@ -259,12 +252,11 @@ class GUI_EXPORT QgsTimeEdit : public QgsDateTimeEdit
 
   protected:
     void emitValueChanged( const QVariant &value ) override;
-
 };
 
 /**
  * \ingroup gui
- * \brief The QgsDateEdit class is a QDateEdit widget with the capability of setting/reading null dates.
+ * \brief A QDateEdit widget with the capability of setting/reading null dates.
  *
  * \warning You should use the signal dateValueChanged of this subclass
  * rather than QDateTimeEdit::dateChanged. (If you consequently connect parent's
@@ -281,7 +273,6 @@ class GUI_EXPORT QgsDateEdit : public QgsDateTimeEdit
     Q_OBJECT
 
   public:
-
     /**
      * Constructor for QgsDateEdit.
      * The current time is used by default.
@@ -305,7 +296,6 @@ class GUI_EXPORT QgsDateEdit : public QgsDateTimeEdit
 
   protected:
     void emitValueChanged( const QVariant &value ) override;
-
 };
 
 #endif // QGSDATETIMEEDIT_H

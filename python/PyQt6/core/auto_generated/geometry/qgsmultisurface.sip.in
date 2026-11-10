@@ -3,14 +3,13 @@
  *                                                                      *
  * src/core/geometry/qgsmultisurface.h                                  *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/
 
 
 
 
-
-class QgsMultiSurface: QgsGeometryCollection
+class QgsMultiSurface : QgsGeometryCollection
 {
 %Docstring(signature="appended")
 Multi surface geometry collection.
@@ -20,7 +19,6 @@ Multi surface geometry collection.
 #include "qgsmultisurface.h"
 %End
   public:
-
     QgsMultiSurface() /HoldGIL/;
 %Docstring
 Constructor for an empty multisurface geometry.
@@ -64,9 +62,13 @@ Returns the surface with the specified ``index``.
 
     virtual bool addGeometry( QgsAbstractGeometry *g /Transfer/ );
 
+    virtual bool addGeometries( const QVector< QgsAbstractGeometry * > &geometries /Transfer/ );
+
     virtual bool insertGeometry( QgsAbstractGeometry *g /Transfer/, int index );
 
     virtual QgsAbstractGeometry *boundary() const /Factory/;
+
+    virtual QgsMultiSurface *simplifyByDistance( double tolerance ) const /Factory/;
 
 
 
@@ -81,5 +83,5 @@ Returns the surface with the specified ``index``.
  *                                                                      *
  * src/core/geometry/qgsmultisurface.h                                  *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/

@@ -15,13 +15,21 @@
 
 #include "qgsphongtexturedmaterialwidget.h"
 
-#include "qgsphongtexturedmaterialsettings.h"
 #include "qgis.h"
+#include "qgsphongtexturedmaterialsettings.h"
+
+#include <QString>
+
+#include "moc_qgsphongtexturedmaterialwidget.cpp"
+
+using namespace Qt::StringLiterals;
 
 QgsPhongTexturedMaterialWidget::QgsPhongTexturedMaterialWidget( QWidget *parent )
   : QgsMaterialSettingsWidget( parent )
 {
   setupUi( this );
+  mPreviewWidget->hide();
+  mPreviewWidget->setMaterialType( u"phongtextured"_s );
 
   spinShininess->setClearValue( 0, tr( "None" ) );
 
@@ -29,11 +37,12 @@ QgsPhongTexturedMaterialWidget::QgsPhongTexturedMaterialWidget( QWidget *parent 
   setSettings( &defaultMaterial, nullptr );
   textureScaleSpinBox->setClearValue( 100 );
   textureRotationSpinBox->setClearValue( 0 );
+  textureOffsetXSpin->setClearValue( 0.0 );
+  textureOffsetYSpin->setClearValue( 0.0 );
 
   connect( btnAmbient, &QgsColorButton::colorChanged, this, &QgsPhongTexturedMaterialWidget::changed );
   connect( btnSpecular, &QgsColorButton::colorChanged, this, &QgsPhongTexturedMaterialWidget::changed );
-  connect( spinShininess, static_cast<void ( QDoubleSpinBox::* )( double )>( &QDoubleSpinBox::valueChanged ), this, [ = ]
-  {
+  connect( spinShininess, static_cast<void ( QDoubleSpinBox::* )( double )>( &QDoubleSpinBox::valueChanged ), this, [this] {
     updateWidgetState();
     emit changed();
   } );
@@ -41,6 +50,10 @@ QgsPhongTexturedMaterialWidget::QgsPhongTexturedMaterialWidget( QWidget *parent 
   connect( textureFile, &QgsImageSourceLineEdit::sourceChanged, this, &QgsPhongTexturedMaterialWidget::changed );
   connect( textureScaleSpinBox, static_cast<void ( QDoubleSpinBox::* )( double )>( &QDoubleSpinBox::valueChanged ), this, &QgsPhongTexturedMaterialWidget::changed );
   connect( textureRotationSpinBox, static_cast<void ( QDoubleSpinBox::* )( double )>( &QDoubleSpinBox::valueChanged ), this, &QgsPhongTexturedMaterialWidget::changed );
+  connect( textureOffsetXSpin, qOverload< double >( &QDoubleSpinBox::valueChanged ), this, &QgsPhongTexturedMaterialWidget::changed );
+  connect( textureOffsetYSpin, qOverload< double >( &QDoubleSpinBox::valueChanged ), this, &QgsPhongTexturedMaterialWidget::changed );
+
+  connect( this, &QgsPhongTexturedMaterialWidget::changed, this, &QgsPhongTexturedMaterialWidget::updatePreview );
 }
 
 QgsMaterialSettingsWidget *QgsPhongTexturedMaterialWidget::create()
@@ -48,9 +61,9 @@ QgsMaterialSettingsWidget *QgsPhongTexturedMaterialWidget::create()
   return new QgsPhongTexturedMaterialWidget();
 }
 
-void QgsPhongTexturedMaterialWidget::setSettings( const QgsAbstractMaterialSettings *settings, QgsVectorLayer * )
+void QgsPhongTexturedMaterialWidget::setSettings( const QgsAbstractMaterialSettings *settings, QgsVectorLayer *layer )
 {
-  const QgsPhongTexturedMaterialSettings *phongMaterial = dynamic_cast< const QgsPhongTexturedMaterialSettings * >( settings );
+  const QgsPhongTexturedMaterialSettings *phongMaterial = dynamic_cast<const QgsPhongTexturedMaterialSettings *>( settings );
   if ( !phongMaterial )
     return;
   btnAmbient->setColor( phongMaterial->ambient() );
@@ -60,15 +73,26 @@ void QgsPhongTexturedMaterialWidget::setSettings( const QgsAbstractMaterialSetti
   textureFile->setSource( phongMaterial->diffuseTexturePath() );
   textureScaleSpinBox->setValue( 100.0 / phongMaterial->textureScale() );
   textureRotationSpinBox->setValue( phongMaterial->textureRotation() );
+  textureOffsetXSpin->setValue( phongMaterial->textureOffset().x() );
+  textureOffsetYSpin->setValue( phongMaterial->textureOffset().y() );
 
   mPropertyCollection = settings->dataDefinedProperties();
 
+  mTextureRotationDataDefinedButton->init( static_cast<int>( QgsAbstractMaterialSettings::Property::TextureRotation ), mPropertyCollection, settings->propertyDefinitions(), layer, true );
+  mTextureScaleDataDefinedButton->init( static_cast<int>( QgsAbstractMaterialSettings::Property::TextureScale ), mPropertyCollection, settings->propertyDefinitions(), layer, true );
+  mTextureOffsetDataDefinedButton->init( static_cast<int>( QgsAbstractMaterialSettings::Property::TextureOffset ), mPropertyCollection, settings->propertyDefinitions(), layer, true );
+
+  connect( mTextureRotationDataDefinedButton, &QgsPropertyOverrideButton::changed, this, &QgsPhongTexturedMaterialWidget::changed );
+  connect( mTextureScaleDataDefinedButton, &QgsPropertyOverrideButton::changed, this, &QgsPhongTexturedMaterialWidget::changed );
+  connect( mTextureOffsetDataDefinedButton, &QgsPropertyOverrideButton::changed, this, &QgsPhongTexturedMaterialWidget::changed );
+
   updateWidgetState();
+  updatePreview();
 }
 
-QgsAbstractMaterialSettings *QgsPhongTexturedMaterialWidget::settings()
+std::unique_ptr<QgsAbstractMaterialSettings> QgsPhongTexturedMaterialWidget::settings()
 {
-  std::unique_ptr< QgsPhongTexturedMaterialSettings > m = std::make_unique< QgsPhongTexturedMaterialSettings >();
+  auto m = std::make_unique<QgsPhongTexturedMaterialSettings>();
   m->setAmbient( btnAmbient->color() );
   m->setSpecular( btnSpecular->color() );
   m->setShininess( spinShininess->value() );
@@ -76,9 +100,28 @@ QgsAbstractMaterialSettings *QgsPhongTexturedMaterialWidget::settings()
   m->setDiffuseTexturePath( textureFile->source() );
   m->setTextureScale( 100.0 / textureScaleSpinBox->value() );
   m->setTextureRotation( textureRotationSpinBox->value() );
-  m->setDataDefinedProperties( mPropertyCollection );
+  m->setTextureOffset( QPointF( textureOffsetXSpin->value(), textureOffsetYSpin->value() ) );
 
-  return m.release();
+  mPropertyCollection.setProperty( QgsAbstractMaterialSettings::Property::TextureRotation, mTextureRotationDataDefinedButton->toProperty() );
+  mPropertyCollection.setProperty( QgsAbstractMaterialSettings::Property::TextureScale, mTextureScaleDataDefinedButton->toProperty() );
+  mPropertyCollection.setProperty( QgsAbstractMaterialSettings::Property::TextureOffset, mTextureOffsetDataDefinedButton->toProperty() );
+
+  m->setDataDefinedProperties( mPropertyCollection );
+  return m;
+}
+
+void QgsPhongTexturedMaterialWidget::setPreviewVisible( bool visible )
+{
+  mPreviewWidget->setVisible( visible );
+  if ( !visible )
+  {
+    mVerticalSpacer->changeSize( 0, 0, QSizePolicy::Fixed, QSizePolicy::Fixed );
+  }
+  else
+  {
+    mVerticalSpacer->changeSize( 20, 40, QSizePolicy::Minimum, QSizePolicy::Expanding );
+  }
+  updatePreview();
 }
 
 void QgsPhongTexturedMaterialWidget::updateWidgetState()
@@ -93,4 +136,43 @@ void QgsPhongTexturedMaterialWidget::updateWidgetState()
     btnSpecular->setEnabled( false );
     btnSpecular->setToolTip( tr( "Specular color is disabled because material has no shininess" ) );
   }
+}
+
+void QgsPhongTexturedMaterialWidget::updatePreview()
+{
+  if ( mPreviewWidget->isHidden() )
+    return;
+  const std::unique_ptr<QgsAbstractMaterialSettings> newSettings( settings() );
+  mPreviewWidget->updatePreview( newSettings.get() );
+}
+
+void QgsPhongTexturedMaterialWidget::updateWidgetVisibility()
+{
+  const bool fullMode = ( mMode == Qgis::MaterialWidgetMode::Full );
+
+  // ambient
+  lblAmbient->setVisible( fullMode );
+  btnAmbient->setVisible( fullMode );
+
+  // specular
+  lblSpecular->setVisible( fullMode );
+  btnSpecular->setVisible( fullMode );
+
+  // shininess
+  lblShininess->setVisible( fullMode );
+  spinShininess->setVisible( fullMode );
+
+  // texture scale
+  lblTextureScale->setVisible( fullMode );
+  textureScaleSpinBox->setVisible( fullMode );
+  mTextureScaleDataDefinedButton->setVisible( fullMode );
+
+  // texture rotation
+  lblTextureRotation->setVisible( fullMode );
+  textureRotationSpinBox->setVisible( fullMode );
+  mTextureRotationDataDefinedButton->setVisible( fullMode );
+
+  mLblTextureOffset->setVisible( fullMode );
+  mTextureOffsetWidget->setVisible( fullMode );
+  mTextureOffsetDataDefinedButton->setVisible( fullMode );
 }

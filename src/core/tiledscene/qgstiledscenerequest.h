@@ -19,8 +19,8 @@
 #ifndef QGSTILEDSCENEREQUEST_H
 #define QGSTILEDSCENEREQUEST_H
 
-#include "qgis_core.h"
 #include "qgis.h"
+#include "qgis_core.h"
 #include "qgscoordinatereferencesystem.h"
 #include "qgscoordinatetransformcontext.h"
 #include "qgsorientedbox3d.h"
@@ -37,7 +37,6 @@ class QgsFeedback;
 class CORE_EXPORT QgsTiledSceneRequest
 {
   public:
-
     QgsTiledSceneRequest();
 
     /**
@@ -73,8 +72,8 @@ class CORE_EXPORT QgsTiledSceneRequest
     void setFilterBox( const QgsOrientedBox3D &box ) { mFilterBox = box; }
 
     /**
-     * Returns the required geometric error threshold for the returned tiles, in
-     * scene CRS units.
+     * Returns the required geometric error threshold for the returned tiles,
+     * in meters.
      *
      * If the error is 0 then no geometric error filtering will be applied.
      *
@@ -83,8 +82,8 @@ class CORE_EXPORT QgsTiledSceneRequest
     double requiredGeometricError() const { return mRequiredGeometricError; }
 
     /**
-     * Sets the required geometric \a error threshold for the returned tiles, in
-     * scene CRS units.
+     * Sets the required geometric \a error threshold for the returned tiles,
+     * in meters.
      *
      * If the \a error is 0 then no geometric error filtering will be applied.
      *
@@ -130,7 +129,6 @@ class CORE_EXPORT QgsTiledSceneRequest
     void setParentTileId( long long id ) { mParentTileId = id; }
 
   private:
-
     Qgis::TiledSceneRequestFlags mFlags;
     QgsOrientedBox3D mFilterBox;
 

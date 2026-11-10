@@ -3,8 +3,9 @@
  *                                                                      *
  * src/core/editform/qgsattributeeditorelement.h                        *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/
+
 
 
 
@@ -12,13 +13,13 @@
 class QgsAttributeEditorElement /Abstract/
 {
 %Docstring(signature="appended")
-This is an abstract base class for any elements of a drag and drop form.
+An abstract base class for any elements of a drag and drop form.
 
 This can either be a container which will be represented on the screen
-as a tab widget or a collapsible group box. Or it can be a field which will
-then be represented based on the :py:class:`QgsEditorWidget` type and configuration.
-Or it can be a relation and embed the form of several children of another
-layer.
+as a tab widget or a collapsible group box. Or it can be a field which
+will then be represented based on the :py:class:`QgsEditorWidget` type
+and configuration. Or it can be a relation and embed the form of several
+children of another layer.
 %End
 
 %TypeHeaderCode
@@ -45,17 +46,15 @@ layer.
     }
 %End
   public:
-
     struct LabelStyle
     {
+        QColor color;
 
-      QColor color;
+        QFont font;
 
-      QFont font;
+        bool overrideColor;
 
-      bool overrideColor;
-
-      bool overrideFont;
+        bool overrideFont;
 
 
 
@@ -66,13 +65,13 @@ layer.
 Constructor
 
 :param type: The type of the new element.
-:param name:
-:param parent:
+:param name: 
+:param parent: 
 %End
 
     virtual ~QgsAttributeEditorElement();
 
-    static QgsAttributeEditorElement *create( const QDomElement &element, const QString &layerId, const QgsFields &fields, const QgsReadWriteContext &context, QgsAttributeEditorElement *parent = 0 ) /Factory/;
+    static std::unique_ptr<QgsAttributeEditorElement> create( const QDomElement &element, const QString &layerId, const QgsFields &fields, const QgsReadWriteContext &context, QgsAttributeEditorElement *parent = 0 );
 %Docstring
 Constructs the editor element from the given element
 
@@ -114,12 +113,14 @@ Returns a clone of this element. To be implemented by subclasses.
 
     bool showLabel() const;
 %Docstring
-Controls if this element should be labeled with a title (field, relation or groupname).
+Controls if this element should be labeled with a title (field, relation
+or groupname).
 %End
 
     void setShowLabel( bool showLabel );
 %Docstring
-Controls if this element should be labeled with a title (field, relation or groupname).
+Controls if this element should be labeled with a title (field, relation
+or groupname).
 %End
 
     int horizontalStretch() const;
@@ -194,5 +195,5 @@ Sets the ``labelStyle``.
  *                                                                      *
  * src/core/editform/qgsattributeeditorelement.h                        *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/

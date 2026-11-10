@@ -15,14 +15,24 @@
 
 #include "qgsphongmaterialwidget.h"
 
-#include "qgsphongmaterialsettings.h"
 #include "qgis.h"
+#include "qgsphongmaterialsettings.h"
+
+#include <QString>
+
+#include "moc_qgsphongmaterialwidget.cpp"
+
+using namespace Qt::StringLiterals;
 
 QgsPhongMaterialWidget::QgsPhongMaterialWidget( QWidget *parent, bool hasOpacity )
   : QgsMaterialSettingsWidget( parent )
   , mHasOpacity( hasOpacity )
 {
   setupUi( this );
+  setPreviewVisible( false );
+  mPreviewWidget->hide();
+  mPreviewWidget->setMaterialType( u"phong"_s );
+
   mOpacityWidget->setVisible( mHasOpacity );
   mLblOpacity->setVisible( mHasOpacity );
   spinShininess->setClearValue( 0, tr( "None" ) );
@@ -33,8 +43,7 @@ QgsPhongMaterialWidget::QgsPhongMaterialWidget( QWidget *parent, bool hasOpacity
   connect( btnDiffuse, &QgsColorButton::colorChanged, this, &QgsPhongMaterialWidget::changed );
   connect( btnAmbient, &QgsColorButton::colorChanged, this, &QgsPhongMaterialWidget::changed );
   connect( btnSpecular, &QgsColorButton::colorChanged, this, &QgsPhongMaterialWidget::changed );
-  connect( spinShininess, static_cast<void ( QDoubleSpinBox::* )( double )>( &QDoubleSpinBox::valueChanged ), this, [ = ]
-  {
+  connect( spinShininess, static_cast<void ( QDoubleSpinBox::* )( double )>( &QDoubleSpinBox::valueChanged ), this, [this] {
     updateWidgetState();
     emit changed();
   } );
@@ -54,6 +63,8 @@ QgsPhongMaterialWidget::QgsPhongMaterialWidget( QWidget *parent, bool hasOpacity
   {
     connect( mOpacityWidget, &QgsOpacityWidget::opacityChanged, this, &QgsPhongMaterialWidget::changed );
   }
+
+  connect( this, &QgsPhongMaterialWidget::changed, this, &QgsPhongMaterialWidget::updatePreview );
 }
 
 QgsMaterialSettingsWidget *QgsPhongMaterialWidget::create()
@@ -61,55 +72,9 @@ QgsMaterialSettingsWidget *QgsPhongMaterialWidget::create()
   return new QgsPhongMaterialWidget();
 }
 
-void QgsPhongMaterialWidget::setTechnique( QgsMaterialSettingsRenderingTechnique technique )
-{
-  switch ( technique )
-  {
-    case QgsMaterialSettingsRenderingTechnique::Triangles:
-    case QgsMaterialSettingsRenderingTechnique::TrianglesFromModel:
-    case QgsMaterialSettingsRenderingTechnique::InstancedPoints:
-    case QgsMaterialSettingsRenderingTechnique::Points:
-    {
-      lblDiffuse->setVisible( true );
-      btnDiffuse->setVisible( true );
-      mDiffuseCoefficientWidget->setVisible( true );
-      mAmbientDataDefinedButton->setVisible( false );
-      mDiffuseDataDefinedButton->setVisible( false );
-      mSpecularDataDefinedButton->setVisible( false );
-      break;
-    }
-
-    case QgsMaterialSettingsRenderingTechnique::TrianglesWithFixedTexture:
-    {
-      lblDiffuse->setVisible( false );
-      btnDiffuse->setVisible( false );
-      mDiffuseCoefficientWidget->setVisible( false );
-      mAmbientDataDefinedButton->setVisible( false );
-      mDiffuseDataDefinedButton->setVisible( false );
-      mSpecularDataDefinedButton->setVisible( false );
-      break;
-    }
-
-    case QgsMaterialSettingsRenderingTechnique::TrianglesDataDefined:
-    {
-      lblDiffuse->setVisible( true );
-      btnDiffuse->setVisible( true );
-      mDiffuseCoefficientWidget->setVisible( true );
-      mAmbientDataDefinedButton->setVisible( true );
-      mDiffuseDataDefinedButton->setVisible( true );
-      mSpecularDataDefinedButton->setVisible( true );
-      break;
-    }
-
-    case QgsMaterialSettingsRenderingTechnique::Lines:
-      // not supported
-      break;
-  }
-}
-
 void QgsPhongMaterialWidget::setSettings( const QgsAbstractMaterialSettings *settings, QgsVectorLayer *layer )
 {
-  const QgsPhongMaterialSettings *phongMaterial = dynamic_cast< const QgsPhongMaterialSettings * >( settings );
+  const QgsPhongMaterialSettings *phongMaterial = dynamic_cast<const QgsPhongMaterialSettings *>( settings );
   if ( !phongMaterial )
     return;
   btnDiffuse->setColor( phongMaterial->diffuse() );
@@ -126,16 +91,17 @@ void QgsPhongMaterialWidget::setSettings( const QgsAbstractMaterialSettings *set
 
   mPropertyCollection = settings->dataDefinedProperties();
 
-  mDiffuseDataDefinedButton->init( static_cast< int >( QgsAbstractMaterialSettings::Property::Diffuse ), mPropertyCollection, settings->propertyDefinitions(), layer, true );
-  mAmbientDataDefinedButton->init( static_cast< int >( QgsAbstractMaterialSettings::Property::Ambient ), mPropertyCollection, settings->propertyDefinitions(), layer, true );
-  mSpecularDataDefinedButton->init( static_cast< int >( QgsAbstractMaterialSettings::Property::Specular ), mPropertyCollection, settings->propertyDefinitions(), layer, true );
+  mDiffuseDataDefinedButton->init( static_cast<int>( QgsAbstractMaterialSettings::Property::Diffuse ), mPropertyCollection, settings->propertyDefinitions(), layer, true );
+  mAmbientDataDefinedButton->init( static_cast<int>( QgsAbstractMaterialSettings::Property::Ambient ), mPropertyCollection, settings->propertyDefinitions(), layer, true );
+  mSpecularDataDefinedButton->init( static_cast<int>( QgsAbstractMaterialSettings::Property::Specular ), mPropertyCollection, settings->propertyDefinitions(), layer, true );
 
   updateWidgetState();
+  updatePreview();
 }
 
-QgsAbstractMaterialSettings *QgsPhongMaterialWidget::settings()
+std::unique_ptr<QgsAbstractMaterialSettings> QgsPhongMaterialWidget::settings()
 {
-  std::unique_ptr< QgsPhongMaterialSettings > m = std::make_unique< QgsPhongMaterialSettings >();
+  auto m = std::make_unique<QgsPhongMaterialSettings>();
   m->setDiffuse( btnDiffuse->color() );
   m->setAmbient( btnAmbient->color() );
   m->setSpecular( btnSpecular->color() );
@@ -153,7 +119,7 @@ QgsAbstractMaterialSettings *QgsPhongMaterialWidget::settings()
   mPropertyCollection.setProperty( QgsAbstractMaterialSettings::Property::Specular, mSpecularDataDefinedButton->toProperty() );
   m->setDataDefinedProperties( mPropertyCollection );
 
-  return m.release();
+  return m;
 }
 
 void QgsPhongMaterialWidget::setHasOpacity( const bool opacity )
@@ -176,6 +142,22 @@ void QgsPhongMaterialWidget::setHasOpacity( const bool opacity )
   }
 }
 
+void QgsPhongMaterialWidget::setPreviewVisible( bool visible )
+{
+  mPreviewWidget->setVisible( visible );
+  // Ensure the widgets expand without widening the label column.
+  mGridLayout->setColumnStretch( 0, visible ? 1 : 0 );
+  if ( !visible )
+  {
+    mVerticalSpacer->changeSize( 0, 0, QSizePolicy::Fixed, QSizePolicy::Fixed );
+  }
+  else
+  {
+    mVerticalSpacer->changeSize( 20, 40, QSizePolicy::Minimum, QSizePolicy::Expanding );
+  }
+  updatePreview();
+}
+
 void QgsPhongMaterialWidget::updateWidgetState()
 {
   if ( spinShininess->value() > 0 )
@@ -188,4 +170,43 @@ void QgsPhongMaterialWidget::updateWidgetState()
     btnSpecular->setEnabled( false );
     btnSpecular->setToolTip( tr( "Specular color is disabled because material has no shininess" ) );
   }
+}
+
+void QgsPhongMaterialWidget::updatePreview()
+{
+  if ( mPreviewWidget->isHidden() )
+    return;
+  const std::unique_ptr<QgsAbstractMaterialSettings> newSettings( settings() );
+  mPreviewWidget->updatePreview( newSettings.get() );
+}
+
+void QgsPhongMaterialWidget::updateWidgetVisibility()
+{
+  const bool hasDiffuse = ( mTechnique != Qgis::MaterialRenderingTechnique::TrianglesWithFixedTexture );
+  const bool hasDataDefined = ( mTechnique == Qgis::MaterialRenderingTechnique::TrianglesDataDefined );
+  const bool fullMode = ( mMode == Qgis::MaterialWidgetMode::Full );
+
+  // diffuse
+  lblDiffuse->setVisible( hasDiffuse );
+  btnDiffuse->setVisible( hasDiffuse );
+  mDiffuseDataDefinedButton->setVisible( hasDiffuse && hasDataDefined );
+  mDiffuseCoefficientWidget->setVisible( fullMode && hasDiffuse );
+
+  // ambient
+  lblAmbient->setVisible( fullMode );
+  btnAmbient->setVisible( fullMode );
+  mAmbientDataDefinedButton->setVisible( fullMode && hasDataDefined );
+  mAmbientCoefficientWidget->setVisible( fullMode );
+
+  // specular
+  lblSpecular->setVisible( fullMode );
+  btnSpecular->setVisible( fullMode );
+  mSpecularDataDefinedButton->setVisible( fullMode && hasDataDefined );
+  mSpecularCoefficientWidget->setVisible( fullMode );
+
+  // shininess
+  lblShininess->setVisible( fullMode );
+  spinShininess->setVisible( fullMode );
+
+  mGridLayout->setVerticalSpacing( fullMode ? -1 : 2 );
 }

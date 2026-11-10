@@ -15,17 +15,19 @@
 #ifndef QGSRUNTIMEPROFILER_H
 #define QGSRUNTIMEPROFILER_H
 
-#include <QTime>
-#include <QElapsedTimer>
-#include "qgis_sip.h"
-#include <QPair>
-#include <QStack>
-#include <QList>
-#include <QAbstractItemModel>
-#include <memory>
 #include <deque>
-#include <QSet>
+#include <memory>
+
 #include "qgis_core.h"
+#include "qgis_sip.h"
+
+#include <QAbstractItemModel>
+#include <QElapsedTimer>
+#include <QList>
+#include <QPair>
+#include <QSet>
+#include <QStack>
+#include <QTime>
 
 #ifndef SIP_RUN
 
@@ -39,7 +41,6 @@
 class CORE_EXPORT QgsRuntimeProfilerNode
 {
   public:
-
     // *INDENT-OFF*
 
     /**
@@ -51,10 +52,10 @@ class CORE_EXPORT QgsRuntimeProfilerNode
     enum class CustomRole SIP_MONKEYPATCH_SCOPEENUM_UNNEST( QgsRuntimeProfilerNode, Roles ) : int
     {
       Name = Qt::UserRole + 1, //!< Profile item name
-      Group, //!< Node group
-      Elapsed, //!< Node elapsed time
-      ParentElapsed, //!< Total elapsed time for node's parent
-      Id, //!< Internal node ID (since QGIS 3.34)
+      Group,                   //!< Node group
+      Elapsed,                 //!< Node elapsed time
+      ParentElapsed,           //!< Total elapsed time for node's parent
+      Id,                      //!< Internal node ID \since QGIS 3.34
     };
     // *INDENT-ON*
 
@@ -65,9 +66,7 @@ class CORE_EXPORT QgsRuntimeProfilerNode
      */
     QgsRuntimeProfilerNode( const QString &group, const QString &name, const QString &id = QString() );
 
-    //! QgsRuntimeProfilerNode cannot be copied
     QgsRuntimeProfilerNode( const QgsRuntimeProfilerNode &other ) = delete;
-    //! QgsRuntimeProfilerNode cannot be copied
     QgsRuntimeProfilerNode &operator=( const QgsRuntimeProfilerNode &other ) = delete;
 
     ~QgsRuntimeProfilerNode();
@@ -167,7 +166,6 @@ class CORE_EXPORT QgsRuntimeProfilerNode
     QString mId;
     QString mName;
     QString mGroup;
-
 };
 #endif
 
@@ -189,7 +187,6 @@ class CORE_EXPORT QgsRuntimeProfiler : public QAbstractItemModel
     Q_OBJECT
 
   public:
-
     /**
      * Constructor to create a new runtime profiler.
      *
@@ -204,14 +201,14 @@ class CORE_EXPORT QgsRuntimeProfiler : public QAbstractItemModel
      * front of the profile tag set using start.
      * \param name The name of the group.
      *
-     * \deprecated use start() instead
+     * \deprecated QGIS 3.40. Use start() instead.
      */
     Q_DECL_DEPRECATED void beginGroup( const QString &name ) SIP_DEPRECATED;
 
     /**
      * \brief End the current active group.
      *
-     * \deprecated use end() instead
+     * \deprecated QGIS 3.40. Use end() instead.
      */
     Q_DECL_DEPRECATED void endGroup() SIP_DEPRECATED;
 
@@ -317,7 +314,6 @@ class CORE_EXPORT QgsRuntimeProfiler : public QAbstractItemModel
     void otherProfilerEnded( const QString &group, const QStringList &path, const QString &name, const QString &id, double elapsed );
 
   private:
-
     static QgsRuntimeProfiler *threadLocalInstance();
     static QgsRuntimeProfiler *sMainProfiler;
     bool mInitialized = false;
@@ -362,7 +358,6 @@ class CORE_EXPORT QgsRuntimeProfiler : public QAbstractItemModel
 class CORE_EXPORT QgsScopedRuntimeProfile
 {
   public:
-
     /**
      * Constructor for QgsScopedRuntimeProfile.
      *
@@ -387,12 +382,10 @@ class CORE_EXPORT QgsScopedRuntimeProfile
      *
      * \since QGIS 3.14
      */
-    void switchTask( const QString &name );
+    void switchTask( const QString &name ); // cppcheck-suppress functionConst
 
   private:
-
     QString mGroup;
-
 };
 
 

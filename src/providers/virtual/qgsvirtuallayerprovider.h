@@ -17,22 +17,24 @@ email                : hugo dot mercier at oslandia dot com
 #ifndef QGSVIRTUAL_LAYER_PROVIDER_H
 #define QGSVIRTUAL_LAYER_PROVIDER_H
 
-#include "qgsvectordataprovider.h"
 #include "qgsconfig.h"
 
 #include "qgscoordinatereferencesystem.h"
+#include "qgsprovidermetadata.h"
+#include "qgsvectordataprovider.h"
 #include "qgsvirtuallayerdefinition.h"
 #include "qgsvirtuallayersqlitehelper.h"
 
-#include "qgsprovidermetadata.h"
+#include <QString>
+
+using namespace Qt::StringLiterals;
 
 class QgsVirtualLayerFeatureIterator;
 
-class QgsVirtualLayerProvider final: public QgsVectorDataProvider
+class QgsVirtualLayerProvider final : public QgsVectorDataProvider
 {
     Q_OBJECT
   public:
-
     static const QString VIRTUAL_LAYER_KEY;
     static const QString VIRTUAL_LAYER_DESCRIPTION;
     static const QString VIRTUAL_LAYER_QUERY_VIEW;
@@ -42,7 +44,7 @@ class QgsVirtualLayerProvider final: public QgsVectorDataProvider
      * \param uri uniform resource locator (URI) for a dataset
      * \param options generic data provider options
      */
-    explicit QgsVirtualLayerProvider( QString const &uri, const ProviderOptions &coordinateTransformContext, QgsDataProvider::ReadFlags flags = QgsDataProvider::ReadFlags() );
+    explicit QgsVirtualLayerProvider( QString const &uri, const ProviderOptions &coordinateTransformContext, Qgis::DataProviderReadFlags flags = Qgis::DataProviderReadFlags() );
 
     QgsAbstractFeatureSource *featureSource() const override;
     QString storageType() const override;
@@ -53,10 +55,12 @@ class QgsVirtualLayerProvider final: public QgsVectorDataProvider
     QgsRectangle extent() const override;
     QString subsetString() const override;
     bool setSubsetString( const QString &subset, bool updateFeatureCount = true ) override;
-    bool supportsSubsetString() const override { return true; }
+    bool supportsSubsetString() const override;
+    QString subsetStringDialect() const override;
+    QString subsetStringHelpUrl() const override;
     QgsFields fields() const override;
     bool isValid() const override;
-    QgsVectorDataProvider::Capabilities capabilities() const override;
+    Qgis::VectorProviderCapabilities capabilities() const override;
     QString name() const override;
     QString description() const override;
     QgsAttributeList pkAttributeIndexes() const override;
@@ -66,7 +70,6 @@ class QgsVirtualLayerProvider final: public QgsVectorDataProvider
     static QString providerKey();
 
   private:
-
     // file on disk
     QString mPath;
 
@@ -75,24 +78,24 @@ class QgsVirtualLayerProvider final: public QgsVectorDataProvider
     // underlying vector layers
     struct SourceLayer
     {
-      SourceLayer() = default;
-      SourceLayer( QgsVectorLayer *l, const QString &n = QString() )
-        : layer( l )
-        , name( n )
-      {}
-      SourceLayer( const QString &p, const QString &s, const QString &n, const QString &e = QStringLiteral( "UTF-8" ) )
-        : name( n )
-        , source( s )
-        , provider( p )
-        , encoding( e )
-      {}
-      // non-null if it refers to a live layer
-      QgsVectorLayer *layer = nullptr;
-      QString name;
-      // non-empty if it is an embedded layer
-      QString source;
-      QString provider;
-      QString encoding;
+        SourceLayer() = default;
+        SourceLayer( QgsVectorLayer *l, const QString &n = QString() )
+          : layer( l )
+          , name( n )
+        {}
+        SourceLayer( const QString &p, const QString &s, const QString &n, const QString &e = u"UTF-8"_s )
+          : name( n )
+          , source( s )
+          , provider( p )
+          , encoding( e )
+        {}
+        // non-null if it refers to a live layer
+        QgsVectorLayer *layer = nullptr;
+        QString name;
+        // non-empty if it is an embedded layer
+        QString source;
+        QString provider;
+        QString encoding;
     };
     typedef QVector<SourceLayer> SourceLayers;
     SourceLayers mLayers;
@@ -130,19 +133,18 @@ class QgsVirtualLayerProvider final: public QgsVectorDataProvider
 
   private slots:
     void invalidateStatistics();
-
 };
 
-class QgsVirtualLayerProviderMetadata final: public QgsProviderMetadata
+class QgsVirtualLayerProviderMetadata final : public QgsProviderMetadata
 {
     Q_OBJECT
   public:
     QgsVirtualLayerProviderMetadata();
     QIcon icon() const override;
-    QgsVirtualLayerProvider *createProvider( const QString &uri, const QgsDataProvider::ProviderOptions &options, QgsDataProvider::ReadFlags flags = QgsDataProvider::ReadFlags() ) override;
+    QgsVirtualLayerProvider *createProvider( const QString &uri, const QgsDataProvider::ProviderOptions &options, Qgis::DataProviderReadFlags flags = Qgis::DataProviderReadFlags() ) override;
     QString absoluteToRelativeUri( const QString &uri, const QgsReadWriteContext &context ) const override;
     QString relativeToAbsoluteUri( const QString &uri, const QgsReadWriteContext &context ) const override;
-    QList< Qgis::LayerType > supportedLayerTypes() const override;
+    QList<Qgis::LayerType> supportedLayerTypes() const override;
 };
 
 // clazy:excludeall=qstring-allocations

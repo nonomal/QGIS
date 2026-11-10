@@ -18,12 +18,11 @@
 #ifndef QGSANNOTATIONPOINTTEXTITEM_H
 #define QGSANNOTATIONPOINTTEXTITEM_H
 
-#include "qgis_core.h"
 #include "qgis.h"
+#include "qgis_core.h"
 #include "qgis_sip.h"
 #include "qgsannotationitem.h"
 #include "qgstextformat.h"
-
 
 /**
  * \ingroup core
@@ -34,7 +33,6 @@
 class CORE_EXPORT QgsAnnotationPointTextItem : public QgsAnnotationItem
 {
   public:
-
     /**
      * Constructor for QgsAnnotationPointTextItem, containing the specified \a text at the specified \a point.
      */
@@ -49,15 +47,15 @@ class CORE_EXPORT QgsAnnotationPointTextItem : public QgsAnnotationItem
     /**
      * Creates a new text at point annotation item.
      */
-    static QgsAnnotationPointTextItem *create() SIP_FACTORY;
+    static std::unique_ptr<QgsAnnotationPointTextItem> create();
 
     bool readXml( const QDomElement &element, const QgsReadWriteContext &context ) override;
     QgsAnnotationPointTextItem *clone() const override SIP_FACTORY;
     QgsRectangle boundingBox() const override;
     QgsRectangle boundingBox( QgsRenderContext &context ) const override;
-    QList< QgsAnnotationItemNode > nodes() const override;
-    Qgis::AnnotationItemEditOperationResult applyEdit( QgsAbstractAnnotationItemEditOperation *operation ) override;
-    QgsAnnotationItemEditOperationTransientResults *transientEditResults( QgsAbstractAnnotationItemEditOperation *operation ) override SIP_FACTORY;
+    QList< QgsAnnotationItemNode > nodesV2( const QgsAnnotationItemEditContext &context ) const override;
+    Qgis::AnnotationItemEditOperationResult applyEditV2( QgsAbstractAnnotationItemEditOperation *operation, const QgsAnnotationItemEditContext &context ) override;
+    QgsAnnotationItemEditOperationTransientResults *transientEditResultsV2( QgsAbstractAnnotationItemEditOperation *operation, const QgsAnnotationItemEditContext &context ) override SIP_FACTORY;
 
     /**
      * Returns the point location of the text.
@@ -150,7 +148,6 @@ class CORE_EXPORT QgsAnnotationPointTextItem : public QgsAnnotationItem
     void setRotationMode( Qgis::SymbolRotationMode mode );
 
   private:
-
     QString mText;
     QgsPointXY mPoint;
     QgsTextFormat mTextFormat;
@@ -161,7 +158,6 @@ class CORE_EXPORT QgsAnnotationPointTextItem : public QgsAnnotationItem
 #ifdef SIP_RUN
     QgsAnnotationPointTextItem( const QgsAnnotationPointTextItem &other );
 #endif
-
 };
 
 #endif // QGSANNOTATIONPOINTTEXTITEM_H

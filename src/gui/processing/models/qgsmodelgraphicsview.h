@@ -18,10 +18,13 @@
 
 #include "qgis.h"
 #include "qgis_gui.h"
-#include "qgsprocessingcontext.h"
 #include "qgsmodelsnapper.h"
-#include <QGraphicsView>
+#include "qgsprocessingcontext.h"
+
 #include <QGraphicsRectItem>
+#include <QGraphicsView>
+
+#define SIP_NO_FILE
 
 class QgsModelViewTool;
 class QgsModelViewToolTemporaryKeyPan;
@@ -33,10 +36,11 @@ class QgsModelViewSnapMarker;
 
 ///@cond NOT_STABLE
 
+
 /**
  * \ingroup gui
  * \brief QGraphicsView subclass representing the model designer.
- * \warning Not stable API
+ * \warning Not available in Python bindings
  * \since QGIS 3.14
  */
 class GUI_EXPORT QgsModelGraphicsView : public QGraphicsView
@@ -44,7 +48,6 @@ class GUI_EXPORT QgsModelGraphicsView : public QGraphicsView
     Q_OBJECT
 
   public:
-
     /**
      * Constructor for QgsModelGraphicsView, with the specified \a parent widget.
      */
@@ -110,11 +113,27 @@ class GUI_EXPORT QgsModelGraphicsView : public QGraphicsView
      */
     void endMacroCommand();
 
+    /**
+     * Starts a single undo command
+     */
+    void beginCommand( const QString &text );
+
+    /**
+     * Ends a single undo command
+     */
+    void endCommand();
+
+    /**
+     * Aborts pending undo command
+     * \since QGIS 4.0
+     */
+    void abortCommand();
+
 
     //! Clipboard operations
     enum ClipboardOperation
     {
-      ClipboardCut, //!< Cut items
+      ClipboardCut,  //!< Cut items
       ClipboardCopy, //!< Copy items
     };
 
@@ -130,13 +149,13 @@ class GUI_EXPORT QgsModelGraphicsView : public QGraphicsView
      * \see copySelectedItems()
      * \see pasteItems()
      */
-    void copyItems( const QList< QgsModelComponentGraphicItem * > &items, ClipboardOperation operation );
+    void copyItems( const QList<QgsModelComponentGraphicItem *> &items, ClipboardOperation operation );
 
     //! Paste modes
     enum PasteMode
     {
-      PasteModeCursor, //!< Paste items at cursor position
-      PasteModeCenter, //!< Paste items in center of view
+      PasteModeCursor,  //!< Paste items at cursor position
+      PasteModeCenter,  //!< Paste items in center of view
       PasteModeInPlace, //!< Paste items in place
     };
 
@@ -154,7 +173,6 @@ class GUI_EXPORT QgsModelGraphicsView : public QGraphicsView
      * Snaps the selected items to the grid.
      */
     void snapSelected();
-
   signals:
 
     /**
@@ -171,7 +189,7 @@ class GUI_EXPORT QgsModelGraphicsView : public QGraphicsView
      * Emitted when the current \a tool is changed.
      * \see setTool()
      */
-    void toolSet( QgsModelViewTool *tool ) SIP_SKIP;
+    void toolSet( QgsModelViewTool *tool );
 
     /**
      * Emitted when an \a item is "focused" in the view, i.e. it becomes the active
@@ -198,12 +216,18 @@ class GUI_EXPORT QgsModelGraphicsView : public QGraphicsView
     /**
      * Emitted when an undo command is started in the view.
      */
-    void beginCommand( const QString &text );
+    void commandBegun( const QString &text );
 
     /**
      * Emitted when an undo command in the view has ended.
      */
-    void endCommand();
+    void commandEnded();
+
+    /**
+     * Emitted when an undo command in the view was aborted.
+     * \since QGIS 4.0
+     */
+    void commandAborted();
 
     /**
      * Emitted when the selected items should be deleted;
@@ -211,7 +235,6 @@ class GUI_EXPORT QgsModelGraphicsView : public QGraphicsView
     void deleteSelectedItems();
 
   private:
-
     //! Zoom layout from a mouse wheel event
     void wheelZoom( QWheelEvent *event );
 
@@ -227,13 +250,28 @@ class GUI_EXPORT QgsModelGraphicsView : public QGraphicsView
      */
     QPointF deltaForKeyEvent( QKeyEvent *event );
 
-    QPointer< QgsModelViewTool > mTool;
+    /**
+     * Sets the scene rect used for scrollbar without disturbing the user
+     * i.e:
+     *
+     * - We grow the scene rect as the model grows
+     * - We shrink only if the model scene rect is outside the current viewed viewport
+     *
+     * Called each time the view viewport moved or the model scene changed
+     *
+     * \since QGIS 4.0
+     */
+    void friendlySetSceneRect();
+
+    QPointer<QgsModelViewTool> mTool;
 
     QgsModelViewToolTemporaryKeyPan *mSpacePanTool = nullptr;
     QgsModelViewToolTemporaryMousePan *mMidMouseButtonPanTool = nullptr;
     QgsModelViewToolTemporaryKeyZoom *mSpaceZoomTool = nullptr;
 
     QPoint mMouseCurrentXY;
+
+    int mBlockScrollbarSignals = 0;
 
     QgsModelSnapper mSnapper;
     QgsModelViewSnapMarker *mSnapMarker = nullptr;
@@ -247,15 +285,12 @@ class GUI_EXPORT QgsModelGraphicsView : public QGraphicsView
 class GUI_EXPORT QgsModelViewSnapMarker : public QGraphicsRectItem
 {
   public:
-
     QgsModelViewSnapMarker();
 
     void paint( QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget = nullptr ) override;
 
   private:
-
     int mSize = 0;
-
 };
 
 

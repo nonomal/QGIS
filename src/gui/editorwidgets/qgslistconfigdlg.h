@@ -18,8 +18,8 @@
 
 #include "ui_qgslistconfigdlg.h"
 
-#include "qgseditorconfigwidget.h"
 #include "qgis_gui.h"
+#include "qgseditorconfigwidget.h"
 
 SIP_NO_FILE
 
@@ -31,12 +31,12 @@ SIP_NO_FILE
  *
  * \since QGIS 3.16
  */
-class GUI_EXPORT QgsListConfigDlg : public QgsEditorConfigWidget, private Ui::QgsListConfigDlg
+class GUI_EXPORT QgsListConfigDlg : public QgsEditorConfigWidget,
+                                    private Ui::QgsListConfigDlg
 {
     Q_OBJECT
 
   public:
-
     /**
      * Constructor for QgsListConfigDlg, with the specified \a vector layer and field index.
      */

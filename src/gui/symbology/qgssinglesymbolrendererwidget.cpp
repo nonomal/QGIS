@@ -16,17 +16,16 @@
 
 #include "qgsdatadefinedsizelegend.h"
 #include "qgsdatadefinedsizelegendwidget.h"
+#include "qgslogger.h"
+#include "qgsmarkersymbol.h"
 #include "qgssinglesymbolrenderer.h"
 #include "qgssymbol.h"
-
-#include "qgslogger.h"
-#include "qgsvectorlayer.h"
-
 #include "qgssymbolselectordialog.h"
-#include "qgsmarkersymbol.h"
+#include "qgsvectorlayer.h"
 
 #include <QMenu>
 
+#include "moc_qgssinglesymbolrendererwidget.cpp"
 
 QgsRendererWidget *QgsSingleSymbolRendererWidget::create( QgsVectorLayer *layer, QgsStyle *style, QgsFeatureRenderer *renderer )
 {
@@ -41,14 +40,14 @@ QgsSingleSymbolRendererWidget::QgsSingleSymbolRendererWidget( QgsVectorLayer *la
 
   if ( renderer )
   {
-    mRenderer.reset( QgsSingleSymbolRenderer::convertFromRenderer( renderer ) );
+    mRenderer = QgsSingleSymbolRenderer::convertFromRenderer( renderer );
   }
   if ( !mRenderer )
   {
-    QgsSymbol *symbol = QgsSymbol::defaultSymbol( mLayer->geometryType() );
+    std::unique_ptr<QgsSymbol> symbol = QgsSymbol::defaultSymbol( mLayer->geometryType() );
 
     if ( symbol )
-      mRenderer = std::make_unique< QgsSingleSymbolRenderer >( symbol );
+      mRenderer = std::make_unique<QgsSingleSymbolRenderer>( symbol.release() );
 
     if ( renderer )
       renderer->copyRendererData( mRenderer.get() );
@@ -83,8 +82,6 @@ QgsSingleSymbolRendererWidget::~QgsSingleSymbolRendererWidget()
 {
   mSingleSymbol.reset();
   mRenderer.reset();
-
-  delete mSelector;
 }
 
 QgsFeatureRenderer *QgsSingleSymbolRendererWidget::renderer()
@@ -124,7 +121,7 @@ void QgsSingleSymbolRendererWidget::setSymbolLevels( const QList<QgsLegendSymbol
   mRenderer->setSymbol( mSingleSymbol->clone() );
   mRenderer->setUsingSymbolLevels( enabled );
   mSelector->loadSymbol( mSingleSymbol.get() );
-  emit widgetChanged();
+  emit changed();
 }
 
 void QgsSingleSymbolRendererWidget::changeSingleSymbol()
@@ -135,7 +132,7 @@ void QgsSingleSymbolRendererWidget::changeSingleSymbol()
   if ( mSingleSymbol->flags() & Qgis::SymbolFlag::RendererShouldUseSymbolLevels )
     mRenderer->setUsingSymbolLevels( true );
 
-  emit widgetChanged();
+  emit changed();
 }
 
 void QgsSingleSymbolRendererWidget::showSymbolLevels()
@@ -149,11 +146,10 @@ void QgsSingleSymbolRendererWidget::dataDefinedSizeLegend()
   QgsDataDefinedSizeLegendWidget *panel = createDataDefinedSizeLegendWidget( s, mRenderer->dataDefinedSizeLegend() );
   if ( panel )
   {
-    connect( panel, &QgsPanelWidget::widgetChanged, this, [ = ]
-    {
+    connect( panel, &QgsPanelWidget::changed, this, [this, panel] {
       mRenderer->setDataDefinedSizeLegend( panel->dataDefinedSizeLegend() );
-      emit widgetChanged();
+      emit changed();
     } );
-    openPanel( panel );  // takes ownership of the panel
+    openPanel( panel ); // takes ownership of the panel
   }
 }

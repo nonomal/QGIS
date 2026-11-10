@@ -16,19 +16,21 @@
 #ifndef QGSLAYOUTEXPORTER_H
 #define QGSLAYOUTEXPORTER_H
 
-#include "qgis_core.h"
 #include "qgsconfig.h"
-#include "qgsmargins.h"
+
+#include <functional>
+
+#include "qgis_core.h"
+#include "qgslayoutitem.h"
 #include "qgslayoutrendercontext.h"
 #include "qgslayoutreportcontext.h"
-#include "qgslayoutitem.h"
+#include "qgsmargins.h"
 
 #include <QPdfWriter>
 #include <QPointer>
-#include <QSize>
 #include <QRectF>
+#include <QSize>
 #include <QVector>
-#include <functional>
 
 #if defined( HAVE_QTPRINTER )
 #include <QPrinter>
@@ -41,6 +43,7 @@ class QgsAbstractLayoutIterator;
 class QgsFeedback;
 class QgsLabelingResults;
 class QgsSettingsEntryBool;
+class QgsSettingsEntryInteger;
 
 /**
  * \ingroup core
@@ -49,9 +52,7 @@ class QgsSettingsEntryBool;
  */
 class CORE_EXPORT QgsLayoutExporter
 {
-
   public:
-
     //! Settings entry - Whether to automatically open images after exporting them \since QGIS 3.34
     static const QgsSettingsEntryBool *settingOpenAfterExportingImage SIP_SKIP;
 
@@ -61,20 +62,23 @@ class CORE_EXPORT QgsLayoutExporter
     //! Settings entry - Whether to automatically open svgs after exporting them \since QGIS 3.34
     static const QgsSettingsEntryBool *settingOpenAfterExportingSvg SIP_SKIP;
 
+    //! Settings entry - Image quality for lossy formats \since QGIS 3.42
+    static const QgsSettingsEntryInteger *settingImageQuality SIP_SKIP;
+
     //! Contains details of a page being exported by the class
     struct PageExportDetails
     {
-      //! Target folder
-      QString directory;
+        //! Target folder
+        QString directory;
 
-      //! Base part of filename (i.e. file name without extension or '.')
-      QString baseName;
+        //! Base part of filename (i.e. file name without extension or '.')
+        QString baseName;
 
-      //! File suffix/extension (without the leading '.')
-      QString extension;
+        //! File suffix/extension (without the leading '.')
+        QString extension;
 
-      //! Page number, where 0 = first page.
-      int page = 0;
+        //! Page number, where 0 = first page.
+        int page = 0;
     };
 
     /**
@@ -150,11 +154,11 @@ class CORE_EXPORT QgsLayoutExporter
     //! Result codes for exporting layouts
     enum ExportResult
     {
-      Success, //!< Export was successful
-      Canceled, //!< Export was canceled
-      MemoryError, //!< Unable to allocate memory required to export
-      FileError, //!< Could not write to destination file, likely due to a lock held by another application
-      PrintError, //!< Could not start printing to destination device
+      Success,       //!< Export was successful
+      Canceled,      //!< Export was canceled
+      MemoryError,   //!< Unable to allocate memory required to export
+      FileError,     //!< Could not write to destination file, likely due to a lock held by another application
+      PrintError,    //!< Could not start printing to destination device
       SvgLayerError, //!< Could not create layered SVG file
       IteratorError, //!< Error iterating over layout
     };
@@ -162,15 +166,14 @@ class CORE_EXPORT QgsLayoutExporter
     //! Contains settings relating to exporting layouts to raster images
     struct ImageExportSettings
     {
-      //! Constructor for ImageExportSettings
-      ImageExportSettings()
-        : flags( QgsLayoutRenderContext::FlagAntialiasing | QgsLayoutRenderContext::FlagUseAdvancedEffects )
-      {}
+        ImageExportSettings()
+          : flags( Qgis::LayoutRenderFlag::Antialiasing | Qgis::LayoutRenderFlag::UseAdvancedEffects )
+        {}
 
-      //! Resolution to export layout at. If dpi <= 0 the default layout dpi will be used.
-      double dpi = -1;
+        //! Resolution to export layout at. If dpi <= 0 the default layout dpi will be used.
+        double dpi = -1;
 
-      /**
+        /**
        * Manual size in pixels for output image. If imageSize is not
        * set then it will be automatically calculated based on the
        * output dpi and layout size.
@@ -182,56 +185,61 @@ class CORE_EXPORT QgsLayoutExporter
        * output in this case, and the automatic dpi-based image size should be
        * used instead.
        */
-      QSize imageSize;
+        QSize imageSize;
 
-      /**
+        /**
        * Set to TRUE if image should be cropped so only parts of the layout
        * containing items are exported.
        */
-      bool cropToContents = false;
+        bool cropToContents = false;
 
-      /**
+        /**
        * Crop to content margins, in pixels. These margins will be added
        * to the bounds of the exported layout if cropToContents is TRUE.
        */
-      QgsMargins cropMargins;
+        QgsMargins cropMargins;
 
-      /**
+        /**
        * List of specific pages to export, or an empty list to
        * export all pages.
        *
        * Page numbers are 0 index based, so the first page in the
        * layout corresponds to page 0.
        */
-      QList< int > pages;
+        QList< int > pages;
 
-      /**
+        /**
        * Set to TRUE to generate an external world file alongside
        * exported images.
        */
-      bool generateWorldFile = false;
+        bool generateWorldFile = false;
 
-      /**
+        /**
        * Indicates whether image export should include metadata generated
        * from the layout's project's metadata.
        *
        * \since QGIS 3.2
        */
-      bool exportMetadata = true;
+        bool exportMetadata = true;
 
-
-      /**
+        /**
        * Layout context flags, which control how the export will be created.
        */
-      QgsLayoutRenderContext::Flags flags = QgsLayoutRenderContext::Flags();
+        Qgis::LayoutRenderFlags flags;
 
-      /**
+        /**
        * A list of predefined scales to use with the layout. This is used
        * for maps which are set to the predefined atlas scaling mode.
        * \since QGIS 3.10
        */
-      QVector<qreal> predefinedMapScales;
+        QVector<qreal> predefinedMapScales;
 
+        /**
+       * Image quality, typically used for JPEG compression (whose quality ranges from 1 to 100)
+       * if quality is set to -1, the default quality will be used.
+       * \since QGIS 3.42
+       */
+        int quality = -1;
     };
 
     /**
@@ -257,78 +265,77 @@ class CORE_EXPORT QgsLayoutExporter
      * error was encountered. If an error was obtained then \a error will be set
      * to the error description.
      */
-    static ExportResult exportToImage( QgsAbstractLayoutIterator *iterator, const QString &baseFilePath,
-                                       const QString &extension, const QgsLayoutExporter::ImageExportSettings &settings,
-                                       QString &error SIP_OUT, QgsFeedback *feedback = nullptr );
+    static ExportResult exportToImage(
+      QgsAbstractLayoutIterator *iterator, const QString &baseFilePath, const QString &extension, const QgsLayoutExporter::ImageExportSettings &settings, QString &error SIP_OUT, QgsFeedback *feedback = nullptr
+    );
 
 
     //! Contains settings relating to exporting layouts to PDF
     struct PdfExportSettings
     {
-      //! Constructor for PdfExportSettings
-      PdfExportSettings()
-        : flags( QgsLayoutRenderContext::FlagAntialiasing | QgsLayoutRenderContext::FlagUseAdvancedEffects )
-      {}
+        PdfExportSettings()
+          : flags( Qgis::LayoutRenderFlag::Antialiasing | Qgis::LayoutRenderFlag::UseAdvancedEffects )
+        {}
 
-      //! Resolution to export layout at. If dpi <= 0 the default layout dpi will be used.
-      double dpi = -1;
+        //! Resolution to export layout at. If dpi <= 0 the default layout dpi will be used.
+        double dpi = -1;
 
-      /**
+        /**
        * Set to TRUE to force whole layout to be rasterized while exporting.
        *
        * This option is mutually exclusive with forceVectorOutput.
        */
-      bool rasterizeWholeImage = false;
+        bool rasterizeWholeImage = false;
 
-      /**
+        /**
        * Set to TRUE to force vector object exports, even when the resultant appearance will differ
        * from the layout. If FALSE, some items may be rasterized in order to maintain their
        * correct appearance in the output.
        *
        * This option is mutually exclusive with rasterizeWholeImage.
        */
-      bool forceVectorOutput = false;
+        bool forceVectorOutput = false;
 
-      /**
+        /**
        * Indicates whether PDF export should append georeference data
        *
        * \since QGIS 3.10
        */
-      bool appendGeoreference = true;
+        bool appendGeoreference = true;
 
-      /**
+        /**
        * Indicates whether PDF export should include metadata generated
        * from the layout's project's metadata.
        *
        * \since QGIS 3.2
        */
-      bool exportMetadata = true;
+        bool exportMetadata = true;
 
-      /**
+        /**
        * Layout context flags, which control how the export will be created.
        */
-      QgsLayoutRenderContext::Flags flags = QgsLayoutRenderContext::Flags();
+        Qgis::LayoutRenderFlags flags;
 
-      /**
+        /**
        * Text rendering format, which controls how text should be rendered in the export (e.g.
        * as paths or real text objects).
        *
        * \since QGIS 3.4.3
        */
-      Qgis::TextRenderFormat textRenderFormat = Qgis::TextRenderFormat::AlwaysOutlines;
+        Qgis::TextRenderFormat textRenderFormat = Qgis::TextRenderFormat::AlwaysOutlines;
 
-      /**
+        /**
        * Indicates whether vector geometries should be simplified to avoid redundant extraneous detail,
        * such as vertices which are not visible at the specified dpi of the output.
        *
        * \since QGIS 3.10
        */
-      bool simplifyGeometries = true;
+        bool simplifyGeometries = true;
 
-      /**
-       * TRUE if GeoPDF files should be created, instead of normal PDF files.
+        /**
+       * TRUE if geospatial PDF files should be created, instead of normal PDF files.
        *
-       * Whilst GeoPDF files can include some desirable properties like the ability to interactively
+       * Whilst geospatial PDF files can include some desirable properties like the ability to interactively
        * query map features, they also can result in lower-quality output files, or forced rasterization
        * of layers.
        *
@@ -336,9 +343,9 @@ class CORE_EXPORT QgsLayoutExporter
        *
        * \since QGIS 3.10
        */
-      bool writeGeoPdf = false;
+        bool writeGeoPdf = false;
 
-      /**
+        /**
        * TRUE if individual layers from the layout should be rendered to separate PDF files.
        *
        * This option allows for separation of logic layout layers to individual PDF files. For instance,
@@ -351,52 +358,67 @@ class CORE_EXPORT QgsLayoutExporter
        *
        * \since QGIS 3.14
        */
-      bool exportLayersAsSeperateFiles = false; // TODO QGIS 4 fix typo  //#spellok
+        bool exportLayersAsSeperateFiles = false; // TODO QGIS 5 fix typo  //#spellok
 
-      /**
+        /**
        * TRUE if ISO3200 extension format georeferencing should be used.
        *
        * This is a recommended setting which results in Geospatial PDF files compatible
        * with the built-in Acrobat geospatial tools.
        *
-       * If PdfExportSettings::writeGeoPdf is FALSE than this option has no effect.
+       * If PdfExportSettings::writeGeoPdf is FALSE then this option has no effect.
        */
-      bool useIso32000ExtensionFormatGeoreferencing = true;
+        bool useIso32000ExtensionFormatGeoreferencing = true;
 
-      /**
+        /**
        * TRUE if OGC "best practice" format georeferencing should be used.
        *
-       * \warning This results in GeoPDF files compatible with the TerraGo suite of tools, but
-       * can break compatibility with the built-in Acrobat geospatial tools (yes, GeoPDF
+       * \warning This results in geospatial PDF files compatible with a unnamed suite of tools starting with Terra and ending with Go, but
+       * can break compatibility with the built-in Acrobat geospatial tools (yes, Geospatial PDF
        * format is a mess!).
        *
-       * If PdfExportSettings::writeGeoPdf is FALSE than this option has no effect.
-      */
-      bool useOgcBestPracticeFormatGeoreferencing = false;
-
-      /**
-       * TRUE if feature vector information (such as attributes) should be exported during GeoPDF exports.
+       * If PdfExportSettings::writeGeoPdf is FALSE then this option has no effect.
        *
-       * If PdfExportSettings::writeGeoPdf is FALSE than this option has no effect.
-       */
-      bool includeGeoPdfFeatures = true;
+       * \deprecated QGIS 3.42. This parameter has no longer any effect. Only ISO 32000 georeferencing is handled.
+      */
+        bool useOgcBestPracticeFormatGeoreferencing = false;
 
-      /**
-       * Optional list of map themes to export as GeoPDF layer groups.
+        /**
+       * TRUE if feature vector information (such as attributes) should be exported during Geospatial PDF exports.
+       *
+       * If PdfExportSettings::writeGeoPdf is FALSE then this option has no effect.
+       */
+        bool includeGeoPdfFeatures = true;
+
+        /**
+       * Optional list of map themes to export as Geospatial PDF layer groups.
        *
        * If set, map item's which are not assigned a specific map theme will iterate through all listed
-       * themes and a GeoPDF layer group will be created for each.
+       * themes and a Geospatial PDF layer group will be created for each.
        *
-       * If PdfExportSettings::writeGeoPdf is FALSE than this option has no effect.
+       * If PdfExportSettings::writeGeoPdf is FALSE or PdfExportSettings::useLayerTreeConfig is TRUE
+       * then this option has no effect.
        */
-      QStringList exportThemes;
+        QStringList exportThemes;
 
-      /**
+        /**
        * A list of predefined scales to use with the layout. This is used
        * for maps which are set to the predefined atlas scaling mode.
        * \since QGIS 3.10
        */
-      QVector<qreal> predefinedMapScales;
+        QVector<qreal> predefinedMapScales;
+
+        /**
+       * If set to TRUE, the layer tree from the QGIS project should be used when creating a Geospatial PDF.
+       * In that case, layer/group names, order, and visibility from the QGIS project will be reflected in the output PDF.
+       *
+       * When this option is active, the PdfExportSettings::exportThemes option has no effect.
+       *
+       * If PdfExportSettings::writeGeoPdf is FALSE then this option has no effect.
+       *
+       * \since QGIS 4.2
+       */
+        bool useLayerTreeConfig = false;
     };
 
     /**
@@ -418,9 +440,9 @@ class CORE_EXPORT QgsLayoutExporter
      *
      * \see exportToPdfs()
      */
-    static ExportResult exportToPdf( QgsAbstractLayoutIterator *iterator, const QString &fileName,
-                                     const QgsLayoutExporter::PdfExportSettings &settings,
-                                     QString &error SIP_OUT, QgsFeedback *feedback = nullptr );
+    static ExportResult exportToPdf(
+      QgsAbstractLayoutIterator *iterator, const QString &fileName, const QgsLayoutExporter::PdfExportSettings &settings, QString &error SIP_OUT, QgsFeedback *feedback = nullptr
+    );
 
     /**
      * Exports a layout \a iterator to multiple PDF files, with the specified export \a settings.
@@ -434,41 +456,39 @@ class CORE_EXPORT QgsLayoutExporter
      *
      * \see exportToPdf()
      */
-    static ExportResult exportToPdfs( QgsAbstractLayoutIterator *iterator, const QString &baseFilePath,
-                                      const QgsLayoutExporter::PdfExportSettings &settings,
-                                      QString &error SIP_OUT, QgsFeedback *feedback = nullptr );
+    static ExportResult exportToPdfs(
+      QgsAbstractLayoutIterator *iterator, const QString &baseFilePath, const QgsLayoutExporter::PdfExportSettings &settings, QString &error SIP_OUT, QgsFeedback *feedback = nullptr
+    );
 
 
     //! Contains settings relating to printing layouts
     struct PrintExportSettings
     {
-      //! Constructor for PrintExportSettings
-      PrintExportSettings()
-        : flags( QgsLayoutRenderContext::FlagAntialiasing | QgsLayoutRenderContext::FlagUseAdvancedEffects )
-      {}
+        PrintExportSettings()
+          : flags( Qgis::LayoutRenderFlag::Antialiasing | Qgis::LayoutRenderFlag::UseAdvancedEffects )
+        {}
 
-      //! Resolution to export layout at. If dpi <= 0 the default layout dpi will be used.
-      double dpi = -1;
+        //! Resolution to export layout at. If dpi <= 0 the default layout dpi will be used.
+        double dpi = -1;
 
-      /**
+        /**
        * Set to TRUE to force whole layout to be rasterized while exporting.
        *
        * This option is mutually exclusive with forceVectorOutput.
        */
-      bool rasterizeWholeImage = false;
+        bool rasterizeWholeImage = false;
 
-      /**
+        /**
        * Layout context flags, which control how the export will be created.
        */
-      QgsLayoutRenderContext::Flags flags = QgsLayoutRenderContext::Flags();
+        Qgis::LayoutRenderFlags flags;
 
-      /**
+        /**
        * A list of predefined scales to use with the layout. This is used
        * for maps which are set to the predefined atlas scaling mode.
        * \since QGIS 3.10
        */
-      QVector<qreal> predefinedMapScales;
-
+        QVector<qreal> predefinedMapScales;
     };
 
 #if defined( HAVE_QTPRINTER )
@@ -489,9 +509,7 @@ class CORE_EXPORT QgsLayoutExporter
      * error was encountered. If an error was obtained then \a error will be set
      * to the error description.
      */
-    static ExportResult print( QgsAbstractLayoutIterator *iterator, QPrinter &printer,
-                               const QgsLayoutExporter::PrintExportSettings &settings,
-                               QString &error SIP_OUT, QgsFeedback *feedback = nullptr );
+    static ExportResult print( QgsAbstractLayoutIterator *iterator, QPrinter &printer, const QgsLayoutExporter::PrintExportSettings &settings, QString &error SIP_OUT, QgsFeedback *feedback = nullptr );
 
     SIP_END
 #endif
@@ -499,43 +517,42 @@ class CORE_EXPORT QgsLayoutExporter
     //! Contains settings relating to exporting layouts to SVG
     struct SvgExportSettings
     {
-      //! Constructor for SvgExportSettings
-      SvgExportSettings()
-        : flags( QgsLayoutRenderContext::FlagAntialiasing | QgsLayoutRenderContext::FlagUseAdvancedEffects )
-      {}
+        SvgExportSettings()
+          : flags( Qgis::LayoutRenderFlag::Antialiasing | Qgis::LayoutRenderFlag::UseAdvancedEffects )
+        {}
 
-      //! Resolution to export layout at. If dpi <= 0 the default layout dpi will be used.
-      double dpi = -1;
+        //! Resolution to export layout at. If dpi <= 0 the default layout dpi will be used.
+        double dpi = -1;
 
-      /**
+        /**
        * Set to TRUE to force vector object exports, even when the resultant appearance will differ
        * from the layout. If FALSE, some items may be rasterized in order to maintain their
        * correct appearance in the output.
        *
        * This option is mutually exclusive with rasterizeWholeImage.
        */
-      bool forceVectorOutput = false;
+        bool forceVectorOutput = false;
 
-      /**
+        /**
        * Set to TRUE if image should be cropped so only parts of the layout
        * containing items are exported.
        */
-      bool cropToContents = false;
+        bool cropToContents = false;
 
-      /**
+        /**
        * Crop to content margins, in layout units. These margins will be added
        * to the bounds of the exported layout if cropToContents is TRUE.
        */
-      QgsMargins cropMargins;
+        QgsMargins cropMargins;
 
-      /**
+        /**
        * Set to TRUE to export as a layered SVG file.
        * Note that this option is considered experimental, and the generated
        * SVG may differ from the expected appearance of the layout.
        */
-      bool exportAsLayers = false;
+        bool exportAsLayers = false;
 
-      /**
+        /**
        * Set to TRUE to export labels to separate layers (grouped by map layer)
        * in layered SVG exports.
        *
@@ -543,43 +560,43 @@ class CORE_EXPORT QgsLayoutExporter
        *
        * \since QGIS 3.10
        */
-      bool exportLabelsToSeparateLayers = true;
+        bool exportLabelsToSeparateLayers = true;
 
-      /**
+        /**
        * Indicates whether SVG export should include RDF metadata generated
        * from the layout's project's metadata.
        *
        * \since QGIS 3.2
        */
-      bool exportMetadata = true;
+        bool exportMetadata = true;
 
-      /**
+        /**
        * Layout context flags, which control how the export will be created.
        */
-      QgsLayoutRenderContext::Flags flags = QgsLayoutRenderContext::Flags();
+        Qgis::LayoutRenderFlags flags;
 
-      /**
+        /**
        * Text rendering format, which controls how text should be rendered in the export (e.g.
        * as paths or real text objects).
        *
        * \since QGIS 3.4.3
        */
-      Qgis::TextRenderFormat textRenderFormat = Qgis::TextRenderFormat::AlwaysOutlines;
+        Qgis::TextRenderFormat textRenderFormat = Qgis::TextRenderFormat::AlwaysOutlines;
 
-      /**
+        /**
        * Indicates whether vector geometries should be simplified to avoid redundant extraneous detail,
        * such as vertices which are not visible at the specified dpi of the output.
        *
        * \since QGIS 3.10
        */
-      bool simplifyGeometries = true;
+        bool simplifyGeometries = true;
 
-      /**
+        /**
        * A list of predefined scales to use with the layout. This is used
        * for maps which are set to the predefined atlas scaling mode.
        * \since QGIS 3.10
        */
-      QVector<qreal> predefinedMapScales;
+        QVector<qreal> predefinedMapScales;
     };
 
     /**
@@ -600,9 +617,9 @@ class CORE_EXPORT QgsLayoutExporter
      * error was encountered. If an error was obtained then \a error will be set
      * to the error description.
      */
-    static ExportResult exportToSvg( QgsAbstractLayoutIterator *iterator, const QString &baseFilePath,
-                                     const QgsLayoutExporter::SvgExportSettings &settings,
-                                     QString &error SIP_OUT, QgsFeedback *feedback = nullptr );
+    static ExportResult exportToSvg(
+      QgsAbstractLayoutIterator *iterator, const QString &baseFilePath, const QgsLayoutExporter::SvgExportSettings &settings, QString &error SIP_OUT, QgsFeedback *feedback = nullptr
+    );
 
 
     /**
@@ -610,6 +627,13 @@ class CORE_EXPORT QgsLayoutExporter
      * an export.
      */
     QString errorFile() const { return mErrorFileName; }
+
+    /**
+     * Returns a string describing the last error encountered during an export.
+     *
+     * \since QGIS 3.38
+     */
+    QString errorMessage() const { return mErrorMessage; }
 
     /**
      * Returns the labeling results for all map items included in the export. Map keys are the item UUIDs (see QgsLayoutItem::uuid()).
@@ -649,8 +673,7 @@ class CORE_EXPORT QgsLayoutExporter
      *
      * \see computeWorldFileParameters()
      */
-    bool georeferenceOutput( const QString &file, QgsLayoutItemMap *referenceMap = nullptr,
-                             const QRectF &exportRegion = QRectF(), double dpi = -1 ) const;
+    bool georeferenceOutput( const QString &file, QgsLayoutItemMap *referenceMap = nullptr, const QRectF &exportRegion = QRectF(), double dpi = -1 ) const;
 
     /**
      * Compute world file parameters. Assumes the whole page containing the reference map item
@@ -687,7 +710,6 @@ class CORE_EXPORT QgsLayoutExporter
     static bool containsAdvancedEffects( const QgsLayout *layout );
 
   protected:
-
     /**
      * Generates the file name for a page during export.
      *
@@ -696,13 +718,13 @@ class CORE_EXPORT QgsLayoutExporter
     virtual QString generateFileName( const PageExportDetails &details ) const;
 
   private:
-
     QPointer< QgsLayout > mLayout;
 
     void captureLabelingResults();
     QMap< QString, QgsLabelingResults * > mLabelingResults;
 
     mutable QString mErrorFileName;
+    mutable QString mErrorMessage;
 
     QImage createImage( const ImageExportSettings &settings, int page, QRectF &bounds, bool &skipPage ) const;
 
@@ -715,7 +737,7 @@ class CORE_EXPORT QgsLayoutExporter
     /**
      * Saves an image to a file, possibly using format specific options (e.g. LZW compression for tiff)
     */
-    static bool saveImage( const QImage &image, const QString &imageFilename, const QString &imageFormat, QgsProject *projectForMetadata );
+    static bool saveImage( const QImage &image, const QString &imageFilename, const QString &imageFormat, QgsProject *projectForMetadata, int quality = -1 );
 
     /**
      * Computes a GDAL style geotransform for georeferencing a layout.
@@ -738,7 +760,7 @@ class CORE_EXPORT QgsLayoutExporter
     /**
      * Prepare a \a device for printing a layout as a PDF, to the destination \a filePath.
      */
-    static void preparePrintAsPdf( QgsLayout *layout, QPagedPaintDevice *device, const QString &filePath );
+    static void preparePrintAsPdf( QgsLayout *layout, QPdfWriter *device, const QString &filePath );
 
     static void preparePrint( QgsLayout *layout, QPagedPaintDevice *device, bool setFirstPageSize = false );
 
@@ -759,24 +781,42 @@ class CORE_EXPORT QgsLayoutExporter
 
     static void updatePrinterPageSize( QgsLayout *layout, QPagedPaintDevice *device, int page );
 
-    ExportResult renderToLayeredSvg( const SvgExportSettings &settings, double width, double height, int page, const QRectF &bounds,
-                                     const QString &filename, unsigned int svgLayerId, const QString &layerName,
-                                     QDomDocument &svg, QDomNode &svgDocRoot, bool includeMetadata ) const;
+    ExportResult renderToLayeredSvg(
+      const SvgExportSettings &settings,
+      double width,
+      double height,
+      int page,
+      const QRectF &bounds,
+      const QString &filename,
+      unsigned int svgLayerId,
+      const QString &layerName,
+      QDomDocument &svg,
+      QDomNode &svgDocRoot,
+      bool includeMetadata
+    ) const;
 
     void appendMetadataToSvg( QDomDocument &svg ) const;
 
-    bool georeferenceOutputPrivate( const QString &file, QgsLayoutItemMap *referenceMap = nullptr,
-                                    const QRectF &exportRegion = QRectF(), double dpi = -1, bool includeGeoreference = true, bool includeMetadata = false ) const;
+    bool georeferenceOutputPrivate(
+      const QString &file, QgsLayoutItemMap *referenceMap = nullptr, const QRectF &exportRegion = QRectF(), double dpi = -1, bool includeGeoreference = true, bool includeMetadata = false
+    ) const;
 
-    ExportResult handleLayeredExport( const QList<QGraphicsItem *> &items, const std::function<QgsLayoutExporter::ExportResult( unsigned int layerId, const QgsLayoutItem::ExportLayerDetail &layerDetails )> &exportFunc );
+    ExportResult handleLayeredExport(
+      const QList<QGraphicsItem *> &items,
+      const std::function<QgsLayoutExporter::ExportResult( unsigned int layerId, const QgsLayoutItem::ExportLayerDetail &layerDetails )> &exportFunc,
+      const std::function<QString( QgsLayoutItem *item )> &getItemExportGroupFunc
+    );
+
+    // Returns PDF creator (used also as producer)
+    static QString getCreator();
+
+    // Set PDF XMP metadata on pdfWriter for given layout
+    static void setXmpMetadata( QPdfWriter *pdfWriter, QgsLayout *layout );
 
     static QgsVectorSimplifyMethod createExportSimplifyMethod();
+    static QgsMaskRenderSettings createExportMaskSettings();
     friend class TestQgsLayout;
     friend class TestQgsLayoutExporter;
-
 };
 
 #endif //QGSLAYOUTEXPORTER_H
-
-
-

@@ -3,23 +3,24 @@
  *                                                                      *
  * src/core/layout/qgslayoutitempicture.h                               *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/
 
 
 
 
-class QgsLayoutItemPicture: QgsLayoutItem
+
+class QgsLayoutItemPicture : QgsLayoutItem
 {
 %Docstring(signature="appended")
-A layout item subclass that displays SVG files or raster format images (jpg, png, ...).
+A layout item subclass that displays SVG files or raster format images
+(jpg, png, ...).
 %End
 
 %TypeHeaderCode
 #include "qgslayoutitempicture.h"
 %End
   public:
-
     enum ResizeMode /BaseType=IntEnum/
     {
       Zoom,
@@ -27,13 +28,6 @@ A layout item subclass that displays SVG files or raster format images (jpg, png
       Clip,
       ZoomResizeFrame,
       FrameToImageSize
-    };
-
-    enum Format /BaseType=IntEnum/
-    {
-      FormatSVG,
-      FormatRaster,
-      FormatUnknown,
     };
 
     enum NorthMode /BaseType=IntEnum/
@@ -44,7 +38,8 @@ A layout item subclass that displays SVG files or raster format images (jpg, png
 
     QgsLayoutItemPicture( QgsLayout *layout );
 %Docstring
-Constructor for QgsLayoutItemPicture, with the specified parent ``layout``.
+Constructor for QgsLayoutItemPicture, with the specified parent
+``layout``.
 %End
 
     virtual int type() const;
@@ -60,11 +55,11 @@ The caller takes responsibility for deleting the returned object.
 %End
 
 
-    void setPicturePath( const QString &path, Format format = FormatUnknown );
+    void setPicturePath( const QString &path, Qgis::PictureFormat format = Qgis::PictureFormat::Unknown );
 %Docstring
-Sets the source ``path`` of the image (may be svg or a raster format). Data defined
-picture source may override this value. The path can either be a local path
-or a remote (http) path.
+Sets the source ``path`` of the image (may be svg or a raster format).
+Data defined picture source may override this value. The path can either
+be a local path or a remote (http) path.
 
 Ideally, the ``format`` argument should specify the image format.
 
@@ -73,8 +68,9 @@ Ideally, the ``format`` argument should specify the image format.
 
     QString picturePath() const;
 %Docstring
-Returns the path of the source image. Data defined picture source may override
-this value. The path can either be a local path or a remote (http) path.
+Returns the path of the source image. Data defined picture source may
+override this value. The path can either be a local path or a remote
+(http) path.
 
 :return: path for the source image
 
@@ -85,8 +81,8 @@ this value. The path can either be a local path or a remote (http) path.
 
     double pictureRotation() const;
 %Docstring
-Returns the rotation used for drawing the picture within the item's frame,
-in degrees clockwise.
+Returns the rotation used for drawing the picture within the item's
+frame, in degrees clockwise.
 
 .. seealso:: :py:func:`setPictureRotation`
 
@@ -97,9 +93,9 @@ in degrees clockwise.
 %Docstring
 Sets the ``map`` object for rotation.
 
-If this is set then the picture will be rotated by the same
-amount as the specified map object. This is useful especially for
-syncing north arrows with a map item.
+If this is set then the picture will be rotated by the same amount as
+the specified map object. This is useful especially for syncing north
+arrows with a map item.
 
 .. seealso:: :py:func:`setPictureRotation`
 
@@ -108,9 +104,9 @@ syncing north arrows with a map item.
 
     QgsLayoutItemMap *linkedMap() const;
 %Docstring
-Returns the linked rotation map, if set. An ``None`` means map rotation is
-disabled.  If this is set then the picture is rotated by the same amount
-as the specified map object.
+Returns the linked rotation map, if set. An ``None`` means map rotation
+is disabled. If this is set then the picture is rotated by the same
+amount as the specified map object.
 
 .. seealso:: :py:func:`setLinkedMap`
 %End
@@ -225,7 +221,8 @@ Sets the stroke ``color`` used for parametrized SVG files.
 
     double svgStrokeWidth() const;
 %Docstring
-Returns the stroke width (in layout units) used for parametrized SVG files.
+Returns the stroke width (in layout units) used for parametrized SVG
+files.
 
 .. seealso:: :py:func:`setSvgStrokeWidth`
 
@@ -234,7 +231,8 @@ Returns the stroke width (in layout units) used for parametrized SVG files.
 
     void setSvgStrokeWidth( double width );
 %Docstring
-Sets the stroke ``width`` (in layout units) used for parametrized SVG files.
+Sets the stroke ``width`` (in layout units) used for parametrized SVG
+files.
 
 .. note::
 
@@ -246,25 +244,30 @@ Sets the stroke ``width`` (in layout units) used for parametrized SVG files.
 .. seealso:: :py:func:`setSvgStrokeColor`
 %End
 
-    Format mode() const;
+    Qgis::PictureFormat mode() const;
 %Docstring
 Returns the current picture mode (image format), FormatUnknown if given
 picture format is unknown
 
 .. seealso:: :py:func:`setMode`
+
+.. seealso:: :py:func:`originalMode`
 %End
 
-    Format originalMode() const;
+    Qgis::PictureFormat originalMode() const;
 %Docstring
-Returns the original set picture mode (image format).
-It could differ from :py:func:`~QgsLayoutItemPicture.mode` if given picture format is unknown
+Returns the original set picture mode (image format). It could differ
+from :py:func:`~QgsLayoutItemPicture.mode` if given picture format is
+unknown
 
 .. seealso:: :py:func:`setMode`
+
+.. seealso:: :py:func:`mode`
 
 .. versionadded:: 3.22
 %End
 
-    void setMode( Format mode );
+    void setMode( Qgis::PictureFormat mode );
 %Docstring
 Sets the current picture ``mode`` (image format).
 
@@ -278,16 +281,16 @@ Sets the current picture ``mode`` (image format).
 
     bool isMissingImage() const;
 %Docstring
-Returns ``True`` if the source image is missing and the picture
-cannot be rendered.
+Returns ``True`` if the source image is missing and the picture cannot
+be rendered.
 
 .. versionadded:: 3.6
 %End
 
     QString evaluatedPath() const;
 %Docstring
-Returns the current evaluated picture path, which includes
-the result of data defined path overrides.
+Returns the current evaluated picture path, which includes the result of
+data defined path overrides.
 
 .. seealso:: :py:func:`picturePath`
 
@@ -312,27 +315,81 @@ Sets the SVG dynamic parameters
 
     void setPictureRotation( double rotation );
 %Docstring
-Sets the picture ``rotation`` within the item bounds, in degrees clockwise. This does not affect
-the item's frame, only the way the picture is drawn within the item.
+Sets the picture ``rotation`` within the item bounds, in degrees
+clockwise. This does not affect the item's frame, only the way the
+picture is drawn within the item.
 
 .. seealso:: :py:func:`pictureRotation`
 %End
 
     void setResizeMode( QgsLayoutItemPicture::ResizeMode mode );
 %Docstring
-Sets the resize ``mode`` used for drawing the picture within the item bounds.
+Sets the resize ``mode`` used for drawing the picture within the item
+bounds.
 
 :param mode: ResizeMode to use for image file
 
 .. seealso:: :py:func:`resizeMode`
 %End
 
+    bool clipToItem() const;
+%Docstring
+Returns ``True`` if the picture item should by clipped to the associated
+item.
+
+.. seealso:: :py:func:`setClipToItem`
+
+.. seealso:: :py:func:`clippingItem`
+
+.. versionadded:: 4.2
+%End
+
+    void setClipToItem( bool clipToItem );
+%Docstring
+Sets whether the picture item should by clipped to the associated item.
+
+.. seealso:: :py:func:`clipToItem`
+
+.. seealso:: :py:func:`setClippingItem`
+
+.. versionadded:: 4.2
+%End
+
+    QgsLayoutItem *clippingItem() const;
+%Docstring
+Returns the item that will will provide the clipping path for the
+picture, or ``None`` if no item is set.
+
+.. seealso:: :py:func:`setClippingItem`
+
+.. seealso:: :py:func:`clipToItem`
+
+.. versionadded:: 4.2
+%End
+
+    void setClippingItem( QgsLayoutItem *item );
+%Docstring
+Sets the ``item`` that will will provide the clipping path for the
+picture.
+
+.. note::
+
+   The specified item must return the :py:class:`QgsLayoutItem`.FlagProvidesClipPath flag.
+
+.. seealso:: :py:func:`clippingItem`
+
+.. seealso:: :py:func:`setClipToItem`
+
+.. versionadded:: 4.2
+%End
+
     void refreshPicture( const QgsExpressionContext *context = 0 );
 %Docstring
-Recalculates the source image (if using an expression for picture's source)
-and reloads and redraws the picture.
+Recalculates the source image (if using an expression for picture's
+source) and reloads and redraws the picture.
 
-:param context: expression context for evaluating data defined picture sources
+:param context: expression context for evaluating data defined picture
+                sources
 %End
 
     void recalculateSize();
@@ -350,8 +407,9 @@ Emitted on picture rotation change
 %End
 
   protected:
-
     virtual void draw( QgsLayoutItemRenderContext &context );
+
+    virtual QPainterPath framePath() const;
 
     virtual QSizeF applyItemSizeConstraint( QSizeF targetSize );
 
@@ -367,5 +425,5 @@ Emitted on picture rotation change
  *                                                                      *
  * src/core/layout/qgslayoutitempicture.h                               *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/

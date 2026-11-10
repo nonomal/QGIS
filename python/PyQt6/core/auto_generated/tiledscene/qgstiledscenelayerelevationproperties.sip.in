@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/tiledscene/qgstiledscenelayerelevationproperties.h          *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/
 
 
@@ -13,7 +13,8 @@
 class QgsTiledSceneLayerElevationProperties : QgsMapLayerElevationProperties
 {
 %Docstring(signature="appended")
-Tiled scene layer specific subclass of :py:class:`QgsMapLayerElevationProperties`.
+Tiled scene layer specific subclass of
+:py:class:`QgsMapLayerElevationProperties`.
 
 .. versionadded:: 3.34
 %End
@@ -22,10 +23,10 @@ Tiled scene layer specific subclass of :py:class:`QgsMapLayerElevationProperties
 #include "qgstiledscenelayerelevationproperties.h"
 %End
   public:
-
     QgsTiledSceneLayerElevationProperties( QObject *parent /TransferThis/ );
 %Docstring
-Constructor for QgsTiledSceneLayerElevationProperties, with the specified ``parent`` object.
+Constructor for QgsTiledSceneLayerElevationProperties, with the
+specified ``parent`` object.
 %End
 
     virtual bool hasElevation() const;
@@ -40,6 +41,7 @@ Constructor for QgsTiledSceneLayerElevationProperties, with the specified ``pare
 
     virtual QgsDoubleRange calculateZRange( QgsMapLayer *layer ) const;
 
+    virtual QList< double > significantZValues( QgsMapLayer *layer ) const;
 
 };
 
@@ -48,5 +50,5 @@ Constructor for QgsTiledSceneLayerElevationProperties, with the specified ``pare
  *                                                                      *
  * src/core/tiledscene/qgstiledscenelayerelevationproperties.h          *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/

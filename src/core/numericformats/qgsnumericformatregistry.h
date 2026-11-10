@@ -15,12 +15,12 @@
 #ifndef QGSNUMERICFORMATREGISTRY_H
 #define QGSNUMERICFORMATREGISTRY_H
 
-#include <QHash>
-#include <QString>
-#include <QObject>
-
-#include "qgis_sip.h"
 #include "qgis_core.h"
+#include "qgis_sip.h"
+
+#include <QHash>
+#include <QObject>
+#include <QString>
 
 class QgsNumericFormat;
 class QDomElement;
@@ -28,7 +28,7 @@ class QgsReadWriteContext;
 
 /**
  * \ingroup core
- * \brief The QgsNumericFormatRegistry manages registered classes of QgsNumericFormat.
+ * \brief A registry which manages classes of QgsNumericFormat.
  *
  * A reference to the QgsFieldFormatterRegistry can be obtained from
  * QgsApplication::numericFormatRegistry().
@@ -37,9 +37,7 @@ class QgsReadWriteContext;
  */
 class CORE_EXPORT QgsNumericFormatRegistry
 {
-
   public:
-
     /**
      * You should not normally need to create your own numeric format registry.
      *
@@ -95,7 +93,7 @@ class CORE_EXPORT QgsNumericFormatRegistry
      *
      * The caller takes ownership of the returned object.
      */
-    QgsNumericFormat *fallbackFormat() const SIP_FACTORY;
+    std::unique_ptr<QgsNumericFormat> fallbackFormat() const;
 
     /**
      * Returns the translated, user-visible name for the format with matching \a id.

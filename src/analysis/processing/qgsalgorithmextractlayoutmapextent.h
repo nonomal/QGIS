@@ -18,10 +18,11 @@
 #ifndef QGSALGORITHMEXTRACTLAYOUTMAPEXTENT_H
 #define QGSALGORITHMEXTRACTLAYOUTMAPEXTENT_H
 
-#define SIP_NO_FILE
 
 #include "qgis_sip.h"
 #include "qgsprocessingalgorithm.h"
+
+#define SIP_NO_FILE
 
 ///@cond PRIVATE
 
@@ -30,9 +31,7 @@
  */
 class QgsLayoutMapExtentToLayerAlgorithm : public QgsProcessingAlgorithm
 {
-
   public:
-
     QgsLayoutMapExtentToLayerAlgorithm() = default;
     void initAlgorithm( const QVariantMap &configuration = QVariantMap() ) override;
     Qgis::ProcessingAlgorithmFlags flags() const override;
@@ -46,10 +45,8 @@ class QgsLayoutMapExtentToLayerAlgorithm : public QgsProcessingAlgorithm
     QgsLayoutMapExtentToLayerAlgorithm *createInstance() const override SIP_FACTORY;
 
   protected:
-    bool prepareAlgorithm( const QVariantMap &parameters,
-                           QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
-    QVariantMap processAlgorithm( const QVariantMap &parameters,
-                                  QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
+    bool prepareAlgorithm( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
+    QVariantMap processAlgorithm( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
 
   private:
     QgsFeatureList mFeatures;
@@ -58,11 +55,8 @@ class QgsLayoutMapExtentToLayerAlgorithm : public QgsProcessingAlgorithm
     double mScale = 0;
     double mRotation = 0;
     QgsCoordinateReferenceSystem mCrs;
-
 };
 
 ///@endcond PRIVATE
 
 #endif // QGSALGORITHMEXTRACTLAYOUTMAPEXTENT_H
-
-

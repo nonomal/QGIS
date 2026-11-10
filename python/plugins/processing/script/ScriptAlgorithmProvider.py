@@ -15,58 +15,66 @@
 ***************************************************************************
 """
 
-__author__ = 'Victor Olaya'
-__date__ = 'August 2012'
-__copyright__ = '(C) 2012, Victor Olaya'
+__author__ = "Victor Olaya"
+__date__ = "August 2012"
+__copyright__ = "(C) 2012, Victor Olaya"
 
 import os
 
-from qgis.core import (Qgis,
-                       QgsMessageLog,
-                       QgsApplication,
-                       QgsProcessingProvider,
-                       QgsRuntimeProfiler)
+from qgis.core import (
+    Qgis,
+    QgsApplication,
+    QgsMessageLog,
+    QgsProcessingProvider,
+    QgsRuntimeProfiler,
+)
+from qgis.gui import QgsGui
 
 from processing.core.ProcessingConfig import ProcessingConfig, Setting
-
-from processing.gui.ProviderActions import (ProviderActions,
-                                            ProviderContextMenuActions)
-
+from processing.script import ScriptUtils
 from processing.script.AddScriptFromFileAction import AddScriptFromFileAction
-from processing.script.CreateNewScriptAction import CreateNewScriptAction
 from processing.script.AddScriptFromTemplateAction import AddScriptFromTemplateAction
+from processing.script.CreateNewScriptAction import CreateNewScriptAction
 from processing.script.DeleteScriptAction import DeleteScriptAction
 from processing.script.EditScriptAction import EditScriptAction
 from processing.script.OpenScriptFromFileAction import OpenScriptFromFileAction
-from processing.script import ScriptUtils
-from processing.tools.system import userFolder
 
 
 class ScriptAlgorithmProvider(QgsProcessingProvider):
-
     def __init__(self):
         super().__init__()
         self.algs = []
         self.additional_algorithm_classes = []
-        self.actions = [CreateNewScriptAction(),
-                        AddScriptFromTemplateAction(),
-                        OpenScriptFromFileAction(),
-                        AddScriptFromFileAction()
-                        ]
-        self.contextMenuActions = [EditScriptAction(),
-                                   DeleteScriptAction()]
+        self.actions = [
+            CreateNewScriptAction(),
+            AddScriptFromTemplateAction(),
+            OpenScriptFromFileAction(),
+            AddScriptFromFileAction(),
+        ]
+        self.contextMenuActions = [EditScriptAction(), DeleteScriptAction()]
 
     def load(self):
-        with QgsRuntimeProfiler.profile('Script Provider'):
+        with QgsRuntimeProfiler.profile("Script Provider"):
             ProcessingConfig.settingIcons[self.name()] = self.icon()
-            ProcessingConfig.addSetting(Setting(self.name(),
-                                                ScriptUtils.SCRIPTS_FOLDERS,
-                                                self.tr("Scripts folder(s)"),
-                                                ScriptUtils.defaultScriptsFolder(),
-                                                valuetype=Setting.MULTIPLE_FOLDERS))
+            ProcessingConfig.addSetting(
+                Setting(
+                    self.name(),
+                    ScriptUtils.SCRIPTS_FOLDERS,
+                    self.tr("Scripts folder(s)"),
+                    ScriptUtils.defaultScriptsFolder(),
+                    valuetype=Setting.MULTIPLE_FOLDERS,
+                )
+            )
 
-            ProviderActions.registerProviderActions(self, self.actions)
-            ProviderContextMenuActions.registerProviderContextMenuActions(self.contextMenuActions)
+            for action in self.actions:
+                QgsGui.processingGuiRegistry().registerProviderToolboxAction(
+                    self.id(), action
+                )
+
+            for action in self.contextMenuActions:
+                QgsGui.processingGuiRegistry().registerProviderToolboxContextAction(
+                    self.id(), action
+                )
 
             ProcessingConfig.readSettings()
             self.refreshAlgorithms()
@@ -76,8 +84,10 @@ class ScriptAlgorithmProvider(QgsProcessingProvider):
     def unload(self):
         ProcessingConfig.removeSetting(ScriptUtils.SCRIPTS_FOLDERS)
 
-        ProviderActions.deregisterProviderActions(self)
-        ProviderContextMenuActions.deregisterProviderContextMenuActions(self.contextMenuActions)
+        QgsGui.processingGuiRegistry().deregisterProviderToolboxActions(self.id())
+        QgsGui.processingGuiRegistry().deregisterProviderToolboxContextActions(
+            self.id()
+        )
 
     def icon(self):
         return QgsApplication.getThemeIcon("/processingScript.svg")

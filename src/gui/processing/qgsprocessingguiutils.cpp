@@ -1,0 +1,86 @@
+/***************************************************************************
+                             qgsprocessingguiutils.cpp
+                             ------------------------
+    Date                 : June 2025
+    Copyright            : (C) 2025 Nyall Dawson
+    Email                : nyall dot dawson at gmail dot com
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+
+#include "qgsprocessingguiutils.h"
+
+#include <QString>
+
+using namespace Qt::StringLiterals;
+
+
+QMap<int, QStringList> QgsProcessingGuiUtils::defaultProcessingMenuEntries()
+{
+  return {
+    { static_cast< int >( Qgis::ProcessingMenu::VectorAnalysis ),
+      { "native:distancematrix",
+        "native:sumlinelengths",
+        "native:countpointsinpolygon",
+        "native:listuniquevalues",
+        "native:basicstatisticsforfields",
+        "native:nearestneighbouranalysis",
+        "native:meancoordinates",
+        "native:lineintersections" } },
+    { static_cast< int >( Qgis::ProcessingMenu::VectorResearch ),
+      { "native:creategrid",
+        "native:randomselection",
+        "native:randomselectionwithinsubsets",
+        "native:randompointsinextent",
+        "qgis:randompointsinlayerbounds",
+        "native:randompointsinpolygons",
+        "qgis:randompointsinsidepolygons",
+        "native:randompointsonlines",
+        "qgis:regularpoints",
+        "native:selectbylocation",
+        "native:selectwithindistance",
+        "native:polygonfromlayerextent" } },
+    { static_cast< int >( Qgis::ProcessingMenu::VectorGeoprocessing ),
+      { "native:buffer", "native:convexhull", "native:intersection", "native:union", "native:symmetricaldifference", "native:clip", "native:difference", "native:dissolve", "qgis:eliminateselectedpolygons" } },
+    { static_cast< int >( Qgis::ProcessingMenu::VectorGeometry ),
+      { "native:checkvalidity",
+        "native:exportaddgeometrycolumns",
+        "native:centroids",
+        "native:delaunaytriangulation",
+        "native:voronoipolygons",
+        "native:simplifygeometries",
+        "native:densifygeometries",
+        "native:multiparttosingleparts",
+        "native:collect",
+        "native:polygonstolines",
+        "qgis:linestopolygons",
+        "native:extractvertices" } },
+    { static_cast< int >( Qgis::ProcessingMenu::VectorDataManagement ),
+      { "native:reprojectlayer", "native:joinattributesbylocation", "native:splitvectorlayer", "native:mergevectorlayers", "native:createspatialindex" } },
+    { static_cast< int >( Qgis::ProcessingMenu::RasterProjections ), { "gdal:warpreproject", "gdal:extractprojection", "gdal:assignprojection" } },
+    { static_cast< int >( Qgis::ProcessingMenu::RasterConversion ), { "gdal:rasterize", "gdal:polygonize", "gdal:translate", "gdal:rgbtopct", "gdal:pcttorgb" } },
+    { static_cast< int >( Qgis::ProcessingMenu::RasterExtraction ), { "gdal:contour", "gdal:cliprasterbyextent", "gdal:cliprasterbymasklayer" } },
+    { static_cast< int >( Qgis::ProcessingMenu::RasterAnalysis ),
+      { "gdal:sieve",
+        "gdal:nearblack",
+        "gdal:fillnodata",
+        "gdal:proximity",
+        "gdal:griddatametrics",
+        "gdal:gridaverage",
+        "gdal:gridinversedistance",
+        "gdal:gridnearestneighbor",
+        "gdal:aspect",
+        "gdal:hillshade",
+        "gdal:roughness",
+        "gdal:slope",
+        "gdal:tpitopographicpositionindex",
+        "gdal:triterrainruggednessindex" } },
+    { static_cast< int >( Qgis::ProcessingMenu::RasterMiscellaneous ), { "gdal:buildvirtualraster", "gdal:merge", "gdal:gdalinfo", "gdal:overviews", "gdal:tileindex" } },
+    { static_cast< int >( Qgis::ProcessingMenu::RasterGeneral ), { "native:alignrasters" } }
+  };
+}

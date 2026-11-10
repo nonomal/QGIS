@@ -19,14 +19,15 @@
 #define QGSEPTPROVIDERGUIMETADATA_H
 
 ///@cond PRIVATE
-#define SIP_NO_FILE
+
+#include "qgsproviderguimetadata.h"
 
 #include <QList>
 #include <QMainWindow>
 
-#include "qgsproviderguimetadata.h"
+#define SIP_NO_FILE
 
-class QgsEptProviderGuiMetadata: public QgsProviderGuiMetadata
+class QgsEptProviderGuiMetadata : public QgsProviderGuiMetadata
 {
   public:
     QgsEptProviderGuiMetadata();

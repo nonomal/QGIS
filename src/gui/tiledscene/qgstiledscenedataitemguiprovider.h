@@ -17,28 +17,29 @@
 #define QGSTILEDSCENEDATAITEMGUIPROVIDER_H
 
 ///@cond PRIVATE
-#define SIP_NO_FILE
 
 #include "qgsdataitemguiprovider.h"
 
+#include <QString>
+
+#define SIP_NO_FILE
+
+using namespace Qt::StringLiterals;
 
 class QgsTiledSceneDataItemGuiProvider : public QObject, public QgsDataItemGuiProvider
 {
     Q_OBJECT
   public:
+    QString name() override { return u"Tiled Scene"_s; }
 
-    QString name() override { return QStringLiteral( "Tiled Scene" ); }
-
-    void populateContextMenu( QgsDataItem *item, QMenu *menu,
-                              const QList<QgsDataItem *> &selectedItems, QgsDataItemGuiContext context ) override;
+    void populateContextMenu( QgsDataItem *item, QMenu *menu, const QList<QgsDataItem *> &selectedItems, QgsDataItemGuiContext context ) override;
 
   private:
     static void editConnection( QgsDataItem *item );
-    static void deleteConnection( QgsDataItem *item );
-    static void newCesium3dTilesConnection( QgsDataItem *item );
+    static void duplicateConnection( QgsDataItem *item );
+    static void newConnection( QgsDataItem *item, QString provider );
     static void saveConnections();
     static void loadConnections( QgsDataItem *item );
-
 };
 
 ///@endcond

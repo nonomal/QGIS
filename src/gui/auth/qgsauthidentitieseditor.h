@@ -17,26 +17,26 @@
 #ifndef QGSAUTHIDENTITIESEDITOR_H
 #define QGSAUTHIDENTITIESEDITOR_H
 
-#include <QWidget>
-#include "qgis_sip.h"
-#include <QSslCertificate>
-
 #include "ui_qgsauthidentitieseditor.h"
-#include "qgsauthmanager.h"
+
 #include "qgis_gui.h"
+#include "qgis_sip.h"
+#include "qgsauthmanager.h"
+
+#include <QSslCertificate>
+#include <QWidget>
 
 class QgsMessageBar;
 
 /**
  * \ingroup gui
- * \brief Widget for viewing and editing authentication identities database
+ * \brief Widget for viewing and editing authentication identities database.
  */
 class GUI_EXPORT QgsAuthIdentitiesEditor : public QWidget, private Ui::QgsAuthIdentitiesEditor
 {
     Q_OBJECT
 
   public:
-
     /**
      * Widget for editing authentication configurations directly in database
      * \param parent Parent widget
@@ -67,7 +67,7 @@ class GUI_EXPORT QgsAuthIdentitiesEditor : public QWidget, private Ui::QgsAuthId
     void btnGroupByOrg_toggled( bool checked );
 
     //! Relay messages to widget's messagebar
-    void authMessageOut( const QString &message, const QString &authtag, QgsAuthManager::MessageLevel level );
+    void authMessageLog( const QString &message, const QString &authtag, Qgis::MessageLevel level );
 
   protected:
     //! Overridden show event of base widget
@@ -83,16 +83,11 @@ class GUI_EXPORT QgsAuthIdentitiesEditor : public QWidget, private Ui::QgsAuthId
 
     void setupIdentitiesTree();
 
-    void populateIdentitiesSection( QTreeWidgetItem *item, const QList<QSslCertificate> &certs,
-                                    QgsAuthIdentitiesEditor::IdentityType identype );
+    void populateIdentitiesSection( QTreeWidgetItem *item, const QList<QSslCertificate> &certs, QgsAuthIdentitiesEditor::IdentityType identype );
 
-    void appendIdentitiesToGroup( const QList<QSslCertificate> &certs,
-                                  QgsAuthIdentitiesEditor::IdentityType identype,
-                                  QTreeWidgetItem *parent = nullptr );
+    void appendIdentitiesToGroup( const QList<QSslCertificate> &certs, QgsAuthIdentitiesEditor::IdentityType identype, QTreeWidgetItem *parent = nullptr );
 
-    void appendIdentitiesToItem( const QList<QSslCertificate> &certs,
-                                 QgsAuthIdentitiesEditor::IdentityType identype,
-                                 QTreeWidgetItem *parent = nullptr );
+    void appendIdentitiesToItem( const QList<QSslCertificate> &certs, QgsAuthIdentitiesEditor::IdentityType identype, QTreeWidgetItem *parent = nullptr );
 
     QgsMessageBar *messageBar();
     int messageTimeout();

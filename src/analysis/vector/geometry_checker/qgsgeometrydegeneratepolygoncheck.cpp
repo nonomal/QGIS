@@ -13,20 +13,38 @@
  *                                                                         *
  ***************************************************************************/
 
-#include "qgsgeometrycheckcontext.h"
 #include "qgsgeometrydegeneratepolygoncheck.h"
+
 #include "qgsfeaturepool.h"
+#include "qgsfeedback.h"
+#include "qgsgeometrycheckcontext.h"
 #include "qgsgeometrycheckerror.h"
 
-
-void QgsGeometryDegeneratePolygonCheck::collectErrors( const QMap<QString, QgsFeaturePool *> &featurePools, QList<QgsGeometryCheckError *> &errors, QStringList &messages, QgsFeedback *feedback, const LayerFeatureIds &ids ) const
+QgsGeometryCheck::Result QgsGeometryDegeneratePolygonCheck::collectErrors(
+  const QMap<QString, QgsFeaturePool *> &featurePools, QList<QgsGeometryCheckError *> &errors, QStringList &messages, QgsFeedback *feedback, const LayerFeatureIds &ids
+) const
 {
   Q_UNUSED( messages )
 
+  QMap<QString, QSet<QVariant>> uniqueIds;
   const QMap<QString, QgsFeatureIds> featureIds = ids.isEmpty() ? allLayerFeatureIds( featurePools ) : ids.toMap();
   const QgsGeometryCheckerUtils::LayerFeatures layerFeatures( featurePools, featureIds, compatibleGeometryTypes(), feedback, mContext );
   for ( const QgsGeometryCheckerUtils::LayerFeature &layerFeature : layerFeatures )
   {
+    if ( feedback && feedback->isCanceled() )
+    {
+      return QgsGeometryCheck::Result::Canceled;
+    }
+
+    if ( context()->uniqueIdFieldIndex != -1 )
+    {
+      QgsGeometryCheck::Result result = checkUniqueId( layerFeature, uniqueIds );
+      if ( result != QgsGeometryCheck::Result::Success )
+      {
+        return result;
+      }
+    }
+
     const QgsAbstractGeometry *geom = layerFeature.geometry().constGet();
     for ( int iPart = 0, nParts = geom->partCount(); iPart < nParts; ++iPart )
     {
@@ -35,16 +53,19 @@ void QgsGeometryDegeneratePolygonCheck::collectErrors( const QMap<QString, QgsFe
         if ( QgsGeometryCheckerUtils::polyLineSize( geom, iPart, iRing ) < 3 )
         {
           const QgsVertexId vidx( iPart, iRing );
-          errors.append( new QgsGeometryCheckError( this, layerFeature, geom->vertexAt( vidx ), vidx ) );
+          errors.append( new QgsGeometryCheckError( this, layerFeature, geom->vertexAt( QgsVertexId( iPart, iRing, 0 ) ), vidx ) );
         }
       }
     }
   }
+  return QgsGeometryCheck::Result::Success;
 }
 
-void QgsGeometryDegeneratePolygonCheck::fixError( const QMap<QString, QgsFeaturePool *> &featurePools, QgsGeometryCheckError *error, int method, const QMap<QString, int> & /*mergeAttributeIndices*/, Changes &changes ) const
+void QgsGeometryDegeneratePolygonCheck::fixError(
+  const QMap<QString, QgsFeaturePool *> &featurePools, QgsGeometryCheckError *error, int method, const QMap<QString, int> & /*mergeAttributeIndices*/, Changes &changes
+) const
 {
-  QgsFeaturePool *featurePool = featurePools[ error->layerId() ];
+  QgsFeaturePool *featurePool = featurePools[error->layerId()];
   QgsFeature feature;
   if ( !featurePool->getFeature( error->featureId(), feature ) )
   {
@@ -56,7 +77,7 @@ void QgsGeometryDegeneratePolygonCheck::fixError( const QMap<QString, QgsFeature
   const QgsVertexId vidx = error->vidx();
 
   // Check if ring still exists
-  if ( !vidx.isValid( geom ) )
+  if ( !geom->hasVertex( QgsVertexId( vidx.part, vidx.ring, 0 ) ) )
   {
     error->setObsolete();
     return;

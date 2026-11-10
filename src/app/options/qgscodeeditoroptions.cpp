@@ -14,12 +14,20 @@
  ***************************************************************************/
 
 #include "qgscodeeditoroptions.h"
-#include "qgsapplication.h"
-#include "qgssettings.h"
+
 #include "qgis.h"
-#include "qgsgui.h"
+#include "qgsapplication.h"
 #include "qgscodeeditorcolorschemeregistry.h"
 #include "qgscodeeditorshell.h"
+#include "qgsgui.h"
+#include "qgssettings.h"
+#include "qgssettingsentryimpl.h"
+
+#include <QString>
+
+#include "moc_qgscodeeditoroptions.cpp"
+
+using namespace Qt::StringLiterals;
 
 //
 // QgsCodeEditorOptionsWidget
@@ -34,43 +42,43 @@ QgsCodeEditorOptionsWidget::QgsCodeEditorOptionsWidget( QWidget *parent )
 
   mSizeSpin->setClearValue( 10 );
 
-  mColorButtonMap =
-  {
-    {QgsCodeEditorColorScheme::ColorRole::Default, mColorDefault },
-    {QgsCodeEditorColorScheme::ColorRole::Keyword, mColorKeyword },
-    {QgsCodeEditorColorScheme::ColorRole::Class, mColorClass },
-    {QgsCodeEditorColorScheme::ColorRole::Method, mColorFunction },
-    {QgsCodeEditorColorScheme::ColorRole::Decoration, mColorDecorator },
-    {QgsCodeEditorColorScheme::ColorRole::Number, mColorNumber },
-    {QgsCodeEditorColorScheme::ColorRole::Comment, mColorComment },
-    {QgsCodeEditorColorScheme::ColorRole::CommentLine, mColorCommentLine },
-    {QgsCodeEditorColorScheme::ColorRole::CommentBlock, mColorCommentBlock },
-    {QgsCodeEditorColorScheme::ColorRole::Background, mColorBackground },
-    {QgsCodeEditorColorScheme::ColorRole::Cursor, mColorCursor },
-    {QgsCodeEditorColorScheme::ColorRole::CaretLine, mColorCaretLine },
-    {QgsCodeEditorColorScheme::ColorRole::Operator, mColorOperator },
-    {QgsCodeEditorColorScheme::ColorRole::QuotedOperator, mColorQuotedOperator },
-    {QgsCodeEditorColorScheme::ColorRole::Identifier, mColorIdentifier },
-    {QgsCodeEditorColorScheme::ColorRole::QuotedIdentifier, mColorQuotedIdentifier },
-    {QgsCodeEditorColorScheme::ColorRole::Tag, mColorTag },
-    {QgsCodeEditorColorScheme::ColorRole::UnknownTag, mColorUnknownTag },
-    {QgsCodeEditorColorScheme::ColorRole::SingleQuote, mColorSingleQuote },
-    {QgsCodeEditorColorScheme::ColorRole::DoubleQuote, mColorDoubleQuote },
-    {QgsCodeEditorColorScheme::ColorRole::TripleSingleQuote, mColorTripleSingleQuote },
-    {QgsCodeEditorColorScheme::ColorRole::TripleDoubleQuote, mColorTripleDoubleQuote },
-    {QgsCodeEditorColorScheme::ColorRole::MarginBackground, mColorMarginBackground },
-    {QgsCodeEditorColorScheme::ColorRole::MarginForeground, mColorMarginForeground },
-    {QgsCodeEditorColorScheme::ColorRole::SelectionBackground, mColorSelectionBackground },
-    {QgsCodeEditorColorScheme::ColorRole::SelectionForeground, mColorSelectionForeground },
-    {QgsCodeEditorColorScheme::ColorRole::MatchedBraceBackground, mColorBraceBackground },
-    {QgsCodeEditorColorScheme::ColorRole::MatchedBraceForeground, mColorBraceForeground },
-    {QgsCodeEditorColorScheme::ColorRole::Edge, mColorEdge },
-    {QgsCodeEditorColorScheme::ColorRole::Fold, mColorFold },
-    {QgsCodeEditorColorScheme::ColorRole::Error, mColorError },
-    {QgsCodeEditorColorScheme::ColorRole::ErrorBackground, mColorErrorBackground },
-    {QgsCodeEditorColorScheme::ColorRole::FoldIconForeground, mColorFoldIcon },
-    {QgsCodeEditorColorScheme::ColorRole::FoldIconHalo, mColorFoldIconHalo },
-    {QgsCodeEditorColorScheme::ColorRole::IndentationGuide, mColorIndentation },
+  mColorButtonMap = {
+    { QgsCodeEditorColorScheme::ColorRole::Default, mColorDefault },
+    { QgsCodeEditorColorScheme::ColorRole::Keyword, mColorKeyword },
+    { QgsCodeEditorColorScheme::ColorRole::Class, mColorClass },
+    { QgsCodeEditorColorScheme::ColorRole::Method, mColorFunction },
+    { QgsCodeEditorColorScheme::ColorRole::Decoration, mColorDecorator },
+    { QgsCodeEditorColorScheme::ColorRole::Number, mColorNumber },
+    { QgsCodeEditorColorScheme::ColorRole::Comment, mColorComment },
+    { QgsCodeEditorColorScheme::ColorRole::CommentLine, mColorCommentLine },
+    { QgsCodeEditorColorScheme::ColorRole::CommentBlock, mColorCommentBlock },
+    { QgsCodeEditorColorScheme::ColorRole::Background, mColorBackground },
+    { QgsCodeEditorColorScheme::ColorRole::Cursor, mColorCursor },
+    { QgsCodeEditorColorScheme::ColorRole::CaretLine, mColorCaretLine },
+    { QgsCodeEditorColorScheme::ColorRole::Operator, mColorOperator },
+    { QgsCodeEditorColorScheme::ColorRole::QuotedOperator, mColorQuotedOperator },
+    { QgsCodeEditorColorScheme::ColorRole::Identifier, mColorIdentifier },
+    { QgsCodeEditorColorScheme::ColorRole::QuotedIdentifier, mColorQuotedIdentifier },
+    { QgsCodeEditorColorScheme::ColorRole::Tag, mColorTag },
+    { QgsCodeEditorColorScheme::ColorRole::UnknownTag, mColorUnknownTag },
+    { QgsCodeEditorColorScheme::ColorRole::SingleQuote, mColorSingleQuote },
+    { QgsCodeEditorColorScheme::ColorRole::DoubleQuote, mColorDoubleQuote },
+    { QgsCodeEditorColorScheme::ColorRole::TripleSingleQuote, mColorTripleSingleQuote },
+    { QgsCodeEditorColorScheme::ColorRole::TripleDoubleQuote, mColorTripleDoubleQuote },
+    { QgsCodeEditorColorScheme::ColorRole::MarginBackground, mColorMarginBackground },
+    { QgsCodeEditorColorScheme::ColorRole::MarginForeground, mColorMarginForeground },
+    { QgsCodeEditorColorScheme::ColorRole::SelectionBackground, mColorSelectionBackground },
+    { QgsCodeEditorColorScheme::ColorRole::SelectionForeground, mColorSelectionForeground },
+    { QgsCodeEditorColorScheme::ColorRole::MatchedBraceBackground, mColorBraceBackground },
+    { QgsCodeEditorColorScheme::ColorRole::MatchedBraceForeground, mColorBraceForeground },
+    { QgsCodeEditorColorScheme::ColorRole::Edge, mColorEdge },
+    { QgsCodeEditorColorScheme::ColorRole::Fold, mColorFold },
+    { QgsCodeEditorColorScheme::ColorRole::Error, mColorError },
+    { QgsCodeEditorColorScheme::ColorRole::ErrorBackground, mColorErrorBackground },
+    { QgsCodeEditorColorScheme::ColorRole::FoldIconForeground, mColorFoldIcon },
+    { QgsCodeEditorColorScheme::ColorRole::FoldIconHalo, mColorFoldIconHalo },
+    { QgsCodeEditorColorScheme::ColorRole::IndentationGuide, mColorIndentation },
+    { QgsCodeEditorColorScheme::ColorRole::SearchMatchBackground, mColorSearchResult },
   };
 
   for ( auto it = mColorButtonMap.constBegin(); it != mColorButtonMap.constEnd(); ++it )
@@ -81,12 +89,12 @@ QgsCodeEditorOptionsWidget::QgsCodeEditorOptionsWidget( QWidget *parent )
 
   mColorSchemeComboBox->addItem( tr( "Default" ), QString() );
 
-  QMap< QString, QString> themeNameToId;
+  QMap<QString, QString> themeNameToId;
   QStringList names;
   const QStringList ids = QgsGui::codeEditorColorSchemeRegistry()->schemes();
   for ( const QString &id : ids )
   {
-    if ( id == QLatin1String( "default" ) )
+    if ( id == "default"_L1 )
       continue;
 
     const QString name = QgsGui::codeEditorColorSchemeRegistry()->scheme( id ).name();
@@ -100,23 +108,22 @@ QgsCodeEditorOptionsWidget::QgsCodeEditorOptionsWidget( QWidget *parent )
     mColorSchemeComboBox->addItem( name, themeNameToId.value( name ) );
   }
 
-  mColorSchemeComboBox->addItem( tr( "Custom" ), QStringLiteral( "custom" ) );
+  mColorSchemeComboBox->addItem( tr( "Custom" ), u"custom"_s );
 
   QgsSettings settings;
-  if ( !settings.value( QStringLiteral( "codeEditor/overrideColors" ), false, QgsSettings::Gui ).toBool() )
+  if ( !settings.value( u"codeEditor/overrideColors"_s, false, QgsSettings::Gui ).toBool() )
   {
-    const QString theme = settings.value( QStringLiteral( "codeEditor/colorScheme" ), QString(), QgsSettings::Gui ).toString();
+    const QString theme = settings.value( u"codeEditor/colorScheme"_s, QString(), QgsSettings::Gui ).toString();
     mColorSchemeComboBox->setCurrentIndex( mColorSchemeComboBox->findData( theme ) );
   }
   else
   {
-    mColorSchemeComboBox->setCurrentIndex( mColorSchemeComboBox->findData( QStringLiteral( "custom" ) ) );
+    mColorSchemeComboBox->setCurrentIndex( mColorSchemeComboBox->findData( u"custom"_s ) );
   }
 
-  connect( mColorSchemeComboBox, qOverload<int>( &QComboBox::currentIndexChanged ), this, [ = ]
-  {
+  connect( mColorSchemeComboBox, qOverload<int>( &QComboBox::currentIndexChanged ), this, [this] {
     const QString theme = mColorSchemeComboBox->currentData().toString();
-    if ( theme != QLatin1String( "custom" ) )
+    if ( theme != "custom"_L1 )
     {
       mBlockCustomColorChange = true;
       for ( auto it = mColorButtonMap.constBegin(); it != mColorButtonMap.constEnd(); ++it )
@@ -132,12 +139,11 @@ QgsCodeEditorOptionsWidget::QgsCodeEditorOptionsWidget( QWidget *parent )
 
   for ( auto it = mColorButtonMap.constBegin(); it != mColorButtonMap.constEnd(); ++it )
   {
-    connect( it.value(), &QgsColorButton::colorChanged, this, [ = ]
-    {
+    connect( it.value(), &QgsColorButton::colorChanged, this, [this] {
       if ( mBlockCustomColorChange )
         return;
 
-      mColorSchemeComboBox->setCurrentIndex( mColorSchemeComboBox->findData( QStringLiteral( "custom" ) ) );
+      mColorSchemeComboBox->setCurrentIndex( mColorSchemeComboBox->findData( u"custom"_s ) );
       updatePreview();
     } );
   }
@@ -146,20 +152,11 @@ QgsCodeEditorOptionsWidget::QgsCodeEditorOptionsWidget( QWidget *parent )
   const QFont font = QgsCodeEditor::getMonospaceFont();
   mFontComboBox->setCurrentFont( font );
   mSizeSpin->setValue( font.pointSize() );
-  mOverrideFontGroupBox->setChecked( !settings.value( QStringLiteral( "codeEditor/fontfamily" ), QString(), QgsSettings::Gui ).toString().isEmpty() );
+  mOverrideFontGroupBox->setChecked( !QgsCodeEditor::settingFontFamily->value().isEmpty() );
 
-  connect( mFontComboBox, qOverload<int>( &QComboBox::currentIndexChanged ), this, [ = ]
-  {
-    updatePreview();
-  } );
-  connect( mSizeSpin, qOverload<int>( &QSpinBox::valueChanged ), this, [ = ]
-  {
-    updatePreview();
-  } );
-  connect( mOverrideFontGroupBox, &QGroupBox::toggled, this, [ = ]
-  {
-    updatePreview();
-  } );
+  connect( mFontComboBox, qOverload<int>( &QComboBox::currentIndexChanged ), this, [this] { updatePreview(); } );
+  connect( mSizeSpin, qOverload<int>( &QSpinBox::valueChanged ), this, [this] { updatePreview(); } );
+  connect( mOverrideFontGroupBox, &QGroupBox::toggled, this, [this] { updatePreview(); } );
 
   mBashPreview = new QgsCodeEditorShell( nullptr, QgsCodeEditor::Mode::ScriptEditor, Qgis::ScriptLanguage::Bash );
   QVBoxLayout *vl = new QVBoxLayout();
@@ -183,10 +180,12 @@ QgsCodeEditorOptionsWidget::QgsCodeEditorOptionsWidget( QWidget *parent )
   mListLanguage->addItem( tr( "Bash" ) );
   mListLanguage->addItem( tr( "Batch" ) );
 
-  connect( mListLanguage, &QListWidget::currentRowChanged, this, [ = ]
-  {
-    mPreviewStackedWidget->setCurrentIndex( mListLanguage->currentRow() );
-  } );
+  connect( mListLanguage, &QListWidget::currentRowChanged, this, [this] { mPreviewStackedWidget->setCurrentIndex( mListLanguage->currentRow() ); } );
+
+  auto addSearchHighlight = []( QgsCodeEditor *editor, int start, int length ) {
+    editor->SendScintilla( QsciScintilla::SCI_SETINDICATORCURRENT, QgsCodeEditor::SEARCH_RESULT_INDICATOR );
+    editor->SendScintilla( QsciScintilla::SCI_INDICATORFILLRANGE, start, length );
+  };
 
   mPythonPreview->setText( R"""(def simple_function(x,y,z):
     """
@@ -204,16 +203,20 @@ def somefunc(param1: str='', param2=0):
 class SomeClass:
     """
     My class docstring
+
+    A search result
     """
     pass
 )""" );
+  addSearchHighlight( mPythonPreview, 385, 13 );
 
   mExpressionPreview->setText( R"""(aggregate(layer:='rail_stations',
     aggregate:='collect', -- a comment
-    expression:=centroid($geometry), /* a comment */
-    filter:="region_name" = attribute(@parent,'name') + 55
+    expression:=centroid(@geometry), /* a comment */
+    filter:="region_name" = attribute(@parent,'name') + 55 /* a search result */
 )
-)""");
+)""" );
+  addSearchHighlight( mExpressionPreview, 190, 13 );
 
   mSQLPreview->setText( R"""(CREATE TABLE "my_table" (
     "pk" serial NOT NULL PRIMARY KEY,
@@ -223,9 +226,11 @@ class SomeClass:
 
 -- Retrieve values
 SELECT count(*) FROM "my_table" WHERE "a_field" > 'a value';
-)""");
+-- A search result
+)""" );
+  addSearchHighlight( mSQLPreview, 209, 13 );
 
-  mHtmlPreview->setText(R"""(<html>
+  mHtmlPreview->setText( R"""(<html>
   <head>
     <title>QGIS</title>
   </head>
@@ -234,9 +239,11 @@ SELECT count(*) FROM "my_table" WHERE "a_field" > 'a value';
     <img src="qgis.png" style="width: 100px" />
     <!--Sample comment-->
     <p>Sample paragraph</p>
+    <!--A search result-->
   </body>
 </html>
-)""");
+)""" );
+  addSearchHighlight( mHtmlPreview, 196, 13 );
 
   mCssPreview->setText( R"""(@import url(print.css);
 
@@ -250,6 +257,7 @@ p.style_name:lang(en) {
  background: #600;
 }
 
+/* A search result */
 ul > li, a:hover {
  line-height: 11px;
  text-decoration: underline;
@@ -261,6 +269,7 @@ ul > li, a:hover {
   }
 }
 )""" );
+  addSearchHighlight( mCssPreview, 178, 13 );
 
   mJsPreview->setText( R"""(// my sample JavaScript function
 
@@ -273,10 +282,12 @@ window.onAction(function update() {
     element.name = 'a string';
     element.title= "another string";
 
+    /* A search result */
     if (prevPos.x > 100) {
         element.x += max(100*2, 100);
     }
 });)""" );
+  addSearchHighlight( mJsPreview, 255, 13 );
 
   mRPreview->setText( R"""(# a comment
 x <- 1:12
@@ -288,6 +299,7 @@ resample(x[x >  8]) # length 2
 
 a_variable <- "My string"
 
+# a search result
 `%func_name%` <- function(arg_1,arg_2) {
   # function body
 }
@@ -296,10 +308,10 @@ a_variable <- "My string"
 {
  return(x^y)
 }
-)""");
+)""" );
+  addSearchHighlight( mRPreview, 181, 13 );
 
-
-  mBashPreview->setText(R"""(#!/bin/bash
+  mBashPreview->setText( R"""(#!/bin/bash
 
 # This script takes two arguments: a directory and a file extension.
 # It finds all the files in the directory that have the given extension
@@ -309,6 +321,7 @@ a_variable <- "My string"
 
 [ ! -d "$1" ] && { echo "Error: $1 does not exist or is not a directory."; exit 1; }
 
+# A search result
 echo "Files with extension .$2 in $1:"
 
 for file in "$1"/*."$2"; do
@@ -316,6 +329,7 @@ for file in "$1"/*."$2"; do
   echo "$(basename "$file"): $((size / 1024)) KB"
 done
 )""" );
+  addSearchHighlight( mBashPreview, 361, 13 );
 
   mBatchPreview->setText( R"""(@echo off
 
@@ -333,6 +347,8 @@ if not exist %1 (
   exit /b 1
 )
 
+REM A search result
+
 echo Files with extension %2 in %1:
 
 for %%f in (%1\*.%2) do (
@@ -343,22 +359,23 @@ for %%f in (%1\*.%2) do (
 
 echo Done.
 )""" );
+  addSearchHighlight( mBatchPreview, 367, 13 );
 
   mListLanguage->setCurrentRow( 0 );
   mPreviewStackedWidget->setCurrentIndex( 0 );
 
-  mSplitter->restoreState( settings.value( QStringLiteral( "Windows/CodeEditorOptions/splitterState" ) ).toByteArray() );
+  mSplitter->restoreState( settings.value( u"Windows/CodeEditorOptions/splitterState"_s ).toByteArray() );
 }
 
 QgsCodeEditorOptionsWidget::~QgsCodeEditorOptionsWidget()
 {
   QgsSettings settings;
-  settings.setValue( QStringLiteral( "Windows/CodeEditorOptions/splitterState" ), mSplitter->saveState() );
+  settings.setValue( u"Windows/CodeEditorOptions/splitterState"_s, mSplitter->saveState() );
 }
 
 QString QgsCodeEditorOptionsWidget::helpKey() const
 {
-  return QStringLiteral( "introduction/qgis_configuration.html#code-editor-options" );
+  return u"introduction/qgis_configuration.html#code-editor-options"_s;
 }
 
 void QgsCodeEditorOptionsWidget::apply()
@@ -366,11 +383,11 @@ void QgsCodeEditorOptionsWidget::apply()
   const QString theme = mColorSchemeComboBox->currentData().toString();
 
   QgsSettings settings;
-  const bool customTheme = theme == QLatin1String( "custom" );
-  settings.setValue( QStringLiteral( "codeEditor/overrideColors" ), customTheme, QgsSettings::Gui );
+  const bool customTheme = theme == "custom"_L1;
+  settings.setValue( u"codeEditor/overrideColors"_s, customTheme, QgsSettings::Gui );
   if ( !customTheme )
   {
-    settings.setValue( QStringLiteral( "codeEditor/colorScheme" ), theme, QgsSettings::Gui );
+    settings.setValue( u"codeEditor/colorScheme"_s, theme, QgsSettings::Gui );
   }
   for ( auto it = mColorButtonMap.constBegin(); it != mColorButtonMap.constEnd(); ++it )
   {
@@ -379,13 +396,13 @@ void QgsCodeEditorOptionsWidget::apply()
 
   if ( mOverrideFontGroupBox->isChecked() )
   {
-    settings.setValue( QStringLiteral( "codeEditor/fontfamily" ), mFontComboBox->currentFont().family(), QgsSettings::Gui );
-    settings.setValue( QStringLiteral( "codeEditor/fontsize" ), mSizeSpin->value(), QgsSettings::Gui );
+    QgsCodeEditor::settingFontFamily->setValue( mFontComboBox->currentFont().family() );
+    QgsCodeEditor::settingFontSize->setValue( mSizeSpin->value() );
   }
   else
   {
-    settings.remove( QStringLiteral( "codeEditor/fontfamily" ), QgsSettings::Gui );
-    settings.remove( QStringLiteral( "codeEditor/fontsize" ), QgsSettings::Gui );
+    QgsCodeEditor::settingFontFamily->remove();
+    QgsCodeEditor::settingFontSize->remove();
   }
 }
 
@@ -394,12 +411,12 @@ void QgsCodeEditorOptionsWidget::updatePreview()
   QString theme = mColorSchemeComboBox->currentData().toString();
 
 
-  QMap< QgsCodeEditorColorScheme::ColorRole, QColor> colors;
-  if ( theme == QLatin1String( "custom" ) )
+  QMap<QgsCodeEditorColorScheme::ColorRole, QColor> colors;
+  if ( theme == "custom"_L1 )
   {
     for ( auto it = mColorButtonMap.constBegin(); it != mColorButtonMap.constEnd(); ++it )
     {
-      colors[ it.key() ] = it.value()->color();
+      colors[it.key()] = it.value()->color();
     }
     theme.clear();
   }
@@ -427,14 +444,12 @@ void QgsCodeEditorOptionsWidget::updatePreview()
 // QgsCodeEditorOptionsFactory
 //
 QgsCodeEditorOptionsFactory::QgsCodeEditorOptionsFactory()
-  : QgsOptionsWidgetFactory( tr( "Code Editor" ), QIcon(), QStringLiteral( "code_editor" ) )
-{
-
-}
+  : QgsOptionsWidgetFactory( tr( "Code Editor" ), QIcon(), u"code_editor"_s )
+{}
 
 QIcon QgsCodeEditorOptionsFactory::icon() const
 {
-  return QgsApplication::getThemeIcon( QStringLiteral( "/mIconCodeEditor.svg" ) );
+  return QgsApplication::getThemeIcon( u"/mIconCodeEditor.svg"_s );
 }
 
 QgsOptionsPageWidget *QgsCodeEditorOptionsFactory::createWidget( QWidget *parent ) const
@@ -444,10 +459,10 @@ QgsOptionsPageWidget *QgsCodeEditorOptionsFactory::createWidget( QWidget *parent
 
 QStringList QgsCodeEditorOptionsFactory::path() const
 {
-  return {QStringLiteral( "ide" ) };
+  return { u"ide"_s };
 }
 
 QString QgsCodeEditorOptionsFactory::pagePositionHint() const
 {
-  return QStringLiteral( "consoleOptions" );
+  return u"consoleOptions"_s;
 }

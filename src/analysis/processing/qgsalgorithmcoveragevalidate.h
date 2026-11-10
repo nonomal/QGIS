@@ -18,10 +18,11 @@
 #ifndef QGSALGORITHMCOVERAGEVALIDATE_H
 #define QGSALGORITHMCOVERAGEVALIDATE_H
 
-#define SIP_NO_FILE
 
 #include "qgis_sip.h"
 #include "qgsprocessingalgorithm.h"
+
+#define SIP_NO_FILE
 
 ///@cond PRIVATE
 
@@ -43,14 +44,10 @@ class QgsCoverageValidateAlgorithm : public QgsProcessingAlgorithm
     QgsCoverageValidateAlgorithm *createInstance() const override SIP_FACTORY;
 
   protected:
-
-    QVariantMap processAlgorithm( const QVariantMap &parameters,
-                                  QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
+    QVariantMap processAlgorithm( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
 };
 
 
 ///@endcond PRIVATE
 
 #endif // QGSALGORITHMCOVERAGEVALIDATE_H
-
-

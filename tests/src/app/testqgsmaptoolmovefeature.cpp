@@ -13,45 +13,51 @@
  *                                                                         *
  ***************************************************************************/
 
-#include "qgstest.h"
-
 #include "qgisapp.h"
 #include "qgsadvanceddigitizingdockwidget.h"
 #include "qgsgeometry.h"
+#include "qgsguivectorlayertools.h"
 #include "qgsmapcanvas.h"
 #include "qgsmapcanvassnappingutils.h"
-#include "qgssnappingconfig.h"
-#include "qgssnappingutils.h"
+#include "qgsmapmouseevent.h"
 #include "qgsmaptoolmovefeature.h"
 #include "qgsproject.h"
 #include "qgssettings.h"
+#include "qgssnappingconfig.h"
+#include "qgssnappingutils.h"
+#include "qgstest.h"
 #include "qgsvectorlayer.h"
-#include "qgsmapmouseevent.h"
 #include "testqgsmaptoolutils.h"
 
+#include <QString>
+
+using namespace Qt::StringLiterals;
 
 /**
  * \ingroup UnitTests
- * This is a unit test for the vertex tool
+ * This is a unit test for the move feature tool
  */
-class TestQgsMapToolMoveFeature: public QObject
+class TestQgsMapToolMoveFeature : public QObject
 {
     Q_OBJECT
   public:
     TestQgsMapToolMoveFeature();
 
   private slots:
-    void initTestCase();// will be called before the first testfunction is executed.
-    void cleanupTestCase();// will be called after the last testfunction was executed.
+    void initTestCase();    // will be called before the first testfunction is executed.
+    void cleanupTestCase(); // will be called after the last testfunction was executed.
 
     void testMoveFeature();
+    void testCopyMoveFeature();
     void testTopologicalMoveFeature();
     void testAvoidIntersectionAndTopoEdit();
+    void testAvoidIntersectionsCopyMove();
 
   private:
     QgisApp *mQgisApp = nullptr;
     QgsMapCanvas *mCanvas = nullptr;
     QgsMapToolMoveFeature *mCaptureTool = nullptr;
+    QgsMapToolMoveFeature *mCopyMoveTool = nullptr;
     QgsVectorLayer *mLayerBase = nullptr;
 };
 
@@ -66,16 +72,12 @@ void TestQgsMapToolMoveFeature::initTestCase()
   QgsApplication::init();
   QgsApplication::initQgis();
 
-  // Set up the QSettings environment
-  QCoreApplication::setOrganizationName( QStringLiteral( "QGIS" ) );
-  QCoreApplication::setOrganizationDomain( QStringLiteral( "qgis.org" ) );
-  QCoreApplication::setApplicationName( QStringLiteral( "QGIS-TEST" ) );
-
   mQgisApp = new QgisApp();
+
 
   mCanvas = new QgsMapCanvas();
 
-  mCanvas->setDestinationCrs( QgsCoordinateReferenceSystem( QStringLiteral( "EPSG:3946" ) ) );
+  mCanvas->setDestinationCrs( QgsCoordinateReferenceSystem( u"EPSG:3946"_s ) );
 
   mCanvas->setFrameStyle( QFrame::NoFrame );
   mCanvas->resize( 512, 512 );
@@ -84,7 +86,7 @@ void TestQgsMapToolMoveFeature::initTestCase()
   mCanvas->hide();
 
   // make testing layers
-  mLayerBase = new QgsVectorLayer( QStringLiteral( "Polygon?crs=EPSG:3946" ), QStringLiteral( "baselayer" ), QStringLiteral( "memory" ) );
+  mLayerBase = new QgsVectorLayer( u"Polygon?crs=EPSG:3946"_s, u"baselayer"_s, u"memory"_s );
   QVERIFY( mLayerBase->isValid() );
   QgsProject::instance()->addMapLayers( QList<QgsMapLayer *>() << mLayerBase );
 
@@ -99,7 +101,7 @@ void TestQgsMapToolMoveFeature::initTestCase()
   QgsFeatureList flist;
   flist << f1 << f2;
   mLayerBase->dataProvider()->addFeatures( flist );
-  QCOMPARE( mLayerBase->featureCount(), ( long )2 );
+  QCOMPARE( mLayerBase->featureCount(), ( long ) 2 );
   QCOMPARE( mLayerBase->getFeature( 1 ).geometry().asWkt(), wkt1 );
   QCOMPARE( mLayerBase->getFeature( 2 ).geometry().asWkt(), wkt2 );
 
@@ -113,7 +115,8 @@ void TestQgsMapToolMoveFeature::initTestCase()
   mCanvas->setLayers( QList<QgsMapLayer *>() << mLayerBase );
   mCanvas->setCurrentLayer( mLayerBase );
 
-  // create the tool
+  // create the tools
+  mCopyMoveTool = new QgsMapToolMoveFeature( mCanvas, QgsMapToolMoveFeature::CopyMove );
   mCaptureTool = new QgsMapToolMoveFeature( mCanvas, QgsMapToolMoveFeature::Move );
   mCanvas->setMapTool( mCaptureTool );
 
@@ -125,6 +128,7 @@ void TestQgsMapToolMoveFeature::initTestCase()
 void TestQgsMapToolMoveFeature::cleanupTestCase()
 {
   delete mCaptureTool;
+  delete mCopyMoveTool;
   delete mCanvas;
   QgsApplication::exitQgis();
 }
@@ -142,6 +146,34 @@ void TestQgsMapToolMoveFeature::testMoveFeature()
   QCOMPARE( mLayerBase->getFeature( 2 ).geometry().asWkt(), wkt2 );
 
   mLayerBase->undoStack()->undo();
+}
+
+void TestQgsMapToolMoveFeature::testCopyMoveFeature()
+{
+  mCanvas->setMapTool( mCopyMoveTool );
+  TestQgsMapToolAdvancedDigitizingUtils utils( mCopyMoveTool );
+
+  utils.mouseClick( 1, 1, Qt::LeftButton, Qt::KeyboardModifiers(), true );
+  utils.mouseClick( 2, 1, Qt::LeftButton, Qt::KeyboardModifiers(), true );
+
+  const QString wkt1 = "Polygon ((0 0, 0 1, 1 1, 1 0, 0 0))";
+  QCOMPARE( mLayerBase->getFeature( 1 ).geometry().asWkt(), wkt1 );
+  const QString wkt2 = "Polygon ((2 0, 2 5, 3 5, 3 0, 2 0))";
+  QCOMPARE( mLayerBase->getFeature( 2 ).geometry().asWkt(), wkt2 );
+
+  // copied feature
+  const QString wkt3 = "Polygon ((1 0, 1 1, 2 1, 2 0, 1 0))";
+  QgsFeatureIterator fi1 = mLayerBase->getFeatures();
+  QgsFeature f1;
+
+  while ( fi1.nextFeature( f1 ) )
+  {
+    QCOMPARE( f1.geometry().asWkt( 2 ), wkt3 );
+    break;
+  }
+
+  mLayerBase->undoStack()->undo();
+  mCanvas->setMapTool( mCaptureTool );
 }
 
 void TestQgsMapToolMoveFeature::testTopologicalMoveFeature()
@@ -177,12 +209,56 @@ void TestQgsMapToolMoveFeature::testAvoidIntersectionAndTopoEdit()
   utils.mouseClick( 1, 1, Qt::LeftButton, Qt::KeyboardModifiers(), true );
   utils.mouseClick( 2.5, 1, Qt::LeftButton, Qt::KeyboardModifiers(), true );
 
-  const QString wkt1 = "Polygon ((1.5 1, 2 1, 2 0, 1.5 0, 1.5 1))";
-  QCOMPARE( mLayerBase->getFeature( 1 ).geometry().asWkt(), wkt1 );
+  QgsGeometry geom = mLayerBase->getFeature( 1 ).geometry();
+  geom.normalize();
+  const QString wkt1 = "Polygon ((1.5 0, 1.5 1, 2 1, 2 0, 1.5 0))";
+  QCOMPARE( geom.asWkt(), wkt1 );
+  geom = mLayerBase->getFeature( 2 ).geometry();
+  geom.normalize();
   const QString wkt2 = "Polygon ((2 0, 2 1, 2 5, 3 5, 3 0, 2 0))";
-  QCOMPARE( mLayerBase->getFeature( 2 ).geometry().asWkt(), wkt2 );
+  QCOMPARE( geom.asWkt(), wkt2 );
 
   mLayerBase->undoStack()->undo();
+
+  QgsProject::instance()->setTopologicalEditing( topologicalEditing );
+  QgsProject::instance()->setAvoidIntersectionsMode( mode );
+}
+
+void TestQgsMapToolMoveFeature::testAvoidIntersectionsCopyMove()
+{
+  const bool topologicalEditing = QgsProject::instance()->topologicalEditing();
+  const Qgis::AvoidIntersectionsMode mode( QgsProject::instance()->avoidIntersectionsMode() );
+
+  QgsProject::instance()->setAvoidIntersectionsMode( Qgis::AvoidIntersectionsMode::AvoidIntersectionsCurrentLayer );
+  QgsProject::instance()->setTopologicalEditing( true );
+
+  mCanvas->setMapTool( mCopyMoveTool );
+  TestQgsMapToolAdvancedDigitizingUtils utils( mCopyMoveTool );
+
+  utils.mouseClick( 1, 1, Qt::LeftButton, Qt::KeyboardModifiers(), true );
+  utils.mouseClick( 2.5, 1, Qt::LeftButton, Qt::KeyboardModifiers(), true );
+
+  const QString wkt1 = "Polygon ((0 0, 0 1, 1 1, 1 0, 0 0))";
+  QCOMPARE( mLayerBase->getFeature( 1 ).geometry().asWkt(), wkt1 );
+  const QString wkt2 = "Polygon ((2 0, 2 1, 2 5, 3 5, 3 0, 2.5 0, 2 0))";
+  QCOMPARE( mLayerBase->getFeature( 2 ).geometry().asWkt(), wkt2 );
+
+  // copied feature
+  const QString wkt3 = "Polygon ((1.5 0, 1.5 1, 2 1, 2 0, 1.5 0))";
+  QgsFeatureIterator fi1 = mLayerBase->getFeatures();
+  QgsFeature f1;
+  QgsGeometry geom;
+
+  while ( fi1.nextFeature( f1 ) )
+  {
+    geom = f1.geometry();
+    geom.normalize();
+    QCOMPARE( geom.asWkt( 2 ), wkt3 );
+    break;
+  }
+
+  mLayerBase->undoStack()->undo();
+  mCanvas->setMapTool( mCaptureTool );
 
   QgsProject::instance()->setTopologicalEditing( topologicalEditing );
   QgsProject::instance()->setAvoidIntersectionsMode( mode );

@@ -17,11 +17,15 @@
 
 #include "qgsalgorithmrotate.h"
 
+#include <QString>
+
+using namespace Qt::StringLiterals;
+
 ///@cond PRIVATE
 
 QString QgsRotateFeaturesAlgorithm::name() const
 {
-  return QStringLiteral( "rotatefeatures" );
+  return u"rotatefeatures"_s;
 }
 
 QString QgsRotateFeaturesAlgorithm::displayName() const
@@ -41,7 +45,7 @@ QString QgsRotateFeaturesAlgorithm::group() const
 
 QString QgsRotateFeaturesAlgorithm::groupId() const
 {
-  return QStringLiteral( "vectorgeometry" );
+  return u"vectorgeometry"_s;
 }
 
 QString QgsRotateFeaturesAlgorithm::outputName() const
@@ -51,9 +55,14 @@ QString QgsRotateFeaturesAlgorithm::outputName() const
 
 QString QgsRotateFeaturesAlgorithm::shortHelpString() const
 {
-  return QObject::tr( "This algorithm rotates feature geometries, by the specified angle clockwise" )
-         + QStringLiteral( "\n\n" )
+  return QObject::tr( "This algorithm rotates feature geometries by the specified angle clockwise." )
+         + u"\n\n"_s
          + QObject::tr( "Optionally, the rotation can occur around a preset point. If not set the rotation occurs around each feature's centroid." );
+}
+
+QString QgsRotateFeaturesAlgorithm::shortDescription() const
+{
+  return QObject::tr( "Rotates feature geometries by a specified angle clockwise." );
 }
 
 QgsRotateFeaturesAlgorithm *QgsRotateFeaturesAlgorithm::createInstance() const
@@ -63,31 +72,28 @@ QgsRotateFeaturesAlgorithm *QgsRotateFeaturesAlgorithm::createInstance() const
 
 void QgsRotateFeaturesAlgorithm::initParameters( const QVariantMap & )
 {
-  std::unique_ptr< QgsProcessingParameterNumber > rotation = std::make_unique< QgsProcessingParameterNumber >( QStringLiteral( "ANGLE" ),
-      QObject::tr( "Rotation (degrees clockwise)" ), Qgis::ProcessingNumberParameterType::Double,
-      0.0 );
+  auto rotation = std::make_unique<QgsProcessingParameterNumber>( u"ANGLE"_s, QObject::tr( "Rotation (degrees clockwise)" ), Qgis::ProcessingNumberParameterType::Double, 0.0 );
   rotation->setIsDynamic( true );
-  rotation->setDynamicPropertyDefinition( QgsPropertyDefinition( QStringLiteral( "ANGLE" ), QObject::tr( "Rotation (degrees clockwise)" ), QgsPropertyDefinition::Rotation ) );
-  rotation->setDynamicLayerParameterName( QStringLiteral( "INPUT" ) );
+  rotation->setDynamicPropertyDefinition( QgsPropertyDefinition( u"ANGLE"_s, QObject::tr( "Rotation (degrees clockwise)" ), QgsPropertyDefinition::Rotation ) );
+  rotation->setDynamicLayerParameterName( u"INPUT"_s );
   addParameter( rotation.release() );
 
-  std::unique_ptr< QgsProcessingParameterPoint > anchor = std::make_unique< QgsProcessingParameterPoint >( QStringLiteral( "ANCHOR" ),
-      QObject::tr( "Rotation anchor point" ), QVariant(), true );
+  auto anchor = std::make_unique<QgsProcessingParameterPoint>( u"ANCHOR"_s, QObject::tr( "Rotation anchor point" ), QVariant(), true );
   addParameter( anchor.release() );
 }
 
 bool QgsRotateFeaturesAlgorithm::prepareAlgorithm( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback * )
 {
-  mAngle = parameterAsDouble( parameters, QStringLiteral( "ANGLE" ), context );
-  mDynamicAngle = QgsProcessingParameters::isDynamic( parameters, QStringLiteral( "ANGLE" ) );
+  mAngle = parameterAsDouble( parameters, u"ANGLE"_s, context );
+  mDynamicAngle = QgsProcessingParameters::isDynamic( parameters, u"ANGLE"_s );
   if ( mDynamicAngle )
-    mAngleProperty = parameters.value( QStringLiteral( "ANGLE" ) ).value< QgsProperty >();
+    mAngleProperty = parameters.value( u"ANGLE"_s ).value<QgsProperty>();
 
-  mUseAnchor = parameters.value( QStringLiteral( "ANCHOR" ) ).isValid();
+  mUseAnchor = parameters.value( u"ANCHOR"_s ).isValid();
   if ( mUseAnchor )
   {
-    mAnchor = parameterAsPoint( parameters, QStringLiteral( "ANCHOR" ), context );
-    mAnchorCrs = parameterAsPointCrs( parameters, QStringLiteral( "ANCHOR" ), context );
+    mAnchor = parameterAsPoint( parameters, u"ANCHOR"_s, context );
+    mAnchorCrs = parameterAsPointCrs( parameters, u"ANCHOR"_s, context );
   }
 
   return true;
@@ -95,6 +101,8 @@ bool QgsRotateFeaturesAlgorithm::prepareAlgorithm( const QVariantMap &parameters
 
 QgsFeatureList QgsRotateFeaturesAlgorithm::processFeature( const QgsFeature &feature, QgsProcessingContext &context, QgsProcessingFeedback *feedback )
 {
+  QGS_MARK_ALGORITHM_SOURCE
+
   if ( mUseAnchor && !mTransformedAnchor )
   {
     mTransformedAnchor = true;
@@ -145,5 +153,3 @@ QgsFeatureList QgsRotateFeaturesAlgorithm::processFeature( const QgsFeature &fea
 
 
 ///@endcond
-
-

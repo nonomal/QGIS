@@ -11,9 +11,9 @@
 #ifndef QGSCOORDINATEBOUNDSPREVIEWWIDGET_H
 #define QGSCOORDINATEBOUNDSPREVIEWWIDGET_H
 
-#include "qgsmapcanvas.h"
-#include "qgis_sip.h"
 #include "qgis_gui.h"
+#include "qgis_sip.h"
+#include "qgsmapcanvas.h"
 
 class QgsVertexMarker;
 class QgsMapToolPan;
@@ -30,7 +30,6 @@ class GUI_EXPORT QgsCoordinateBoundsPreviewMapWidget : public QgsMapCanvas
     Q_OBJECT
 
   public:
-
     /**
      * Constructor for QgsCoordinateBoundsPreviewMapWidget.
      */
@@ -59,6 +58,7 @@ class GUI_EXPORT QgsCoordinateBoundsPreviewMapWidget : public QgsMapCanvas
     void setPreviewRect( const QgsRectangle &rect );
 
   private:
+    QgsGeometry setBandGeometryToRect( QgsRubberBand *band, const QgsRectangle &rect ) const;
 
     QgsRubberBand *mPreviewBand = nullptr;
     QgsRubberBand *mCanvasPreviewBand = nullptr;
@@ -68,7 +68,6 @@ class GUI_EXPORT QgsCoordinateBoundsPreviewMapWidget : public QgsMapCanvas
     QList<QgsMapLayer *> mLayers;
 
     QgsRectangle mCanvasRect;
-
 };
 
 #endif // QGSCOORDINATEBOUNDSPREVIEWWIDGET_H

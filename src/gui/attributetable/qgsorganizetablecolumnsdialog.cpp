@@ -14,33 +14,27 @@
  *                                                                         *
  ***************************************************************************/
 
-#include <QMessageBox>
-
 #include "qgsorganizetablecolumnsdialog.h"
-#include "qgsattributetablemodel.h"
-#include "qgsattributetablefiltermodel.h"
-#include "qgsattributetableview.h"
-#include "qgsdockwidget.h"
 
 #include "qgsapplication.h"
-#include "qgsvectordataprovider.h"
-#include "qgsvectorlayer.h"
-#include "qgsexpression.h"
-
-#include "qgssearchquerybuilder.h"
-#include "qgslogger.h"
-#include "qgsmapcanvas.h"
-#include "qgsproject.h"
-#include "qgsexpressionbuilderdialog.h"
-#include "qgsmessagebar.h"
-#include "qgsexpressionselectiondialog.h"
-#include "qgsfeaturelistmodel.h"
-#include "qgsrubberband.h"
-#include "qgsfields.h"
+#include "qgsattributetableview.h"
 #include "qgseditorwidgetregistry.h"
-
+#include "qgsexpression.h"
+#include "qgsfields.h"
 #include "qgsgui.h"
+#include "qgsmapcanvas.h"
+#include "qgsmessagebar.h"
+#include "qgsproject.h"
+#include "qgsrubberband.h"
+#include "qgssearchquerybuilder.h"
+#include "qgsvectorlayer.h"
 
+#include <QMessageBox>
+#include <QString>
+
+#include "moc_qgsorganizetablecolumnsdialog.cpp"
+
+using namespace Qt::StringLiterals;
 
 QgsOrganizeTableColumnsDialog::QgsOrganizeTableColumnsDialog( const QgsVectorLayer *vl, const QgsAttributeTableConfig &config, QWidget *parent, Qt::WindowFlags flags )
   : QDialog( parent, flags )
@@ -55,7 +49,8 @@ QgsOrganizeTableColumnsDialog::QgsOrganizeTableColumnsDialog( const QgsVectorLay
   if ( vl )
   {
     mConfig = config;
-    mConfig.update( vl->fields() );
+    const QgsFields fields = vl->fields();
+    mConfig.update( fields );
 
     mFieldsList->clear();
 
@@ -66,27 +61,13 @@ QgsOrganizeTableColumnsDialog::QgsOrganizeTableColumnsDialog( const QgsVectorLay
       if ( columnConfig.type == QgsAttributeTableConfig::Action )
       {
         item = new QListWidgetItem( tr( "[Action Widget]" ), mFieldsList );
-        item->setIcon( QgsApplication::getThemeIcon( QStringLiteral( "/propertyicons/action.svg" ) ) );
+        item->setIcon( QgsApplication::getThemeIcon( u"/propertyicons/action.svg"_s ) );
       }
       else
       {
-        const int idx = vl->fields().lookupField( columnConfig.name );
+        const int idx = fields.lookupField( columnConfig.name );
         item = new QListWidgetItem( vl->attributeDisplayName( idx ), mFieldsList );
-
-        switch ( vl->fields().fieldOrigin( idx ) )
-        {
-          case QgsFields::OriginExpression:
-            item->setIcon( QgsApplication::getThemeIcon( QStringLiteral( "/mIconExpression.svg" ) ) );
-            break;
-
-          case QgsFields::OriginJoin:
-            item->setIcon( QgsApplication::getThemeIcon( QStringLiteral( "/propertyicons/join.svg" ) ) );
-            break;
-
-          default:
-            item->setIcon( QgsApplication::getThemeIcon( QStringLiteral( "/propertyicons/attributes.svg" ) ) );
-            break;
-        }
+        item->setIcon( fields.iconForField( idx, true ) );
       }
 
       item->setCheckState( columnConfig.hidden ? Qt::Unchecked : Qt::Checked );
@@ -105,8 +86,7 @@ QgsOrganizeTableColumnsDialog::QgsOrganizeTableColumnsDialog( const QgsVectorLay
 ///@cond PRIVATE
 QgsOrganizeTableColumnsDialog::QgsOrganizeTableColumnsDialog( const QgsVectorLayer *vl, QWidget *parent, Qt::WindowFlags flags )
   : QgsOrganizeTableColumnsDialog( vl, vl->attributeTableConfig(), parent, flags )
-{
-}
+{}
 ///@endcond
 
 QgsAttributeTableConfig QgsOrganizeTableColumnsDialog::config() const
@@ -114,7 +94,7 @@ QgsAttributeTableConfig QgsOrganizeTableColumnsDialog::config() const
   QVector<QgsAttributeTableConfig::ColumnConfig> columns;
   columns.reserve( mFieldsList->count() );
 
-  for ( int i = 0; i < mFieldsList->count() ; i++ )
+  for ( int i = 0; i < mFieldsList->count(); i++ )
   {
     const QListWidgetItem *item = mFieldsList->item( i );
     QgsAttributeTableConfig::ColumnConfig columnConfig = item->data( Qt::UserRole ).value<QgsAttributeTableConfig::ColumnConfig>();
@@ -131,7 +111,7 @@ QgsAttributeTableConfig QgsOrganizeTableColumnsDialog::config() const
 
 void QgsOrganizeTableColumnsDialog::showAll()
 {
-  for ( int i = 0; i < mFieldsList->count() ; i++ )
+  for ( int i = 0; i < mFieldsList->count(); i++ )
   {
     mFieldsList->item( i )->setCheckState( Qt::Checked );
   }
@@ -139,7 +119,7 @@ void QgsOrganizeTableColumnsDialog::showAll()
 
 void QgsOrganizeTableColumnsDialog::hideAll()
 {
-  for ( int i = 0; i < mFieldsList->count() ; i++ )
+  for ( int i = 0; i < mFieldsList->count(); i++ )
   {
     mFieldsList->item( i )->setCheckState( Qt::Unchecked );
   }
@@ -149,6 +129,6 @@ void QgsOrganizeTableColumnsDialog::toggleSelection()
 {
   for ( QListWidgetItem *item : mFieldsList->selectedItems() )
   {
-    item->setCheckState( item->checkState() == Qt::Checked ? Qt::Unchecked :  Qt::Checked );
+    item->setCheckState( item->checkState() == Qt::Checked ? Qt::Unchecked : Qt::Checked );
   }
 }

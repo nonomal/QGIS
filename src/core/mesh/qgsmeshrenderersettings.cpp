@@ -16,8 +16,14 @@
  ***************************************************************************/
 
 #include "qgsmeshrenderersettings.h"
+
+#include "qgscolorramp.h"
 #include "qgscolorutils.h"
 #include "qgsunittypes.h"
+
+#include <QString>
+
+using namespace Qt::StringLiterals;
 
 bool QgsMeshRendererMeshSettings::isEnabled() const
 {
@@ -61,21 +67,22 @@ void QgsMeshRendererMeshSettings::setLineWidthUnit( Qgis::RenderUnit lineWidthUn
 
 QDomElement QgsMeshRendererMeshSettings::writeXml( QDomDocument &doc ) const
 {
-  QDomElement elem = doc.createElement( QStringLiteral( "mesh-settings" ) );
-  elem.setAttribute( QStringLiteral( "enabled" ), mEnabled ? QStringLiteral( "1" ) : QStringLiteral( "0" ) );
-  elem.setAttribute( QStringLiteral( "line-width" ), mLineWidth );
-  elem.setAttribute( QStringLiteral( "color" ), QgsColorUtils::colorToString( mColor ) );
-  elem.setAttribute( QStringLiteral( "line-width-unit" ), QgsUnitTypes::encodeUnit( mLineWidthUnit ) );
+  QDomElement elem = doc.createElement( u"mesh-settings"_s );
+  elem.setAttribute( u"enabled"_s, mEnabled ? u"1"_s : u"0"_s );
+  elem.setAttribute( u"line-width"_s, mLineWidth );
+  elem.setAttribute( u"color"_s, QgsColorUtils::colorToString( mColor ) );
+  elem.setAttribute( u"line-width-unit"_s, QgsUnitTypes::encodeUnit( mLineWidthUnit ) );
   return elem;
 }
 
 void QgsMeshRendererMeshSettings::readXml( const QDomElement &elem )
 {
-  mEnabled = elem.attribute( QStringLiteral( "enabled" ) ).toInt();
-  mLineWidth = elem.attribute( QStringLiteral( "line-width" ) ).toDouble();
-  mColor = QgsColorUtils::colorFromString( elem.attribute( QStringLiteral( "color" ) ) );
-  mLineWidthUnit = QgsUnitTypes::decodeRenderUnit( elem.attribute( QStringLiteral( "line-width-unit" ) ) );
+  mEnabled = elem.attribute( u"enabled"_s ).toInt();
+  mLineWidth = elem.attribute( u"line-width"_s ).toDouble();
+  mColor = QgsColorUtils::colorFromString( elem.attribute( u"color"_s ) );
+  mLineWidthUnit = QgsUnitTypes::decodeRenderUnit( elem.attribute( u"line-width-unit"_s ) );
 }
+
 // ---------------------------------------------------------------------
 
 QgsColorRampShader QgsMeshRendererScalarSettings::colorRampShader() const
@@ -88,19 +95,32 @@ void QgsMeshRendererScalarSettings::setColorRampShader( const QgsColorRampShader
   mColorRampShader = shader;
 }
 
-double QgsMeshRendererScalarSettings::classificationMinimum() const { return mClassificationMinimum; }
+double QgsMeshRendererScalarSettings::classificationMinimum() const
+{
+  return mClassificationMinimum;
+}
 
-double QgsMeshRendererScalarSettings::classificationMaximum() const { return mClassificationMaximum; }
+double QgsMeshRendererScalarSettings::classificationMaximum() const
+{
+  return mClassificationMaximum;
+}
 
 void QgsMeshRendererScalarSettings::setClassificationMinimumMaximum( double minimum, double maximum )
 {
   mClassificationMinimum = minimum;
   mClassificationMaximum = maximum;
+  updateShader();
 }
 
-double QgsMeshRendererScalarSettings::opacity() const { return mOpacity; }
+double QgsMeshRendererScalarSettings::opacity() const
+{
+  return mOpacity;
+}
 
-void QgsMeshRendererScalarSettings::setOpacity( double opacity ) { mOpacity = opacity; }
+void QgsMeshRendererScalarSettings::setOpacity( double opacity )
+{
+  mOpacity = opacity;
+}
 
 QgsMeshRendererScalarSettings::DataResamplingMethod QgsMeshRendererScalarSettings::dataResamplingMethod() const
 {
@@ -114,28 +134,34 @@ void QgsMeshRendererScalarSettings::setDataResamplingMethod( const QgsMeshRender
 
 QDomElement QgsMeshRendererScalarSettings::writeXml( QDomDocument &doc, const QgsReadWriteContext &context ) const
 {
-  QDomElement elem = doc.createElement( QStringLiteral( "scalar-settings" ) );
-  elem.setAttribute( QStringLiteral( "min-val" ), mClassificationMinimum );
-  elem.setAttribute( QStringLiteral( "max-val" ), mClassificationMaximum );
-  elem.setAttribute( QStringLiteral( "opacity" ), mOpacity );
+  QDomElement elem = doc.createElement( u"scalar-settings"_s );
+  elem.setAttribute( u"min-val"_s, mClassificationMinimum );
+  elem.setAttribute( u"max-val"_s, mClassificationMaximum );
+  elem.setAttribute( u"opacity"_s, mOpacity );
 
   QString methodTxt;
   switch ( mDataResamplingMethod )
   {
     case NoResampling:
-      methodTxt = QStringLiteral( "no-resampling" );
+      methodTxt = u"no-resampling"_s;
       break;
     case NeighbourAverage:
-      methodTxt = QStringLiteral( "neighbour-average" );
+      methodTxt = u"neighbour-average"_s;
       break;
   }
-  elem.setAttribute( QStringLiteral( "interpolation-method" ), methodTxt );
+  elem.setAttribute( u"interpolation-method"_s, methodTxt );
+
+  if ( mRangeExtent != Qgis::MeshRangeExtent::WholeMesh )
+    elem.setAttribute( u"range-extent"_s, qgsEnumValueToKey( mRangeExtent ) );
+  if ( mRangeLimit != Qgis::MeshRangeLimit::NotSet )
+    elem.setAttribute( u"range-limit"_s, qgsEnumValueToKey( mRangeLimit ) );
+
   const QDomElement elemShader = mColorRampShader.writeXml( doc, context );
   elem.appendChild( elemShader );
 
-  QDomElement elemEdge = doc.createElement( QStringLiteral( "edge-settings" ) );
+  QDomElement elemEdge = doc.createElement( u"edge-settings"_s );
   elemEdge.appendChild( mEdgeStrokeWidth.writeXml( doc, context ) );
-  elemEdge.setAttribute( QStringLiteral( "stroke-width-unit" ), static_cast< int >( mEdgeStrokeWidthUnit ) );
+  elemEdge.setAttribute( u"stroke-width-unit"_s, static_cast< int >( mEdgeStrokeWidthUnit ) );
   elem.appendChild( elemEdge );
 
   return elem;
@@ -143,12 +169,12 @@ QDomElement QgsMeshRendererScalarSettings::writeXml( QDomDocument &doc, const Qg
 
 void QgsMeshRendererScalarSettings::readXml( const QDomElement &elem, const QgsReadWriteContext &context )
 {
-  mClassificationMinimum = elem.attribute( QStringLiteral( "min-val" ) ).toDouble();
-  mClassificationMaximum = elem.attribute( QStringLiteral( "max-val" ) ).toDouble();
-  mOpacity = elem.attribute( QStringLiteral( "opacity" ) ).toDouble();
+  mClassificationMinimum = elem.attribute( u"min-val"_s ).toDouble();
+  mClassificationMaximum = elem.attribute( u"max-val"_s ).toDouble();
+  mOpacity = elem.attribute( u"opacity"_s ).toDouble();
 
-  const QString methodTxt = elem.attribute( QStringLiteral( "interpolation-method" ) );
-  if ( QStringLiteral( "neighbour-average" ) == methodTxt )
+  const QString methodTxt = elem.attribute( u"interpolation-method"_s );
+  if ( u"neighbour-average"_s == methodTxt )
   {
     mDataResamplingMethod = DataResamplingMethod::NeighbourAverage;
   }
@@ -156,14 +182,17 @@ void QgsMeshRendererScalarSettings::readXml( const QDomElement &elem, const QgsR
   {
     mDataResamplingMethod = DataResamplingMethod::NoResampling;
   }
-  const QDomElement elemShader = elem.firstChildElement( QStringLiteral( "colorrampshader" ) );
+
+  mRangeExtent = qgsEnumKeyToValue( elem.attribute( "range-extent" ), Qgis::MeshRangeExtent::WholeMesh );
+  mRangeLimit = qgsEnumKeyToValue( elem.attribute( "range-limit" ), Qgis::MeshRangeLimit::NotSet );
+
+  const QDomElement elemShader = elem.firstChildElement( u"colorrampshader"_s );
   mColorRampShader.readXml( elemShader, context );
 
-  const QDomElement elemEdge = elem.firstChildElement( QStringLiteral( "edge-settings" ) );
-  const QDomElement elemEdgeStrokeWidth = elemEdge.firstChildElement( QStringLiteral( "mesh-stroke-width" ) );
+  const QDomElement elemEdge = elem.firstChildElement( u"edge-settings"_s );
+  const QDomElement elemEdgeStrokeWidth = elemEdge.firstChildElement( u"mesh-stroke-width"_s );
   mEdgeStrokeWidth.readXml( elemEdgeStrokeWidth, context );
-  mEdgeStrokeWidthUnit = static_cast<Qgis::RenderUnit>(
-                           elemEdge.attribute( QStringLiteral( "stroke-width-unit" ) ).toInt() );
+  mEdgeStrokeWidthUnit = static_cast<Qgis::RenderUnit>( elemEdge.attribute( u"stroke-width-unit"_s ).toInt() );
 }
 
 QgsInterpolatedLineWidth QgsMeshRendererScalarSettings::edgeStrokeWidth() const
@@ -186,207 +215,77 @@ void QgsMeshRendererScalarSettings::setEdgeStrokeWidthUnit( Qgis::RenderUnit edg
   mEdgeStrokeWidthUnit = edgeStrokeWidthUnit;
 }
 
-// ---------------------------------------------------------------------
-
-double QgsMeshRendererVectorSettings::lineWidth() const
+void QgsMeshRendererScalarSettings::updateShader()
 {
-  return mLineWidth;
-}
+  mColorRampShader.setMinimumValue( mClassificationMinimum );
+  mColorRampShader.setMaximumValue( mClassificationMaximum );
 
-void QgsMeshRendererVectorSettings::setLineWidth( double lineWidth )
-{
-  mLineWidth = lineWidth;
-}
-
-QColor QgsMeshRendererVectorSettings::color() const
-{
-  return mColor;
-}
-
-void QgsMeshRendererVectorSettings::setColor( const QColor &vectorColor )
-{
-  mColor = vectorColor;
-}
-
-double QgsMeshRendererVectorSettings::filterMin() const
-{
-  return mFilterMin;
-}
-
-void QgsMeshRendererVectorSettings::setFilterMin( double vectorFilterMin )
-{
-  mFilterMin = vectorFilterMin;
-}
-
-double QgsMeshRendererVectorSettings::filterMax() const
-{
-  return mFilterMax;
-}
-
-void QgsMeshRendererVectorSettings::setFilterMax( double vectorFilterMax )
-{
-  mFilterMax = vectorFilterMax;
-}
-
-bool QgsMeshRendererVectorSettings::isOnUserDefinedGrid() const
-{
-  return mOnUserDefinedGrid;
-}
-
-void QgsMeshRendererVectorSettings::setOnUserDefinedGrid( bool enabled )
-{
-  mOnUserDefinedGrid = enabled;
-}
-
-int QgsMeshRendererVectorSettings::userGridCellWidth() const
-{
-  return mUserGridCellWidth;
-}
-
-void QgsMeshRendererVectorSettings::setUserGridCellWidth( int width )
-{
-  mUserGridCellWidth = width;
-}
-
-int QgsMeshRendererVectorSettings::userGridCellHeight() const
-{
-  return mUserGridCellHeight;
-}
-
-void QgsMeshRendererVectorSettings::setUserGridCellHeight( int height )
-{
-  mUserGridCellHeight = height;
-}
-
-QgsMeshRendererVectorArrowSettings::ArrowScalingMethod QgsMeshRendererVectorArrowSettings::shaftLengthMethod() const
-{
-  return mShaftLengthMethod;
-}
-
-void QgsMeshRendererVectorArrowSettings::setShaftLengthMethod( QgsMeshRendererVectorArrowSettings::ArrowScalingMethod shaftLengthMethod )
-{
-  mShaftLengthMethod = shaftLengthMethod;
-}
-
-double QgsMeshRendererVectorArrowSettings::minShaftLength() const
-{
-  return mMinShaftLength;
-}
-
-void QgsMeshRendererVectorArrowSettings::setMinShaftLength( double minShaftLength )
-{
-  mMinShaftLength = minShaftLength;
-}
-
-double QgsMeshRendererVectorArrowSettings::maxShaftLength() const
-{
-  return mMaxShaftLength;
-}
-
-void QgsMeshRendererVectorArrowSettings::setMaxShaftLength( double maxShaftLength )
-{
-  mMaxShaftLength = maxShaftLength;
-}
-
-double QgsMeshRendererVectorArrowSettings::scaleFactor() const
-{
-  return mScaleFactor;
-}
-
-void QgsMeshRendererVectorArrowSettings::setScaleFactor( double scaleFactor )
-{
-  mScaleFactor = scaleFactor;
-}
-
-double QgsMeshRendererVectorArrowSettings::fixedShaftLength() const
-{
-  return mFixedShaftLength;
-}
-
-void QgsMeshRendererVectorArrowSettings::setFixedShaftLength( double fixedShaftLength )
-{
-  mFixedShaftLength = fixedShaftLength;
-}
-
-double QgsMeshRendererVectorArrowSettings::arrowHeadWidthRatio() const
-{
-  return mArrowHeadWidthRatio;
-}
-
-void QgsMeshRendererVectorArrowSettings::setArrowHeadWidthRatio( double vectorHeadWidthRatio )
-{
-  mArrowHeadWidthRatio = vectorHeadWidthRatio;
-}
-
-double QgsMeshRendererVectorArrowSettings::arrowHeadLengthRatio() const
-{
-  return mArrowHeadLengthRatio;
-}
-
-void QgsMeshRendererVectorArrowSettings::setArrowHeadLengthRatio( double vectorHeadLengthRatio )
-{
-  mArrowHeadLengthRatio = vectorHeadLengthRatio;
-}
-
-QDomElement QgsMeshRendererVectorArrowSettings::writeXml( QDomDocument &doc ) const
-{
-  QDomElement elem = doc.createElement( QStringLiteral( "vector-arrow-settings" ) );
-  elem.setAttribute( QStringLiteral( "arrow-head-width-ratio" ), mArrowHeadWidthRatio );
-  elem.setAttribute( QStringLiteral( "arrow-head-length-ratio" ), mArrowHeadLengthRatio );
-
-  QDomElement elemShaft = doc.createElement( QStringLiteral( "shaft-length" ) );
-  QString methodTxt;
-  switch ( mShaftLengthMethod )
-  {
-    case MinMax:
-      methodTxt = QStringLiteral( "minmax" );
-      elemShaft.setAttribute( QStringLiteral( "min" ), mMinShaftLength );
-      elemShaft.setAttribute( QStringLiteral( "max" ), mMaxShaftLength );
-      break;
-    case Scaled:
-      methodTxt = QStringLiteral( "scaled" );
-      elemShaft.setAttribute( QStringLiteral( "scale-factor" ), mScaleFactor );
-      break;
-    case Fixed:
-      methodTxt = QStringLiteral( "fixed" ) ;
-      elemShaft.setAttribute( QStringLiteral( "fixed-length" ), mFixedShaftLength );
-      break;
-  }
-  elemShaft.setAttribute( QStringLiteral( "method" ), methodTxt );
-  elem.appendChild( elemShaft );
-  return elem;
-}
-
-void QgsMeshRendererVectorArrowSettings::readXml( const QDomElement &elem )
-{
-  mArrowHeadWidthRatio = elem.attribute( QStringLiteral( "arrow-head-width-ratio" ) ).toDouble();
-  mArrowHeadLengthRatio = elem.attribute( QStringLiteral( "arrow-head-length-ratio" ) ).toDouble();
-
-  const QDomElement elemShaft = elem.firstChildElement( QStringLiteral( "shaft-length" ) );
-  const QString methodTxt = elemShaft.attribute( QStringLiteral( "method" ) );
-  if ( QStringLiteral( "minmax" ) == methodTxt )
-  {
-    mShaftLengthMethod = MinMax;
-    mMinShaftLength = elemShaft.attribute( QStringLiteral( "min" ) ).toDouble();
-    mMaxShaftLength = elemShaft.attribute( QStringLiteral( "max" ) ).toDouble();
-  }
-  else if ( QStringLiteral( "scaled" ) == methodTxt )
-  {
-    mShaftLengthMethod = Scaled;
-    mScaleFactor = elemShaft.attribute( QStringLiteral( "scale-factor" ) ).toDouble();
-  }
-  else  // fixed
-  {
-    mShaftLengthMethod = Fixed;
-    mFixedShaftLength = elemShaft.attribute( QStringLiteral( "fixed-length" ) ).toDouble();
-  }
+  if ( !mColorRampShader.isEmpty() )
+    mColorRampShader.classifyColorRamp( mColorRampShader.sourceColorRamp()->count(), 1, QgsRectangle(), nullptr );
 }
 
 // ---------------------------------------------------------------------
 
 QgsMeshRendererSettings::QgsMeshRendererSettings()
   : mAveragingMethod( new QgsMeshSigmaAveragingMethod() )
+{}
+
+QgsMeshRendererSettings::QgsMeshRendererSettings( const QgsMeshRendererSettings &other )
+  //****** IMPORTANT! editing this? make sure you update the move constructor too! *****
+  : mRendererNativeMeshSettings( other.mRendererNativeMeshSettings )
+  , mRendererTriangularMeshSettings( other.mRendererTriangularMeshSettings )
+  , mRendererEdgeMeshSettings( other.mRendererEdgeMeshSettings )
+  , mRendererScalarSettings( other.mRendererScalarSettings )
+  , mRendererVectorSettings( other.mRendererVectorSettings )
+  , mActiveScalarDatasetGroup( other.mActiveScalarDatasetGroup )
+  , mActiveVectorDatasetGroup( other.mActiveVectorDatasetGroup )
+  , mAveragingMethod( other.mAveragingMethod )
+//****** IMPORTANT! editing this? make sure you update the move constructor too! *****
+{}
+
+QgsMeshRendererSettings::QgsMeshRendererSettings( QgsMeshRendererSettings &&other )
+  : mRendererNativeMeshSettings( std::move( other.mRendererNativeMeshSettings ) )
+  , mRendererTriangularMeshSettings( std::move( other.mRendererTriangularMeshSettings ) )
+  , mRendererEdgeMeshSettings( std::move( other.mRendererEdgeMeshSettings ) )
+  , mRendererScalarSettings( std::move( other.mRendererScalarSettings ) )
+  , mRendererVectorSettings( std::move( other.mRendererVectorSettings ) )
+  , mActiveScalarDatasetGroup( other.mActiveScalarDatasetGroup )
+  , mActiveVectorDatasetGroup( other.mActiveVectorDatasetGroup )
+  , mAveragingMethod( std::move( other.mAveragingMethod ) )
+{}
+
+QgsMeshRendererSettings &QgsMeshRendererSettings::operator=( const QgsMeshRendererSettings &other )
 {
+  if ( &other == this )
+    return *this;
+
+  //****** IMPORTANT! editing this? make sure you update the move assignment operator too! *****
+  mRendererNativeMeshSettings = other.mRendererNativeMeshSettings;
+  mRendererTriangularMeshSettings = other.mRendererTriangularMeshSettings;
+  mRendererEdgeMeshSettings = other.mRendererEdgeMeshSettings;
+  mRendererScalarSettings = other.mRendererScalarSettings;
+  mRendererVectorSettings = other.mRendererVectorSettings;
+  mActiveScalarDatasetGroup = other.mActiveScalarDatasetGroup;
+  mActiveVectorDatasetGroup = other.mActiveVectorDatasetGroup;
+  mAveragingMethod = other.mAveragingMethod;
+  //****** IMPORTANT! editing this? make sure you update the move assignment operator too! *****
+  return *this;
+}
+
+QgsMeshRendererSettings &QgsMeshRendererSettings::operator=( QgsMeshRendererSettings &&other )
+{
+  if ( &other == this )
+    return *this;
+
+  mRendererNativeMeshSettings = std::move( other.mRendererNativeMeshSettings );
+  mRendererTriangularMeshSettings = std::move( other.mRendererTriangularMeshSettings );
+  mRendererEdgeMeshSettings = std::move( other.mRendererEdgeMeshSettings );
+  mRendererScalarSettings = std::move( other.mRendererScalarSettings );
+  mRendererVectorSettings = std::move( other.mRendererVectorSettings );
+  mActiveScalarDatasetGroup = other.mActiveScalarDatasetGroup;
+  mActiveVectorDatasetGroup = other.mActiveVectorDatasetGroup;
+  mAveragingMethod = std::move( other.mAveragingMethod );
+  return *this;
 }
 
 QgsMeshRendererSettings::~QgsMeshRendererSettings() = default;
@@ -406,45 +305,45 @@ void QgsMeshRendererSettings::setAveragingMethod( QgsMesh3DAveragingMethod *meth
 
 QDomElement QgsMeshRendererSettings::writeXml( QDomDocument &doc, const QgsReadWriteContext &context ) const
 {
-  QDomElement elem = doc.createElement( QStringLiteral( "mesh-renderer-settings" ) );
+  QDomElement elem = doc.createElement( u"mesh-renderer-settings"_s );
 
-  QDomElement elemActiveDatasetGroup = doc.createElement( QStringLiteral( "active-dataset-group" ) );
-  elemActiveDatasetGroup.setAttribute( QStringLiteral( "scalar" ), mActiveScalarDatasetGroup );
-  elemActiveDatasetGroup.setAttribute( QStringLiteral( "vector" ), mActiveVectorDatasetGroup );
+  QDomElement elemActiveDatasetGroup = doc.createElement( u"active-dataset-group"_s );
+  elemActiveDatasetGroup.setAttribute( u"scalar"_s, mActiveScalarDatasetGroup );
+  elemActiveDatasetGroup.setAttribute( u"vector"_s, mActiveVectorDatasetGroup );
   elem.appendChild( elemActiveDatasetGroup );
 
   for ( auto groupIndex = mRendererScalarSettings.keyBegin(); groupIndex != mRendererScalarSettings.keyEnd(); groupIndex++ )
   {
     const QgsMeshRendererScalarSettings &scalarSettings = mRendererScalarSettings[*groupIndex];
     QDomElement elemScalar = scalarSettings.writeXml( doc, context );
-    elemScalar.setAttribute( QStringLiteral( "group" ), *groupIndex );
+    elemScalar.setAttribute( u"group"_s, *groupIndex );
     elem.appendChild( elemScalar );
   }
 
   for ( auto groupIndex = mRendererVectorSettings.keyBegin(); groupIndex != mRendererVectorSettings.keyEnd(); groupIndex++ )
   {
-    const QgsMeshRendererVectorSettings &vectorSettings = mRendererVectorSettings[*groupIndex];
+    const QgsVectorFieldSettings &vectorSettings = mRendererVectorSettings[*groupIndex];
     QDomElement elemVector = vectorSettings.writeXml( doc, context );
-    elemVector.setAttribute( QStringLiteral( "group" ), *groupIndex );
+    elemVector.setAttribute( u"group"_s, *groupIndex );
     elem.appendChild( elemVector );
   }
 
   QDomElement elemNativeMesh = mRendererNativeMeshSettings.writeXml( doc );
-  elemNativeMesh.setTagName( QStringLiteral( "mesh-settings-native" ) );
+  elemNativeMesh.setTagName( u"mesh-settings-native"_s );
   elem.appendChild( elemNativeMesh );
 
   QDomElement elemEdgeMesh = mRendererEdgeMeshSettings.writeXml( doc );
-  elemEdgeMesh.setTagName( QStringLiteral( "mesh-settings-edge" ) );
+  elemEdgeMesh.setTagName( u"mesh-settings-edge"_s );
   elem.appendChild( elemEdgeMesh );
 
   QDomElement elemTriangularMesh = mRendererTriangularMeshSettings.writeXml( doc );
-  elemTriangularMesh.setTagName( QStringLiteral( "mesh-settings-triangular" ) );
+  elemTriangularMesh.setTagName( u"mesh-settings-triangular"_s );
   elem.appendChild( elemTriangularMesh );
 
   if ( mAveragingMethod )
   {
-    QDomElement elemAveraging = doc.createElement( QStringLiteral( "averaging-3d" ) );
-    elemAveraging.setAttribute( QStringLiteral( "method" ), QString::number( mAveragingMethod->method() ) ) ;
+    QDomElement elemAveraging = doc.createElement( u"averaging-3d"_s );
+    elemAveraging.setAttribute( u"method"_s, QString::number( mAveragingMethod->method() ) );
     const QDomElement elemAveragingParams = mAveragingMethod->writeXml( doc );
     elemAveraging.appendChild( elemAveragingParams );
     elem.appendChild( elemAveraging );
@@ -459,48 +358,48 @@ void QgsMeshRendererSettings::readXml( const QDomElement &elem, const QgsReadWri
   mRendererVectorSettings.clear();
   mAveragingMethod.reset();
 
-  const QDomElement elemActiveDataset = elem.firstChildElement( QStringLiteral( "active-dataset-group" ) );
-  if ( elemActiveDataset.hasAttribute( QStringLiteral( "scalar" ) ) )
-    mActiveScalarDatasetGroup = elemActiveDataset.attribute( QStringLiteral( "scalar" ) ).toInt();
+  const QDomElement elemActiveDataset = elem.firstChildElement( u"active-dataset-group"_s );
+  if ( elemActiveDataset.hasAttribute( u"scalar"_s ) )
+    mActiveScalarDatasetGroup = elemActiveDataset.attribute( u"scalar"_s ).toInt();
 
-  if ( elemActiveDataset.hasAttribute( QStringLiteral( "vector" ) ) )
-    mActiveVectorDatasetGroup = elemActiveDataset.attribute( QStringLiteral( "vector" ) ).toInt();
+  if ( elemActiveDataset.hasAttribute( u"vector"_s ) )
+    mActiveVectorDatasetGroup = elemActiveDataset.attribute( u"vector"_s ).toInt();
 
-  QDomElement elemScalar = elem.firstChildElement( QStringLiteral( "scalar-settings" ) );
+  QDomElement elemScalar = elem.firstChildElement( u"scalar-settings"_s );
   while ( !elemScalar.isNull() )
   {
-    const int groupIndex = elemScalar.attribute( QStringLiteral( "group" ) ).toInt();
+    const int groupIndex = elemScalar.attribute( u"group"_s ).toInt();
     QgsMeshRendererScalarSettings scalarSettings;
     scalarSettings.readXml( elemScalar, context );
     mRendererScalarSettings.insert( groupIndex, scalarSettings );
 
-    elemScalar = elemScalar.nextSiblingElement( QStringLiteral( "scalar-settings" ) );
+    elemScalar = elemScalar.nextSiblingElement( u"scalar-settings"_s );
   }
 
-  QDomElement elemVector = elem.firstChildElement( QStringLiteral( "vector-settings" ) );
+  QDomElement elemVector = elem.firstChildElement( u"vector-settings"_s );
   while ( !elemVector.isNull() )
   {
-    const int groupIndex = elemVector.attribute( QStringLiteral( "group" ) ).toInt();
-    QgsMeshRendererVectorSettings vectorSettings;
+    const int groupIndex = elemVector.attribute( u"group"_s ).toInt();
+    QgsVectorFieldSettings vectorSettings;
     vectorSettings.readXml( elemVector, context );
     mRendererVectorSettings.insert( groupIndex, vectorSettings );
 
-    elemVector = elemVector.nextSiblingElement( QStringLiteral( "vector-settings" ) );
+    elemVector = elemVector.nextSiblingElement( u"vector-settings"_s );
   }
 
-  const QDomElement elemNativeMesh = elem.firstChildElement( QStringLiteral( "mesh-settings-native" ) );
+  const QDomElement elemNativeMesh = elem.firstChildElement( u"mesh-settings-native"_s );
   mRendererNativeMeshSettings.readXml( elemNativeMesh );
 
-  const QDomElement elemEdgeMesh = elem.firstChildElement( QStringLiteral( "mesh-settings-edge" ) );
+  const QDomElement elemEdgeMesh = elem.firstChildElement( u"mesh-settings-edge"_s );
   mRendererEdgeMeshSettings.readXml( elemEdgeMesh );
 
-  const QDomElement elemTriangularMesh = elem.firstChildElement( QStringLiteral( "mesh-settings-triangular" ) );
+  const QDomElement elemTriangularMesh = elem.firstChildElement( u"mesh-settings-triangular"_s );
   mRendererTriangularMeshSettings.readXml( elemTriangularMesh );
 
-  const QDomElement elemAveraging = elem.firstChildElement( QStringLiteral( "averaging-3d" ) );
+  const QDomElement elemAveraging = elem.firstChildElement( u"averaging-3d"_s );
   if ( !elemAveraging.isNull() )
   {
-    mAveragingMethod.reset( QgsMesh3DAveragingMethod::createFromXml( elemAveraging ) );
+    mAveragingMethod = QgsMesh3DAveragingMethod::createFromXml( elemAveraging );
   }
 }
 
@@ -522,222 +421,6 @@ int QgsMeshRendererSettings::activeVectorDatasetGroup() const
 void QgsMeshRendererSettings::setActiveVectorDatasetGroup( int activeVectorDatasetGroup )
 {
   mActiveVectorDatasetGroup = activeVectorDatasetGroup;
-}
-
-QgsMeshRendererVectorStreamlineSettings::SeedingStartPointsMethod QgsMeshRendererVectorStreamlineSettings::seedingMethod() const
-{
-  return mSeedingMethod;
-}
-
-void QgsMeshRendererVectorStreamlineSettings::setSeedingMethod( const SeedingStartPointsMethod &seedingMethod )
-{
-  mSeedingMethod = seedingMethod;
-}
-
-double QgsMeshRendererVectorStreamlineSettings::seedingDensity() const
-{
-  return mSeedingDensity;
-}
-
-void QgsMeshRendererVectorStreamlineSettings::setSeedingDensity( double seedingDensity )
-{
-  mSeedingDensity = seedingDensity;
-}
-
-QDomElement QgsMeshRendererVectorStreamlineSettings::writeXml( QDomDocument &doc ) const
-{
-  QDomElement elem = doc.createElement( QStringLiteral( "vector-streamline-settings" ) );
-
-  elem.setAttribute( QStringLiteral( "seeding-method" ), mSeedingMethod );
-  elem.setAttribute( QStringLiteral( "seeding-density" ), mSeedingDensity );
-
-  return elem;
-}
-
-void QgsMeshRendererVectorStreamlineSettings::readXml( const QDomElement &elem )
-{
-  mSeedingMethod =
-    static_cast<QgsMeshRendererVectorStreamlineSettings::SeedingStartPointsMethod>(
-      elem.attribute( QStringLiteral( "seeding-method" ) ).toInt() );
-  mSeedingDensity = elem.attribute( QStringLiteral( "seeding-density" ) ).toDouble();
-}
-
-QgsMeshRendererVectorSettings::Symbology QgsMeshRendererVectorSettings::symbology() const
-{
-  return mDisplayingMethod;
-}
-
-void QgsMeshRendererVectorSettings::setSymbology( const Symbology &displayingMethod )
-{
-  mDisplayingMethod = displayingMethod;
-}
-
-QgsMeshRendererVectorArrowSettings QgsMeshRendererVectorSettings::arrowSettings() const
-{
-  return mArrowsSettings;
-}
-
-void QgsMeshRendererVectorSettings::setArrowsSettings( const QgsMeshRendererVectorArrowSettings &arrowSettings )
-{
-  mArrowsSettings = arrowSettings;
-}
-
-QgsMeshRendererVectorStreamlineSettings QgsMeshRendererVectorSettings::streamLinesSettings() const
-{
-  return mStreamLinesSettings;
-}
-
-void QgsMeshRendererVectorSettings::setStreamLinesSettings( const QgsMeshRendererVectorStreamlineSettings &streamLinesSettings )
-{
-  mStreamLinesSettings = streamLinesSettings;
-}
-
-QDomElement QgsMeshRendererVectorSettings::writeXml( QDomDocument &doc, const QgsReadWriteContext &context ) const
-{
-  QDomElement elem = doc.createElement( QStringLiteral( "vector-settings" ) );
-  elem.setAttribute( QStringLiteral( "symbology" ), mDisplayingMethod );
-
-  elem.setAttribute( QStringLiteral( "line-width" ), mLineWidth );
-  elem.setAttribute( QStringLiteral( "coloring-method" ), coloringMethod() );
-  elem.setAttribute( QStringLiteral( "color" ), QgsColorUtils::colorToString( mColor ) );
-  const QDomElement elemShader = mColorRampShader.writeXml( doc, context );
-  elem.appendChild( elemShader );
-  elem.setAttribute( QStringLiteral( "filter-min" ), mFilterMin );
-  elem.setAttribute( QStringLiteral( "filter-max" ), mFilterMax );
-
-  elem.setAttribute( QStringLiteral( "user-grid-enabled" ), mOnUserDefinedGrid ? QStringLiteral( "1" ) : QStringLiteral( "0" ) );
-  elem.setAttribute( QStringLiteral( "user-grid-width" ), mUserGridCellWidth );
-  elem.setAttribute( QStringLiteral( "user-grid-height" ), mUserGridCellHeight );
-
-  elem.appendChild( mArrowsSettings.writeXml( doc ) );
-  elem.appendChild( mStreamLinesSettings.writeXml( doc ) );
-  elem.appendChild( mTracesSettings.writeXml( doc ) );
-
-  return elem;
-}
-
-void QgsMeshRendererVectorSettings::readXml( const QDomElement &elem, const QgsReadWriteContext &context )
-{
-  mDisplayingMethod = static_cast<QgsMeshRendererVectorSettings::Symbology>(
-                        elem.attribute( QStringLiteral( "symbology" ) ).toInt() );
-
-  mLineWidth = elem.attribute( QStringLiteral( "line-width" ) ).toDouble();
-  mColoringMethod = static_cast<QgsInterpolatedLineColor::ColoringMethod>(
-                      elem.attribute( QStringLiteral( "coloring-method" ) ).toInt() );
-  mColor = QgsColorUtils::colorFromString( elem.attribute( QStringLiteral( "color" ) ) );
-  mColorRampShader.readXml( elem.firstChildElement( "colorrampshader" ), context );
-  mFilterMin = elem.attribute( QStringLiteral( "filter-min" ) ).toDouble();
-  mFilterMax = elem.attribute( QStringLiteral( "filter-max" ) ).toDouble();
-
-  mOnUserDefinedGrid = elem.attribute( QStringLiteral( "user-grid-enabled" ) ).toInt(); //bool
-  mUserGridCellWidth = elem.attribute( QStringLiteral( "user-grid-width" ) ).toInt();
-  mUserGridCellHeight = elem.attribute( QStringLiteral( "user-grid-height" ) ).toInt();
-
-  const QDomElement elemVector = elem.firstChildElement( QStringLiteral( "vector-arrow-settings" ) );
-  if ( ! elemVector.isNull() )
-    mArrowsSettings.readXml( elemVector );
-
-  const QDomElement elemStreamLine = elem.firstChildElement( QStringLiteral( "vector-streamline-settings" ) );
-  if ( ! elemStreamLine.isNull() )
-    mStreamLinesSettings.readXml( elemStreamLine );
-
-  const QDomElement elemTraces = elem.firstChildElement( QStringLiteral( "vector-traces-settings" ) );
-  if ( ! elemTraces.isNull() )
-    mTracesSettings.readXml( elemTraces );
-}
-
-QgsInterpolatedLineColor::ColoringMethod QgsMeshRendererVectorSettings::coloringMethod() const
-{
-  return mColoringMethod;
-}
-
-void QgsMeshRendererVectorSettings::setColoringMethod( const QgsInterpolatedLineColor::ColoringMethod &coloringMethod )
-{
-  mColoringMethod = coloringMethod;
-}
-
-QgsColorRampShader QgsMeshRendererVectorSettings::colorRampShader() const
-{
-  return mColorRampShader;
-}
-
-void QgsMeshRendererVectorSettings::setColorRampShader( const QgsColorRampShader &colorRampShader )
-{
-  mColorRampShader = colorRampShader;
-}
-
-QgsInterpolatedLineColor QgsMeshRendererVectorSettings::vectorStrokeColoring() const
-{
-  QgsInterpolatedLineColor strokeColoring;
-  switch ( mColoringMethod )
-  {
-    case QgsInterpolatedLineColor::SingleColor:
-      strokeColoring = QgsInterpolatedLineColor( mColor );
-      break;
-    case QgsInterpolatedLineColor::ColorRamp:
-      strokeColoring = QgsInterpolatedLineColor( mColorRampShader );
-      break;
-  }
-
-  return strokeColoring;
-}
-
-QgsMeshRendererVectorTracesSettings QgsMeshRendererVectorSettings::tracesSettings() const
-{
-  return mTracesSettings;
-}
-
-void QgsMeshRendererVectorSettings::setTracesSettings( const QgsMeshRendererVectorTracesSettings &tracesSettings )
-{
-  mTracesSettings = tracesSettings;
-}
-
-void QgsMeshRendererVectorTracesSettings::readXml( const QDomElement &elem )
-{
-  mMaximumTailLength = elem.attribute( QStringLiteral( "maximum-tail-length" ) ).toInt();
-  mMaximumTailLengthUnit = static_cast<Qgis::RenderUnit>(
-                             elem.attribute( QStringLiteral( "maximum-tail-length-unit" ) ).toInt() );
-  mParticlesCount = elem.attribute( QStringLiteral( "particles-count" ) ).toInt();
-}
-
-QDomElement QgsMeshRendererVectorTracesSettings::writeXml( QDomDocument &doc ) const
-{
-  QDomElement elem = doc.createElement( QStringLiteral( "vector-traces-settings" ) );
-  elem.setAttribute( QStringLiteral( "maximum-tail-length" ), mMaximumTailLength );
-  elem.setAttribute( QStringLiteral( "maximum-tail-length-unit" ), static_cast< int >( mMaximumTailLengthUnit ) );
-  elem.setAttribute( QStringLiteral( "particles-count" ), mParticlesCount );
-
-  return elem;
-}
-
-Qgis::RenderUnit QgsMeshRendererVectorTracesSettings::maximumTailLengthUnit() const
-{
-  return mMaximumTailLengthUnit;
-}
-
-void QgsMeshRendererVectorTracesSettings::setMaximumTailLengthUnit( Qgis::RenderUnit maximumTailLengthUnit )
-{
-  mMaximumTailLengthUnit = maximumTailLengthUnit;
-}
-
-double QgsMeshRendererVectorTracesSettings::maximumTailLength() const
-{
-  return mMaximumTailLength;
-}
-
-void QgsMeshRendererVectorTracesSettings::setMaximumTailLength( double maximumTailLength )
-{
-  mMaximumTailLength = maximumTailLength;
-}
-
-int QgsMeshRendererVectorTracesSettings::particlesCount() const
-{
-  return mParticlesCount;
-}
-
-void QgsMeshRendererVectorTracesSettings::setParticlesCount( int value )
-{
-  mParticlesCount = value;
 }
 
 bool QgsMeshRendererSettings::hasSettings( int datasetGroupIndex ) const

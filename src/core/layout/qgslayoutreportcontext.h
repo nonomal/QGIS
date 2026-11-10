@@ -20,8 +20,8 @@
 #include "qgsfeature.h"
 #include "qgslayout.h"
 
-#include <QtGlobal>
 #include <QPointer>
+#include <QtGlobal>
 
 /**
  * \ingroup core
@@ -30,11 +30,9 @@
  */
 class CORE_EXPORT QgsLayoutReportContext : public QObject
 {
-
     Q_OBJECT
 
   public:
-
     /**
      * Constructor for QgsLayoutReportContext.
      */
@@ -90,14 +88,14 @@ class CORE_EXPORT QgsLayoutReportContext : public QObject
      * Sets the list of predefined \a scales to use with the layout. This is used
      * for maps which are set to the predefined atlas scaling mode.
      * \see predefinedScales()
-     * \deprecated Use QgsLayoutRenderContext::setPredefinedScales()
+     * \deprecated QGIS 3.40. Use QgsLayoutRenderContext::setPredefinedScales().
      */
     Q_DECL_DEPRECATED void setPredefinedScales( const QVector<qreal> &scales ) SIP_DEPRECATED;
 
     /**
      * Returns the current list of predefined scales for use with the layout.
      * \see setPredefinedScales()
-     * \deprecated Use QgsLayoutRenderContext::predefinedScales()
+     * \deprecated QGIS 3.40. Use QgsLayoutRenderContext::predefinedScales().
      */
     Q_DECL_DEPRECATED QVector<qreal> predefinedScales() const SIP_DEPRECATED { return mPredefinedScales; }
 
@@ -115,7 +113,6 @@ class CORE_EXPORT QgsLayoutReportContext : public QObject
     void changed();
 
   private:
-
     QgsLayout *mLayout = nullptr;
 
     QgsFeature mFeature;
@@ -129,10 +126,6 @@ class CORE_EXPORT QgsLayoutReportContext : public QObject
 
     friend class QgsLayoutExporter;
     friend class TestQgsLayout;
-
 };
 
 #endif //QGSLAYOUTREPORTCONTEXT_H
-
-
-

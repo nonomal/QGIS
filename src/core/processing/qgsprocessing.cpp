@@ -17,12 +17,40 @@
 
 #include "qgsprocessing.h"
 
-const QgsSettingsEntryBool *QgsProcessing::settingsPreferFilenameAsLayerName = new QgsSettingsEntryBool( QStringLiteral( "prefer-filename-as-layer-name" ), sTreeConfiguration, true, QObject::tr( "Prefer filename as layer name" ) );
+#include <QString>
 
-const QgsSettingsEntryString *QgsProcessing::settingsTempPath = new QgsSettingsEntryString( QStringLiteral( "temp-path" ), sTreeConfiguration, QString(), QObject::tr( "Override temporary output folder path" ) );
+#include "moc_qgsprocessing.cpp"
 
-const QgsSettingsEntryInteger *QgsProcessing::settingsDefaultOutputVectorLayerExt = new QgsSettingsEntryInteger( QStringLiteral( "default-output-vector-layer-ext" ), sTreeConfiguration, -1, QObject::tr( "Default output vector layer extension" ) );
+using namespace Qt::StringLiterals;
 
-const QgsSettingsEntryInteger *QgsProcessing::settingsDefaultOutputRasterLayerExt = new QgsSettingsEntryInteger( QStringLiteral( "default-output-raster-layer-ext" ), sTreeConfiguration, -1, QObject::tr( "Default output raster layer extension" ) );
+const QgsSettingsEntryBool *QgsProcessing::settingsPreferFilenameAsLayerName
+  = new QgsSettingsEntryBool( u"prefer-filename-as-layer-name"_s, sTreeConfiguration, true, QObject::tr( "Prefer filename as layer name" ) );
 
-const QString QgsProcessing::TEMPORARY_OUTPUT = QStringLiteral( "TEMPORARY_OUTPUT" );
+const QgsSettingsEntryString *QgsProcessing::settingsTempPath = new QgsSettingsEntryString( u"temp-path"_s, sTreeConfiguration, QString(), QObject::tr( "Override temporary output folder path" ) );
+
+const QgsSettingsEntryString *QgsProcessing::settingsDefaultOutputVectorLayerExt
+  = new QgsSettingsEntryString( u"default-output-vector-ext"_s, sTreeConfiguration, QString(), QObject::tr( "Default output vector layer extension" ) );
+
+const QgsSettingsEntryString *QgsProcessing::settingsDefaultOutputRasterLayerFormat
+  = new QgsSettingsEntryString( u"default-output-raster-format"_s, sTreeConfiguration, QString(), QObject::tr( "Default output raster layer format" ) );
+
+const QgsSettingsEntryVariant *QgsProcessing::settingsDefaultGuiParam
+  = new QgsSettingsEntryVariant( u"default-gui-param/%1/%2"_s, QgsSettingsTree::sTreeProcessing, QVariant(), u"Default GUI parameter value, keyed by algorithm id and parameter name. When set, overrides the default value shown in the algorithm dialog."_s );
+
+const QString QgsProcessing::TEMPORARY_OUTPUT = u"TEMPORARY_OUTPUT"_s;
+const QString QgsProcessing::MODEL_PROVIDER_ID = u"model"_s;
+const QString QgsProcessing::PROJECT_PROVIDER_ID = u"project"_s;
+
+QString QgsProcessing::documentationFlagToString( Qgis::ProcessingAlgorithmDocumentationFlag flag )
+{
+  switch ( flag )
+  {
+    case Qgis::ProcessingAlgorithmDocumentationFlag::RegeneratesPrimaryKey:
+      return QObject::tr( "This algorithm drops existing primary keys or FID values and regenerates them in output layers." );
+    case Qgis::ProcessingAlgorithmDocumentationFlag::RegeneratesPrimaryKeyInSomeScenarios:
+      return QObject::tr( "This algorithm may drop existing primary keys or FID values and regenerate them in output layers, depending on the input parameters." );
+    case Qgis::ProcessingAlgorithmDocumentationFlag::RespectsEllipsoid:
+      return QObject::tr( "This algorithm uses ellipsoid based measurements and respects the current ellipsoid settings." );
+  }
+  BUILTIN_UNREACHABLE
+}

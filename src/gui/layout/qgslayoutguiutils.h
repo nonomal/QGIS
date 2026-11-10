@@ -17,9 +17,10 @@
 #define QGSLAYOUTGUIUTILS_H
 
 // We don't want to expose this in the public API
-#define SIP_NO_FILE
 
 #include "qgis_gui.h"
+
+#define SIP_NO_FILE
 
 class QgsMapCanvas;
 
@@ -32,16 +33,12 @@ class QgsMapCanvas;
  */
 class GUI_EXPORT QgsLayoutGuiUtils
 {
-
   public:
-
     /**
      * Registers the GUI handlers for known layout item types.
      */
     static void registerGuiForKnownItemTypes( QgsMapCanvas *mapCanvas );
-
 };
-
 
 
 #endif // QGSLAYOUTGUIUTILS_H

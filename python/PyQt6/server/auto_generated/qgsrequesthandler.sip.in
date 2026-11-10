@@ -3,7 +3,7 @@
  *                                                                      *
  * src/server/qgsrequesthandler.h                                       *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/
 
 
@@ -14,20 +14,20 @@
 class QgsRequestHandler
 {
 %Docstring(signature="appended")
-This class is an interface hiding the details of reading input and writing
-output from/to a wms request mechanism.
+An interface hiding the details of reading input and writing output
+from/to a wms request mechanism.
 %End
 
 %TypeHeaderCode
 #include "qgsrequesthandler.h"
 %End
   public:
-
     explicit QgsRequestHandler( QgsServerRequest &request, QgsServerResponse &response );
 %Docstring
 Constructor
 
-Note that :py:class:`QgsServerRequest` and :py:class:`QgsServerResponse` MUST live in the same scope
+Note that :py:class:`QgsServerRequest` and :py:class:`QgsServerResponse`
+MUST live in the same scope
 %End
 
     void setServiceException( const QgsServerException &ex );
@@ -39,8 +39,7 @@ Allow plugins to return a :py:class:`QgsMapServiceException`
 %Docstring
 Send out HTTP headers and flush output buffer
 
-This method is intended only for streaming
-partial content.
+This method is intended only for streaming partial content.
 %End
 
     void setResponseHeader( const QString &name, const QString &value );
@@ -58,9 +57,29 @@ Remove an HTTP response header
 Retrieve response header value
 %End
 
-    QMap<QString, QString> responseHeaders() const;
+ QMap<QString, QString> responseHeaders() const /Deprecated="Since 4.2. Use fullResponseHeaders() instead."/;
 %Docstring
-Returns the response headers
+Returns the response headers: note that if multiple values are set for
+the same header, only the last one is returned
+
+.. deprecated:: 4.2
+
+   Use :py:func:`~QgsRequestHandler.fullResponseHeaders` instead.
+%End
+
+    QList<QString> fullResponseHeader( const QString &name ) const;
+%Docstring
+Returns the list of response headers for a given header ``name``
+
+.. versionadded:: 4.2
+%End
+
+    QMap<QString, QList<QString>> fullResponseHeaders() const;
+%Docstring
+Returns the response headers as a map of header name to list of values
+(to support multiple values for the same header)
+
+.. versionadded:: 4.2
 %End
 
     void setRequestHeader( const QString &name, const QString &value );
@@ -80,7 +99,7 @@ Retrieve request header value
 
     QMap<QString, QString> requestHeaders() const;
 %Docstring
-Returns the the Request headers
+Returns the Request headers
 %End
 
     void clear();
@@ -137,9 +156,11 @@ Returns the response http status code
 
     QMap<QString, QString> parameterMap() const;
 %Docstring
-Returns the parsed parameters as a key-value pair, to modify
-a parameter setParameter( const QString &key, const QString &value)
-and removeParameter(const QString &key) must be used
+Returns the parsed parameters as a key-value pair.
+
+.. seealso:: :py:func:`setParameter`
+
+.. seealso:: :py:func:`removeParameter`
 %End
 
     void setParameter( const QString &key, const QString &value );
@@ -177,5 +198,5 @@ Returns ``True`` if the HTTP headers were already sent to the client
  *                                                                      *
  * src/server/qgsrequesthandler.h                                       *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/

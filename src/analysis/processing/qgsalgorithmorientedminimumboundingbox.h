@@ -18,10 +18,11 @@
 #ifndef QGSALGORITHMORIENTEDMINIMUMBOUNDINGBOX_H
 #define QGSALGORITHMORIENTEDMINIMUMBOUNDINGBOX_H
 
-#define SIP_NO_FILE
 
 #include "qgis_sip.h"
 #include "qgsprocessingalgorithm.h"
+
+#define SIP_NO_FILE
 
 ///@cond PRIVATE
 
@@ -30,9 +31,7 @@
  */
 class QgsOrientedMinimumBoundingBoxAlgorithm : public QgsProcessingFeatureBasedAlgorithm
 {
-
   public:
-
     QgsOrientedMinimumBoundingBoxAlgorithm() = default;
     QString name() const override;
     QString displayName() const override;
@@ -40,6 +39,7 @@ class QgsOrientedMinimumBoundingBoxAlgorithm : public QgsProcessingFeatureBasedA
     QString group() const override;
     QString groupId() const override;
     QString shortHelpString() const override;
+    QString shortDescription() const override;
     QgsOrientedMinimumBoundingBoxAlgorithm *createInstance() const override SIP_FACTORY;
     bool supportInPlaceEdit( const QgsMapLayer *layer ) const override;
 
@@ -48,11 +48,8 @@ class QgsOrientedMinimumBoundingBoxAlgorithm : public QgsProcessingFeatureBasedA
     Qgis::WkbType outputWkbType( Qgis::WkbType ) const override;
     QgsFields outputFields( const QgsFields &inputFields ) const override;
     QgsFeatureList processFeature( const QgsFeature &feature, QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
-
 };
 
 ///@endcond PRIVATE
 
 #endif // QGSALGORITHMORIENTEDMINIMUMBOUNDINGBOX_H
-
-

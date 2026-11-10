@@ -14,15 +14,16 @@
  ***************************************************************************/
 
 #include "qgsrangewidgetfactory.h"
+
 #include "qgsrangeconfigdlg.h"
 #include "qgsrangewidgetwrapper.h"
 #include "qgsvectorlayer.h"
+
 #include <QDial>
 
-QgsRangeWidgetFactory::QgsRangeWidgetFactory( const QString &name )
-  : QgsEditorWidgetFactory( name )
-{
-}
+QgsRangeWidgetFactory::QgsRangeWidgetFactory( const QString &name, const QIcon &icon )
+  : QgsEditorWidgetFactory( name, icon )
+{}
 
 QgsEditorWidgetWrapper *QgsRangeWidgetFactory::create( QgsVectorLayer *vl, int fieldIdx, QWidget *editor, QWidget *parent ) const
 {
@@ -37,9 +38,12 @@ QgsEditorConfigWidget *QgsRangeWidgetFactory::configWidget( QgsVectorLayer *vl, 
 unsigned int QgsRangeWidgetFactory::fieldScore( const QgsVectorLayer *vl, int fieldIdx ) const
 {
   const QgsField field = vl->fields().at( fieldIdx );
-  if ( field.type() == QVariant::Int ) return 20;
-  if ( field.type() == QVariant::Double ) return 5; // low priority because the fixed number of decimal places may alter the original data
-  if ( field.isNumeric() ) return 5; // widgets used support only signed 32bits (int) and double
+  if ( field.type() == QMetaType::Type::Int )
+    return 20;
+  if ( field.type() == QMetaType::Type::Double )
+    return 5; // low priority because the fixed number of decimal places may alter the original data
+  if ( field.isNumeric() )
+    return 5; // widgets used support only signed 32bits (int) and double
   return 0;
 }
 

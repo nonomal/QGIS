@@ -16,12 +16,19 @@
  ***************************************************************************/
 
 #include "qgspointcloudattributebyramprendererwidget.h"
+
 #include "qgscontrastenhancement.h"
-#include "qgspointcloudlayer.h"
-#include "qgspointcloudattributebyramprenderer.h"
 #include "qgsdoublevalidator.h"
-#include "qgsstyle.h"
+#include "qgspointcloudattributebyramprenderer.h"
+#include "qgspointcloudlayer.h"
 #include "qgspointcloudlayerelevationproperties.h"
+#include "qgsstyle.h"
+
+#include <QString>
+
+#include "moc_qgspointcloudattributebyramprendererwidget.cpp"
+
+using namespace Qt::StringLiterals;
 
 ///@cond PRIVATE
 
@@ -43,8 +50,7 @@ QgsPointCloudAttributeByRampRendererWidget::QgsPointCloudAttributeByRampRenderer
     setFromRenderer( layer->renderer() );
   }
 
-  connect( mAttributeComboBox, &QgsPointCloudAttributeComboBox::attributeChanged,
-           this, &QgsPointCloudAttributeByRampRendererWidget::attributeChanged );
+  connect( mAttributeComboBox, &QgsPointCloudAttributeComboBox::attributeChanged, this, &QgsPointCloudAttributeByRampRendererWidget::attributeChanged );
   connect( mMinSpin, qOverload<double>( &QDoubleSpinBox::valueChanged ), this, &QgsPointCloudAttributeByRampRendererWidget::minMaxChanged );
   connect( mMaxSpin, qOverload<double>( &QDoubleSpinBox::valueChanged ), this, &QgsPointCloudAttributeByRampRendererWidget::minMaxChanged );
 
@@ -64,7 +70,7 @@ QgsPointCloudRenderer *QgsPointCloudAttributeByRampRendererWidget::renderer()
     return nullptr;
   }
 
-  std::unique_ptr< QgsPointCloudAttributeByRampRenderer > renderer = std::make_unique< QgsPointCloudAttributeByRampRenderer >();
+  auto renderer = std::make_unique<QgsPointCloudAttributeByRampRenderer>();
   renderer->setAttribute( mAttributeComboBox->currentAttribute() );
 
   renderer->setMinimum( mMinSpin->value() );
@@ -78,7 +84,7 @@ QgsPointCloudRenderer *QgsPointCloudAttributeByRampRendererWidget::renderer()
 void QgsPointCloudAttributeByRampRendererWidget::emitWidgetChanged()
 {
   if ( !mBlockChangedSignal )
-    emit widgetChanged();
+    emit changed();
 }
 
 void QgsPointCloudAttributeByRampRendererWidget::minMaxChanged()
@@ -103,18 +109,17 @@ void QgsPointCloudAttributeByRampRendererWidget::attributeChanged()
     }
     else
     {
-      mProviderMin = std::numeric_limits< double >::quiet_NaN();
-      mProviderMax = std::numeric_limits< double >::quiet_NaN();
+      mProviderMin = std::numeric_limits<double>::quiet_NaN();
+      mProviderMax = std::numeric_limits<double>::quiet_NaN();
     }
 
-    if ( mAttributeComboBox->currentAttribute().compare( QLatin1String( "z" ), Qt::CaseInsensitive ) == 0 )
+    if ( mAttributeComboBox->currentAttribute().compare( 'z'_L1, Qt::CaseInsensitive ) == 0 )
     {
-      const double zScale = static_cast< const QgsPointCloudLayerElevationProperties * >( mLayer->elevationProperties() )->zScale();
-      const double zOffset = static_cast< const QgsPointCloudLayerElevationProperties * >( mLayer->elevationProperties() )->zOffset();
+      const double zScale = static_cast<const QgsPointCloudLayerElevationProperties *>( mLayer->elevationProperties() )->zScale();
+      const double zOffset = static_cast<const QgsPointCloudLayerElevationProperties *>( mLayer->elevationProperties() )->zOffset();
       mProviderMin = mProviderMin * zScale + zOffset;
       mProviderMax = mProviderMax * zScale + zOffset;
     }
-
   }
   if ( !mBlockSetMinMaxFromLayer )
     setMinMaxFromLayer();
@@ -155,9 +160,9 @@ void QgsPointCloudAttributeByRampRendererWidget::setFromRenderer( const QgsPoint
   }
   else
   {
-    if ( mAttributeComboBox->findText( QStringLiteral( "Intensity" ) ) > -1 )
+    if ( mAttributeComboBox->findText( u"Intensity"_s ) > -1 )
     {
-      mAttributeComboBox->setAttribute( QStringLiteral( "Intensity" ) );
+      mAttributeComboBox->setAttribute( u"Intensity"_s );
     }
     else
     {

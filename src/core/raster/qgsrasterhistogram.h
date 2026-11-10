@@ -18,16 +18,18 @@
 #ifndef QGSRASTERHISTOGRAM
 #define QGSRASTERHISTOGRAM
 
+#include <limits>
+
 #include "qgis_core.h"
 #include "qgsrectangle.h"
+
 #include <QString>
 #include <QVector>
 
-#include <limits>
-
 /**
  * \ingroup core
- * \brief The QgsRasterHistogram is a container for histogram of a single raster band.
+ * \brief A container for a histogram of a single raster band.
+ *
  * It is used to cache computed histograms in raster providers.
  */
 class CORE_EXPORT QgsRasterHistogram
@@ -43,14 +45,16 @@ class CORE_EXPORT QgsRasterHistogram
     //! Compares region, size etc. not histogram itself
     bool operator==( const QgsRasterHistogram &h ) const
     {
-      return ( h.bandNumber == bandNumber &&
-               h.binCount == binCount &&
-               h.includeOutOfRange == includeOutOfRange &&
-               qgsDoubleNear( h.maximum, maximum ) &&
-               qgsDoubleNear( h.minimum, minimum ) &&
-               h.extent == extent &&
-               h.width == width &&
-               h.height == height );
+      return (
+        h.bandNumber == bandNumber
+        && h.binCount == binCount
+        && h.includeOutOfRange == includeOutOfRange
+        && qgsDoubleNear( h.maximum, maximum )
+        && qgsDoubleNear( h.minimum, minimum )
+        && h.extent == extent
+        && h.width == width
+        && h.height == height
+      );
     }
 
     //! \brief The gdal band number (starts at 1)

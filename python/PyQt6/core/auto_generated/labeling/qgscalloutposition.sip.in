@@ -3,9 +3,8 @@
  *                                                                      *
  * src/core/labeling/qgscalloutposition.h                               *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/
-
 
 
 
@@ -22,7 +21,6 @@ Represents the calculated placement of a map label callout line.
 #include "qgscalloutposition.h"
 %End
   public:
-
     QgsCalloutPosition( QgsFeatureId id, const QString &layer, const QString &providerId = QString() );
 %Docstring
 Constructor for QgsCalloutPosition.
@@ -33,9 +31,6 @@ Constructor for QgsCalloutPosition.
 %End
 
     QgsCalloutPosition();
-%Docstring
-Constructor for QgsCalloutPosition
-%End
 
     QgsFeatureId featureId;
 
@@ -47,7 +42,8 @@ Constructor for QgsCalloutPosition
 %Docstring
 Returns the origin of the callout line, in map coordinates.
 
-The origin of the callout line is the line point associated with the label text.
+The origin of the callout line is the line point associated with the
+label text.
 
 .. seealso:: :py:func:`setOrigin`
 
@@ -58,7 +54,8 @@ The origin of the callout line is the line point associated with the label text.
 %Docstring
 Sets the ``origin`` of the callout line, in map coordinates.
 
-The origin of the callout line is the line point associated with the label text.
+The origin of the callout line is the line point associated with the
+label text.
 
 .. seealso:: :py:func:`origin`
 
@@ -69,7 +66,8 @@ The origin of the callout line is the line point associated with the label text.
 %Docstring
 Returns the destination of the callout line, in map coordinates.
 
-The destination of the callout line is the line point associated with the feature's geometry.
+The destination of the callout line is the line point associated with
+the feature's geometry.
 
 .. seealso:: :py:func:`setDestination`
 
@@ -80,7 +78,8 @@ The destination of the callout line is the line point associated with the featur
 %Docstring
 Sets the ``destination`` of the callout line, in map coordinates.
 
-The destination of the callout line is the line point associated with the feature's geometry.
+The destination of the callout line is the line point associated with
+the feature's geometry.
 
 .. seealso:: :py:func:`destination`
 
@@ -89,9 +88,11 @@ The destination of the callout line is the line point associated with the featur
 
     bool originIsPinned() const;
 %Docstring
-Returns ``True`` if the origin of the callout has pinned (manually placed).
+Returns ``True`` if the origin of the callout has pinned (manually
+placed).
 
-The origin of the callout line is the line point associated with the label text.
+The origin of the callout line is the line point associated with the
+label text.
 
 .. seealso:: :py:func:`destinationIsPinned`
 
@@ -102,7 +103,8 @@ The origin of the callout line is the line point associated with the label text.
 %Docstring
 Sets whether the origin of the callout has pinned (manually placed).
 
-The origin of the callout line is the line point associated with the label text.
+The origin of the callout line is the line point associated with the
+label text.
 
 .. seealso:: :py:func:`setDestinationIsPinned`
 
@@ -111,9 +113,11 @@ The origin of the callout line is the line point associated with the label text.
 
     bool destinationIsPinned() const;
 %Docstring
-Returns ``True`` if the destination of the callout has pinned (manually placed).
+Returns ``True`` if the destination of the callout has pinned (manually
+placed).
 
-The destination of the callout line is the line point associated with the feature's geometry.
+The destination of the callout line is the line point associated with
+the feature's geometry.
 
 .. seealso:: :py:func:`originIsPinned`
 
@@ -122,9 +126,11 @@ The destination of the callout line is the line point associated with the featur
 
     void setDestinationIsPinned( bool pinned );
 %Docstring
-Sets whether the destination of the callout has pinned (manually placed).
+Sets whether the destination of the callout has pinned (manually
+placed).
 
-The destination of the callout line is the line point associated with the feature's geometry.
+The destination of the callout line is the line point associated with
+the feature's geometry.
 
 .. seealso:: :py:func:`setOriginIsPinned`
 
@@ -138,5 +144,5 @@ The destination of the callout line is the line point associated with the featur
  *                                                                      *
  * src/core/labeling/qgscalloutposition.h                               *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/

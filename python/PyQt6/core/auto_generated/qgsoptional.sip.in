@@ -3,20 +3,20 @@
  *                                                                      *
  * src/core/qgsoptional.h                                               *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/
-
 
 
 template<T>
 class QgsOptional
 {
 %Docstring(signature="appended")
+A container for other classes and adds an additional enabled/disabled
+flag.
 
-:py:class:`QgsOptional` is a container for other classes and adds an additional enabled/disabled flag.
-
-Often it is used for configuration options which can be enabled or disabled but also have
-more internal configuration information that should not be lost when disabling and re-enabling.
+Often it is used for configuration options which can be enabled or
+disabled but also have more internal configuration information that
+should not be lost when disabling and re-enabling.
 
 .. note::
 
@@ -31,7 +31,6 @@ more internal configuration information that should not be lost when disabling a
 #include "qgsoptional.h"
 %End
   public:
-
     QgsOptional();
 %Docstring
 A QgsOptional is disabled by default if default constructed.
@@ -47,9 +46,8 @@ A QgsOptional is enabled by default if constructed with payload.
 A QgsOptional constructed with enabled status and data
 %End
 
-    bool operator== ( const QgsOptional<T> &other ) const;
+    bool operator==( const QgsOptional<T> &other ) const;
 
-    operator bool() const;
 
     bool enabled() const;
 %Docstring
@@ -74,10 +72,11 @@ Set the payload data
 
 };
 
+
 /************************************************************************
  * This file has been generated automatically from                      *
  *                                                                      *
  * src/core/qgsoptional.h                                               *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/

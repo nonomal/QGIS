@@ -16,18 +16,30 @@
  *                                                                         *
  ***************************************************************************/
 
-#include "qgsvectorlayer.h"
 #include "qgsaddtaborgroup.h"
-#include "qgssettings.h"
-#include "qgshelp.h"
 
-#include <QTreeWidgetItem>
+#include "qgshelp.h"
+#include "qgssettingsentryimpl.h"
+#include "qgssettingstree.h"
+#include "qgsvectorlayer.h"
+
 #include <QComboBox>
 #include <QRadioButton>
+#include <QString>
 
-QgsAddAttributeFormContainerDialog::QgsAddAttributeFormContainerDialog( QgsVectorLayer *lyr, const QList<ContainerPair> &existingContainerList, QTreeWidgetItem *currentTab, QWidget *parent )
+#include "moc_qgsaddtaborgroup.cpp"
+
+using namespace Qt::StringLiterals;
+
+const QgsSettingsEntryInteger *QgsAddAttributeFormContainerDialog::settingsDefaultTabColumnCount
+  = new QgsSettingsEntryInteger( u"default-tab-column-count"_s, QgsSettingsTree::sTreeAttributeForm, 1, QObject::tr( "Default column count for tab containers in attribute forms" ) );
+
+const QgsSettingsEntryInteger *QgsAddAttributeFormContainerDialog::settingsDefaultGroupColumnCount
+  = new QgsSettingsEntryInteger( u"default-group-column-count"_s, QgsSettingsTree::sTreeAttributeForm, 1, QObject::tr( "Default column count for group box containers in attribute forms" ) );
+
+QgsAddAttributeFormContainerDialog::QgsAddAttributeFormContainerDialog( QgsVectorLayer *layer, const QList<ContainerPair> &existingContainerList, QModelIndex &currentItemIndex, QWidget *parent )
   : QDialog( parent )
-  , mLayer( lyr )
+  , mLayer( layer )
   , mExistingContainers( existingContainerList )
 {
   setupUi( this );
@@ -45,9 +57,9 @@ QgsAddAttributeFormContainerDialog::QgsAddAttributeFormContainerDialog( QgsVecto
     for ( const ContainerPair &container : std::as_const( mExistingContainers ) )
     {
       mParentCombo->addItem( container.first, i );
-      if ( container.second == currentTab )
+      if ( currentItemIndex.isValid() && container.second == currentItemIndex )
       {
-        mParentCombo->setCurrentIndex( i );
+        mParentCombo->setCurrentIndex( i + 1 ); // Take empty item into account
         mTypeCombo->setCurrentIndex( mTypeCombo->findData( QVariant::fromValue( Qgis::AttributeEditorContainerType::GroupBox ) ) );
       }
       ++i;
@@ -56,7 +68,7 @@ QgsAddAttributeFormContainerDialog::QgsAddAttributeFormContainerDialog( QgsVecto
 
   connect( buttonBox, &QDialogButtonBox::helpRequested, this, &QgsAddAttributeFormContainerDialog::showHelp );
 
-  mColumnCountSpinBox->setValue( QgsSettings().value( QStringLiteral( "/qgis/attributeForm/defaultTabColumnCount" ), 1 ).toInt() );
+  mColumnCountSpinBox->setValue( settingsDefaultTabColumnCount->value() );
 
   setWindowTitle( tr( "Add Container for %1" ).arg( mLayer->name() ) );
 
@@ -69,13 +81,13 @@ QString QgsAddAttributeFormContainerDialog::name()
   return mName->text();
 }
 
-QTreeWidgetItem *QgsAddAttributeFormContainerDialog::parentContainerItem()
+QModelIndex QgsAddAttributeFormContainerDialog::parentContainerItem() const
 {
   if ( containerType() == Qgis::AttributeEditorContainerType::Tab )
-    return nullptr;
+    return QModelIndex();
 
   if ( !mParentCombo->currentData().isValid() )
-    return nullptr;
+    return QModelIndex();
 
   const ContainerPair tab = mExistingContainers.at( mParentCombo->currentData().toInt() );
   return tab.second;
@@ -88,7 +100,7 @@ int QgsAddAttributeFormContainerDialog::columnCount() const
 
 Qgis::AttributeEditorContainerType QgsAddAttributeFormContainerDialog::containerType() const
 {
-  return mTypeCombo->currentData().value< Qgis::AttributeEditorContainerType >();
+  return mTypeCombo->currentData().value<Qgis::AttributeEditorContainerType>();
 }
 
 void QgsAddAttributeFormContainerDialog::accept()
@@ -97,12 +109,11 @@ void QgsAddAttributeFormContainerDialog::accept()
   {
     switch ( containerType() )
     {
-
       case Qgis::AttributeEditorContainerType::GroupBox:
-        QgsSettings().setValue( QStringLiteral( "/qgis/attributeForm/defaultGroupColumnCount" ), mColumnCountSpinBox->value() );
+        settingsDefaultGroupColumnCount->setValue( mColumnCountSpinBox->value() );
         break;
       case Qgis::AttributeEditorContainerType::Tab:
-        QgsSettings().setValue( QStringLiteral( "/qgis/attributeForm/defaultTabColumnCount" ), mColumnCountSpinBox->value() );
+        settingsDefaultTabColumnCount->setValue( mColumnCountSpinBox->value() );
         break;
       case Qgis::AttributeEditorContainerType::Row:
         break;
@@ -114,12 +125,12 @@ void QgsAddAttributeFormContainerDialog::accept()
 
 void QgsAddAttributeFormContainerDialog::showHelp()
 {
-  QgsHelp::openHelp( QStringLiteral( "working_with_vector/vector_properties.html#the-drag-and-drop-designer" ) );
+  QgsHelp::openHelp( u"working_with_vector/vector_properties.html#the-drag-and-drop-designer"_s );
 }
 
 void QgsAddAttributeFormContainerDialog::containerTypeChanged()
 {
-  const Qgis::AttributeEditorContainerType type = mTypeCombo->currentData().value< Qgis::AttributeEditorContainerType >();
+  const Qgis::AttributeEditorContainerType type = mTypeCombo->currentData().value<Qgis::AttributeEditorContainerType>();
   switch ( type )
   {
     case Qgis::AttributeEditorContainerType::GroupBox:
@@ -127,14 +138,14 @@ void QgsAddAttributeFormContainerDialog::containerTypeChanged()
       mLabelParent->show();
       mColumnsLabel->show();
       mColumnCountSpinBox->show();
-      mColumnCountSpinBox->setValue( QgsSettings().value( QStringLiteral( "/qgis/attributeForm/defaultGroupColumnCount" ), 1 ).toInt() );
+      mColumnCountSpinBox->setValue( settingsDefaultGroupColumnCount->value() );
       break;
     case Qgis::AttributeEditorContainerType::Tab:
       mParentCombo->hide();
       mLabelParent->hide();
       mColumnsLabel->show();
       mColumnCountSpinBox->show();
-      mColumnCountSpinBox->setValue( QgsSettings().value( QStringLiteral( "/qgis/attributeForm/defaultTabColumnCount" ), 1 ).toInt() );
+      mColumnCountSpinBox->setValue( settingsDefaultTabColumnCount->value() );
       break;
     case Qgis::AttributeEditorContainerType::Row:
       mParentCombo->show();

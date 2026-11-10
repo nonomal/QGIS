@@ -16,21 +16,30 @@
 #ifndef QGSPROCESSINGPARAMETERDXFLAYERS_H
 #define QGSPROCESSINGPARAMETERDXFLAYERS_H
 
+#include "qgsdxfexport.h"
+#include "qgsprocessingoutputs.h"
 #include "qgsprocessingparameters.h"
 #include "qgsprocessingparametertype.h"
-#include "qgsdxfexport.h"
+
+#include <QString>
+
+using namespace Qt::StringLiterals;
 
 /**
  * \brief A parameter for Processing algorithms that need a list of input vector
- * layers to export as DXF file - this parameter provides Processing
- * framework's adapter for QList<QgsDxfExport::DxfLayer>.
+ * layers to export as DXF file.
+ *
+ * This parameter provides Processing framework's adapter for QList<QgsDxfExport::DxfLayer>.
  *
  * A valid value for this parameter is a list (QVariantList), where each
  * item is a map (QVariantMap) in this form:
+ *
+ * \code{.py}
  * {
  *   'layer':  string or QgsMapLayer,
  *   'attributeIndex': int
  * }
+ * \endcode
  *
  * Also it can accept lists (either string lists or QgsVectorLayer list)
  * as well as individual layer object or string representing layer source.
@@ -57,7 +66,7 @@ class CORE_EXPORT QgsProcessingParameterDxfLayers : public QgsProcessingParamete
     QVariant valueAsJsonObject( const QVariant &value, QgsProcessingContext &context ) const override;
 
     //! Returns the type name for the parameter class.
-    static QString typeName() { return QStringLiteral( "dxflayers" ); }
+    static QString typeName() { return u"dxflayers"_s; }
     //! Converts a QVariant value (a QVariantList) to a list of input layers
     static QList<QgsDxfExport::DxfLayer> parameterAsLayers( const QVariant &layersVariant, QgsProcessingContext &context );
     //! Converts a QVariant value (a QVariantMap) to a single input layer
@@ -79,47 +88,51 @@ class CORE_EXPORT QgsProcessingParameterDxfLayers : public QgsProcessingParamete
 class CORE_EXPORT QgsProcessingParameterTypeDxfLayers : public QgsProcessingParameterType
 {
   public:
-    QgsProcessingParameterDefinition *create( const QString &name ) const override SIP_FACTORY
-    {
-      return new QgsProcessingParameterDxfLayers( name );
-    }
+    QgsProcessingParameterDefinition *create( const QString &name ) const override SIP_FACTORY { return new QgsProcessingParameterDxfLayers( name ); }
 
-    QString description() const override
-    {
-      return QCoreApplication::translate( "Processing", "An input allowing selection of multiple layers for export to DXF file." );
-    }
+    QString description() const override { return QCoreApplication::translate( "Processing", "An input allowing selection of multiple layers for export to DXF file." ); }
 
-    QString name() const override
-    {
-      return QCoreApplication::translate( "Processing", "DXF Layers" );
-    }
+    QString name() const override { return QCoreApplication::translate( "Processing", "DXF Layers" ); }
 
-    QString id() const override
-    {
-      return QgsProcessingParameterDxfLayers::typeName();
-    }
+    QString id() const override { return QgsProcessingParameterDxfLayers::typeName(); }
 
-    QString pythonImportString() const override
-    {
-      return QStringLiteral( "from qgis.core import QgsProcessingParameterDxfLayers" );
-    }
+    QString pythonImportString() const override { return u"from qgis.core import QgsProcessingParameterDxfLayers"_s; }
 
-    QString className() const override
-    {
-      return QStringLiteral( "QgsProcessingParameterDxfLayers" );
-    }
+    QString className() const override { return u"QgsProcessingParameterDxfLayers"_s; }
 
     QStringList acceptedPythonTypes() const override
     {
-      return QStringList() << QObject::tr( "list[dict]: list of input layers as dictionaries, see QgsProcessingParameterDxfLayers docs" )
+      return QStringList()
+             << QObject::tr( "list[dict]: list of input layers as dictionaries, see QgsProcessingParameterDxfLayers docs" )
              << QObject::tr( "list[str]: list of layer IDs" )
              << QObject::tr( "list[str]: list of layer names" )
              << QObject::tr( "list[str]: list of layer sources" )
              << QObject::tr( "str: layer ID" )
              << QObject::tr( "str: layer name" )
              << QObject::tr( "str: layer source" )
-             << QStringLiteral( "list[QgsMapLayer]" )
-             << QStringLiteral( "QgsVectorLayer" );
+             << u"list[QgsMapLayer]"_s
+             << u"QgsVectorLayer"_s;
+    }
+
+    QStringList acceptedParameterTypes() const override
+    {
+      return QStringList()
+             << QgsProcessingParameterMultipleLayers::typeName()
+             << QgsProcessingParameterMapLayer::typeName()
+             << QgsProcessingParameterVectorLayer::typeName()
+             << QgsProcessingParameterFeatureSource::typeName()
+             << QgsProcessingParameterFile::typeName()
+             << QgsProcessingParameterString::typeName();
+    }
+
+    QStringList acceptedOutputTypes() const override
+    {
+      return QStringList()
+             << QgsProcessingOutputString::typeName()
+             << QgsProcessingOutputMapLayer::typeName()
+             << QgsProcessingOutputVectorLayer::typeName()
+             << QgsProcessingOutputMultipleLayers::typeName()
+             << QgsProcessingOutputFile::typeName();
     }
 };
 

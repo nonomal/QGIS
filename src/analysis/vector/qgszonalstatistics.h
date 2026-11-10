@@ -18,16 +18,17 @@
 #ifndef QGSZONALSTATISTICS_H
 #define QGSZONALSTATISTICS_H
 
-#include <QString>
-#include <QMap>
-
-#include <limits>
 #include <cfloat>
+#include <limits>
+#include <map>
 
 #include "qgis_analysis.h"
-#include "qgsfeedback.h"
 #include "qgscoordinatereferencesystem.h"
+#include "qgsfeedback.h"
 #include "qgsfields.h"
+
+#include <QMap>
+#include <QString>
 
 class QgsGeometry;
 class QgsVectorLayer;
@@ -41,25 +42,30 @@ class QgsFeatureSource;
 
 /**
  * \ingroup analysis
- * \brief A class that calculates raster statistics (count, sum, mean) for a polygon or multipolygon layer and appends the results as attributes.
+ * \brief Calculates raster statistics (count, sum, mean) for a polygon or multipolygon layer and appends the results as attributes.
 */
 class ANALYSIS_EXPORT QgsZonalStatistics
 {
   public:
-
     /**
      * Convenience constructor for QgsZonalStatistics, using an input raster layer.
      *
      * The raster layer must exist for the lifetime of the zonal statistics calculation.
      *
+     * The \a overwriteExistingFields argument controls whether existing fields should be
+     * updated instead of creating new fields with _1, _2, … _N appended to their names (since QGIS 4.4).
+     *
      * \warning Constructing QgsZonalStatistics using this method is not thread safe, and
      * the constructor which accepts a QgsRasterInterface should be used instead.
      */
-    QgsZonalStatistics( QgsVectorLayer *polygonLayer,
-                        QgsRasterLayer *rasterLayer,
-                        const QString &attributePrefix = QString(),
-                        int rasterBand = 1,
-                        Qgis::ZonalStatistics stats = Qgis::ZonalStatistic::Default );
+    QgsZonalStatistics(
+      QgsVectorLayer *polygonLayer,
+      QgsRasterLayer *rasterLayer,
+      const QString &attributePrefix = QString(),
+      int rasterBand = 1,
+      Qgis::ZonalStatistics stats = Qgis::ZonalStatistic::Default,
+      bool overwriteExistingFields = false
+    );
 
     /**
      * Constructor for QgsZonalStatistics, using a QgsRasterInterface.
@@ -82,19 +88,25 @@ class ANALYSIS_EXPORT QgsZonalStatistics
      * Finally, the calculated statistics can be set via the \a stats argument. A new field will be
      * added to \a polygonLayer for each statistic calculated.
      *
+     * The \a overwriteExistingFields argument controls whether existing fields should be updated instead of
+     * creating new fields with _1, _2, … _N appended to their names (since QGIS 4.4).
+     *
      * \warning The raster interface must exist for the lifetime of the zonal statistics calculation. For thread
      * safe use, always use a cloned raster interface.
      *
      * \since QGIS 3.2
      */
-    QgsZonalStatistics( QgsVectorLayer *polygonLayer,
-                        QgsRasterInterface *rasterInterface,
-                        const QgsCoordinateReferenceSystem &rasterCrs,
-                        double rasterUnitsPerPixelX,
-                        double rasterUnitsPerPixelY,
-                        const QString &attributePrefix = QString(),
-                        int rasterBand = 1,
-                        Qgis::ZonalStatistics stats = Qgis::ZonalStatistic::Default );
+    QgsZonalStatistics(
+      QgsVectorLayer *polygonLayer,
+      QgsRasterInterface *rasterInterface,
+      const QgsCoordinateReferenceSystem &rasterCrs,
+      double rasterUnitsPerPixelX,
+      double rasterUnitsPerPixelY,
+      const QString &attributePrefix = QString(),
+      int rasterBand = 1,
+      Qgis::ZonalStatistics stats = Qgis::ZonalStatistic::Default,
+      bool overwriteExistingFields = false
+    );
 
 
     /**
@@ -125,10 +137,12 @@ class ANALYSIS_EXPORT QgsZonalStatistics
      * \since QGIS 3.16
      */
 #ifndef SIP_RUN
-    static QMap<Qgis::ZonalStatistic, QVariant> calculateStatistics( QgsRasterInterface *rasterInterface, const QgsGeometry &geometry, double cellSizeX, double cellSizeY, int rasterBand, Qgis::ZonalStatistics statistics );
+    static QMap<Qgis::ZonalStatistic, QVariant> calculateStatistics(
+      QgsRasterInterface *rasterInterface, const QgsGeometry &geometry, double cellSizeX, double cellSizeY, int rasterBand, Qgis::ZonalStatistics statistics
+    );
 #endif
 
-///@cond PRIVATE
+    ///@cond PRIVATE
     // Required to fix https://github.com/qgis/QGIS/issues/43245 (SIP is failing to convert the enum to values)
 
     /**
@@ -139,20 +153,22 @@ class ANALYSIS_EXPORT QgsZonalStatistics
      *
      * \since QGIS 3.16
      */
-    static QMap<int, QVariant> calculateStatisticsInt( QgsRasterInterface *rasterInterface, const QgsGeometry &geometry, double cellSizeX, double cellSizeY, int rasterBand, Qgis::ZonalStatistics statistics ) SIP_PYNAME( calculateStatistics );
-/// @endcond
+    static QMap<int, QVariant> calculateStatisticsInt(
+      QgsRasterInterface *rasterInterface, const QgsGeometry &geometry, double cellSizeX, double cellSizeY, int rasterBand, Qgis::ZonalStatistics statistics
+    ) SIP_PYNAME( calculateStatistics );
+    /// @endcond
 
   private:
     QgsZonalStatistics() = default;
 
+#ifndef SIP_RUN
     class FeatureStats
     {
       public:
         FeatureStats( bool storeValues = false, bool storeValueCounts = false )
           : mStoreValues( storeValues )
           , mStoreValueCounts( storeValueCounts )
-        {
-        }
+        {}
 
         void reset()
         {
@@ -164,22 +180,37 @@ class ANALYSIS_EXPORT QgsZonalStatistics
           values.clear();
         }
 
-        void addValue( double value, double weight = 1.0 )
+        void addValue( double value, const QgsPointXY &point, double weight = 1.0 )
         {
-          if ( weight < 1.0 )
+          if ( !std::isnan( value ) )
           {
-            sum += value * weight;
-            count += weight;
+            if ( weight < 1.0 )
+            {
+              sum += value * weight;
+              count += weight;
+            }
+            else
+            {
+              sum += value;
+              ++count;
+            }
+            if ( value < min )
+            {
+              min = value;
+              minPoint = point;
+            }
+            if ( value > max )
+            {
+              max = value;
+              maxPoint = point;
+            }
           }
           else
           {
-            sum += value;
             ++count;
           }
-          min = std::min( min, value );
-          max = std::max( max, value );
           if ( mStoreValueCounts )
-            valueCount.insert( value, valueCount.value( value, 0 ) + 1 );
+            ++valueCount[value];
           if ( mStoreValues )
             values.append( value );
         }
@@ -187,8 +218,14 @@ class ANALYSIS_EXPORT QgsZonalStatistics
         double count = 0.0;
         double max = std::numeric_limits<double>::lowest();
         double min = std::numeric_limits<double>::max();
-        QMap< double, int > valueCount;
-        QList< double > values;
+        QgsPointXY minPoint;
+        QgsPointXY maxPoint;
+        struct CompareNaNAware
+        {
+            bool operator()( double lhs, double rhs ) const { return ( std::isnan( lhs ) && !std::isnan( rhs ) ) || lhs < rhs; }
+        };
+        std::map<double, int64_t, CompareNaNAware> valueCount;
+        QList<double> values;
 
       private:
         bool mStoreValues = false;
@@ -208,6 +245,8 @@ class ANALYSIS_EXPORT QgsZonalStatistics
     QgsVectorLayer *mPolygonLayer = nullptr;
     QString mAttributePrefix;
     Qgis::ZonalStatistics mStatistics = Qgis::ZonalStatistic::All;
+    bool mOverwriteExistingFields = false;
+#endif
 };
 
 // clazy:excludeall=qstring-allocations

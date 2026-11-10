@@ -16,59 +16,34 @@
 
 #include "qgsfeature3dhandler_p.h"
 
-#include "qgsfeaturerequest.h"
-#include "qgsvectorlayer.h"
+#include "qgsgeometry.h"
 
-#include "qgs3dmapsettings.h"
-#include "qgs3dutils.h"
+#include <QVector>
+#include <QVector3D>
 
 /// @cond PRIVATE
-
-
-namespace Qgs3DSymbolImpl
-{
-
-  Qt3DCore::QEntity *entityFromHandler( QgsFeature3DHandler *handler, const Qgs3DMapSettings &map, QgsVectorLayer *layer )
-  {
-    Qgs3DRenderContext context( map );
-
-    QgsExpressionContext exprContext( Qgs3DUtils::globalProjectLayerExpressionContext( layer ) );
-    exprContext.setFields( layer->fields() );
-    context.setExpressionContext( exprContext );
-
-    QSet<QString> attributeNames;
-    if ( !handler->prepare( context, attributeNames ) )
-      return nullptr;
-
-    // build the feature request
-    QgsFeatureRequest req;
-    req.setDestinationCrs( map.crs(), map.transformContext() );
-    req.setSubsetOfAttributes( attributeNames, layer->fields() );
-
-    QgsFeature f;
-    QgsFeatureIterator fi = layer->getFeatures( req );
-    while ( fi.nextFeature( f ) )
-    {
-      context.expressionContext().setFeature( f );
-      handler->processFeature( f, context );
-    }
-
-    Qt3DCore::QEntity *entity = new Qt3DCore::QEntity;
-    handler->finalize( entity, context );
-    return entity;
-  }
-
-}
 
 void QgsFeature3DHandler::updateZRangeFromPositions( const QVector<QVector3D> &positions )
 {
   for ( const QVector3D &pos : positions )
   {
-    if ( pos.y() < mZMin )
-      mZMin = pos.y();
-    if ( pos.y() > mZMax )
-      mZMax = pos.y();
+    if ( pos.z() < mZMin )
+      mZMin = pos.z();
+    if ( pos.z() > mZMax )
+      mZMax = pos.z();
   }
+}
+
+bool QgsFeature3DHandler::clipGeometryIfTooLarge( QgsGeometry &geom ) const
+{
+  // let's clip gigantic geometries to the chunk's extents
+  const QgsRectangle bbox = geom.boundingBox();
+  if ( bbox.width() > MAX_GEOM_BBOX_SIZE || bbox.height() > MAX_GEOM_BBOX_SIZE )
+  {
+    geom = geom.clipped( mChunkExtent.toRectangle() );
+    return true;
+  }
+  return false;
 }
 
 /// @endcond

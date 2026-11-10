@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/sensor/qgsiodevicesensor.h                                  *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/
 
 
@@ -13,7 +13,7 @@
 class QgsIODeviceSensor : QgsAbstractSensor
 {
 %Docstring(signature="appended")
-An abstract class QIODevice-based sensor classes
+An abstract class for QIODevice-based sensors.
 
 .. versionadded:: 3.32
 %End
@@ -22,10 +22,10 @@ An abstract class QIODevice-based sensor classes
 #include "qgsiodevicesensor.h"
 %End
   public:
-
     explicit QgsIODeviceSensor( QObject *parent = 0 );
 %Docstring
-Constructor for a abstract QIODevice-based sensor, bound to the specified ``parent``.
+Constructor for a abstract QIODevice-based sensor, bound to the
+specified ``parent``.
 %End
     ~QgsIODeviceSensor();
 
@@ -35,7 +35,6 @@ Returns the I/O device.
 %End
 
   protected:
-
     void initIODevice( QIODevice *device /Transfer/ );
 %Docstring
 Initiates the I/O ``device``.
@@ -57,7 +56,7 @@ Parses the data read from the device when available.
 class QgsTcpSocketSensor : QgsIODeviceSensor
 {
 %Docstring(signature="appended")
-A TCP socket sensor class
+A TCP socket sensor class.
 
 .. versionadded:: 3.32
 %End
@@ -66,7 +65,6 @@ A TCP socket sensor class
 #include "qgsiodevicesensor.h"
 %End
   public:
-
     explicit QgsTcpSocketSensor( QObject *parent = 0 );
 %Docstring
 Constructor for a TCP socket sensor, bound to the specified ``parent``.
@@ -111,7 +109,6 @@ Sets the ``port`` the socket connects to.
 
 
   protected:
-
     virtual void handleConnect();
 
     virtual void handleDisconnect();
@@ -122,7 +119,7 @@ Sets the ``port`` the socket connects to.
 class QgsUdpSocketSensor : QgsIODeviceSensor
 {
 %Docstring(signature="appended")
-A UDP socket sensor class
+A UDP socket sensor class.
 
 .. versionadded:: 3.32
 %End
@@ -131,7 +128,6 @@ A UDP socket sensor class
 #include "qgsiodevicesensor.h"
 %End
   public:
-
     explicit QgsUdpSocketSensor( QObject *parent = 0 );
 %Docstring
 Constructor for a UDP socket sensor, bound to the specified ``parent``.
@@ -176,7 +172,6 @@ Sets the ``port`` the socket connects to.
 
 
   protected:
-
     virtual void handleConnect();
 
     virtual void handleDisconnect();
@@ -189,7 +184,7 @@ Sets the ``port`` the socket connects to.
 class QgsSerialPortSensor : QgsIODeviceSensor
 {
 %Docstring(signature="appended")
-A serial port sensor class
+A serial port sensor class.
 
 .. versionadded:: 3.32
 %End
@@ -198,7 +193,6 @@ A serial port sensor class
 #include "qgsiodevicesensor.h"
 %End
   public:
-
     explicit QgsSerialPortSensor( QObject *parent = 0 );
 %Docstring
 Constructor for a serial port sensor, bound to the specified ``parent``.
@@ -268,7 +262,6 @@ considered a data frame.
 
 
   protected:
-
     virtual void handleConnect();
 
     virtual void handleDisconnect();
@@ -282,13 +275,10 @@ considered a data frame.
 };
 %End
 
-
-
-
 /************************************************************************
  * This file has been generated automatically from                      *
  *                                                                      *
  * src/core/sensor/qgsiodevicesensor.h                                  *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/

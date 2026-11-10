@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/qgsmessageoutput.h                                          *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/
 
 
@@ -17,11 +17,12 @@ class QgsMessageOutput
 %Docstring(signature="appended")
 Interface for showing messages from QGIS in GUI independent way.
 
-This class provides abstraction of a dialog for showing output to the user.
-By default :py:class:`QgsMessageConsoleOutput` will be used if not overridden with other
-message output creator function.
+This class provides abstraction of a dialog for showing output to the
+user. By default :py:class:`QgsMessageConsoleOutput` will be used if not
+overridden with other message output creator function.
 
-QGIS application uses :py:class:`QgsMessageView` class for displaying a dialog to the user.
+QGIS application uses :py:class:`QgsMessageView` class for displaying a
+dialog to the user.
 
 Object deletes itself when it's not needed anymore. Children should use
 signal :py:func:`~destroyed` to notify the deletion
@@ -31,12 +32,9 @@ signal :py:func:`~destroyed` to notify the deletion
 #include "qgsmessageoutput.h"
 %End
   public:
-
-    enum MessageType /BaseType=IntEnum/ { MessageText, MessageHtml };
-
     virtual ~QgsMessageOutput();
 
-    virtual void setMessage( const QString &message, MessageType msgType ) = 0;
+    virtual void setMessage( const QString &message, Qgis::StringFormat format ) = 0;
 %Docstring
 Sets message, it won't be displayed until
 %End
@@ -56,7 +54,7 @@ Sets title for the messages
 display the message to the user and deletes itself
 %End
 
-    static void showMessage( const QString &title, const QString &message, MessageType msgType );
+    static void showMessage( const QString &title, const QString &message, Qgis::StringFormat format );
 %Docstring
 Display the blocking message to the user.
 %End
@@ -65,8 +63,9 @@ Display the blocking message to the user.
 
     static QgsMessageOutput *createMessageOutput();
 %Docstring
-function that returns new class derived from QgsMessageOutput
-(don't forget to delete it then if showMessage(bool) is not used showMessage(bool) deletes the instance)
+function that returns new class derived from QgsMessageOutput (don't
+forget to delete it then if showMessage(bool) is not used
+showMessage(bool) deletes the instance)
 %End
 
 };
@@ -75,7 +74,7 @@ function that returns new class derived from QgsMessageOutput
 class QgsMessageOutputConsole : QObject, QgsMessageOutput
 {
 %Docstring(signature="appended")
-Default implementation of message output interface
+Default implementation of message output interface.
 
 This class outputs messages to the standard output. Therefore it might
 be the right choice for apps without GUI.
@@ -85,13 +84,9 @@ be the right choice for apps without GUI.
 #include "qgsmessageoutput.h"
 %End
   public:
-
     QgsMessageOutputConsole();
-%Docstring
-Constructor for QgsMessageOutputConsole.
-%End
 
-    virtual void setMessage( const QString &message, MessageType msgType );
+    virtual void setMessage( const QString &message, Qgis::StringFormat format );
 
 
     virtual void appendMessage( const QString &message );
@@ -120,5 +115,5 @@ signals that object will be destroyed and shouldn't be used anymore
  *                                                                      *
  * src/core/qgsmessageoutput.h                                          *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/

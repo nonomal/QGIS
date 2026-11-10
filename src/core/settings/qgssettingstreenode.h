@@ -16,11 +16,14 @@
 #ifndef QGSSETTINGSTREENODE_H
 #define QGSSETTINGSTREENODE_H
 
-#include <QObject>
-
 #include "qgis.h"
 #include "qgis_core.h"
 #include "qgis_sip.h"
+
+#include <QObject>
+#include <QString>
+
+using namespace Qt::StringLiterals;
 
 class QgsSettingsTreeNamedListNode;
 class QgsSettingsEntryBase;
@@ -29,8 +32,9 @@ class QgsSettingsEntryString;
 /**
  * \ingroup core
  * \class QgsSettingsTreeNode
- * \brief QgsSettingsTreeNode is a tree node for the settings tree
+ * \brief A tree node for the settings tree
  * to help organizing and introspecting the tree.
+ *
  * It is either a root node, a normal node or
  * a named list (to store a group of settings under a dynamic named key).
  * to automatically register a settings entry on its creation when a parent is provided.
@@ -42,7 +46,6 @@ class QgsSettingsEntryString;
  */
 class CORE_EXPORT QgsSettingsTreeNode
 {
-
 #ifdef SIP_RUN
     SIP_CONVERT_TO_SUBCLASS_CODE
     if ( dynamic_cast< QgsSettingsTreeNamedListNode * >( sipCpp ) )
@@ -54,9 +57,11 @@ class CORE_EXPORT QgsSettingsTreeNode
     SIP_END
 #endif
 
-    Q_GADGET
+    // clang-format off
+  Q_GADGET
 
   public:
+    // clang-format on
 
     virtual ~QgsSettingsTreeNode();
 
@@ -77,11 +82,12 @@ class CORE_EXPORT QgsSettingsTreeNode
      * Creates a named list tree node.
      * This is useful to register groups of settings for several named items (for instance credentials for several named services)
      */
-    QgsSettingsTreeNamedListNode *createNamedListNode( const QString &key, const Qgis::SettingsTreeNodeOptions &options = Qgis::SettingsTreeNodeOptions() ) SIP_THROW( QgsSettingsException ) SIP_KEEPREFERENCE;
+    QgsSettingsTreeNamedListNode *createNamedListNode( const QString &key, const Qgis::SettingsTreeNodeOptions &options = Qgis::SettingsTreeNodeOptions() ) SIP_THROW( QgsSettingsException )
+      SIP_KEEPREFERENCE;
 
 
     //! Returns the type of node
-    Qgis::SettingsTreeNodeType type() const {return mType;}
+    Qgis::SettingsTreeNodeType type() const { return mType; }
 
     /**
      * Registers a child setting
@@ -105,48 +111,53 @@ class CORE_EXPORT QgsSettingsTreeNode
     void unregisterChildNode( QgsSettingsTreeNode *node );
 
     //! Returns the children nodes
-    QList<QgsSettingsTreeNode *> childrenNodes() const {return mChildrenNodes;}
+    QList<QgsSettingsTreeNode *> childrenNodes() const { return mChildrenNodes; }
 
     //! Returns the existing child node if it exists at the given \a key
     QgsSettingsTreeNode *childNode( const QString &key ) const;
 
     //! Returns the children settings
-    QList<const QgsSettingsEntryBase *> childrenSettings() const {return mChildrenSettings;}
+    QList<const QgsSettingsEntryBase *> childrenSettings() const { return mChildrenSettings; }
 
     //! Returns the existing child settings if it exists at the given \a key
     const QgsSettingsEntryBase *childSetting( const QString &key ) const;
 
     //! Returns the parent of the node or nullptr if it does not exists
-    QgsSettingsTreeNode *parent() const {return mParent;}
+    QgsSettingsTreeNode *parent() const { return mParent; }
 
     //! Returns the key of the node (without its parents)
-    QString key() const {return mKey;}
+    QString key() const { return mKey; }
 
     //! Returns the complete key of the node (including its parents)
-    QString completeKey() const {return mCompleteKey;}
+    QString completeKey() const { return mCompleteKey; }
 
     //! Returns the number of named nodes in the complete key
-    int namedNodesCount() const {return mNamedNodesCount;}
+    int namedNodesCount() const { return mNamedNodesCount; }
 
 #ifdef SIP_RUN
+    // clang-format off
     SIP_PYOBJECT __repr__();
     % MethodCode
     const QMetaEnum metaEnum = QMetaEnum::fromType<Qgis::SettingsTreeNodeType>();
 
-    QString str = QStringLiteral( "<QgsSettingsTreeNode (%1): %2>" ).arg( metaEnum.valueToKey( static_cast<int>( sipCpp->type() ) ), sipCpp->key() );
+    QString str = u"<QgsSettingsTreeNode (%1): %2>"_s.arg( metaEnum.valueToKey( static_cast<int>( sipCpp->type() ) ), sipCpp->key() );
     sipRes = PyUnicode_FromString( str.toUtf8().constData() );
     % End
+// clang-format on
 #endif
 
-  protected:
+    // clang-format off
+    protected:
+    // clang-format on
     //! Registers a child nodes
     void registerChildNode( QgsSettingsTreeNode *node );
 
     Qgis::SettingsTreeNodeType mType = Qgis::SettingsTreeNodeType::Root;
 
   private:
-
     /**
+     * Default constructor for QgsSettingsTreeNode.
+     *
      * \note This is not available in Python bindings. Use method createNode on an existing tree node.
      * \see QgsSettingsTree.createPluginTreeNode
      */
@@ -172,13 +183,13 @@ class CORE_EXPORT QgsSettingsTreeNode
 };
 
 
-
 /**
  * \ingroup core
  * \class QgsSettingsTreeNamedListNode
- * \brief QgsSettingsTreeNamedListNode is a named list tree node for the settings tree
+ * \brief A named list tree node for the settings tree
  * to help organizing and introspecting the tree.
- * the named list node is used to store a group of settings under a dynamically named key.
+ *
+ * The named list node is used to store a group of settings under a dynamically named key.
  *
  * \see QgsSettingsTree
  * \see QgsSettingsTreeNode
@@ -189,7 +200,7 @@ class CORE_EXPORT QgsSettingsTreeNode
 class CORE_EXPORT QgsSettingsTreeNamedListNode : public QgsSettingsTreeNode
 {
   public:
-    virtual ~QgsSettingsTreeNamedListNode();
+    ~QgsSettingsTreeNamedListNode() override;
 
     /**
      *  Returns the list of items
@@ -239,7 +250,7 @@ class CORE_EXPORT QgsSettingsTreeNamedListNode : public QgsSettingsTreeNode
     void deleteAllItems( const QStringList &parentsNamedItems = QStringList() ) SIP_THROW( QgsSettingsException );
 
     //! Returns the setting used to store the selected item
-    const QgsSettingsEntryString *selectedItemSetting() const {return mSelectedItemSetting;}
+    const QgsSettingsEntryString *selectedItemSetting() const { return mSelectedItemSetting.get(); }
 
   protected:
     //! Init the nodes with the specific \a options
@@ -249,19 +260,21 @@ class CORE_EXPORT QgsSettingsTreeNamedListNode : public QgsSettingsTreeNode
     friend class QgsSettingsTreeNode;
 
     /**
+     * Constructor for QgsSettingsTreeNamedListNode.
+     *
      * \note This is not available in Python bindings. Use method createNamedListNode on an existing tree node.
      * \see QgsSettingsTree.createPluginTreeNode
      */
-    QgsSettingsTreeNamedListNode() = default SIP_FORCE;
+    QgsSettingsTreeNamedListNode() SIP_FORCE;
 
-    QgsSettingsTreeNamedListNode( const QgsSettingsTreeNamedListNode &other ) = default SIP_FORCE;
+    QgsSettingsTreeNamedListNode( const QgsSettingsTreeNamedListNode &other ) = delete;
 
     //! Returns the key with named items placeholders filled with args
     QString completeKeyWithNamedItems( const QString &key, const QStringList &namedItems ) const;
 
     Qgis::SettingsTreeNodeOptions mOptions;
-    const QgsSettingsEntryString *mSelectedItemSetting = nullptr;
+    std::unique_ptr<const QgsSettingsEntryString> mSelectedItemSetting;
     QString mItemsCompleteKey;
 };
 
-#endif  // QGSSETTINGSTREENODE_H
+#endif // QGSSETTINGSTREENODE_H

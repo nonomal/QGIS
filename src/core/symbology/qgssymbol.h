@@ -16,8 +16,8 @@
 #ifndef QGSSYMBOL_H
 #define QGSSYMBOL_H
 
-#include "qgis_core.h"
 #include "qgis.h"
+#include "qgis_core.h"
 #include "qgspropertycollection.h"
 #include "qgsrendercontext.h"
 #include "qgsscreenproperties.h"
@@ -40,7 +40,6 @@ typedef QList<QgsSymbolLayer *> QgsSymbolLayerList;
 class CORE_EXPORT QgsSymbolAnimationSettings
 {
   public:
-
     /**
      * Sets whether the symbol is animated.
      *
@@ -78,11 +77,145 @@ class CORE_EXPORT QgsSymbolAnimationSettings
     double frameRate() const { return mFrameRate; }
 
   private:
-
     bool mIsAnimated = false;
     double mFrameRate = 10;
-
 };
+
+
+/**
+ * \ingroup core
+ * \class QgsSymbolBufferSettings
+ *
+ * \brief Contains settings relating to symbol buffers, which draw a "halo" effect around the symbol.
+ *
+ * \since QGIS 3.40
+ */
+class CORE_EXPORT QgsSymbolBufferSettings
+{
+  public:
+    QgsSymbolBufferSettings();
+    ~QgsSymbolBufferSettings();
+
+    QgsSymbolBufferSettings( const QgsSymbolBufferSettings &other );
+    QgsSymbolBufferSettings &operator=( const QgsSymbolBufferSettings & );
+
+    /**
+     * Returns whether the buffer is enabled.
+     * \see setEnabled()
+     */
+    bool enabled() const { return mEnabled; }
+
+    /**
+     * Sets whether the symbol buffer will be drawn.
+     * \see enabled()
+     */
+    void setEnabled( bool enabled ) { mEnabled = enabled; }
+
+    /**
+     * Returns the size of the buffer.
+     * \see sizeUnit()
+     * \see setSize()
+     */
+    double size() const { return mSize; }
+
+    /**
+     * Sets the \a size of the buffer.
+     *
+     * The size units are specified using setSizeUnit().
+     *
+     * \see size()
+     * \see setSizeUnit()
+     */
+    void setSize( double size ) { mSize = size; }
+
+    /**
+     * Returns the units for the buffer size.
+     *
+     * \see size()
+     * \see setSizeUnit()
+     */
+    Qgis::RenderUnit sizeUnit() const { return mSizeUnit; }
+
+    /**
+     * Sets the \a unit used for the buffer size.
+     *
+     * \see setSize()
+     * \see sizeUnit()
+     */
+    void setSizeUnit( Qgis::RenderUnit unit ) { mSizeUnit = unit; }
+
+    /**
+     * Returns the map unit scale object for the buffer size. This is only used if the
+     * buffer size is set to QgsUnitTypes::RenderMapUnit.
+     *
+     * \see setSizeMapUnitScale()
+     * \see sizeUnit()
+     */
+    QgsMapUnitScale sizeMapUnitScale() const { return mSizeMapUnitScale; }
+
+    /**
+     * Sets the map unit \a scale object for the buffer size.
+     *
+     * This is only used if the buffer size is set to QgsUnitTypes::RenderMapUnit.
+     *
+     * \see sizeMapUnitScale()
+     * \see setSizeUnit()
+     */
+    void setSizeMapUnitScale( const QgsMapUnitScale &scale ) { mSizeMapUnitScale = scale; }
+
+    /**
+     * Returns the buffer join style.
+     * \see setJoinStyle
+     */
+    Qt::PenJoinStyle joinStyle() const { return mJoinStyle; }
+
+    /**
+     * Sets the join \a style used for drawing the buffer.
+     * \see joinStyle()
+     */
+    void setJoinStyle( Qt::PenJoinStyle style ) { mJoinStyle = style; }
+
+    /**
+     * Returns the fill symbol used to render the buffer.
+     *
+     * Ownership is not transferred.
+     *
+     * \see setFillSymbol()
+     */
+    QgsFillSymbol *fillSymbol() const;
+
+    /**
+     * Sets the fill \a symbol used to render the buffer. Ownership of \a symbol is
+     * transferred to the buffer.
+     *
+     * \see fillSymbol()
+     */
+    void setFillSymbol( QgsFillSymbol *symbol SIP_TRANSFER );
+
+
+    /**
+     * Writes the buffer settings to an XML \a element.
+     *
+     * \see readXml()
+     */
+    void writeXml( QDomElement &element, const QgsReadWriteContext &context ) const;
+
+    /**
+     * Reads the buffer settings from an XML \a element.
+     *
+     * \see readXml()
+     */
+    void readXml( const QDomElement &element, const QgsReadWriteContext &context );
+
+  private:
+    bool mEnabled = false;
+    double mSize = 1;
+    Qgis::RenderUnit mSizeUnit = Qgis::RenderUnit::Millimeters;
+    QgsMapUnitScale mSizeMapUnitScale;
+    Qt::PenJoinStyle mJoinStyle = Qt::RoundJoin;
+    std::unique_ptr< QgsFillSymbol > mFillSymbol;
+};
+
 
 /**
  * \ingroup core
@@ -92,15 +225,22 @@ class CORE_EXPORT QgsSymbolAnimationSettings
  */
 class CORE_EXPORT QgsSymbol
 {
-
 #ifdef SIP_RUN
     SIP_CONVERT_TO_SUBCLASS_CODE
     switch ( sipCpp->type() )
     {
-      case Qgis::SymbolType::Marker: sipType = sipType_QgsMarkerSymbol; break;
-      case Qgis::SymbolType::Line: sipType = sipType_QgsLineSymbol; break;
-      case Qgis::SymbolType::Fill: sipType = sipType_QgsFillSymbol; break;
-      default: sipType = 0; break;
+      case Qgis::SymbolType::Marker:
+        sipType = sipType_QgsMarkerSymbol;
+        break;
+      case Qgis::SymbolType::Line:
+        sipType = sipType_QgsLineSymbol;
+        break;
+      case Qgis::SymbolType::Fill:
+        sipType = sipType_QgsFillSymbol;
+        break;
+      default:
+        sipType = 0;
+        break;
     }
     SIP_END
 #endif
@@ -108,7 +248,6 @@ class CORE_EXPORT QgsSymbol
     friend class QgsFeatureRenderer;
 
   public:
-
     /**
      * Returns a translated string version of the specified symbol \a type.
      *
@@ -132,6 +271,7 @@ class CORE_EXPORT QgsSymbol
     enum class Property SIP_MONKEYPATCH_SCOPEENUM_UNNEST( QgsSymbol, Property ) : int
     {
       Opacity SIP_MONKEYPATCH_COMPAT_NAME( PropertyOpacity ), //!< Opacity
+      ExtentBuffer,                                           //!< Extent buffer \since QGIS 3.42
     };
     // *INDENT-ON*
 
@@ -148,7 +288,7 @@ class CORE_EXPORT QgsSymbol
      *
      * The caller takes ownership of the returned object.
      */
-    static QgsSymbol *defaultSymbol( Qgis::GeometryType geomType ) SIP_FACTORY;
+    static std::unique_ptr<QgsSymbol> defaultSymbol( Qgis::GeometryType geomType );
 
     /**
      * Returns the symbol's type.
@@ -182,6 +322,7 @@ class CORE_EXPORT QgsSymbol
      */
     const QgsSymbolLayer *symbolLayer( int layer ) const;
 #else
+    // clang-format off
 
     /**
      * Returns the symbol layer at the specified index.
@@ -204,6 +345,7 @@ class CORE_EXPORT QgsSymbol
       sipRes = sipConvertFromType( sipCpp->symbolLayer( a0 ), sipType_QgsSymbolLayer, NULL );
     }
     % End
+// clang-format on
 #endif
 
     /**
@@ -215,6 +357,7 @@ class CORE_EXPORT QgsSymbol
     int symbolLayerCount() const { return mLayers.count(); }
 
 #ifdef SIP_RUN
+    // clang-format off
 
     /**
      * Returns the number of symbol layers contained in the symbol.
@@ -281,16 +424,17 @@ class CORE_EXPORT QgsSymbol
       sipIsErr = 1;
     }
     % End
+// clang-format on
 #endif
 
-    /**
+      /**
      * Inserts a symbol \a layer to specified \a index.
      * Ownership of \a layer is transferred to the symbol.
      * \param index The index at which the layer should be added
      * \param layer The symbol layer to add
      * \returns TRUE if the layer is added, FALSE if the index or the layer is bad
      */
-    bool insertSymbolLayer( int index, QgsSymbolLayer *layer SIP_TRANSFER );
+      bool insertSymbolLayer( int index, QgsSymbolLayer *layer SIP_TRANSFER );
 
     /**
      * Appends a symbol \a layer at the end of the current symbol layer list.
@@ -379,8 +523,15 @@ class CORE_EXPORT QgsSymbol
      * \see exportImage()
      * \see asImage()
      */
-    void drawPreviewIcon( QPainter *painter, QSize size, QgsRenderContext *customContext = nullptr, bool selected = false, const QgsExpressionContext *expressionContext = nullptr,
-                          const QgsLegendPatchShape *patchShape = nullptr, const QgsScreenProperties &screen = QgsScreenProperties() );
+    void drawPreviewIcon(
+      QPainter *painter,
+      QSize size,
+      QgsRenderContext *customContext = nullptr,
+      bool selected = false,
+      const QgsExpressionContext *expressionContext = nullptr,
+      const QgsLegendPatchShape *patchShape = nullptr,
+      const QgsScreenProperties &screen = QgsScreenProperties()
+    );
 
     /**
      * Export the symbol as an image format, to the specified \a path and with the given \a size.
@@ -415,17 +566,37 @@ class CORE_EXPORT QgsSymbol
      * \see asImage()
      * \see drawPreviewIcon()
      */
-    QImage bigSymbolPreviewImage( QgsExpressionContext *expressionContext = nullptr, Qgis::SymbolPreviewFlags flags = Qgis::SymbolPreviewFlag::FlagIncludeCrosshairsForMarkerSymbols, const QgsScreenProperties &screen = QgsScreenProperties() ) SIP_PYNAME( bigSymbolPreviewImageV2 );
+    QImage bigSymbolPreviewImage(
+      QgsExpressionContext *expressionContext = nullptr,
+      Qgis::SymbolPreviewFlags flags = Qgis::SymbolPreviewFlag::FlagIncludeCrosshairsForMarkerSymbols,
+      const QgsScreenProperties &screen = QgsScreenProperties()
+    ) SIP_PYNAME( bigSymbolPreviewImageV2 );
 
     /**
-     * \deprecated use bigSymbolPreviewImageV2 instead.
+     * \deprecated QGIS 3.40. Use bigSymbolPreviewImageV2() instead.
      */
-    Q_DECL_DEPRECATED QImage bigSymbolPreviewImage( QgsExpressionContext *expressionContext = nullptr, int flags = static_cast< int >( Qgis::SymbolPreviewFlag::FlagIncludeCrosshairsForMarkerSymbols ) ) SIP_DEPRECATED;
+    Q_DECL_DEPRECATED QImage bigSymbolPreviewImage( QgsExpressionContext *expressionContext = nullptr, int flags = static_cast< int >( Qgis::SymbolPreviewFlag::FlagIncludeCrosshairsForMarkerSymbols ) )
+      SIP_DEPRECATED;
 
     /**
      * Returns a string dump of the symbol's properties.
      */
     QString dump() const;
+
+    /**
+     * Returns TRUE if this symbol will always render identically
+     * to an \a other symbol.
+     *
+     * \note This method is pessimistic, in that it will return FALSE in circumstances
+     * where it is not possible to guarantee that in 100% of cases the symbol will
+     * render pixel-identically to the other symbol. For instance, calling
+     * rendersIdenticallyTo() with the same symbol as \a other may
+     * return FALSE if the symbol contains data-defined overrides, such
+     * as those using feature attributes or expression variables.
+     *
+     * \since QGIS 4.0
+     */
+    bool rendersIdenticallyTo( const QgsSymbol *other ) const;
 
     /**
      * Returns a deep copy of this symbol.
@@ -436,8 +607,19 @@ class CORE_EXPORT QgsSymbol
 
     /**
      * Converts the symbol to a SLD representation.
+     *
+     * \deprecated QGIS 3.44. Use the version with QgsSldExportContext instead.
      */
-    void toSld( QDomDocument &doc, QDomElement &element, QVariantMap props ) const;
+    Q_DECL_DEPRECATED void toSld( QDomDocument &doc, QDomElement &element, QVariantMap props ) const SIP_DEPRECATED;
+
+    /**
+     * Converts the symbol to a SLD representation.
+     *
+     * Returns TRUE if the symbol was successfully converted.
+     *
+     * \since QGIS 3.44
+     */
+    bool toSld( QDomDocument &doc, QDomElement &element, QgsSldExportContext &context ) const;
 
     /**
      * Returns the units to use for sizes and widths within the symbol. Individual
@@ -511,7 +693,7 @@ class CORE_EXPORT QgsSymbol
      * Returns the rendering hint flags for the symbol.
      * \see setRenderHints()
      */
-    Qgis::SymbolRenderHints renderHints() const { return mRenderHints; }
+    Qgis::SymbolRenderHints renderHints() const;
 
     /**
      * Sets \a flags for the symbol.
@@ -527,7 +709,7 @@ class CORE_EXPORT QgsSymbol
      * \see setFlags()
      * \since QGIS 3.20
      */
-    Qgis::SymbolFlags flags() const { return mSymbolFlags; }
+    Qgis::SymbolFlags flags() const;
 
     /**
      * Sets whether features drawn by the symbol should be clipped to the render context's
@@ -570,6 +752,36 @@ class CORE_EXPORT QgsSymbol
      * \since QGIS 3.6
      */
     bool forceRHR() const { return mForceRHR; }
+
+    /**
+     * Returns the symbol buffer settings, which control an optional "halo" effect around the symbol.
+     *
+     * Will be NULLPTR if no buffer settings have previously been set for the symbol.
+     *
+     * \see setBufferSettings()
+     * \since QGIS 3.40
+     */
+    QgsSymbolBufferSettings *bufferSettings();
+
+    /**
+     * Returns the symbol buffer settings, which control an optional "halo" effect around the symbol.
+     *
+     * Will be NULLPTR if no buffer settings have previously been set for the symbol.
+     *
+     * \see setBufferSettings()
+     * \since QGIS 3.40
+     */
+    const QgsSymbolBufferSettings *bufferSettings() const SIP_SKIP;
+
+    /**
+     * Sets a the symbol buffer \a settings, which control an optional "halo" effect around the symbol.
+     *
+     * Ownership is transferred to the symbol.
+     *
+     * \see bufferSettings()
+     * \since QGIS 3.40
+     */
+    void setBufferSettings( QgsSymbolBufferSettings *settings SIP_TRANSFER );
 
     /**
      * Returns a reference to the symbol animation settings.
@@ -624,7 +836,7 @@ class CORE_EXPORT QgsSymbol
      * \see setDataDefinedProperties()
      * \since QGIS 3.18
      */
-    const QgsPropertyCollection &dataDefinedProperties() const { return mDataDefinedProperties; } SIP_SKIP
+    const QgsPropertyCollection &dataDefinedProperties() const SIP_SKIP { return mDataDefinedProperties; }
 
     /**
      * Sets the symbol's property collection, used for data defined overrides.
@@ -651,13 +863,15 @@ class CORE_EXPORT QgsSymbol
     bool canCauseArtifactsBetweenAdjacentTiles() const;
 
     /**
+     * Sets the vector \a layer associated with the symbol.
+     *
      * \note the layer will be NULLPTR after stopRender
-     * \deprecated Will be removed in QGIS 4.0
+     * \deprecated QGIS 3.40. Will be removed in QGIS 5.0.
      */
     Q_DECL_DEPRECATED void setLayer( const QgsVectorLayer *layer ) SIP_DEPRECATED;
 
     /**
-     * \deprecated Will be removed in QGIS 4.0
+     * \deprecated QGIS 3.40. Will be removed in QGIS 5.0.
      */
     Q_DECL_DEPRECATED const QgsVectorLayer *layer() const SIP_DEPRECATED;
 
@@ -665,7 +879,15 @@ class CORE_EXPORT QgsSymbol
      * Render a feature. Before calling this the startRender() method should be called to initialize
      * the rendering process. After rendering all features stopRender() must be called.
      */
-    void renderFeature( const QgsFeature &feature, QgsRenderContext &context, int layer = -1, bool selected = false, bool drawVertexMarker = false, Qgis::VertexMarkerType currentVertexMarkerType = Qgis::VertexMarkerType::SemiTransparentCircle, double currentVertexMarkerSize = 0.0 ) SIP_THROW( QgsCsException );
+    void renderFeature(
+      const QgsFeature &feature,
+      QgsRenderContext &context,
+      int layer = -1,
+      bool selected = false,
+      bool drawVertexMarker = false,
+      Qgis::VertexMarkerType currentVertexMarkerType = Qgis::VertexMarkerType::SemiTransparentCircle,
+      double currentVertexMarkerSize = 0.0
+    ) SIP_THROW( QgsCsException );
 
     /**
      * Returns the symbol render context. Only valid between startRender and stopRender calls.
@@ -700,8 +922,44 @@ class CORE_EXPORT QgsSymbol
      */
     void stopFeatureRender( const QgsFeature &feature, QgsRenderContext &context, int layer = -1 );
 
-  protected:
+    /**
+     * Returns the symbol's extent buffer.
+     *
+     * Units are retrieved via extentBufferSizeUnit().
+     * \since QGIS 3.42
+     */
+    double extentBuffer() const;
 
+    /**
+     * Sets the symbol's extent buffer.
+     *
+     * Units are set via setExtentBufferSizeUnit().
+     * \param extentBuffer buffer distance.
+     * \see extentBuffer()
+     * \note Negative values are not supported and will be changed to 0.
+     * \since QGIS 3.42
+     */
+    void setExtentBuffer( double extentBuffer );
+
+    /**
+     * Returns the units for the buffer size.
+     *
+     * \see extentBuffer()
+     * \see setExtentBufferSizeUnit()
+     * \since QGIS 3.42
+     */
+    Qgis::RenderUnit extentBufferSizeUnit() const { return mExtentBufferSizeUnit; }
+
+    /**
+     * Sets the \a unit used for the extent buffer.
+     *
+     * \see setExtentBuffer()
+     * \see extentBufferSizeUnit()
+     * \since QGIS 3.42
+     */
+    void setExtentBufferSizeUnit( Qgis::RenderUnit unit ) { mExtentBufferSizeUnit = unit; }
+
+  protected:
     /**
      * Constructor for a QgsSymbol of the specified \a type.
      *
@@ -722,7 +980,6 @@ class CORE_EXPORT QgsSymbol
         double z = 0.0;
         context.coordinateTransform().transformInPlace( x, y, z );
         pt = QPointF( x, y );
-
       }
       else
         pt = point.toQPointF();
@@ -760,6 +1017,13 @@ class CORE_EXPORT QgsSymbol
     QgsSymbolLayerList cloneLayers() const SIP_FACTORY;
 
     /**
+     * Copies common properties from an \a other symbol to this symbol.
+     *
+     * \since QGIS 3.40
+     */
+    void copyCommonProperties( const QgsSymbol *other );
+
+    /**
      * Renders a context using a particular symbol layer without passing in a
      * geometry. This is used as fallback, if the symbol being rendered is not
      * compatible with the specified layer. In such a case, this method can be
@@ -771,7 +1035,9 @@ class CORE_EXPORT QgsSymbol
      * Since QGIS 3.22, the optional \a geometryType, \a points and \a rings arguments can specify the original
      * geometry type, points and rings in which are being rendered by the parent symbol.
      */
-    void renderUsingLayer( QgsSymbolLayer *layer, QgsSymbolRenderContext &context, Qgis::GeometryType geometryType = Qgis::GeometryType::Unknown, const QPolygonF *points = nullptr, const QVector<QPolygonF> *rings = nullptr );
+    void renderUsingLayer(
+      QgsSymbolLayer *layer, QgsSymbolRenderContext &context, Qgis::GeometryType geometryType = Qgis::GeometryType::Unknown, const QPolygonF *points = nullptr, const QVector<QPolygonF> *rings = nullptr
+    );
 
     /**
      * Render editing vertex marker at specified point
@@ -780,6 +1046,9 @@ class CORE_EXPORT QgsSymbol
 
     Qgis::SymbolType mType;
     QgsSymbolLayerList mLayers;
+
+    double mExtentBuffer = 0;
+    Qgis::RenderUnit mExtentBufferSizeUnit = Qgis::RenderUnit::MapUnits;
 
     //! Symbol opacity (in the range 0 - 1)
     qreal mOpacity = 1.0;
@@ -796,6 +1065,7 @@ class CORE_EXPORT QgsSymbol
     bool mClipFeaturesToExtent = true;
     bool mForceRHR = false;
 
+    std::unique_ptr< QgsSymbolBufferSettings > mBufferSettings;
     QgsSymbolAnimationSettings mAnimationSettings;
 
     Q_DECL_DEPRECATED const QgsVectorLayer *mLayer = nullptr; //current vectorlayer
@@ -848,7 +1118,6 @@ class CORE_EXPORT QgsSymbol
     static QPolygonF _getPolygonRing3d( QgsRenderContext &context, const QgsCurve &curve, bool clipToExtent, bool isExteriorRing = false, bool correctRingOrientation = false );
 
     Q_DISABLE_COPY( QgsSymbol )
-
 };
 
 #endif

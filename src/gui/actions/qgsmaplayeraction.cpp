@@ -14,18 +14,20 @@
  ***************************************************************************/
 
 #include "qgsmaplayeraction.h"
+
 #include "qgsgui.h"
-#include "qgsmaplayeractionregistry.h"
 #include "qgsmaplayer.h"
-#include "qgsvectorlayer.h"
 #include "qgsmaplayeractioncontext.h"
+#include "qgsmaplayeractionregistry.h"
+#include "qgsvectorlayer.h"
+
+#include "moc_qgsmaplayeraction.cpp"
 
 QgsMapLayerAction::QgsMapLayerAction( const QString &name, QObject *parent, Qgis::MapLayerActionTargets targets, const QIcon &icon, Qgis::MapLayerActionFlags flags )
   : QAction( icon, name, parent )
   , mTargets( targets )
   , mFlags( flags )
-{
-}
+{}
 
 QgsMapLayerAction::QgsMapLayerAction( const QString &name, QObject *parent, QgsMapLayer *layer, Qgis::MapLayerActionTargets targets, const QIcon &icon, Qgis::MapLayerActionFlags flags )
   : QAction( icon, name, parent )
@@ -33,8 +35,7 @@ QgsMapLayerAction::QgsMapLayerAction( const QString &name, QObject *parent, QgsM
   , mActionLayer( layer )
   , mTargets( targets )
   , mFlags( flags )
-{
-}
+{}
 
 QgsMapLayerAction::QgsMapLayerAction( const QString &name, QObject *parent, Qgis::LayerType layerType, Qgis::MapLayerActionTargets targets, const QIcon &icon, Qgis::MapLayerActionFlags flags )
   : QAction( icon, name, parent )
@@ -42,8 +43,7 @@ QgsMapLayerAction::QgsMapLayerAction( const QString &name, QObject *parent, Qgis
   , mLayerType( layerType )
   , mTargets( targets )
   , mFlags( flags )
-{
-}
+{}
 
 QgsMapLayerAction::~QgsMapLayerAction()
 {
@@ -71,6 +71,17 @@ bool QgsMapLayerAction::canRunUsingLayer( QgsMapLayer *layer, const QgsMapLayerA
     if ( layer->type() != Qgis::LayerType::Vector )
       return false;
     if ( !qobject_cast<QgsVectorLayer *>( layer )->isEditable() )
+      return false;
+  }
+
+  if ( mFlags & Qgis::MapLayerActionFlag::EnableOnlyWhenHasGeometry )
+  {
+    // action is only enabled for layers with geometry
+    if ( !layer )
+      return false;
+    if ( layer->type() != Qgis::LayerType::Vector )
+      return false;
+    if ( qobject_cast<QgsVectorLayer *>( layer )->wkbType() == Qgis::WkbType::NoGeometry )
       return false;
   }
 
@@ -135,4 +146,3 @@ bool QgsMapLayerAction::isEnabledOnlyWhenEditable() const
 {
   return mFlags & Qgis::MapLayerActionFlag::EnabledOnlyWhenEditable;
 }
-

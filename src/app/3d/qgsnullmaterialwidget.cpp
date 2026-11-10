@@ -15,8 +15,10 @@
 
 #include "qgsnullmaterialwidget.h"
 
-#include "qgsnullmaterialsettings.h"
 #include "qgis.h"
+#include "qgsnullmaterialsettings.h"
+
+#include "moc_qgsnullmaterialwidget.cpp"
 
 QgsNullMaterialWidget::QgsNullMaterialWidget( QWidget *parent )
   : QgsMaterialSettingsWidget( parent )
@@ -30,10 +32,15 @@ QgsMaterialSettingsWidget *QgsNullMaterialWidget::create()
 }
 
 void QgsNullMaterialWidget::setSettings( const QgsAbstractMaterialSettings *, QgsVectorLayer * )
+{}
+
+std::unique_ptr<QgsAbstractMaterialSettings> QgsNullMaterialWidget::settings()
 {
+  return std::make_unique< QgsNullMaterialSettings >();
 }
 
-QgsAbstractMaterialSettings *QgsNullMaterialWidget::settings()
-{
-  return new QgsNullMaterialSettings();
-}
+void QgsNullMaterialWidget::setPreviewVisible( bool )
+{}
+
+void QgsNullMaterialWidget::updateWidgetVisibility()
+{}

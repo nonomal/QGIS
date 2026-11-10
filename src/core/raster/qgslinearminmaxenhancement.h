@@ -1,4 +1,4 @@
-/* **************************************************************************
+/***************************************************************************
               qgslinearminmaxenhancement.h -  description
                        -------------------
 begin                : Fri Nov 16 2007
@@ -7,7 +7,7 @@ email                : ersts@amnh.org
 
 ****************************************************************************/
 
-/* **************************************************************************
+/***************************************************************************
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
  *   it under the terms of the GNU General Public License as published by  *
@@ -28,12 +28,10 @@ email                : ersts@amnh.org
   */
 class CORE_EXPORT QgsLinearMinMaxEnhancement : public QgsContrastEnhancementFunction
 {
-
   public:
     QgsLinearMinMaxEnhancement( Qgis::DataType, double, double );
 
     int enhance( double ) override;
-
 };
 
 #endif

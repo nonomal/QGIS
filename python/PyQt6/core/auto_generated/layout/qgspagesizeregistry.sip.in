@@ -3,8 +3,9 @@
  *                                                                      *
  * src/core/layout/qgspagesizeregistry.h                                *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/
+
 
 
 
@@ -19,13 +20,12 @@ A named page size for layouts.
 #include "qgspagesizeregistry.h"
 %End
   public:
-
     QgsPageSize();
 
     QgsPageSize( const QString &name, const QgsLayoutSize &size, const QString &displayName = QString() );
 %Docstring
-Constructor for QgsPageSize, accepting the ``name`` of the page size, the
-page ``size`` and the ``displayName``.
+Constructor for QgsPageSize, accepting the ``name`` of the page size,
+the page ``size`` and the ``displayName``.
 %End
 
     QgsPageSize( const QgsLayoutSize &size );
@@ -48,15 +48,14 @@ class QgsPageSizeRegistry
 %Docstring(signature="appended")
 A registry for known page sizes.
 
-:py:class:`QgsPageSizeRegistry` is not usually directly created, but rather accessed through
-:py:func:`QgsApplication.pageSizeRegistry()`.
+:py:class:`QgsPageSizeRegistry` is not usually directly created, but
+rather accessed through :py:func:`QgsApplication.pageSizeRegistry()`.
 %End
 
 %TypeHeaderCode
 #include "qgspagesizeregistry.h"
 %End
   public:
-
     QgsPageSizeRegistry();
 %Docstring
 Creates a registry and populates it with known sizes
@@ -74,23 +73,23 @@ Returns a list of page sizes in the registry.
 
     QList< QgsPageSize > find( const QString &name ) const;
 %Docstring
-Finds matching page sizes from the registry, using a case insensitive match
-on the page size ``name``.
+Finds matching page sizes from the registry, using a case insensitive
+match on the page size ``name``.
 %End
 
     QString find( const QgsLayoutSize &size ) const;
 %Docstring
-Finds a matching page ``size`` from the registry. Returns the page size name,
-or an empty string if no matching size could be found.
+Finds a matching page ``size`` from the registry. Returns the page size
+name, or an empty string if no matching size could be found.
 
-Orientation is ignored when matching page sizes, so a landscape A4 page will
-match to the portrait A4 size in the registry.
+Orientation is ignored when matching page sizes, so a landscape A4 page
+will match to the portrait A4 size in the registry.
 %End
 
     bool decodePageSize( const QString &string, QgsPageSize &size ) const;
 %Docstring
-Decodes a ``string`` representing a preset page size.
-The decoded page size will be stored in the ``size`` argument.
+Decodes a ``string`` representing a preset page size. The decoded page
+size will be stored in the ``size`` argument.
 
 :return: ``True`` if string was successfully decoded
 %End
@@ -102,5 +101,5 @@ The decoded page size will be stored in the ``size`` argument.
  *                                                                      *
  * src/core/layout/qgspagesizeregistry.h                                *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/

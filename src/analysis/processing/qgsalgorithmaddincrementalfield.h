@@ -18,10 +18,11 @@
 #ifndef QGSALGORITHMADDINCREMENTALFIELD_H
 #define QGSALGORITHMADDINCREMENTALFIELD_H
 
-#define SIP_NO_FILE
 
 #include "qgis_sip.h"
 #include "qgsprocessingalgorithm.h"
+
+#define SIP_NO_FILE
 
 ///@cond PRIVATE
 
@@ -30,9 +31,7 @@
  */
 class QgsAddIncrementalFieldAlgorithm : public QgsProcessingFeatureBasedAlgorithm
 {
-
   public:
-
     QgsAddIncrementalFieldAlgorithm() = default;
     QString name() const override;
     QString displayName() const override;
@@ -40,11 +39,12 @@ class QgsAddIncrementalFieldAlgorithm : public QgsProcessingFeatureBasedAlgorith
     QString group() const override;
     QString groupId() const override;
     QString shortHelpString() const override;
+    QString shortDescription() const override;
     QList<int> inputLayerTypes() const override;
     QgsAddIncrementalFieldAlgorithm *createInstance() const override SIP_FACTORY;
+    bool supportInPlaceEdit( const QgsMapLayer *layer ) const override;
 
   protected:
-
     void initParameters( const QVariantMap &configuration = QVariantMap() ) override;
     QString outputName() const override;
     QgsFields outputFields( const QgsFields &inputFields ) const override;
@@ -52,16 +52,14 @@ class QgsAddIncrementalFieldAlgorithm : public QgsProcessingFeatureBasedAlgorith
 
     bool prepareAlgorithm( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
     QgsFeatureRequest request() const override;
-    QgsFeatureList processFeature( const QgsFeature &feature,  QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
-    bool supportInPlaceEdit( const QgsMapLayer *layer ) const override;
+    QgsFeatureList processFeature( const QgsFeature &feature, QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
 
   private:
-
     long long mStartValue = 0;
     long long mModulusValue = 0;
     long long mValue = 0;
     QString mFieldName;
-    QHash< QgsAttributes, long long > mGroupedValues;
+    QHash<QgsAttributes, long long> mGroupedValues;
     mutable QgsFields mFields;
     QStringList mGroupedFieldNames;
     QgsAttributeList mGroupedFields;
@@ -69,11 +67,8 @@ class QgsAddIncrementalFieldAlgorithm : public QgsProcessingFeatureBasedAlgorith
     QString mSortExpressionString;
     bool mSortAscending = true;
     bool mSortNullsFirst = false;
-
 };
 
 ///@endcond PRIVATE
 
 #endif // QGSNATIVEALGORITHMS_H
-
-

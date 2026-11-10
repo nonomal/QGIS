@@ -16,28 +16,30 @@
 
 #include "qgspluginsortfilterproxymodel.h"
 
+#include <QString>
 
+#include "moc_qgspluginsortfilterproxymodel.cpp"
 
-QgsPluginSortFilterProxyModel::QgsPluginSortFilterProxyModel( QObject *parent ) : QSortFilterProxyModel( parent )
-{
-}
+using namespace Qt::StringLiterals;
 
+QgsPluginSortFilterProxyModel::QgsPluginSortFilterProxyModel( QObject *parent )
+  : QSortFilterProxyModel( parent )
+{}
 
 
 bool QgsPluginSortFilterProxyModel::filterAcceptsRow( int sourceRow, const QModelIndex &sourceParent ) const
 {
   QModelIndex inx = sourceModel()->index( sourceRow, 0, sourceParent );
 
-  if ( ! sourceModel()->data( inx, SPACER_ROLE ).toString().isEmpty() )
+  if ( !sourceModel()->data( inx, SPACER_ROLE ).toString().isEmpty() )
   {
     // it's a status spacer.
     // TODO: the condition below is only suitable for status spacers
-    return ( filterByStatus( inx ) &&  mAcceptedStatuses.count() > 2 && sourceModel()->data( inx, SPACER_ROLE ).toString() == mAcceptedSpacers );
+    return ( filterByStatus( inx ) && mAcceptedStatuses.count() > 2 && sourceModel()->data( inx, SPACER_ROLE ).toString() == mAcceptedSpacers );
   }
 
   return ( filterByStatus( inx ) && filterByPhrase( inx ) );
 }
-
 
 
 void QgsPluginSortFilterProxyModel::setAcceptedStatuses( const QStringList &statuses )
@@ -47,7 +49,6 @@ void QgsPluginSortFilterProxyModel::setAcceptedStatuses( const QStringList &stat
 }
 
 
-
 void QgsPluginSortFilterProxyModel::setAcceptedSpacers( const QString &spacers )
 {
   mAcceptedSpacers = spacers;
@@ -55,11 +56,9 @@ void QgsPluginSortFilterProxyModel::setAcceptedSpacers( const QString &spacers )
 }
 
 
-
 bool QgsPluginSortFilterProxyModel::filterByStatus( QModelIndex &index ) const
 {
-  if ( mAcceptedStatuses.contains( QStringLiteral( "invalid" ) )
-       && sourceModel()->data( index, PLUGIN_ERROR_ROLE ).toString().isEmpty() )
+  if ( mAcceptedStatuses.contains( u"invalid"_s ) && sourceModel()->data( index, PLUGIN_ERROR_ROLE ).toString().isEmpty() )
   {
     // Don't accept if the "invalid" filter is set and the plugin is OK
     return false;
@@ -67,10 +66,9 @@ bool QgsPluginSortFilterProxyModel::filterByStatus( QModelIndex &index ) const
 
   QString status = sourceModel()->data( index, PLUGIN_STATUS_ROLE ).toString();
   const QString statusexp = sourceModel()->data( index, PLUGIN_STATUSEXP_ROLE ).toString();
-  if ( status.endsWith( 'Z' ) ) status.chop( 1 );
-  if ( ! mAcceptedStatuses.isEmpty()
-       && ! mAcceptedStatuses.contains( QStringLiteral( "invalid" ) )
-       && !( mAcceptedStatuses.contains( status ) || mAcceptedStatuses.contains( statusexp ) ) )
+  if ( status.endsWith( 'Z' ) )
+    status.chop( 1 );
+  if ( !mAcceptedStatuses.isEmpty() && !mAcceptedStatuses.contains( u"invalid"_s ) && !( mAcceptedStatuses.contains( status ) || mAcceptedStatuses.contains( statusexp ) ) )
   {
     // Don't accept if the status doesn't match
     return false;
@@ -79,7 +77,6 @@ bool QgsPluginSortFilterProxyModel::filterByStatus( QModelIndex &index ) const
   // Otherwise, let the item go.
   return true;
 }
-
 
 
 bool QgsPluginSortFilterProxyModel::filterByPhrase( QModelIndex &index ) const
@@ -105,7 +102,6 @@ bool QgsPluginSortFilterProxyModel::filterByPhrase( QModelIndex &index ) const
 }
 
 
-
 int QgsPluginSortFilterProxyModel::countWithCurrentStatus()
 {
   int result = 0;
@@ -121,14 +117,12 @@ int QgsPluginSortFilterProxyModel::countWithCurrentStatus()
 }
 
 
-
 void QgsPluginSortFilterProxyModel::sortPluginsByName()
 {
   setAcceptedSpacers();
   sort( 0, Qt::AscendingOrder );
   setSortRole( Qt::DisplayRole );
 }
-
 
 
 void QgsPluginSortFilterProxyModel::sortPluginsByDownloads()
@@ -138,24 +132,12 @@ void QgsPluginSortFilterProxyModel::sortPluginsByDownloads()
   setSortRole( PLUGIN_DOWNLOADS_ROLE );
 }
 
-
-
-void QgsPluginSortFilterProxyModel::sortPluginsByVote()
-{
-  setAcceptedSpacers();
-  sort( 0, Qt::DescendingOrder );
-  setSortRole( PLUGIN_VOTE_ROLE );
-}
-
-
-
 void QgsPluginSortFilterProxyModel::sortPluginsByStatus()
 {
-  setAcceptedSpacers( QStringLiteral( "status" ) );
+  setAcceptedSpacers( u"status"_s );
   sort( 0, Qt::DescendingOrder );
   setSortRole( PLUGIN_STATUS_ROLE );
 }
-
 
 
 void QgsPluginSortFilterProxyModel::sortPluginsByDateCreated()
@@ -177,8 +159,8 @@ void QgsPluginSortFilterProxyModel::sortPluginsByDateUpdated()
 bool QgsPluginSortFilterProxyModel::lessThan( const QModelIndex &source_left, const QModelIndex &source_right ) const
 {
   // Always move deprecated plugins to bottom, regardless of the sort order.
-  const bool isLeftDepreciated = sourceModel()->data( source_left, PLUGIN_ISDEPRECATED_ROLE ).toString() == QLatin1String( "true" );
-  const bool isRightDepreciated = sourceModel()->data( source_right, PLUGIN_ISDEPRECATED_ROLE ).toString() == QLatin1String( "true" );
+  const bool isLeftDepreciated = sourceModel()->data( source_left, PLUGIN_ISDEPRECATED_ROLE ).toString() == "true"_L1;
+  const bool isRightDepreciated = sourceModel()->data( source_right, PLUGIN_ISDEPRECATED_ROLE ).toString() == "true"_L1;
   if ( isRightDepreciated && !isLeftDepreciated )
   {
     return sortOrder() == Qt::AscendingOrder ? true : false;

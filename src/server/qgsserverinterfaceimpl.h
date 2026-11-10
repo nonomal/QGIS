@@ -19,12 +19,12 @@
 #ifndef QGSSERVERINTERFACEIMPL_H
 #define QGSSERVERINTERFACEIMPL_H
 
-#define SIP_NO_FILE
 
-
-#include "qgsserverinterface.h"
 #include "qgscapabilitiescache.h"
 #include "qgsservercachemanager.h"
+#include "qgsserverinterface.h"
+
+#define SIP_NO_FILE
 
 /**
  * \ingroup server
@@ -34,11 +34,8 @@
 class SERVER_EXPORT QgsServerInterfaceImpl : public QgsServerInterface
 {
   public:
-
     //! Constructor
-    explicit QgsServerInterfaceImpl( QgsCapabilitiesCache *capCache,
-                                     QgsServiceRegistry *srvRegistry,
-                                     QgsServerSettings *serverSettings );
+    explicit QgsServerInterfaceImpl( QgsCapabilitiesCache *capCache, QgsServiceRegistry *srvRegistry, QgsServerSettings *serverSettings );
 
 
     ~QgsServerInterfaceImpl() override;
@@ -47,7 +44,7 @@ class SERVER_EXPORT QgsServerInterfaceImpl : public QgsServerInterface
     void clearRequestHandler() override;
     QgsCapabilitiesCache *capabilitiesCache() override { return mCapabilitiesCache; }
     //! Returns the QgsRequestHandler, to be used only in server plugins
-    QgsRequestHandler  *requestHandler() override { return mRequestHandler; }
+    QgsRequestHandler *requestHandler() override { return mRequestHandler; }
     void registerFilter( QgsServerFilter *filter, int priority = 0 ) override;
     QgsServerFiltersMap filters() override { return mFilters; }
 
@@ -58,7 +55,7 @@ class SERVER_EXPORT QgsServerInterfaceImpl : public QgsServerInterface
      * Gets the helper over all the registered access control filters
      * \returns the access control helper
      */
-    QgsAccessControl *accessControls() const override { return mAccessControls; }
+    QgsAccessControl *accessControls() const override { return mAccessControls.get(); }
 
 
     /**
@@ -89,16 +86,14 @@ class SERVER_EXPORT QgsServerInterfaceImpl : public QgsServerInterface
     void reloadSettings() override;
 
   private:
-
     QString mConfigFilePath;
     QgsServerFiltersMap mFilters;
-    QgsAccessControl *mAccessControls = nullptr;
-    QgsServerCacheManager *mCacheManager = nullptr;
+    std::unique_ptr<QgsAccessControl> mAccessControls;
+    std::unique_ptr<QgsServerCacheManager> mCacheManager;
     QgsCapabilitiesCache *mCapabilitiesCache = nullptr;
     QgsRequestHandler *mRequestHandler = nullptr;
     QgsServiceRegistry *mServiceRegistry = nullptr;
     QgsServerSettings *mServerSettings = nullptr;
-
 };
 
 #endif // QGSSERVERINTERFACEIMPL_H

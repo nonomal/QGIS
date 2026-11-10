@@ -18,24 +18,22 @@ From build dir, run: ctest -R PyQgsServerModules -V
 ***************************************************************************
 """
 
-__author__ = 'David Marteau'
-__date__ = 'December 2016'
-__copyright__ = '(C) 2016, David Marteau'
+__author__ = "David Marteau"
+__date__ = "December 2016"
+__copyright__ = "(C) 2016, David Marteau"
 
 """ QGIS test for server services
 """
 import os
 
-from qgis.PyQt.QtCore import QBuffer, QIODevice
 from qgis.core import QgsApplication
+from qgis.PyQt.QtCore import QBuffer, QIODevice
 from qgis.server import QgsServer, QgsServerResponse, QgsService
 from qgis.testing import unittest
-
 from utilities import unitTestDataPath
 
 
 class Response(QgsServerResponse):
-
     def __init__(self):
         QgsServerResponse.__init__(self)
         self._buffer = QBuffer()
@@ -55,7 +53,6 @@ class Response(QgsServerResponse):
 
 
 class MyService(QgsService):
-
     def __init__(self, name, version, response):
         QgsService.__init__(self)
         self._response = response
@@ -74,8 +71,7 @@ class MyService(QgsService):
 
 
 class TestModules(unittest.TestCase):
-    """
-    """
+    """ """
 
     @classmethod
     def setUpClass(cls):
@@ -89,13 +85,13 @@ class TestModules(unittest.TestCase):
 
     def setUp(self):
         """Create the server instance"""
-        self.testdata_path = unitTestDataPath('qgis_server') + '/'
+        self.testdata_path = unitTestDataPath("qgis_server") + "/"
 
-        d = unitTestDataPath('qgis_server_accesscontrol') + '/'
+        d = unitTestDataPath("qgis_server_accesscontrol") + "/"
         self.projectPath = os.path.join(d, "project.qgs")
 
         # Clean env just to be sure
-        env_vars = ['QUERY_STRING', 'QGIS_PROJECT_FILE']
+        env_vars = ["QUERY_STRING", "QGIS_PROJECT_FILE"]
         for ev in env_vars:
             try:
                 del os.environ[ev]
@@ -111,5 +107,5 @@ class TestModules(unittest.TestCase):
         pass
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

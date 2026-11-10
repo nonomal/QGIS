@@ -16,19 +16,24 @@
 #ifndef QGSTILES_H
 #define QGSTILES_H
 
+#include "qgis.h"
 #include "qgis_core.h"
 #include "qgis_sip.h"
-
-#include "qgis.h"
-#include "qgsrectangle.h"
 #include "qgscoordinatereferencesystem.h"
 #include "qgsreadwritecontext.h"
+#include "qgsrectangle.h"
+
+#include <QString>
+
+using namespace Qt::StringLiterals;
 
 class QgsRenderContext;
 
 /**
  * \ingroup core
- * \brief Stores coordinates of a tile in a tile matrix set. Tile matrix is identified
+ * \brief Stores coordinates of a tile in a tile matrix set.
+ *
+ * Tile matrix is identified
  * by the zoomLevel(), and the position within tile matrix is given by column()
  * and row().
  *
@@ -39,9 +44,10 @@ class CORE_EXPORT QgsTileXYZ
   public:
     //! Constructs a tile identifier from given column, row and zoom level indices
     QgsTileXYZ( int tc = -1, int tr = -1, int tz = -1 )
-      : mColumn( tc ), mRow( tr ), mZoomLevel( tz )
-    {
-    }
+      : mColumn( tc )
+      , mRow( tr )
+      , mZoomLevel( tz )
+    {}
 
     //! Returns tile's column index (X)
     int column() const { return mColumn; }
@@ -51,45 +57,65 @@ class CORE_EXPORT QgsTileXYZ
     int zoomLevel() const { return mZoomLevel; }
 
     //! Returns tile coordinates in a formatted string
-    QString toString() const { return QStringLiteral( "X=%1 Y=%2 Z=%3" ).arg( mColumn ).arg( mRow ).arg( mZoomLevel ); }
+    QString toString() const { return u"X=%1 Y=%2 Z=%3"_s.arg( mColumn ).arg( mRow ).arg( mZoomLevel ); }
 
     bool operator==( const QgsTileXYZ &other ) const { return mColumn == other.mColumn && mRow == other.mRow && mZoomLevel == other.mZoomLevel; }
     bool operator!=( const QgsTileXYZ &other ) const { return !( *this == other ); }
 
 #ifdef SIP_RUN
+    // clang-format off
     SIP_PYOBJECT __repr__();
     % MethodCode
-    const QString str = QStringLiteral( "<QgsTileXYZ: %1, %2, %3>" ).arg( sipCpp->column() ).arg( sipCpp->row() ).arg( sipCpp->zoomLevel() );
+    const QString str = u"<QgsTileXYZ: %1, %2, %3>"_s.arg( sipCpp->column() ).arg( sipCpp->row() ).arg( sipCpp->zoomLevel() );
     sipRes = PyUnicode_FromString( str.toUtf8().constData() );
     % End
+// clang-format on
 #endif
 
-  private:
-    int mColumn = -1;
+    // clang-format off
+    private:
+    // clang-format on
+    int mColumn
+    = -1;
     int mRow = -1;
     int mZoomLevel = -1;
 };
+
+#ifndef SIP_RUN
+#if ( __GNUC__ > 4 || ( __GNUC__ == 4 && __GNUC_MINOR__ >= 6 ) ) || defined( __clang__ )
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wattributes"
+#elif defined( _MSC_VER )
+__pragma( warning( push ) ) __pragma( warning( disable : 4273 ) )
+#endif
+#endif
 
 /**
  * Returns a hash for a tile \a id.
  *
  * \since QGIS 3.32
  */
-CORE_EXPORT inline uint qHash( QgsTileXYZ id ) SIP_SKIP
+CORE_EXPORT inline size_t qHash( QgsTileXYZ id ) SIP_SKIP
 {
-  return id.column() + id.row() + id.zoomLevel();
-
-  const uint h1 = qHash( static_cast< quint64 >( id.column( ) ) );
-  const uint h2 = qHash( static_cast< quint64 >( id.row() ) );
-  const uint h3 = qHash( static_cast< quint64 >( id.zoomLevel() ) );
-  return h1 ^ ( h2 << 1 ) ^ ( h3 );
+  const size_t h1 = qHash( static_cast< quint64 >( id.column() ) );
+  const size_t h2 = qHash( static_cast< quint64 >( id.row() ) );
+  const size_t h3 = qHash( static_cast< quint64 >( id.zoomLevel() ) );
+  return h1 ^ ( h2 << 1 ) ^ ( h3 << 2 );
 }
 
+#ifndef SIP_RUN
+#if ( __GNUC__ > 4 || ( __GNUC__ == 4 && __GNUC_MINOR__ >= 6 ) ) || defined( __clang__ )
+#pragma GCC diagnostic pop
+#elif defined( _MSC_VER )
+__pragma( warning( pop ) )
+#endif
+#endif
 
 /**
  * \ingroup core
- * \brief Range of tiles in a tile matrix to be rendered. The selection is rectangular,
- * given by start/end row and column numbers.
+ * \brief A range of tiles in a tile matrix.
+ *
+ * The selection is rectangular, given by start/end row and column numbers.
  *
  * \since QGIS 3.14
  */
@@ -98,7 +124,11 @@ class CORE_EXPORT QgsTileRange
   public:
     //! Constructs a range of tiles from given span of columns and rows
     QgsTileRange( int c1 = -1, int c2 = -1, int r1 = -1, int r2 = -1 )
-      : mStartColumn( c1 ), mEndColumn( c2 ), mStartRow( r1 ), mEndRow( r2 ) {}
+      : mStartColumn( c1 )
+      , mEndColumn( c2 )
+      , mStartRow( r1 )
+      , mEndRow( r2 )
+    {}
 
     //! Returns whether the range is valid (when all row/column numbers are not negative)
     bool isValid() const { return mStartColumn >= 0 && mEndColumn >= 0 && mStartRow >= 0 && mEndRow >= 0; }
@@ -111,6 +141,13 @@ class CORE_EXPORT QgsTileRange
     int startRow() const { return mStartRow; }
     //! Returns index of the last row in the range
     int endRow() const { return mEndRow; }
+
+    /**
+     * Returns the total number of tiles in the range.
+     *
+     * \since QGIS 3.44
+     */
+    int count() const { return isValid() ? ( mEndRow - mStartRow + 1 ) * ( mEndColumn - mStartColumn + 1 ) : 0; }
 
   private:
     int mStartColumn = -1;
@@ -133,7 +170,6 @@ class CORE_EXPORT QgsTileRange
 class CORE_EXPORT QgsTileMatrix
 {
   public:
-
     //! Returns a tile matrix for the usual web mercator
     static QgsTileMatrix fromWebMercator( int zoomLevel );
 
@@ -142,9 +178,7 @@ class CORE_EXPORT QgsTileMatrix
      *
      * The \a z0Dimension argument must specify the dimension (width or height, in map units) of the root tiles in zoom level 0.
      */
-    static QgsTileMatrix fromCustomDef( int zoomLevel, const QgsCoordinateReferenceSystem &crs,
-                                        const QgsPointXY &z0TopLeftPoint, double z0Dimension,
-                                        int z0MatrixWidth = 1, int z0MatrixHeight = 1 );
+    static QgsTileMatrix fromCustomDef( int zoomLevel, const QgsCoordinateReferenceSystem &crs, const QgsPointXY &z0TopLeftPoint, double z0Dimension, int z0MatrixWidth = 1, int z0MatrixHeight = 1 );
 
     //! Returns a tile matrix based on another one
     static QgsTileMatrix fromTileMatrix( int zoomLevel, const QgsTileMatrix &tileMatrix );
@@ -162,7 +196,7 @@ class CORE_EXPORT QgsTileMatrix
      * \see crs()
      * \since QGIS 3.22.6
      */
-    void setCrs( const QgsCoordinateReferenceSystem &crs ) { mCrs = crs;}
+    void setCrs( const QgsCoordinateReferenceSystem &crs ) { mCrs = crs; }
 
     /**
      * Returns the zoom level of the tile matrix.
@@ -184,6 +218,26 @@ class CORE_EXPORT QgsTileMatrix
 
     //! Returns number of rows of the tile matrix
     int matrixHeight() const { return mMatrixHeight; }
+
+    /**
+     * Returns the calculated matrix width at the specified zoom level.
+     *
+     * \note The \a zoomLevel must be greater than this matrix's zoomLevel()
+     *
+     * \see derivedMatrixHeightAtZoomLevel()
+     * \since QGIS 4.4
+     */
+    long long derivedMatrixWidthAtZoomLevel( int zoomLevel ) const;
+
+    /**
+     * Returns the calculated matrix height at the specified zoom level.
+     *
+     * \note The \a zoomLevel must be greater than this matrix's zoomLevel()
+     *
+     * \see derivedMatrixWidthAtZoomLevel()
+     * \since QGIS 4.4
+     */
+    long long derivedMatrixHeightAtZoomLevel( int zoomLevel ) const;
 
     //! Returns extent of the tile matrix
     QgsRectangle extent() const { return mExtent; }
@@ -248,9 +302,7 @@ class CORE_EXPORT QgsTileMatrix
  */
 class CORE_EXPORT QgsTileMatrixSet
 {
-
   public:
-
     QgsTileMatrixSet();
 
     virtual ~QgsTileMatrixSet() = default;
@@ -360,12 +412,7 @@ class CORE_EXPORT QgsTileMatrixSet
      *
      * \since QGIS 3.26
      */
-    double calculateTileScaleForMap( double actualMapScale,
-                                     const QgsCoordinateReferenceSystem &mapCrs,
-                                     const QgsRectangle &mapExtent,
-                                     const QSize mapSize,
-                                     const double mapDpi
-                                   ) const;
+    double calculateTileScaleForMap( double actualMapScale, const QgsCoordinateReferenceSystem &mapCrs, const QgsRectangle &mapExtent, const QSize mapSize, const double mapDpi ) const;
 
     /**
      * Reads the set from an XML \a element.

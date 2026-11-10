@@ -16,26 +16,31 @@
  ***************************************************************************/
 
 #include "qgstiledscenewireframerenderer.h"
+
 #include "qgsfillsymbol.h"
-#include "qgssymbollayerutils.h"
 #include "qgslinesymbol.h"
+#include "qgssymbollayerutils.h"
+
+#include <QString>
+
+using namespace Qt::StringLiterals;
 
 QgsTiledSceneWireframeRenderer::QgsTiledSceneWireframeRenderer()
 {
-  mFillSymbol.reset( createDefaultFillSymbol() );
-  mLineSymbol.reset( createDefaultLineSymbol() );
+  mFillSymbol = createDefaultFillSymbol();
+  mLineSymbol = createDefaultLineSymbol();
 }
 
 QgsTiledSceneWireframeRenderer::~QgsTiledSceneWireframeRenderer() = default;
 
 QString QgsTiledSceneWireframeRenderer::type() const
 {
-  return QStringLiteral( "wireframe" );
+  return u"wireframe"_s;
 }
 
 QgsTiledSceneRenderer *QgsTiledSceneWireframeRenderer::clone() const
 {
-  std::unique_ptr< QgsTiledSceneWireframeRenderer > res = std::make_unique< QgsTiledSceneWireframeRenderer >();
+  auto res = std::make_unique< QgsTiledSceneWireframeRenderer >();
 
   res->setFillSymbol( mFillSymbol->clone() );
   res->setLineSymbol( mLineSymbol->clone() );
@@ -46,45 +51,45 @@ QgsTiledSceneRenderer *QgsTiledSceneWireframeRenderer::clone() const
   return res.release();
 }
 
-QgsTiledSceneRenderer *QgsTiledSceneWireframeRenderer::create( QDomElement &element, const QgsReadWriteContext &context )
+std::unique_ptr<QgsTiledSceneRenderer> QgsTiledSceneWireframeRenderer::create( QDomElement &element, const QgsReadWriteContext &context )
 {
-  std::unique_ptr< QgsTiledSceneWireframeRenderer > r = std::make_unique< QgsTiledSceneWireframeRenderer >();
+  auto r = std::make_unique< QgsTiledSceneWireframeRenderer >();
   {
-    const QDomElement fillSymbolElem = element.firstChildElement( QStringLiteral( "fillSymbol" ) );
+    const QDomElement fillSymbolElem = element.firstChildElement( u"fillSymbol"_s );
     if ( !fillSymbolElem.isNull() )
     {
-      const QDomElement symbolElem = fillSymbolElem.firstChildElement( QStringLiteral( "symbol" ) );
+      const QDomElement symbolElem = fillSymbolElem.firstChildElement( u"symbol"_s );
       std::unique_ptr< QgsFillSymbol > fillSymbol( QgsSymbolLayerUtils::loadSymbol<QgsFillSymbol>( symbolElem, context ) );
       if ( fillSymbol )
         r->mFillSymbol = std::move( fillSymbol );
     }
   }
   {
-    const QDomElement lineSymbolElem = element.firstChildElement( QStringLiteral( "lineSymbol" ) );
+    const QDomElement lineSymbolElem = element.firstChildElement( u"lineSymbol"_s );
     if ( !lineSymbolElem.isNull() )
     {
-      const QDomElement symbolElem = lineSymbolElem.firstChildElement( QStringLiteral( "symbol" ) );
+      const QDomElement symbolElem = lineSymbolElem.firstChildElement( u"symbol"_s );
       std::unique_ptr< QgsLineSymbol > lineSymbol( QgsSymbolLayerUtils::loadSymbol<QgsLineSymbol>( symbolElem, context ) );
       if ( lineSymbol )
         r->mLineSymbol = std::move( lineSymbol );
     }
   }
 
-  r->setUseTextureColors( element.attribute( QStringLiteral( "useTextureColors" ), QStringLiteral( "0" ) ).toInt() );
+  r->setUseTextureColors( element.attribute( u"useTextureColors"_s, u"0"_s ).toInt() );
 
   r->restoreCommonProperties( element, context );
-  return r.release();
+  return r;
 }
 
-QgsFillSymbol *QgsTiledSceneWireframeRenderer::createDefaultFillSymbol()
+std::unique_ptr< QgsFillSymbol > QgsTiledSceneWireframeRenderer::createDefaultFillSymbol()
 {
   QVariantMap properties;
-  properties.insert( QStringLiteral( "color" ), QStringLiteral( "white" ) );
-  properties.insert( QStringLiteral( "style" ), QStringLiteral( "solid" ) );
-  properties.insert( QStringLiteral( "style_border" ), QStringLiteral( "solid" ) );
-  properties.insert( QStringLiteral( "color_border" ), QStringLiteral( "black" ) );
-  properties.insert( QStringLiteral( "width_border" ), QStringLiteral( "0.3" ) );
-  properties.insert( QStringLiteral( "joinstyle" ), QStringLiteral( "miter" ) );
+  properties.insert( u"color"_s, u"white"_s );
+  properties.insert( u"style"_s, u"solid"_s );
+  properties.insert( u"style_border"_s, u"solid"_s );
+  properties.insert( u"color_border"_s, u"black"_s );
+  properties.insert( u"width_border"_s, u"0.3"_s );
+  properties.insert( u"joinstyle"_s, u"miter"_s );
 
   return QgsFillSymbol::createSimple( properties );
 }
@@ -99,10 +104,10 @@ void QgsTiledSceneWireframeRenderer::setFillSymbol( QgsFillSymbol *symbol )
   mFillSymbol.reset( symbol );
 }
 
-QgsLineSymbol *QgsTiledSceneWireframeRenderer::createDefaultLineSymbol()
+std::unique_ptr<QgsLineSymbol> QgsTiledSceneWireframeRenderer::createDefaultLineSymbol()
 {
   QVariantMap properties;
-  properties.insert( QStringLiteral( "color" ), QStringLiteral( "red" ) );
+  properties.insert( u"color"_s, u"red"_s );
 
   return QgsLineSymbol::createSimple( properties );
 }
@@ -129,26 +134,20 @@ void QgsTiledSceneWireframeRenderer::setUseTextureColors( bool newUseTextureColo
 
 QDomElement QgsTiledSceneWireframeRenderer::save( QDomDocument &doc, const QgsReadWriteContext &context ) const
 {
-  QDomElement rendererElem = doc.createElement( QStringLiteral( "renderer" ) );
+  QDomElement rendererElem = doc.createElement( u"renderer"_s );
 
-  rendererElem.setAttribute( QStringLiteral( "type" ), QStringLiteral( "wireframe" ) );
-  rendererElem.setAttribute( QStringLiteral( "useTextureColors" ), mUseTextureColors ? QStringLiteral( "1" ) : QStringLiteral( "0" ) );
+  rendererElem.setAttribute( u"type"_s, u"wireframe"_s );
+  rendererElem.setAttribute( u"useTextureColors"_s, mUseTextureColors ? u"1"_s : u"0"_s );
 
   {
-    QDomElement fillSymbolElem = doc.createElement( QStringLiteral( "fillSymbol" ) );
-    const QDomElement symbolElement = QgsSymbolLayerUtils::saveSymbol( QString(),
-                                      mFillSymbol.get(),
-                                      doc,
-                                      context );
+    QDomElement fillSymbolElem = doc.createElement( u"fillSymbol"_s );
+    const QDomElement symbolElement = QgsSymbolLayerUtils::saveSymbol( QString(), mFillSymbol.get(), doc, context );
     fillSymbolElem.appendChild( symbolElement );
     rendererElem.appendChild( fillSymbolElem );
   }
   {
-    QDomElement lineSymbolElem = doc.createElement( QStringLiteral( "lineSymbol" ) );
-    const QDomElement symbolElement = QgsSymbolLayerUtils::saveSymbol( QString(),
-                                      mLineSymbol.get(),
-                                      doc,
-                                      context );
+    QDomElement lineSymbolElem = doc.createElement( u"lineSymbol"_s );
+    const QDomElement symbolElement = QgsSymbolLayerUtils::saveSymbol( QString(), mLineSymbol.get(), doc, context );
     lineSymbolElem.appendChild( symbolElement );
     rendererElem.appendChild( lineSymbolElem );
   }
@@ -174,9 +173,9 @@ void QgsTiledSceneWireframeRenderer::renderTriangle( QgsTiledSceneRenderContext 
       context.textureCoordinates( textureX1, textureY1, textureX2, textureY2, textureX3, textureY3 );
 
       const QColor centerColor( textureImage.pixelColor(
-                                  static_cast<int>( ( ( textureX1 + textureX2 + textureX3 ) / 3 ) * ( textureImage.width() - 1 ) ),
-                                  static_cast< int >( ( ( textureY1 + textureY2 + textureY3 ) / 3 ) * ( textureImage.height() - 1 ) ) )
-                              );
+        static_cast<int>( ( ( textureX1 + textureX2 + textureX3 ) / 3 ) * ( textureImage.width() - 1 ) ),
+        static_cast< int >( ( ( textureY1 + textureY2 + textureY3 ) / 3 ) * ( textureImage.height() - 1 ) )
+      ) );
       s->setColor( centerColor );
     }
     s->startRender( context.renderContext() );
@@ -216,8 +215,7 @@ void QgsTiledSceneWireframeRenderer::stopRender( QgsTiledSceneRenderContext &con
 
 Qgis::TiledSceneRendererFlags QgsTiledSceneWireframeRenderer::flags() const
 {
-  Qgis::TiledSceneRendererFlags flags = Qgis::TiledSceneRendererFlag::RendersTriangles |
-                                        Qgis::TiledSceneRendererFlag::RendersLines;
+  Qgis::TiledSceneRendererFlags flags = Qgis::TiledSceneRendererFlag::RendersTriangles | Qgis::TiledSceneRendererFlag::RendersLines;
 
   if ( mUseTextureColors )
     flags |= Qgis::TiledSceneRendererFlag::RequiresTextures;

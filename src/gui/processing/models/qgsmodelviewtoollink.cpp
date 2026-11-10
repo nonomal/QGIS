@@ -1,0 +1,604 @@
+/***************************************************************************
+                             qgsmodelviewtoollink.cpp
+                             ------------------------------------
+    Date                 : January 2024
+    Copyright            : (C) 2024 Celia Buira
+    Email                : celia dot buira at gmail dot com
+ ***************************************************************************
+ *                                                                         *
+ *   This program is free software; you can redistribute it and/or modify  *
+ *   it under the terms of the GNU General Public License as published by  *
+ *   the Free Software Foundation; either version 2 of the License, or     *
+ *   (at your option) any later version.                                   *
+ *                                                                         *
+ ***************************************************************************/
+
+#include "qgsmodelviewtoollink.h"
+
+#include <memory>
+
+#include "qgsapplication.h"
+#include "qgsfilterlineedit.h"
+#include "qgsmodelgraphicitem.h"
+#include "qgsmodelgraphicsscene.h"
+#include "qgsmodelgraphicsview.h"
+#include "qgsmodelviewmouseevent.h"
+#include "qgsmodelviewrubberband.h"
+#include "qgsmodelviewtoolselect.h"
+#include "qgsprocessingguiregistry.h"
+#include "qgsprocessingmodelalgorithm.h"
+#include "qgsprocessingmodelchildalgorithm.h"
+#include "qgsprocessingmodelerparameterwidget.h"
+#include "qgsprocessingregistry.h"
+#include "qgsprocessingtoolboxtreeview.h"
+
+#include <QHeaderView>
+#include <QString>
+#include <QVBoxLayout>
+
+#include "moc_qgsmodelviewtoollink.cpp"
+
+using namespace Qt::StringLiterals;
+
+
+///@cond PRIVATE
+class PopupToolboxWidget : public QWidget
+{
+    Q_OBJECT
+  public:
+    PopupToolboxWidget( QWidget *parent = nullptr )
+      : QWidget( parent )
+    {
+      QVBoxLayout *layout = new QVBoxLayout();
+      layout->setSpacing( 0 );
+      layout->setContentsMargins( 0, 0, 0, 0 );
+
+      mLineEdit = new QgsFilterLineEdit( this );
+      mLineEdit->setShowSearchIcon( true );
+      mLineEdit->setPlaceholderText( tr( "Search…" ) );
+      mLineEdit->setFocus();
+
+      mToolboxTreeView = new QgsProcessingToolboxTreeView( this );
+      mToolboxTreeView->header()->setVisible( false );
+      mToolboxTreeView->setAlternatingRowColors( true );
+      const QFontMetrics fm( font() );
+      mToolboxTreeView->setFixedSize( fm.horizontalAdvance( 'X' ) * 40, fm.height() * 10 );
+
+      connect( mLineEdit, &QgsFilterLineEdit::textChanged, mToolboxTreeView, &QgsProcessingToolboxTreeView::setFilterString );
+
+      layout->addWidget( mLineEdit );
+      layout->addWidget( mToolboxTreeView );
+
+      setLayout( layout );
+
+      connect( mLineEdit, &QgsFilterLineEdit::returnPressed, this, [this]() { itemSelected(); } );
+      connect( mToolboxTreeView, &QgsProcessingToolboxTreeView::clicked, this, [this]( const QModelIndex & ) { itemSelected(); } );
+      connect( mToolboxTreeView, &QgsProcessingToolboxTreeView::doubleClicked, this, [this]( const QModelIndex & ) { itemSelected(); } );
+    }
+
+    QgsProcessingToolboxTreeView *toolboxView() const { return mToolboxTreeView; }
+
+  signals:
+    void algorithmAdded( const QString &algorithmId );
+    void parameterAdded( const QString &parameterTypeId );
+
+
+  private:
+    QgsFilterLineEdit *mLineEdit = nullptr;
+    QgsProcessingToolboxTreeView *mToolboxTreeView = nullptr;
+
+    void itemSelected()
+    {
+      if ( mToolboxTreeView->selectedAlgorithm() )
+      {
+        emit algorithmAdded( mToolboxTreeView->selectedAlgorithm()->id() );
+        close();
+      }
+      if ( mToolboxTreeView->selectedParameterType() )
+      {
+        emit parameterAdded( mToolboxTreeView->selectedParameterType()->id() );
+        close();
+      }
+    }
+};
+
+// For PopupToolboxWidget
+#include "qgsmodelviewtoollink.moc"
+
+///@endcond
+
+
+QgsModelViewToolLink::QgsModelViewToolLink( QgsModelGraphicsView *view )
+  : QgsModelViewTool( view, tr( "Link Tool" ) )
+{
+  setCursor( Qt::PointingHandCursor );
+  mBezierRubberBand = std::make_unique<QgsModelViewBezierRubberBand>( view );
+
+  mBezierRubberBand->setBrush( QBrush( QColor( 0, 0, 0, 63 ) ) );
+  mBezierRubberBand->setPen( QPen( QBrush( QColor( 0, 0, 0, 100 ) ), 0, Qt::SolidLine ) );
+}
+
+void QgsModelViewToolLink::modelMoveEvent( QgsModelViewMouseEvent *event )
+{
+  mBezierRubberBand->update( event->modelPoint(), Qt::KeyboardModifiers() );
+
+  // we need to manually pass this event down to items we want it to go to -- QGraphicsScene doesn't propagate
+  const QList<QGraphicsItem *> items = scene()->items( event->modelPoint() );
+
+  QgsModelDesignerSocketGraphicItem *socket = nullptr;
+  for ( QGraphicsItem *item : items )
+  {
+    socket = dynamic_cast<QgsModelDesignerSocketGraphicItem *>( item );
+    if ( !socket || mFromSocket == socket || mFromSocket->edge() == socket->edge() || mFromSocket->component() == socket->component() )
+      continue;
+
+    // snap
+    socket->modelHoverEnterEvent( event );
+    const QPointF rubberEndPos = socket->mapToScene( socket->position() );
+    mBezierRubberBand->update( rubberEndPos, Qt::KeyboardModifiers() );
+    break;
+  }
+
+  if ( mLastHoveredSocket && socket != mLastHoveredSocket )
+  {
+    mLastHoveredSocket->modelHoverLeaveEvent( event );
+    mLastHoveredSocket = nullptr;
+  }
+
+  if ( socket && socket != mLastHoveredSocket )
+  {
+    mLastHoveredSocket = socket;
+  }
+}
+
+void QgsModelViewToolLink::modelReleaseEvent( QgsModelViewMouseEvent *event )
+{
+  if ( event->button() != Qt::LeftButton )
+  {
+    return;
+  }
+  mBezierRubberBand->finish( event->modelPoint() );
+  if ( mLastHoveredSocket )
+  {
+    mLastHoveredSocket->modelHoverLeaveEvent( nullptr );
+    mLastHoveredSocket = nullptr;
+  }
+
+  view()->setTool( mPreviousViewTool );
+
+  // we need to manually pass this event down to items we want it to go to -- QGraphicsScene doesn't propagate
+  const QList<QGraphicsItem *> items = scene()->items( event->modelPoint() );
+
+  mToSocket = nullptr;
+
+  for ( QGraphicsItem *item : items )
+  {
+    if ( QgsModelDesignerSocketGraphicItem *socket = dynamic_cast<QgsModelDesignerSocketGraphicItem *>( item ) )
+    {
+      // Skip if sockets are both input or both output or both from the same algorithm
+      if ( mFromSocket->edge() == socket->edge() || mFromSocket->component() == socket->component() )
+        continue;
+
+      mToSocket = socket;
+      break;
+    }
+  }
+
+  // Do nothing if we unlink sockets
+  if ( !mToSocket && mPreviousInputSocketNumber != -1 )
+  {
+    // but it might have been an unlink, so we properly end the command
+    view()->endCommand();
+    return;
+  }
+
+  // and we abort any pending unlink command to not litter the undo buffer
+  view()->abortCommand();
+
+  if ( !mToSocket )
+  {
+    PopupToolboxWidget *widget = new PopupToolboxWidget();
+    widget->setAttribute( Qt::WA_DeleteOnClose );
+    widget->setWindowFlags( Qt::Popup );
+    widget->move( event->globalPos() );
+
+    QgsSettings settings;
+    QgsProcessingToolboxProxyModel::Filters filters = QgsProcessingToolboxProxyModel::Filter::Modeler;
+    if ( settings.value( u"Processing/Configuration/SHOW_ALGORITHMS_KNOWN_ISSUES"_s, false ).toBool() )
+    {
+      filters |= QgsProcessingToolboxProxyModel::Filter::ShowKnownIssues;
+    }
+
+    if ( !mFromSocket->isInput() ) //is an output
+    {
+      QgsProcessingModelComponent *outputComponent = mFromSocket->component();
+      if ( const QgsProcessingModelChildAlgorithm *outputChildAlgorithm = dynamic_cast<QgsProcessingModelChildAlgorithm *>( outputComponent ) )
+      {
+        widget->toolboxView()->setFilterOutput( outputChildAlgorithm->algorithm()->outputDefinitions().at( mFromSocket->index() ) );
+      }
+      else if ( const QgsProcessingModelParameter *paramFrom = dynamic_cast<QgsProcessingModelParameter *>( outputComponent ) )
+      {
+        widget->toolboxView()->setFilterParameter( scene()->model()->parameterDefinition( paramFrom->parameterName() ) );
+      }
+      filters |= QgsProcessingToolboxProxyModel::Filter::ForSocketOutput;
+    }
+    else
+    { // is an input
+      QgsProcessingModelComponent *outputComponent = mFromSocket->component();
+      if ( const QgsProcessingModelChildAlgorithm *outputChildAlgorithm = dynamic_cast<QgsProcessingModelChildAlgorithm *>( outputComponent ) )
+      {
+        const QgsProcessingParameterDefinition *paramDef = outputChildAlgorithm->algorithm()->parameterDefinitions().at( mFromSocket->index() );
+        widget->toolboxView()->setFilterParameter( paramDef );
+        filters |= QgsProcessingToolboxProxyModel::Filter::ForSocketInput;
+      }
+    }
+
+    widget->toolboxView()->setFilters( filters );
+
+    const QPointF modelPoint = event->modelPoint();
+    connect( widget, &PopupToolboxWidget::algorithmAdded, this, [this, modelPoint]( const QString &algorithmId ) { addAlgorithm( algorithmId, modelPoint, mFromSocket ); } );
+    connect( widget, &PopupToolboxWidget::parameterAdded, this, [this, modelPoint]( const QString &parameterTypeId ) { addParameter( parameterTypeId, modelPoint, mFromSocket ); } );
+
+    widget->show();
+    return;
+  }
+
+  // Do nothing if from socket and to socket are both input or both output
+  if ( mFromSocket->edge() == mToSocket->edge() )
+  {
+    return;
+  }
+
+  /**
+   * Reorder input and output socket
+   * whether the user dragged :
+   *
+   * - From an input socket to an output socket
+   * - From an output socket to an input socket
+   *
+   * In the code, we always come back to the first case
+   */
+  if ( !mToSocket->isInput() )
+  {
+    std::swap( mFromSocket, mToSocket );
+  }
+
+  QgsProcessingModelComponent *outputComponent = mFromSocket->component();
+  QgsProcessingModelChildAlgorithm *inputChildAlgorithm = dynamic_cast<QgsProcessingModelChildAlgorithm *>( mToSocket->component() );
+  if ( !inputChildAlgorithm )
+  {
+    // Should not happen, but checking is cheap!
+    QgsDebugError( u"Input is not a QgsProcessingModelChildAlgorithm"_s );
+    return;
+  }
+
+  QgsProcessingModelChildParameterSource newInputParamSource;
+
+  QString outParamDescription;
+  if ( const QgsProcessingModelChildAlgorithm *outputChildAlgorithm = dynamic_cast<QgsProcessingModelChildAlgorithm *>( outputComponent ) )
+  {
+    const QgsProcessingOutputDefinition *outputDef = outputChildAlgorithm->algorithm()->outputDefinitions().at( mFromSocket->index() );
+
+    const QString outParamName = outputDef->name();
+    newInputParamSource = QgsProcessingModelChildParameterSource::fromChildOutput( outputChildAlgorithm->childId(), outParamName );
+    outParamDescription = outputDef->description();
+  }
+  else if ( const QgsProcessingModelParameter *paramFrom = dynamic_cast<QgsProcessingModelParameter *>( outputComponent ) )
+  {
+    newInputParamSource = QgsProcessingModelChildParameterSource::fromModelParameter( paramFrom->parameterName() );
+    outParamDescription = paramFrom->description();
+  }
+
+  const QgsProcessingParameterDefinition *inputParam = inputChildAlgorithm->algorithm()->parameterDefinitions().at( mToSocket->index() );
+  const QList<QgsProcessingModelChildParameterSource> compatibleInputParamSources = scene()->model()->availableSourcesForChild( inputChildAlgorithm->childId(), inputParam );
+  if ( !compatibleInputParamSources.contains( newInputParamSource ) )
+  {
+    // Types are incompatible
+    const QString title = tr( "Sockets cannot be connected" );
+    const QString message = tr( "Either the sockets are incompatible or there is a circular dependency" );
+    scene()->showWarning( message, title, message );
+
+    // If the output was previously connected to an input, let's restore it.
+    if ( mPreviousInputSocketNumber != -1 )
+    {
+      QgsProcessingModelChildAlgorithm previousChildAlgorithm = scene()->model()->childAlgorithm( mPreviousInputChildId );
+      const QgsProcessingParameterDefinition *previousInputParam = previousChildAlgorithm.algorithm()->parameterDefinitions().at( mPreviousInputSocketNumber );
+      previousChildAlgorithm.addParameterSources( previousInputParam->name(), { newInputParamSource } );
+      scene()->model()->setChildAlgorithm( previousChildAlgorithm );
+      scene()->requestRebuildRequired();
+    }
+    return;
+  }
+
+  view()->beginCommand( tr( "Link %1: %2 to %3: %4" ).arg( outputComponent->description(), outParamDescription, inputChildAlgorithm->description(), inputParam->description() ) );
+
+  inputChildAlgorithm->addParameterSources( inputParam->name(), { newInputParamSource } );
+
+  //We need to pass the update child algorithm to the model
+  scene()->model()->setChildAlgorithm( *inputChildAlgorithm );
+
+  if ( inputChildAlgorithm->childId() == mPreviousInputChildId && mToSocket->index() == mPreviousInputSocketNumber )
+  {
+    // This is the input socket that was originally connected, let's keep the undo buffer clean since practically nothing changed.
+    view()->abortCommand();
+  }
+  else
+  {
+    view()->endCommand();
+  }
+
+  // Redraw
+  scene()->requestRebuildRequired();
+}
+
+bool QgsModelViewToolLink::allowItemInteraction()
+{
+  return true;
+}
+
+void QgsModelViewToolLink::activate()
+{
+  QgsModelViewTool *tool = view()->tool();
+  // Make sure we always return to the select tool and not a temporary tool.
+  if ( dynamic_cast<QgsModelViewToolSelect *>( tool ) )
+  {
+    mPreviousViewTool = tool;
+  }
+
+  const QPointF rubberStartPos = mFromSocket->mapToScene( mFromSocket->position() );
+  mBezierRubberBand->start( rubberStartPos, Qt::KeyboardModifiers() );
+
+  QgsModelViewTool::activate();
+}
+
+void QgsModelViewToolLink::deactivate()
+{
+  mBezierRubberBand->finish();
+  QgsModelViewTool::deactivate();
+}
+
+void QgsModelViewToolLink::setFromSocket( QgsModelDesignerSocketGraphicItem *socket )
+{
+  mFromSocket = socket;
+  mPreviousInputChildId.clear();
+  mPreviousInputSocketNumber = -1;
+
+  // If it's an input socket and it's already connected, we want 'From' to be the output at the other end of the connection
+  if ( mFromSocket->isInput() )
+  {
+    QgsProcessingModelChildAlgorithm *childFrom = dynamic_cast<QgsProcessingModelChildAlgorithm *>( mFromSocket->component() );
+    if ( !childFrom )
+      return;
+
+    const QgsProcessingParameterDefinition *param = childFrom->algorithm()->parameterDefinitions().at( mFromSocket->index() );
+    const QList<QgsProcessingModelChildParameterSource> currentSources = childFrom->parameterSources().value( param->name() );
+
+    for ( const QgsProcessingModelChildParameterSource &source : currentSources )
+    {
+      // Was not connected, nothing to do
+      if ( ( source.source() == Qgis::ProcessingModelChildParameterSource::ChildOutput && source.outputChildId().isEmpty() )
+           || ( source.source() == Qgis::ProcessingModelChildParameterSource::ModelParameter && source.parameterName().isEmpty() ) )
+        continue;
+
+      switch ( source.source() )
+      {
+        case Qgis::ProcessingModelChildParameterSource::ModelParameter:
+        case Qgis::ProcessingModelChildParameterSource::ChildOutput:
+        {
+          view()->beginCommand( tr( "Unlink %1: %2", "Unlink Algorithm: Input" ).arg( childFrom->description(), param->description() ) );
+
+          // reset to default value.
+          QList<QgsProcessingModelChildParameterSource> newSources;
+          if ( param->type() == QgsProcessingParameterFeatureSource::typeName()
+               || param->type() == QgsProcessingParameterMapLayer::typeName()
+               || param->type() == QgsProcessingParameterMeshLayer::typeName()
+               || param->type() == QgsProcessingParameterPointCloudLayer::typeName()
+               || param->type() == QgsProcessingParameterRasterLayer::typeName()
+               || param->type() == QgsProcessingParameterVectorLayer::typeName() )
+          {
+            // Layers/feature sources default to an empty model input parameter
+            // This is the same default that a newly added algorithm uses. It's not the best, since when opening the algorithm's
+            // dialog it will be automatically assigned to the first available input, however it is more consistent behavior.
+            // If we defaulted to an empty static value, then it would be populated by the first available project layer which
+            // would be more confusing.
+            newSources << QgsProcessingModelChildParameterSource::fromModelParameter( QString() );
+          }
+          else
+          {
+            // Other parameters default to static value
+            newSources << QgsProcessingModelChildParameterSource::fromStaticValue( param->defaultValue() );
+          }
+
+          childFrom->addParameterSources( param->name(), newSources );
+          //We need to pass the update child algorithm to the model
+          scene()->model()->setChildAlgorithm( *childFrom );
+          // Redraw
+          scene()->requestRebuildRequired();
+
+          //Get socket from initial source alg / source parameter
+          QgsModelComponentGraphicItem *item = nullptr;
+          int socketIndex = -1;
+          if ( source.source() == Qgis::ProcessingModelChildParameterSource::ChildOutput )
+          {
+            item = scene()->childAlgorithmItem( source.outputChildId() );
+            auto algSource = dynamic_cast<QgsProcessingModelChildAlgorithm *>( item->component() );
+            if ( !algSource )
+            {
+              QgsDebugError( u"algSource not set, aborting!"_s );
+              return;
+            }
+            socketIndex = QgsProcessingUtils::outputDefinitionIndex( algSource->algorithm(), source.outputName() );
+          }
+          else if ( source.source() == Qgis::ProcessingModelChildParameterSource::ModelParameter )
+          {
+            item = scene()->parameterItem( source.parameterName() );
+            socketIndex = 0;
+          }
+
+          if ( !item )
+          {
+            QgsDebugError( u"item not set, aborting!"_s );
+            return;
+          }
+
+          mPreviousInputChildId = childFrom->childId();
+          mPreviousInputSocketNumber = mFromSocket->index();
+          mFromSocket = item->outSocketAt( socketIndex );
+        }
+        break;
+
+        case Qgis::ProcessingModelChildParameterSource::StaticValue:
+        case Qgis::ProcessingModelChildParameterSource::Expression:
+        case Qgis::ProcessingModelChildParameterSource::ExpressionText:
+        case Qgis::ProcessingModelChildParameterSource::ModelOutput:
+          continue;
+      }
+
+      // Stop on first iteration to get only one link at a time
+      break;
+    }
+  }
+}
+
+void QgsModelViewToolLink::addAlgorithm( const QString &algorithmId, const QPointF &pos, const QgsModelDesignerSocketGraphicItem *socket )
+{
+  std::unique_ptr<QgsProcessingAlgorithm> alg;
+  alg.reset( QgsApplication::processingRegistry()->createAlgorithmById( algorithmId ) );
+
+  if ( !alg )
+    return;
+
+  QgsProcessingModelChildAlgorithm childAlg( algorithmId );
+
+  childAlg.setDescription( alg->displayName() );
+
+  const double offsetX = socket->isInput() ? -childAlg.size().width() / 2 : childAlg.size().width() / 2;
+  const QPointF offset( offsetX, 0 );
+  childAlg.setPosition( pos + offset );
+
+  QgsProcessingModelComponent *outputComponent = const_cast<QgsProcessingModelComponent *>( socket->component() );
+
+  // If connected from an output socket the newly added algorithm needs to have a source.
+  if ( !socket->isInput() )
+  {
+    if ( QgsProcessingModelChildAlgorithm *outputChildAlgorithm = dynamic_cast<QgsProcessingModelChildAlgorithm *>( outputComponent ) )
+    {
+      const QgsProcessingOutputDefinition *outputDef = outputChildAlgorithm->algorithm()->outputDefinitions().at( socket->index() );
+      const QString outputName = outputDef->name();
+
+      const QList<const QgsProcessingParameterDefinition *> definitions = alg->parameterDefinitions();
+      for ( const QgsProcessingParameterDefinition *paramDef : definitions )
+      {
+        if ( paramDef->flags() & Qgis::ProcessingParameterFlag::Hidden )
+        {
+          continue;
+        }
+        if ( QgsApplication::processingRegistry()->isCompatibleOutput( paramDef, outputDef ) )
+        {
+          QgsProcessingModelChildParameterSource newInputParamSource = QgsProcessingModelChildParameterSource::fromChildOutput( outputChildAlgorithm->childId(), outputName );
+          childAlg.addParameterSources( paramDef->name(), { newInputParamSource } );
+          break;
+        }
+      }
+    }
+    else if ( QgsProcessingModelParameter *outputParam = dynamic_cast<QgsProcessingModelParameter *>( outputComponent ) )
+    {
+      const QgsProcessingParameterDefinition *outputParamDef = scene()->model()->parameterDefinition( outputParam->parameterName() );
+
+      const QList<const QgsProcessingParameterDefinition *> definitions = alg->parameterDefinitions();
+      for ( const QgsProcessingParameterDefinition *paramDef : definitions )
+      {
+        if ( paramDef->flags() & Qgis::ProcessingParameterFlag::Hidden )
+        {
+          continue;
+        }
+        if ( QgsApplication::processingRegistry()->isCompatibleDefinition( paramDef, outputParamDef ) )
+        {
+          QgsProcessingModelChildParameterSource newInputParamSource = QgsProcessingModelChildParameterSource::fromModelParameter( outputParam->parameterName() );
+          childAlg.addParameterSources( paramDef->name(), { newInputParamSource } );
+          break;
+        }
+      }
+    }
+  }
+
+  view()->beginCommand( tr( "Add Algorithm" ) );
+  QString childAlgorithmId = scene()->model()->addChildAlgorithm( childAlg );
+  view()->endCommand();
+
+  // If connect from an input socket the existing algorithm needs to have a the newly added algorithm as a source.
+  if ( socket->isInput() )
+  {
+    QgsProcessingModelChildAlgorithm *outputChildAlgorithm = dynamic_cast<QgsProcessingModelChildAlgorithm *>( outputComponent );
+    if ( !outputChildAlgorithm || !outputChildAlgorithm->algorithm() )
+      return;
+
+    const QgsProcessingParameterDefinition *parameter = outputChildAlgorithm->algorithm()->parameterDefinitions().at( socket->index() );
+    const QString parameterName = parameter->name();
+
+    const QList<const QgsProcessingOutputDefinition *> definitions = childAlg.algorithm()->outputDefinitions();
+    for ( const QgsProcessingOutputDefinition *outputDef : definitions )
+    {
+      if ( QgsApplication::processingRegistry()->isCompatibleOutput( parameter, outputDef ) )
+      {
+        QgsProcessingModelChildParameterSource newInputParamSource = QgsProcessingModelChildParameterSource::fromChildOutput( childAlgorithmId, outputDef->name() );
+        outputChildAlgorithm->addParameterSources( parameterName, { newInputParamSource } );
+        scene()->model()->setChildAlgorithm( *outputChildAlgorithm );
+        break;
+      }
+    }
+  }
+
+  scene()->requestRebuildRequired();
+}
+
+void QgsModelViewToolLink::addParameter( const QString &parameterId, const QPointF &pos, const QgsModelDesignerSocketGraphicItem *socket )
+{
+  QgsProcessingModelComponent *outputComponent = const_cast<QgsProcessingModelComponent *>( socket->component() );
+  QgsProcessingModelChildAlgorithm *outputChildAlgorithm = dynamic_cast<QgsProcessingModelChildAlgorithm *>( outputComponent );
+  if ( !outputChildAlgorithm || !outputChildAlgorithm->algorithm() )
+    return;
+
+  const QgsProcessingParameterDefinition *socketParameter = outputChildAlgorithm->algorithm()->parameterDefinitions().at( socket->index() );
+
+  QString nameCandidate = socketParameter->name();
+  QString descriptionCandidate = socketParameter->description();
+  int i = 2;
+  while ( scene()->model()->parameterDefinition( nameCandidate ) )
+  {
+    nameCandidate = u"%1 (%2)"_s.arg( socketParameter->name() ).arg( i );
+    descriptionCandidate = u"%1 (%2)"_s.arg( socketParameter->description() ).arg( i );
+    i += 1;
+  }
+  QgsProcessingParameterDefinition *newParameter;
+  if ( socketParameter->type() == parameterId )
+  {
+    // clone if they are the same type so we have nicer default
+    newParameter = socketParameter->clone();
+  }
+  else
+  {
+    newParameter = QgsApplication::processingRegistry()->parameterType( parameterId )->create( nameCandidate );
+  }
+
+  newParameter->setName( nameCandidate );
+  newParameter->setDescription( descriptionCandidate );
+
+  QgsProcessingModelParameter component = QgsProcessingModelParameter( newParameter->name() );
+
+  component.setDescription( newParameter->description() );
+  const double offsetX = -component.size().width() / 2;
+  const QPointF offset( offsetX, 0 );
+  component.setPosition( pos + offset );
+
+  view()->beginCommand( tr( "Add input" ) );
+  scene()->model()->addModelParameter( newParameter, component );
+  view()->endCommand();
+
+  QgsProcessingModelChildParameterSource newInputParamSource = QgsProcessingModelChildParameterSource::fromModelParameter( newParameter->name() );
+  outputChildAlgorithm->addParameterSources( socketParameter->name(), { newInputParamSource } );
+  scene()->model()->setChildAlgorithm( *outputChildAlgorithm );
+
+
+  scene()->requestRebuildRequired();
+}

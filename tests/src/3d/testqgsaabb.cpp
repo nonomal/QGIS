@@ -13,8 +13,12 @@
  *                                                                         *
  ***************************************************************************/
 
-#include "qgstest.h"
 #include "qgsaabb.h"
+#include "qgstest.h"
+
+#include <QString>
+
+using namespace Qt::StringLiterals;
 
 /**
  * \ingroup UnitTests
@@ -24,11 +28,12 @@ class TestQgsAABB : public QgsTest
 {
     Q_OBJECT
   public:
-    TestQgsAABB() : QgsTest( QStringLiteral( "QgsAABB tests" ) ) {};
+    TestQgsAABB()
+      : QgsTest( u"QgsAABB tests"_s ) {};
 
   private slots:
-    void initTestCase();// will be called before the first testfunction is executed.
-    void cleanupTestCase();// will be called after the last testfunction was executed.
+    void initTestCase();    // will be called before the first testfunction is executed.
+    void cleanupTestCase(); // will be called after the last testfunction was executed.
 
     void testIsEmpty();
 
@@ -37,8 +42,7 @@ class TestQgsAABB : public QgsTest
 
 //runs before all tests
 void TestQgsAABB::initTestCase()
-{
-}
+{}
 
 //runs after all tests
 void TestQgsAABB::cleanupTestCase()

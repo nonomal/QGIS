@@ -16,19 +16,23 @@
 #ifndef QGSVERTEXTOOL_H
 #define QGSVERTEXTOOL_H
 
+#include <cstdint>
 #include <memory>
-
-#include <QPointer>
+#include <vector>
 
 #include "qgis_app.h"
-#include "qgsmaptooladvanceddigitizing.h"
+#include "qgsbeziermarker.h"
 #include "qgsgeometry.h"
+#include "qgsmaptooladvanceddigitizing.h"
 #include "qgspointlocator.h"
 #include "qobjectuniqueptr.h"
+
+#include <QPointer>
 
 class QRubberBand;
 
 class QgsGeometryValidator;
+class QgsNurbsCurve;
 class QgsVertexEditor;
 class QgsLockedFeature;
 class QgsSnapIndicator;
@@ -37,36 +41,29 @@ class QgsVertexMarker;
 //! helper structure for a vertex being dragged
 struct Vertex
 {
-  Vertex( QgsVectorLayer *layer, QgsFeatureId fid, int vertexId )
-    : layer( layer )
-    , fid( fid )
-    , vertexId( vertexId ) {}
+    Vertex( QgsVectorLayer *layer, QgsFeatureId fid, int vertexId )
+      : layer( layer )
+      , fid( fid )
+      , vertexId( vertexId )
+    {}
 
-  // TODO c++20 - replace with = default
-  bool operator==( const Vertex &other ) const
-  {
-    return layer == other.layer && fid == other.fid && vertexId == other.vertexId;
-  }
-  bool operator!=( const Vertex &other ) const
-  {
-    return !operator==( other );
-  }
+    // TODO c++20 - replace with = default
+    bool operator==( const Vertex &other ) const { return layer == other.layer && fid == other.fid && vertexId == other.vertexId; }
+    bool operator!=( const Vertex &other ) const { return !operator==( other ); }
 
-  QgsVectorLayer *layer = nullptr;
-  QgsFeatureId fid;
-  int vertexId;
+    QgsVectorLayer *layer = nullptr;
+    QgsFeatureId fid;
+    int vertexId;
 };
 
 //! qHash implementation - we use Vertex in QSet
-uint qHash( const Vertex &v );
-
+size_t qHash( const Vertex &v );
 
 
 class APP_EXPORT QgsVertexTool : public QgsMapToolAdvancedDigitizing
 {
     Q_OBJECT
   public:
-
     enum VertexToolMode
     {
       ActiveLayer,
@@ -100,7 +97,7 @@ class APP_EXPORT QgsVertexTool : public QgsMapToolAdvancedDigitizing
     QgsGeometry cachedGeometry( const QgsVectorLayer *layer, QgsFeatureId fid );
 
     //! Toggle the vertex editor
-    void showVertexEditor();  //#spellok
+    void showVertexEditor(); //#spellok
 
     //! Update vertex editor to show feature from the given match
     void updateVertexEditor( QgsVectorLayer *layer, QgsFeatureId fid );
@@ -128,7 +125,6 @@ class APP_EXPORT QgsVertexTool : public QgsMapToolAdvancedDigitizing
     void currentLayerChanged( QgsMapLayer *layer );
 
   private:
-
     void buildDragBandsForVertices( const QSet<Vertex> &movingVertices, const QgsPointXY &dragVertexMapPoint );
 
     void addDragBand( const QgsPointXY &v1, const QgsPointXY &v2 );
@@ -136,6 +132,16 @@ class APP_EXPORT QgsVertexTool : public QgsMapToolAdvancedDigitizing
     void addDragStraightBand( QgsVectorLayer *layer, QgsPointXY v0, QgsPointXY v1, bool moving0, bool moving1, const QgsPointXY &mapPoint );
 
     void addDragCircularBand( QgsVectorLayer *layer, QgsPointXY v0, QgsPointXY v1, QgsPointXY v2, bool moving0, bool moving1, bool moving2, const QgsPointXY &mapPoint );
+
+    /**
+     * Adds a temporary rubber band for visualizing a NURBS curve being dragged.
+     * \param layer The vector layer containing the curve.
+     * \param nurbs The NURBS curve being dragged.
+     * \param localIdx The index of the control point being moved.
+     * \param mapPoint The current map position of the mouse.
+     * \since QGIS 4.0
+     */
+    void addDragNurbsBand( QgsVectorLayer *layer, const QgsNurbsCurve *nurbs, int localIdx, const QgsPointXY &mapPoint );
 
     void moveDragBands( const QgsPointXY &mapPoint );
 
@@ -176,7 +182,7 @@ class APP_EXPORT QgsVertexTool : public QgsMapToolAdvancedDigitizing
      * The set does not contain only the closest match from each layer, but all matches in the standard
      * vertex search tolerance. It also includes area matches.
      */
-    QSet<QPair<QgsVectorLayer *, QgsFeatureId> > findAllEditableFeatures( const QgsPointXY &mapPoint );
+    QSet<QPair<QgsVectorLayer *, QgsFeatureId>> findAllEditableFeatures( const QgsPointXY &mapPoint );
 
     /**
      * Implements behavior for mouse right-click to select a feature for editing (and in case of multiple
@@ -226,19 +232,19 @@ class APP_EXPORT QgsVertexTool : public QgsMapToolAdvancedDigitizing
 
     struct VertexEdit
     {
-      VertexEdit() {}
+        VertexEdit() {}
 
-      VertexEdit( QgsGeometry lgeom, QgsPoint point )
-        : geom( lgeom )
-      {
-        newPoints << point;
-      }
+        VertexEdit( QgsGeometry lgeom, QgsPoint point )
+          : geom( lgeom )
+        {
+          newPoints << point;
+        }
 
-      QgsGeometry geom;
-      QList<QgsPoint> newPoints; // new points (added or moved)
+        QgsGeometry geom;
+        QList<QgsPoint> newPoints; // new points (added or moved)
     };
 
-    typedef QHash<QgsVectorLayer *, QHash<QgsFeatureId, VertexEdit> > VertexEdits;
+    typedef QHash<QgsVectorLayer *, QHash<QgsFeatureId, VertexEdit>> VertexEdits;
 
     void addExtraVerticesToEdits( VertexEdits &edits, const QgsPointXY &mapPoint, QgsVectorLayer *dragLayer = nullptr, const QgsPoint &layerPoint = QgsPoint() );
 
@@ -263,8 +269,8 @@ class APP_EXPORT QgsVertexTool : public QgsMapToolAdvancedDigitizing
 
     enum HighlightMode
     {
-      ModeReset, //!< Reset any current selection
-      ModeAdd, //!< Add to current selection
+      ModeReset,    //!< Reset any current selection
+      ModeAdd,      //!< Add to current selection
       ModeSubtract, //!< Remove from current selection
     };
 
@@ -303,8 +309,6 @@ class APP_EXPORT QgsVertexTool : public QgsMapToolAdvancedDigitizing
     //! Updates vertex band based on the current match
     void updateVertexBand( const QgsPointLocator::Match &m );
 
-    //! Handles mouse press event when in range selection method
-    void rangeMethodPressEvent( QgsMapMouseEvent *e );
     //! Handles mouse release event when in range selection method
     void rangeMethodReleaseEvent( QgsMapMouseEvent *e );
     //! Handles mouse move event when in range selection method
@@ -315,7 +319,21 @@ class APP_EXPORT QgsVertexTool : public QgsMapToolAdvancedDigitizing
     //! update the highlight of vertices from the locked feature
     void updateLockedFeatureVertices();
 
-  private:
+    /**
+     * Applies the visual style to the control polygon rubber band.
+     * \param band The rubber band on which to apply the style.
+     * \since QGIS 4.0
+     */
+    void applyNurbsControlPolygonStyle( QgsRubberBand *band );
+
+    /**
+     * Transforms NURBS control points from layer to map coordinates.
+     * \param layer The vector layer
+     * \param controlPoints The control points to transform
+     * \returns Control points in map coordinates
+     * \since QGIS 4.0
+     */
+    QVector<QgsPointXY> transformNurbsControlPointsToMap( QgsVectorLayer *layer, const QgsPointSequence &controlPoints );
 
     QgsVertexEditor *vertexEditor();
 
@@ -369,34 +387,72 @@ class APP_EXPORT QgsVertexTool : public QgsMapToolAdvancedDigitizing
     //! structure to keep information about a rubber band used for dragging of a straight line segment
     struct StraightBand
     {
-      QgsRubberBand *band = nullptr;       //!< Pointer to the actual rubber band
-      QgsPointXY p0, p1;                     //!< What are the original positions of points (in map units)
-      bool moving0, moving1;               //!< Which points of the band are moving with mouse cursor
-      QgsVector offset0, offset1;          //!< If the point is moving, what is the offset from the mouse cursor
+        QgsRubberBand *band = nullptr; //!< Pointer to the actual rubber band
+        QgsPointXY p0, p1;             //!< What are the original positions of points (in map units)
+        bool moving0, moving1;         //!< Which points of the band are moving with mouse cursor
+        QgsVector offset0, offset1;    //!< If the point is moving, what is the offset from the mouse cursor
     };
 
     //! structure to keep information about a rubber band used for dragging of a circular segment
     struct CircularBand
     {
-      QgsRubberBand *band = nullptr;        //!< Pointer to the actual rubber band
-      QgsPointXY p0, p1, p2;                  //!< What are the original positions of points (in map units)
-      bool moving0, moving1, moving2;       //!< Which points of the band are moving with mouse cursor
-      QgsVector offset0, offset1, offset2;  //!< If the point is moving, what is the offset from the mouse cursor
+        QgsRubberBand *band = nullptr;       //!< Pointer to the actual rubber band
+        QgsPointXY p0, p1, p2;               //!< What are the original positions of points (in map units)
+        bool moving0, moving1, moving2;      //!< Which points of the band are moving with mouse cursor
+        QgsVector offset0, offset1, offset2; //!< If the point is moving, what is the offset from the mouse cursor
 
-      //! update geometry of the rubber band band on the current mouse cursor position (in map units)
-      void updateRubberBand( const QgsPointXY &mapPoint );
+        //! update geometry of the rubber band band on the current mouse cursor position (in map units)
+        void updateRubberBand( const QgsPointXY &mapPoint );
+    };
+
+    //! structure to keep information about a rubber band used for dragging of a NURBS curve \since QGIS 4.0
+    struct NurbsBand
+    {
+        std::uintptr_t id;                           //!< NURBS curve identifier
+        QObjectUniquePtr<QgsRubberBand> curveBand;   //!< Evaluated NURBS curve visualization
+        QObjectUniquePtr<QgsRubberBand> controlBand; //!< Control polygon
+        QVector<QgsPointXY> controlPoints;           //!< Control points in map coordinates
+        QVector<int> movingIndices;                  //!< Indices of control points being dragged
+        QVector<QgsVector> offsets;                  //!< Offset vectors from mouse cursor to each moving control point
+        int degree = 3;                              //!< NURBS curve degree
+        QVector<double> knots;                       //!< Knot vector
+        QVector<double> weights;                     //!< Weight vector for rational curves
+
+        //! Update geometry of the rubber bands on the current mouse cursor position (in map units)
+        void updateRubberBand( const QgsPointXY &mapPoint );
+
+        /**
+         * Update geometry of the rubber bands from pre-calculated control points.
+         * \param updatedControlPoints The control points to render
+         * \param customKnots Optional custom knot vector
+         * \param customWeights Optional custom weight vector
+         */
+        void updateRubberBandFromPoints( const QgsPointSequence &updatedControlPoints, const QVector<double> &customKnots = QVector<double>(), const QVector<double> &customWeights = QVector<double>() );
     };
 
     //! list of active straight line rubber bands
     QList<StraightBand> mDragStraightBands;
     //! list of active rubber bands for circular segments
     QList<CircularBand> mDragCircularBands;
+    //! list of active rubber bands for NURBS curves \since QGIS 4.0
+    std::vector<NurbsBand> mDragNurbsBands;
+
+    //! rubber band for displaying NURBS control polygon in edit mode \since QGIS 4.0
+    QObjectUniquePtr<QgsRubberBand> mNurbsControlPolygonBand;
+    //! Visualization for Poly-Bézier curves \since QGIS 4.0
+    QObjectUniquePtr<QgsBezierMarker> mBezierMarker;
+
     //! instance of Vertex that is being currently moved or nothing
     std::unique_ptr<Vertex> mDraggingVertex;
     //! whether moving a vertex or adding one
     DraggingVertexType mDraggingVertexType = NotDragging;
     //! whether we are currently dragging an edge
     bool mDraggingEdge = false;
+
+    //! True when Alt+dragging a Poly-Bézier anchor for symmetric handle extension \since QGIS 4.0
+    bool mAltDragPolyBezierAnchor = false;
+    //! Index of the Poly-Bézier anchor being Alt+dragged (-1 if none) \since QGIS 4.0
+    int mAltDragAnchorIndex = -1;
 
     /**
      * list of Vertex instances of further vertices that are dragged together with
@@ -458,7 +514,7 @@ class APP_EXPORT QgsVertexTool : public QgsMapToolAdvancedDigitizing
     std::unique_ptr<QgsPointLocator::Match> mNewVertexFromDoubleClick;
 
     //! Geometry cache for fast access to geometries (coordinates are in their layer's CRS)
-    QHash<const QgsVectorLayer *, QHash<QgsFeatureId, QgsGeometry> > mCache;
+    QHash<const QgsVectorLayer *, QHash<QgsFeatureId, QgsGeometry>> mCache;
 
     // support for vertex editor
 
@@ -472,9 +528,9 @@ class APP_EXPORT QgsVertexTool : public QgsMapToolAdvancedDigitizing
      */
     struct LockedFeatureAlternatives
     {
-      QPoint screenPoint;
-      QList< QPair<QgsVectorLayer *, QgsFeatureId> > alternatives;
-      int index = -1;
+        QPoint screenPoint;
+        QList<QPair<QgsVectorLayer *, QgsFeatureId>> alternatives;
+        int index = -1;
     };
 
     //! Keeps information about other possible features to select with right click. Null if no info is currently held.
@@ -485,26 +541,26 @@ class APP_EXPORT QgsVertexTool : public QgsMapToolAdvancedDigitizing
     //! data structure for validation of one geometry of a vector layer
     struct GeometryValidation
     {
-      QgsVertexTool *tool = nullptr;               //!< Pointer to the parent vertex tool (for connections / canvas)
-      QgsVectorLayer *layer = nullptr;            //!< Pointer to the layer of the validated geometry (for reporojection)
-      QgsGeometryValidator *validator = nullptr;  //!< Object that does validation. Non-null if active
-      QList<QgsVertexMarker *> errorMarkers;      //!< Markers created by validation
-      QString errors;                             //!< Full error text from validation
+        QgsVertexTool *tool = nullptr;             //!< Pointer to the parent vertex tool (for connections / canvas)
+        QgsVectorLayer *layer = nullptr;           //!< Pointer to the layer of the validated geometry (for reporojection)
+        QgsGeometryValidator *validator = nullptr; //!< Object that does validation. Non-null if active
+        QList<QgsVertexMarker *> errorMarkers;     //!< Markers created by validation
+        QString errors;                            //!< Full error text from validation
 
-      void start( QgsGeometry &geom, QgsVertexTool *tool, QgsVectorLayer *l );  //!< Start validation
-      void addError( QgsGeometry::Error e );  //!< Add another error to the validation
-      void cleanup(); //!< Delete everything
+        void start( QgsGeometry &geom, QgsVertexTool *tool, QgsVectorLayer *l ); //!< Start validation
+        void addError( QgsGeometry::Error e );                                   //!< Add another error to the validation
+        void cleanup();                                                          //!< Delete everything
     };
 
     //! data structure to keep validation details
-    QHash< QPair<QgsVectorLayer *, QgsFeatureId>, GeometryValidation> mValidations;
+    QHash<QPair<QgsVectorLayer *, QgsFeatureId>, GeometryValidation> mValidations;
 
     //! Enumeration of methods for selection of vertices
     enum VertexSelectionMethod
     {
-      SelectionNormal,   //!< Default selection: clicking vertex starts move, ctrl+click selects vertex, dragging rectangle select multiple vertices
-      SelectionRange,    //!< Range selection: clicking selects start vertex, next click select final vertex, vertices in the range get selected
-      SelectionPolygon,  //!< Polygon selection: alt+click starts digitizing a polygon, subsequent clicks add vertices, right click selects vertices within the polygon
+      SelectionNormal,  //!< Default selection: clicking vertex starts move, ctrl+click selects vertex, dragging rectangle select multiple vertices
+      SelectionRange,   //!< Range selection: clicking selects start vertex, next click select final vertex, vertices in the range get selected
+      SelectionPolygon, //!< Polygon selection: alt+click starts digitizing a polygon, subsequent clicks add vertices, right click selects vertices within the polygon
     };
 
     //! Current vertex selection method
@@ -514,6 +570,8 @@ class APP_EXPORT QgsVertexTool : public QgsMapToolAdvancedDigitizing
     std::unique_ptr<Vertex> mRangeSelectionFirstVertex;
 
     VertexToolMode mMode = AllLayers;
+
+    friend class TestQgsVertexTool;
 };
 
 

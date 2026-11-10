@@ -18,8 +18,14 @@
 
 #include "qgis.h"
 #include "qgis_gui.h"
+#include "qgsmodelarrowitem.h"
+#include "qgsmodelcomponentgraphicitem.h"
+
 #include <QGraphicsObject>
+#include <QGraphicsTextItem>
 #include <QPicture>
+
+#define SIP_NO_FILE
 
 class QgsModelGraphicsView;
 class QgsModelViewMouseEvent;
@@ -30,30 +36,26 @@ class QgsModelViewMouseEvent;
 /**
  * \ingroup gui
  * \brief A flat button graphic item for use in the Processing model designer.
- * \warning Not stable API
+ * \warning Not available in Python bindings
  * \since QGIS 3.14
  */
 class GUI_EXPORT QgsModelDesignerFlatButtonGraphicItem : public QGraphicsObject
 {
     Q_OBJECT
   public:
-
     /**
      * Constructor for QgsModelDesignerFlatButtonGraphicItem, with the specified \a parent item.
      *
      * The \a picture argument specifies a QPicture object containing the graphic to render
      * for the button. The button will be rendered at the specified \a position and \a size.
      */
-    QgsModelDesignerFlatButtonGraphicItem( QGraphicsItem *parent SIP_TRANSFERTHIS, const QPicture &picture, const QPointF &position,
-                                           const QSizeF &size = QSizeF( 16, 16 ) );
+    QgsModelDesignerFlatButtonGraphicItem( QGraphicsItem *parent, const QPicture &picture, const QPointF &position, const QSizeF &size = QSizeF( 16, 16 ) );
 
     void paint( QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget = nullptr ) override;
     QRectF boundingRect() const override;
     void hoverEnterEvent( QGraphicsSceneHoverEvent *event ) override;
     void hoverLeaveEvent( QGraphicsSceneHoverEvent *event ) override;
     void mousePressEvent( QGraphicsSceneMouseEvent *event ) override;
-
-#ifndef SIP_RUN
 
     /**
      * Handles a model hover enter \a event.
@@ -69,7 +71,12 @@ class GUI_EXPORT QgsModelDesignerFlatButtonGraphicItem : public QGraphicsObject
      * Handles a model mouse press \a event.
      */
     virtual void modelPressEvent( QgsModelViewMouseEvent *event );
-#endif
+
+    /**
+     * Returns the button's position.
+     */
+    QPointF position() const { return mPosition; };
+
 
     /**
      * Sets the button's \a position.
@@ -89,32 +96,29 @@ class GUI_EXPORT QgsModelDesignerFlatButtonGraphicItem : public QGraphicsObject
     void clicked();
 
   protected:
-
     /**
      * Sets the \a picture to render for the button graphics.
      */
     void setPicture( const QPicture &picture );
+    bool mHoverState = false;
 
   private:
     QPicture mPicture;
     QPointF mPosition;
     QSizeF mSize;
-    bool mHoverState = false;
 };
 
 
 /**
  * \ingroup gui
  * \brief A button allowing folding or expanding component graphics in the Processing model designer.
- * \warning Not stable API
+ * \warning Not available in Python bindings
  * \since QGIS 3.14
  */
 class GUI_EXPORT QgsModelDesignerFoldButtonGraphicItem : public QgsModelDesignerFlatButtonGraphicItem
 {
-
     Q_OBJECT
   public:
-
     /**
      * Constructor for QgsModelDesignerFoldButtonGraphicItem, with the specified \a parent item.
      *
@@ -123,13 +127,10 @@ class GUI_EXPORT QgsModelDesignerFoldButtonGraphicItem : public QgsModelDesigner
      *
      * The button will be rendered at the specified \a position and \a size.
      */
-    QgsModelDesignerFoldButtonGraphicItem( QGraphicsItem *parent SIP_TRANSFERTHIS, bool folded, const QPointF &position,
-                                           const QSizeF &size = QSizeF( 11, 11 ) );
+    QgsModelDesignerFoldButtonGraphicItem( QGraphicsItem *parent, bool folded, const QPointF &position, const QSizeF &size = QSizeF( 11, 11 ) );
 
     void mousePressEvent( QGraphicsSceneMouseEvent *event ) override;
-#ifndef SIP_RUN
     void modelPressEvent( QgsModelViewMouseEvent *event ) override;
-#endif
 
   signals:
 
@@ -141,11 +142,97 @@ class GUI_EXPORT QgsModelDesignerFoldButtonGraphicItem : public QgsModelDesigner
     void folded( bool folded );
 
   private:
-
     QPicture mPlusPicture;
     QPicture mMinusPicture;
     bool mFolded = false;
 };
+
+
+/**
+ * \ingroup gui
+ * \brief A socket allowing linking component together.
+ * \warning Not available in Python bindings
+ * \since QGIS 3.44
+ */
+class GUI_EXPORT QgsModelDesignerSocketGraphicItem : public QgsModelDesignerFlatButtonGraphicItem
+{
+    Q_OBJECT
+  public:
+    /**
+     * Constructor for QgsModelDesignerSocketGraphicItem, with the specified \a parent item.
+     *
+     * The \a index argument specifies whether the input or output index of this socket inside the component
+     * And the \a edge argument specifies if it's an input socket( Qt::Edge::TopEdge ) or output ( Qt::Edge::BottomEdge )
+     *
+     * The sockets will be rendered at the specified \a position
+     */
+    QgsModelDesignerSocketGraphicItem(
+      QgsModelComponentGraphicItem *parent, QgsProcessingModelComponent *component, int index, const QPointF &position, Qt::Edge edge, const QSizeF &size = QSizeF( 11, 11 )
+    );
+
+    void paint( QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget = nullptr ) override;
+    QRectF boundingRect() const override;
+
+    /**
+     * Returns the index of this socket in either QgsModelDesignerSocketGraphicItem::mInSockets
+     * or QgsModelDesignerSocketGraphicItem::mOutSockets array
+     */
+    int index() const { return mIndex; };
+
+    /**
+     * Returns on which edge this socket is:
+     *
+     * - Qt::Edge::TopEdge for input socket
+     * - Qt::Edge::BottomEdge for output socket
+     */
+    Qt::Edge edge() const { return mEdge; };
+
+    /**
+     * Returns whether the socket is an input socket or not.
+     *
+     * Convenient function around mEdge member
+     */
+    bool isInput() const { return mEdge == Qt::TopEdge; };
+
+    /**
+     * Return the component associated to the socket.
+     */
+    QgsProcessingModelComponent *component() { return mComponent; };
+
+    /**
+     * Return the component associated to the socket.
+     * \note Not available in Python bindings.
+     */
+    const QgsProcessingModelComponent *component() const SIP_SKIP { return mComponent; };
+
+    /**
+     * Return the parent graphic item associated to the socket.
+     */
+    QgsModelComponentGraphicItem *componentItem() { return mComponentItem; };
+
+    /*
+     * Returns the color of the socket based on the type of data the param corresponds to.
+     * \since QGIS 4.0
+     */
+    QColor socketColor() const;
+
+    /*
+     * Returns TRUE if the parameter is set to the default parameter value.
+     * \since QGIS 4.0
+     */
+    bool isDefaultParameterValue() const;
+
+  signals:
+
+
+  private:
+    QgsModelComponentGraphicItem *mComponentItem = nullptr;
+    QgsProcessingModelComponent *mComponent = nullptr;
+    int mIndex = -1;
+    Qt::Edge mEdge = Qt::Edge::TopEdge;
+    float mSocketOutlineWidth = 1.5;
+};
+
 
 ///@endcond
 

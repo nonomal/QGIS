@@ -19,22 +19,22 @@
 
 #include "qgis_core.h"
 
+#define SIP_NO_FILE
+
 class QgsRenderContext;
 class QPainter;
 
-#define SIP_NO_FILE
 
 /**
  * \ingroup core
  * \class QgsPainterSwapper
- * \brief A class to manage painter saving and restoring required for drawing on a different painter (mask painter for example)
+ * \brief Manages painter saving and restoring required for drawing on a different painter (mask painter for example).
  *
  * \since QGIS 3.12
  */
 class QgsPainterSwapper
 {
   public:
-
     /**
      * QgsPainterSwapper constructor
      *

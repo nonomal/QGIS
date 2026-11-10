@@ -16,8 +16,13 @@
  ***************************************************************************/
 
 #include "qgsfilterrestorer.h"
+
 #include "qgsmessagelog.h"
 #include "qgsvectorlayer.h"
+
+#include <QString>
+
+using namespace Qt::StringLiterals;
 
 #ifdef HAVE_SERVER_PYTHON_PLUGINS
 #include "qgsaccesscontrol.h"
@@ -25,8 +30,7 @@
 
 //! Apply filter from AccessControal
 #ifdef HAVE_SERVER_PYTHON_PLUGINS
-void QgsOWSServerFilterRestorer::applyAccessControlLayerFilters( const QgsAccessControl *accessControl, QgsMapLayer *mapLayer,
-    QHash<QgsMapLayer *, QString> &originalLayerFilters )
+void QgsOWSServerFilterRestorer::applyAccessControlLayerFilters( const QgsAccessControl *accessControl, QgsMapLayer *mapLayer, QHash<QgsMapLayer *, QString> &originalLayerFilters )
 {
   if ( QgsVectorLayer *layer = qobject_cast<QgsVectorLayer *>( mapLayer ) )
   {
@@ -46,7 +50,7 @@ void QgsOWSServerFilterRestorer::applyAccessControlLayerFilters( const QgsAccess
       }
       if ( !layer->setSubsetString( sql ) )
       {
-        QgsMessageLog::logMessage( QStringLiteral( "Layer does not support Subset String" ) );
+        QgsMessageLog::logMessage( u"Layer does not support Subset String"_s );
       }
     }
   }
@@ -68,7 +72,7 @@ void QgsOWSServerFilterRestorer::applyAccessControlLayerFilters( const QgsAccess
       }
       if ( !layer->setSubsetString( sql ) )
       {
-        QgsMessageLog::logMessage( QStringLiteral( "Layer does not support Subset String" ) );
+        QgsMessageLog::logMessage( u"Layer does not support Subset String"_s );
       }
     }
   }
@@ -86,7 +90,7 @@ void QgsOWSServerFilterRestorer::restoreLayerFilters( const QHash<QgsMapLayer *,
     {
       if ( !filteredLayer->setSubsetString( filterIt.value() ) )
       {
-        QgsMessageLog::logMessage( QStringLiteral( "Layer does not support Subset String" ) );
+        QgsMessageLog::logMessage( u"Layer does not support Subset String"_s );
       }
     }
   }

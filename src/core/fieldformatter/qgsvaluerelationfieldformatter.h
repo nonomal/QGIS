@@ -17,13 +17,14 @@
 #define QGSVALUERELATIONFIELDKIT_H
 
 #include "qgis_core.h"
-#include "qgsfieldformatter.h"
 #include "qgsexpression.h"
 #include "qgsexpressioncontext.h"
+#include "qgsfieldformatter.h"
 
-#include <QVector>
 #include <QVariant>
+#include <QVector>
 
+class QgsProject;
 
 /**
  * \ingroup core
@@ -38,25 +39,24 @@ class CORE_EXPORT QgsValueRelationFieldFormatter : public QgsFieldFormatter
   public:
     struct ValueRelationItem
     {
-      //! Constructor for ValueRelationItem
-      ValueRelationItem( const QVariant &key, const QString &value, const QString &description = QString(), const QVariant group = QVariant() )
-        : key( key )
-        , value( value )
-        , description( description )
-        , group( group )
-      {}
+        //! Constructor for ValueRelationItem
+        ValueRelationItem( const QVariant &key, const QString &value, const QString &description = QString(), const QVariant group = QVariant() )
+          : key( key )
+          , value( value )
+          , description( description )
+          , group( group )
+        {}
 
-      //! Constructor for ValueRelationItem
-      ValueRelationItem() = default;
+        ValueRelationItem() = default;
 
-      QVariant key;
-      QString value;
-      QString description;
-      //! Value used to regroup items during sorting (since QGIS 3.38)
-      QVariant group;
+        QVariant key;
+        QString value;
+        QString description;
+        //! Value used to regroup items during sorting (since QGIS 3.38)
+        QVariant group;
     };
 
-    typedef QVector < QgsValueRelationFieldFormatter::ValueRelationItem > ValueRelationCache;
+    typedef QVector< QgsValueRelationFieldFormatter::ValueRelationItem > ValueRelationCache;
 
     /**
      * Constructor for QgsValueRelationFieldFormatter.
@@ -76,6 +76,7 @@ class CORE_EXPORT QgsValueRelationFieldFormatter : public QgsFieldFormatter
      */
     static QStringList valueToStringList( const QVariant &value );
 
+    // TODO QGIS 5.0 -- remove this version of function in favor of the one with explicit project parameter
     /**
      * Create a cache for a value relation field.
      * This can be used to keep the value map in the local memory
@@ -85,8 +86,27 @@ class CORE_EXPORT QgsValueRelationFieldFormatter : public QgsFieldFormatter
      * \param parentFormFeature For embedded forms only, the feature currently being edited in the parent form with current attribute values
      * \return A kvp list of values for the widget
      *
+     * \deprecated QGIS 4.4. Use createCache() with explicit project parameter instead.
      */
-    static QgsValueRelationFieldFormatter::ValueRelationCache createCache( const QVariantMap &config, const QgsFeature &formFeature = QgsFeature(), const QgsFeature &parentFormFeature = QgsFeature() );
+    Q_DECL_DEPRECATED static QgsValueRelationFieldFormatter::ValueRelationCache createCache(
+      const QVariantMap &config, const QgsFeature &formFeature = QgsFeature(), const QgsFeature &parentFormFeature = QgsFeature()
+    ) SIP_DEPRECATED;
+
+    /**
+     * Create a cache for a value relation field.
+     * This can be used to keep the value map in the local memory
+     * if doing multiple lookups in a loop.
+     * \param config The widget configuration
+     * \param project The project used to resolve the referenced layer
+     * \param formFeature The feature currently being edited with current attribute values
+     * \param parentFormFeature For embedded forms only, the feature currently being edited in the parent form with current attribute values
+     * \return A kvp list of values for the widget
+     *
+     * \since QGIS 4.4
+     */
+    static QgsValueRelationFieldFormatter::ValueRelationCache createCache(
+      const QVariantMap &config, const QgsProject *project, const QgsFeature &formFeature = QgsFeature(), const QgsFeature &parentFormFeature = QgsFeature()
+    );
 
     /**
      * Check if the \a expression requires a form scope (i.e. if it uses fields
@@ -155,7 +175,7 @@ class CORE_EXPORT QgsValueRelationFieldFormatter : public QgsFieldFormatter
     static bool expressionIsUsable( const QString &expression, const QgsFeature &feature, const QgsFeature &parentFeature = QgsFeature() );
 
     /**
-     * Returns the (possibly NULL) layer from the widget's \a config and \a project
+     * Returns the (possibly NULLPTR) layer from the widget's \a config and \a project
      * \since QGIS 3.8
      */
     static QgsVectorLayer *resolveLayer( const QVariantMap &config, const QgsProject *project );

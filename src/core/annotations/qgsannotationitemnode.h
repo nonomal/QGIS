@@ -17,11 +17,15 @@
 #ifndef QGSANNOTATIONITEMEDITNODE_H
 #define QGSANNOTATIONITEMEDITNODE_H
 
+#include "qgis.h"
 #include "qgis_core.h"
 #include "qgis_sip.h"
 #include "qgspointxy.h"
 #include "qgsvertexid.h"
-#include "qgis.h"
+
+#include <QString>
+
+using namespace Qt::StringLiterals;
 
 /**
  * \ingroup core
@@ -31,36 +35,38 @@
 class CORE_EXPORT QgsAnnotationItemNode
 {
   public:
-
-    /**
-     * Default constructor
-     */
     QgsAnnotationItemNode() = default;
 
     /**
      * Constructor for QgsAnnotationItemNode, with the specified \a id, \a point and \a type.
      */
-    QgsAnnotationItemNode( const QgsVertexId &id, const QgsPointXY &point, Qgis::AnnotationItemNodeType type )
+    QgsAnnotationItemNode( const QgsVertexId &id, const QgsPointXY &point, Qgis::AnnotationItemNodeType type, Qt::CursorShape cursor = Qt::CursorShape::ArrowCursor )
       : mId( id )
       , mPoint( point )
       , mType( type )
+      , mCursor( cursor )
     {}
 
+    // clang-format off
 #ifdef SIP_RUN
     SIP_PYOBJECT __repr__();
     % MethodCode
-    QString str = QStringLiteral( "<QgsAnnotationItemNode: %1 - %2 (%3, %4)>" ).arg( sipCpp->id().vertex )
-                  .arg( qgsEnumValueToKey( sipCpp->type() ) )
-                  .arg( sipCpp->point().x() )
-                  .arg( sipCpp->point().y() );
+        QString str = u"<QgsAnnotationItemNode: %1 - %2 (%3, %4)>"_s.arg( sipCpp->id().vertex )
+          .arg( qgsEnumValueToKey( sipCpp->type() ) )
+          .arg( sipCpp->point().x() )
+          .arg( sipCpp->point().y() );
     sipRes = PyUnicode_FromString( str.toUtf8().constData() );
     % End
 #endif
+        // clang-format on
 
-    /**
+        /**
      * Returns the ID number of the node, used for uniquely identifying the node in the item.
      */
-    QgsVertexId id() const { return mId; }
+        QgsVertexId id() const
+    {
+      return mId;
+    }
 
     /**
      * Returns the node's position, in geographic coordinates.
@@ -94,23 +100,32 @@ class CORE_EXPORT QgsAnnotationItemNode
      */
     void setType( Qgis::AnnotationItemNodeType type ) { mType = type; }
 
-    // TODO c++20 - replace with = default
-    bool operator==( const QgsAnnotationItemNode &other ) const
-    {
-      return mId == other.mId && mType == other.mType && mPoint == other.mPoint;
-    }
+    /**
+     * Returns the mouse cursor shape to use when hovering the node.
+     *
+     * \see setCursor()
+     * \since QGIS 3.34
+     */
+    Qt::CursorShape cursor() const { return mCursor; }
 
-    bool operator!=( const QgsAnnotationItemNode &other ) const
-    {
-      return !( *this == other );
-    }
+    /**
+     * Sets the mouse cursor \a shape to use when hovering the node.
+     *
+     * \see cursor()
+     * \since QGIS 3.34
+     */
+    void setCursor( Qt::CursorShape shape ) { mCursor = shape; }
+
+    // TODO c++20 - replace with = default
+    bool operator==( const QgsAnnotationItemNode &other ) const { return mId == other.mId && mType == other.mType && mPoint == other.mPoint; }
+
+    bool operator!=( const QgsAnnotationItemNode &other ) const { return !( *this == other ); }
 
   private:
-
     QgsVertexId mId;
     QgsPointXY mPoint;
     Qgis::AnnotationItemNodeType mType = Qgis::AnnotationItemNodeType::VertexHandle;
-
+    Qt::CursorShape mCursor = Qt::CursorShape::ArrowCursor;
 };
 
 #endif // QGSANNOTATIONITEMEDITNODE_H

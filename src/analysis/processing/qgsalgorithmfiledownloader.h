@@ -18,10 +18,11 @@
 #ifndef QGSALGORITHMFILEDOWNLOADER_H
 #define QGSALGORITHMFILEDOWNLOADER_H
 
-#define SIP_NO_FILE
 
 #include "qgis_sip.h"
 #include "qgsprocessingalgorithm.h"
+
+#define SIP_NO_FILE
 
 class QgsProcessingFeedback;
 
@@ -39,6 +40,7 @@ class QgsFileDownloaderAlgorithm : public QObject, public QgsProcessingAlgorithm
     void initAlgorithm( const QVariantMap &configuration = QVariantMap() ) override;
     QString name() const override;
     QString displayName() const override;
+    QString shortDescription() const override;
     QStringList tags() const override;
     QString group() const override;
     QString groupId() const override;
@@ -46,9 +48,7 @@ class QgsFileDownloaderAlgorithm : public QObject, public QgsProcessingAlgorithm
     QgsFileDownloaderAlgorithm *createInstance() const override SIP_FACTORY;
 
   protected:
-
-    QVariantMap processAlgorithm( const QVariantMap &parameters,
-                                  QgsProcessingContext &context, QgsProcessingFeedback * ) override;
+    QVariantMap processAlgorithm( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback * ) override;
 
   private:
     QString mTotal;

@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/qgsstoredexpressionmanager.h                                *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/
 
 
@@ -18,7 +18,8 @@
 class QgsStoredExpression
 {
 %Docstring(signature="appended")
-Stored expression containing name, content (expression text) and a category tag.
+Stored expression containing name, content (expression text) and a
+category tag.
 
 .. versionadded:: 3.10
 %End
@@ -27,7 +28,6 @@ Stored expression containing name, content (expression text) and a category tag.
 #include "qgsstoredexpressionmanager.h"
 %End
   public:
-
     enum Category /BaseType=IntEnum/
     {
       FilterExpression,
@@ -39,13 +39,14 @@ Stored expression containing name, content (expression text) and a category tag.
     QString id;
     QString name;
     QString expression;
-    Category tag;
+    QgsStoredExpression::Category tag;
 };
 
 class QgsStoredExpressionManager : QObject
 {
 %Docstring(signature="appended")
-Manages stored expressions regarding creation, modification and storing in the project
+Manages stored expressions regarding creation, modification and storing
+in the project.
 
 .. versionadded:: 3.10
 %End
@@ -54,19 +55,16 @@ Manages stored expressions regarding creation, modification and storing in the p
 #include "qgsstoredexpressionmanager.h"
 %End
   public:
-
     QgsStoredExpressionManager();
-%Docstring
-Constructor for QgsStoredExpressionManager
-%End
 
-    QString addStoredExpression( const QString &name, const QString &expression, const QgsStoredExpression::Category &tag =  QgsStoredExpression::Category::FilterExpression );
+    QString addStoredExpression( const QString &name, const QString &expression, const QgsStoredExpression::Category &tag = QgsStoredExpression::Category::FilterExpression );
 %Docstring
 Adds an expression to the list
 
 :param name: optional name of the expression
 :param expression: expression text
-:param tag: category of the expression use case - default FilterExpression
+:param tag: category of the expression use case - default
+            FilterExpression
 
 :return: generated id
 %End
@@ -78,7 +76,7 @@ Removes an expression to the list
 :param id: id of the expression as identification
 %End
 
-    void updateStoredExpression( const QString &id, const QString &name, const QString &expression, const  QgsStoredExpression::Category &tag );
+    void updateStoredExpression( const QString &id, const QString &name, const QString &expression, const QgsStoredExpression::Category &tag );
 %Docstring
 Updates an expression by ``id``.
 
@@ -95,7 +93,7 @@ Appends a list of expressions to the existing list
 :param storedExpressions: list of expressions and the optional name
 %End
 
-    QList< QgsStoredExpression > storedExpressions( const  QgsStoredExpression::Category &tag = QgsStoredExpression::Category::All );
+    QList< QgsStoredExpression > storedExpressions( const QgsStoredExpression::Category &tag = QgsStoredExpression::Category::All );
 %Docstring
 Returns the list of named expressions
 
@@ -110,7 +108,7 @@ Returns an expression according to the ``id``
 :param id: id of the expression as identification
 %End
 
-    QgsStoredExpression findStoredExpressionByExpression( const QString &expression, const  QgsStoredExpression::Category &tag = QgsStoredExpression::Category::All ) const;
+    QgsStoredExpression findStoredExpressionByExpression( const QString &expression, const QgsStoredExpression::Category &tag = QgsStoredExpression::Category::All ) const;
 %Docstring
 Returns an expression according to the ``expression`` text
 
@@ -130,7 +128,7 @@ Writes the stored expressions out in XML format
 
     bool readXml( const QDomNode &layerNode );
 %Docstring
-Reads the  stored expressions in in XML format
+Reads the stored expressions in in XML format
 %End
 
   signals:
@@ -144,5 +142,5 @@ Reads the  stored expressions in in XML format
  *                                                                      *
  * src/core/qgsstoredexpressionmanager.h                                *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/

@@ -3,12 +3,12 @@
  *                                                                      *
  * src/core/layout/qgslayoutitemgroup.h                                 *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/
 
 
 
-class QgsLayoutItemGroup: QgsLayoutItem
+class QgsLayoutItemGroup : QgsLayoutItem
 {
 %Docstring(signature="appended")
 A container for grouping several :py:class:`QgsLayoutItems`.
@@ -18,10 +18,10 @@ A container for grouping several :py:class:`QgsLayoutItems`.
 #include "qgslayoutitemgroup.h"
 %End
   public:
-
     explicit QgsLayoutItemGroup( QgsLayout *layout );
 %Docstring
-Constructor for QgsLayoutItemGroup, belonging to the specified ``layout``.
+Constructor for QgsLayoutItemGroup, belonging to the specified
+``layout``.
 %End
     ~QgsLayoutItemGroup();
 
@@ -42,14 +42,14 @@ The caller takes responsibility for deleting the returned object.
 
     void addItem( QgsLayoutItem *item /Transfer/ );
 %Docstring
-Adds an ``item`` to the group. Ownership of the item
-is transferred to the group.
+Adds an ``item`` to the group. Ownership of the item is transferred to
+the group.
 %End
 
     void removeItems();
 %Docstring
-Removes all items from the group (but does not delete them).
-Items remain in the scene but are no longer grouped together
+Removes all items from the group (but does not delete them). Items
+remain in the scene but are no longer grouped together
 %End
 
     QList<QgsLayoutItem *> items() const;
@@ -86,13 +86,10 @@ Returns a list of items contained by the group.
 
 };
 
-
-
-
 /************************************************************************
  * This file has been generated automatically from                      *
  *                                                                      *
  * src/core/layout/qgslayoutitemgroup.h                                 *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/

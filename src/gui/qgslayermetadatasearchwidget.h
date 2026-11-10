@@ -16,12 +16,14 @@
 #ifndef QGSLAYERMETADATASEARCHWIDGET_H
 #define QGSLAYERMETADATASEARCHWIDGET_H
 
-#include "qgis_gui.h"
-#include <QWidget>
 #include "ui_qgslayermetadatasearchwidget.h"
-#include "qgsfeedback.h"
-#include "qgsabstractlayermetadataprovider.h"
+
+#include "qgis_gui.h"
 #include "qgsabstractdatasourcewidget.h"
+#include "qgsabstractlayermetadataprovider.h"
+#include "qgsfeedback.h"
+
+#include <QWidget>
 
 class QgsMapCanvas;
 class QgsLayerMetadataResultsProxyModel;
@@ -29,7 +31,8 @@ class QgsLayerMetadataResultsModel;
 
 /**
  * \ingroup gui
- * \brief The QgsLayerMetadataSearchWidget class offers layer metadata search and filtering.
+ * \brief Offers layer metadata search and filtering.
+ *
  * It is designed to be embedded in the data source manager dialog.
  * \since QGIS 3.28
  */
@@ -37,11 +40,10 @@ class GUI_EXPORT QgsLayerMetadataSearchWidget : public QgsAbstractDataSourceWidg
 {
     Q_OBJECT
   public:
-
     /**
      * Creates a new QgsLayerMetadataSearchWidget.
      */
-    explicit QgsLayerMetadataSearchWidget( QWidget *parent = nullptr, Qt::WindowFlags fl = Qt::WindowFlags(), QgsProviderRegistry::WidgetMode widgetMode = QgsProviderRegistry::WidgetMode::None );
+    explicit QgsLayerMetadataSearchWidget( QWidget *parent = nullptr, Qt::WindowFlags fl = Qt::WindowFlags(), QgsProviderRegistry::WidgetMode widgetMode = QgsProviderRegistry::WidgetMode::Standalone );
 
     void setMapCanvas( QgsMapCanvas *mapCanvas ) override;
 
@@ -58,11 +60,12 @@ class GUI_EXPORT QgsLayerMetadataSearchWidget : public QgsAbstractDataSourceWidg
     void showHelp();
 
   private:
-
     QgsLayerMetadataResultsProxyModel *mProxyModel = nullptr;
     bool mIsLoading = false;
+    bool mReloadRequired = true;
     QgsLayerMetadataResultsModel *mSourceModel = nullptr;
-    unsigned long int mRowCount = 0;
+
+    void refreshInternal();
 
     // QWidget interface
   protected:

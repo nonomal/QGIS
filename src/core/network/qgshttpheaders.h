@@ -21,12 +21,11 @@
 #ifndef QGSHTTPHEADERS_H
 #define QGSHTTPHEADERS_H
 
-#include <QMap>
-#include <QVariant>
-
 #include "qgis_core.h"
 #include "qgis_sip.h"
 
+#include <QMap>
+#include <QVariant>
 
 class QNetworkRequest;
 class QUrlQuery;
@@ -35,13 +34,12 @@ class QgsSettings;
 
 /**
  * \ingroup core
- * \brief This class implements simple http header management.
+ * \brief Implements simple HTTP header management.
  * \since QGIS 3.24
  */
 class CORE_EXPORT QgsHttpHeaders
 {
   public:
-
 #ifndef SIP_RUN
 
     //! Used in settings as the group name
@@ -61,16 +59,13 @@ class CORE_EXPORT QgsHttpHeaders
      */
     QgsHttpHeaders( const QVariantMap &headers );
 
-    /**
-     * \brief default constructor
-     */
     QgsHttpHeaders();
 
     /**
      * \brief Constructor from QgsSettings \a settings object and root \a key
      * \param settings
      * \param key
-     * \deprecated since QGIS 3.30 use a variant map settings and the default constructor instead
+     * \deprecated QGIS 3.30. Use a variant map settings and the default constructor instead.
      */
     Q_DECL_DEPRECATED QgsHttpHeaders( const QgsSettings &settings, const QString &key = QString() ) SIP_DEPRECATED;
 
@@ -93,7 +88,7 @@ class CORE_EXPORT QgsHttpHeaders
      * \brief Returns the headers as a variant map
      * \since QGIS 3.30
      */
-    QVariantMap headers() const {return mHeaders;}
+    QVariantMap headers() const { return mHeaders; }
 
     /**
      * \brief Updates the \a settings by adding all the http headers in the path "key/PATH_PREFIX/"
@@ -103,7 +98,7 @@ class CORE_EXPORT QgsHttpHeaders
      * \param settings
      * \param key sub group path
      * \return TRUE if the update succeed
-     * \deprecated since QGIS 3.30 directly use a variant setting instead
+     * \deprecated QGIS 3.30. Directly use a variant setting instead.
      */
     Q_DECL_DEPRECATED bool updateSettings( QgsSettings &settings, const QString &key = QString() ) const SIP_DEPRECATED;
 
@@ -129,13 +124,26 @@ class CORE_EXPORT QgsHttpHeaders
     bool updateMap( QVariantMap &map ) const;
 
     /**
-     * \brief Updates a \a map by adding all the HTTP headers
+     * \brief Updates a DOM element by adding all the HTTP headers
      *
      * KEY_REFERER value will be available at attribute "KEY_PREFIX+KEY_REFERER" and attribute "KEY_REFERER" (for backward compatibility)
      *
+     * \param el DOM element
+     * \return TRUE if the update succeed
+     * \deprecated QGIS 3.42. Will be removed in QGIS 5.0.
+     */
+    Q_DECL_DEPRECATED bool updateDomElement( QDomElement &el ) const SIP_DEPRECATED;
+
+    /**
+     * \brief Updates a DOM element by adding all the HTTP headers
+     *
+     * KEY_REFERER value will be available at attribute "KEY_PREFIX+KEY_REFERER" and attribute "KEY_REFERER" (for backward compatibility)
+     *
+     * \param el DOM element
+     * \param[out] namespaceDeclarations Map of (prefix, URI) tuples for namespaces used by el.
      * \return TRUE if the update succeed
      */
-    bool updateDomElement( QDomElement &el ) const;
+    bool updateDomElement( QDomElement &el, QMap<QString, QString> &namespaceDeclarations ) const SIP_SKIP;
 
     /**
      * \brief Loads headers from the \a settings
@@ -183,7 +191,10 @@ class CORE_EXPORT QgsHttpHeaders
      */
     QVariant &operator[]( const QString &key );
 
-    QgsHttpHeaders &operator = ( const QMap<QString, QVariant> &headers ) SIP_SKIP;
+    QgsHttpHeaders &operator=( const QMap<QString, QVariant> &headers ) SIP_SKIP;
+
+    bool operator==( const QgsHttpHeaders &other ) const;
+    bool operator!=( const QgsHttpHeaders &other ) const;
 
     /**
      * \brief insert a \a key with the specific \a value
@@ -193,7 +204,7 @@ class CORE_EXPORT QgsHttpHeaders
     void insert( const QString &key, const QVariant &value );
 
     /**
-     * \return the list of all http header keys
+     * Returns the list of all HTTP header keys.
      */
     QList<QString> keys() const;
 

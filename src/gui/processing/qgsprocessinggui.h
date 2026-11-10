@@ -31,17 +31,7 @@
  */
 class GUI_EXPORT QgsProcessingGui
 {
-
   public:
-
-    //! Types of dialogs which Processing widgets can be created for
-    enum WidgetType
-    {
-      Standard, //!< Standard algorithm dialog
-      Batch, //!< Batch processing dialog
-      Modeler, //!< Modeler dialog
-    };
-
 };
 
 #endif // QGSPROCESSINGGUI_H

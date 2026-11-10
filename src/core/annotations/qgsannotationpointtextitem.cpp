@@ -16,33 +16,38 @@
  ***************************************************************************/
 
 #include "qgsannotationpointtextitem.h"
-#include "qgstextrenderer.h"
-#include "qgsannotationitemnode.h"
+
 #include "qgsannotationitemeditoperation.h"
+#include "qgsannotationitemnode.h"
+#include "qgsapplication.h"
+#include "qgscalloutsregistry.h"
 #include "qgsrendercontext.h"
+#include "qgstextrenderer.h"
+
+#include <QString>
+
+using namespace Qt::StringLiterals;
 
 QgsAnnotationPointTextItem::QgsAnnotationPointTextItem( const QString &text, QgsPointXY point )
   : QgsAnnotationItem()
   , mText( text )
   , mPoint( point )
-{
-
-}
+{}
 
 Qgis::AnnotationItemFlags QgsAnnotationPointTextItem::flags() const
 {
   // in truth this should depend on whether the text format is scale dependent or not!
-  return Qgis::AnnotationItemFlag::ScaleDependentBoundingBox;
+  return Qgis::AnnotationItemFlag::ScaleDependentBoundingBox | Qgis::AnnotationItemFlag::SupportsReferenceScale | Qgis::AnnotationItemFlag::SupportsCallouts;
 }
 
 QgsAnnotationPointTextItem::~QgsAnnotationPointTextItem() = default;
 
 QString QgsAnnotationPointTextItem::type() const
 {
-  return QStringLiteral( "pointtext" );
+  return u"pointtext"_s;
 }
 
-void QgsAnnotationPointTextItem::render( QgsRenderContext &context, QgsFeedback * )
+void QgsAnnotationPointTextItem::render( QgsRenderContext &context, QgsFeedback *feedback )
 {
   QPointF pt;
   if ( context.coordinateTransform().isValid() )
@@ -70,21 +75,30 @@ void QgsAnnotationPointTextItem::render( QgsRenderContext &context, QgsFeedback 
   }
 
   const QString displayText = QgsExpression::replaceExpressionText( mText, &context.expressionContext(), &context.distanceArea() );
-  QgsTextRenderer::drawText( pt, - angle * M_PI / 180.0,
-                             QgsTextRenderer::convertQtHAlignment( mAlignment ),
-                             displayText.split( '\n' ), context, mTextFormat );
+
+  if ( callout() )
+  {
+    const double textWidth = QgsTextRenderer::textWidth( context, mTextFormat, displayText.split( '\n' ) );
+    const double textHeight = QgsTextRenderer::textHeight( context, mTextFormat, displayText.split( '\n' ) );
+
+    QgsCallout::QgsCalloutContext calloutContext;
+    renderCallout( context, QRectF( pt.x(), pt.y() - textHeight, textWidth, textHeight ), angle, calloutContext, feedback );
+  }
+
+  QgsTextRenderer::
+    drawText( pt, -angle * M_PI / 180.0, QgsTextRenderer::convertQtHAlignment( mAlignment ), mTextFormat.allowHtmlFormatting() ? QStringList { displayText } : displayText.split( '\n' ), context, mTextFormat );
 }
 
 bool QgsAnnotationPointTextItem::writeXml( QDomElement &element, QDomDocument &document, const QgsReadWriteContext &context ) const
 {
-  element.setAttribute( QStringLiteral( "x" ), qgsDoubleToString( mPoint.x() ) );
-  element.setAttribute( QStringLiteral( "y" ), qgsDoubleToString( mPoint.y() ) );
-  element.setAttribute( QStringLiteral( "text" ), mText );
-  element.setAttribute( QStringLiteral( "angle" ), qgsDoubleToString( mAngle ) );
-  element.setAttribute( QStringLiteral( "alignment" ), QString::number( mAlignment ) );
-  element.setAttribute( QStringLiteral( "rotationMode" ), qgsEnumValueToKey( mRotationMode ) );
+  element.setAttribute( u"x"_s, qgsDoubleToString( mPoint.x() ) );
+  element.setAttribute( u"y"_s, qgsDoubleToString( mPoint.y() ) );
+  element.setAttribute( u"text"_s, mText );
+  element.setAttribute( u"angle"_s, qgsDoubleToString( mAngle ) );
+  element.setAttribute( u"alignment"_s, QString::number( mAlignment ) );
+  element.setAttribute( u"rotationMode"_s, qgsEnumValueToKey( mRotationMode ) );
 
-  QDomElement textFormatElem = document.createElement( QStringLiteral( "pointTextFormat" ) );
+  QDomElement textFormatElem = document.createElement( u"pointTextFormat"_s );
   textFormatElem.appendChild( mTextFormat.writeXml( document, context ) );
   element.appendChild( textFormatElem );
 
@@ -92,24 +106,24 @@ bool QgsAnnotationPointTextItem::writeXml( QDomElement &element, QDomDocument &d
   return true;
 }
 
-QgsAnnotationPointTextItem *QgsAnnotationPointTextItem::create()
+std::unique_ptr<QgsAnnotationPointTextItem> QgsAnnotationPointTextItem::create()
 {
-  return new QgsAnnotationPointTextItem( QString(), QgsPointXY() );
+  return std::make_unique<QgsAnnotationPointTextItem>( QString(), QgsPointXY() );
 }
 
 bool QgsAnnotationPointTextItem::readXml( const QDomElement &element, const QgsReadWriteContext &context )
 {
-  const double x = element.attribute( QStringLiteral( "x" ) ).toDouble();
-  const double y = element.attribute( QStringLiteral( "y" ) ).toDouble();
+  const double x = element.attribute( u"x"_s ).toDouble();
+  const double y = element.attribute( u"y"_s ).toDouble();
   mPoint = QgsPointXY( x, y );
-  mText = element.attribute( QStringLiteral( "text" ) );
-  mAngle = element.attribute( QStringLiteral( "angle" ) ).toDouble();
-  mAlignment = static_cast< Qt::Alignment >( element.attribute( QStringLiteral( "alignment" ) ).toInt() );
-  mRotationMode = qgsEnumKeyToValue( element.attribute( QStringLiteral( "rotationMode" ) ), Qgis::SymbolRotationMode::IgnoreMapRotation );
-  const QDomElement textFormatElem = element.firstChildElement( QStringLiteral( "pointTextFormat" ) );
+  mText = element.attribute( u"text"_s );
+  mAngle = element.attribute( u"angle"_s ).toDouble();
+  mAlignment = static_cast< Qt::Alignment >( element.attribute( u"alignment"_s ).toInt() );
+  mRotationMode = qgsEnumKeyToValue( element.attribute( u"rotationMode"_s ), Qgis::SymbolRotationMode::IgnoreMapRotation );
+  const QDomElement textFormatElem = element.firstChildElement( u"pointTextFormat"_s );
   if ( !textFormatElem.isNull() )
   {
-    const QDomNodeList textFormatNodeList = textFormatElem.elementsByTagName( QStringLiteral( "text-style" ) );
+    const QDomNodeList textFormatNodeList = textFormatElem.elementsByTagName( u"text-style"_s );
     const QDomElement textFormatElem = textFormatNodeList.at( 0 ).toElement();
     mTextFormat.readXml( textFormatElem, context );
   }
@@ -120,7 +134,7 @@ bool QgsAnnotationPointTextItem::readXml( const QDomElement &element, const QgsR
 
 QgsAnnotationPointTextItem *QgsAnnotationPointTextItem::clone() const
 {
-  std::unique_ptr< QgsAnnotationPointTextItem > item = std::make_unique< QgsAnnotationPointTextItem >( mText, mPoint );
+  auto item = std::make_unique< QgsAnnotationPointTextItem >( mText, mPoint );
   item->setFormat( mTextFormat );
   item->setAngle( mAngle );
   item->setAlignment( mAlignment );
@@ -149,8 +163,8 @@ QgsRectangle QgsAnnotationPointTextItem::boundingBox( QgsRenderContext &context 
 {
   const QString displayText = QgsExpression::replaceExpressionText( mText, &context.expressionContext(), &context.distanceArea() );
 
-  const double widthInPixels = QgsTextRenderer::textWidth( context, mTextFormat, displayText.split( '\n' ) );
-  const double heightInPixels = QgsTextRenderer::textHeight( context, mTextFormat, displayText.split( '\n' ) );
+  const double widthInPixels = QgsTextRenderer::textWidth( context, mTextFormat, mTextFormat.allowHtmlFormatting() ? QStringList { displayText } : displayText.split( '\n' ) );
+  const double heightInPixels = QgsTextRenderer::textHeight( context, mTextFormat, mTextFormat.allowHtmlFormatting() ? QStringList { displayText } : displayText.split( '\n' ) );
 
   // text size has already been calculated using any symbology reference scale factor above -- we need
   // to temporarily remove the reference scale here or we'll be undoing the scaling
@@ -185,29 +199,61 @@ QgsRectangle QgsAnnotationPointTextItem::boundingBox( QgsRenderContext &context 
       break;
   }
 
+  QgsRectangle textRect;
   if ( !qgsDoubleNear( angle, 0 ) )
   {
-    return rotateBoundingBoxAroundPoint( mPoint.x(), mPoint.y(), unrotatedRect, angle );
+    textRect = rotateBoundingBoxAroundPoint( mPoint.x(), mPoint.y(), unrotatedRect, angle );
   }
   else
   {
-    return unrotatedRect;
+    textRect = unrotatedRect;
   }
+
+  if ( callout() && !calloutAnchor().isEmpty() )
+  {
+    QgsGeometry anchor = calloutAnchor();
+    textRect.combineExtentWith( anchor.boundingBox() );
+  }
+  return textRect;
 }
 
-QList<QgsAnnotationItemNode> QgsAnnotationPointTextItem::nodes() const
+QList<QgsAnnotationItemNode> QgsAnnotationPointTextItem::nodesV2( const QgsAnnotationItemEditContext &context ) const
 {
-  return { QgsAnnotationItemNode( QgsVertexId( 0, 0, 0 ), mPoint, Qgis::AnnotationItemNodeType::VertexHandle )};
+  QList<QgsAnnotationItemNode> res = { QgsAnnotationItemNode( QgsVertexId( 0, 0, 0 ), mPoint, Qgis::AnnotationItemNodeType::VertexHandle ) };
+
+  QgsPointXY calloutNodePoint;
+  if ( !calloutAnchor().isEmpty() )
+  {
+    calloutNodePoint = calloutAnchor().asPoint();
+  }
+  else
+  {
+    calloutNodePoint = context.currentItemBounds().center();
+  }
+  res.append( QgsAnnotationItemNode( QgsVertexId( 0, 0, 1 ), calloutNodePoint, Qgis::AnnotationItemNodeType::CalloutHandle ) );
+
+  return res;
 }
 
-Qgis::AnnotationItemEditOperationResult QgsAnnotationPointTextItem::applyEdit( QgsAbstractAnnotationItemEditOperation *operation )
+Qgis::AnnotationItemEditOperationResult QgsAnnotationPointTextItem::applyEditV2( QgsAbstractAnnotationItemEditOperation *operation, const QgsAnnotationItemEditContext & )
 {
   switch ( operation->type() )
   {
     case QgsAbstractAnnotationItemEditOperation::Type::MoveNode:
     {
-      QgsAnnotationItemEditOperationMoveNode *moveOperation = dynamic_cast< QgsAnnotationItemEditOperationMoveNode * >( operation );
-      mPoint = moveOperation->after();
+      QgsAnnotationItemEditOperationMoveNode *moveOperation = qgis::down_cast< QgsAnnotationItemEditOperationMoveNode * >( operation );
+      if ( moveOperation->nodeId().vertex == 0 )
+      {
+        mPoint = moveOperation->after();
+      }
+      else if ( moveOperation->nodeId().vertex == 1 )
+      {
+        setCalloutAnchor( QgsGeometry::fromPoint( moveOperation->after() ) );
+        if ( !callout() )
+        {
+          setCallout( QgsApplication::calloutRegistry()->defaultCallout().release() );
+        }
+      }
       return Qgis::AnnotationItemEditOperationResult::Success;
     }
 
@@ -224,6 +270,14 @@ Qgis::AnnotationItemEditOperationResult QgsAnnotationPointTextItem::applyEdit( Q
       return Qgis::AnnotationItemEditOperationResult::Success;
     }
 
+    case QgsAbstractAnnotationItemEditOperation::Type::RotateItem:
+    {
+      QgsAnnotationItemEditOperationRotateItem *rotateOperation = qgis::down_cast< QgsAnnotationItemEditOperationRotateItem * >( operation );
+      mAngle = std::fmod( mAngle + rotateOperation->angle(), 360.0 );
+      return Qgis::AnnotationItemEditOperationResult::Success;
+    }
+
+    case QgsAbstractAnnotationItemEditOperation::Type::SetItemBounds:
     case QgsAbstractAnnotationItemEditOperation::Type::AddNode:
       break;
   }
@@ -231,13 +285,13 @@ Qgis::AnnotationItemEditOperationResult QgsAnnotationPointTextItem::applyEdit( Q
   return Qgis::AnnotationItemEditOperationResult::Invalid;
 }
 
-QgsAnnotationItemEditOperationTransientResults *QgsAnnotationPointTextItem::transientEditResults( QgsAbstractAnnotationItemEditOperation *operation )
+QgsAnnotationItemEditOperationTransientResults *QgsAnnotationPointTextItem::transientEditResultsV2( QgsAbstractAnnotationItemEditOperation *operation, const QgsAnnotationItemEditContext & )
 {
   switch ( operation->type() )
   {
     case QgsAbstractAnnotationItemEditOperation::Type::MoveNode:
     {
-      QgsAnnotationItemEditOperationMoveNode *moveOperation = dynamic_cast< QgsAnnotationItemEditOperationMoveNode * >( operation );
+      QgsAnnotationItemEditOperationMoveNode *moveOperation = qgis::down_cast< QgsAnnotationItemEditOperationMoveNode * >( operation );
       return new QgsAnnotationItemEditOperationTransientResults( QgsGeometry( moveOperation->after().clone() ) );
     }
 
@@ -247,6 +301,8 @@ QgsAnnotationItemEditOperationTransientResults *QgsAnnotationPointTextItem::tran
       return new QgsAnnotationItemEditOperationTransientResults( QgsGeometry( new QgsPoint( mPoint.x() + moveOperation->translationX(), mPoint.y() + moveOperation->translationY() ) ) );
     }
 
+    case QgsAbstractAnnotationItemEditOperation::Type::RotateItem:
+    case QgsAbstractAnnotationItemEditOperation::Type::SetItemBounds:
     case QgsAbstractAnnotationItemEditOperation::Type::DeleteNode:
     case QgsAbstractAnnotationItemEditOperation::Type::AddNode:
       break;

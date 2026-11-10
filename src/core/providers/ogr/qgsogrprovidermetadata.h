@@ -19,8 +19,9 @@ email                : nyall dot dawson at gmail dot com
 
 #include "qgsprovidermetadata.h"
 
-///@cond PRIVATE
 #define SIP_NO_FILE
+
+///@cond PRIVATE
 
 class QgsLayerMetadataProviderResult;
 
@@ -28,17 +29,16 @@ class QgsLayerMetadataProviderResult;
  * Entry point for registration of the OGR data provider
  * \since QGIS 3.10
  */
-class QgsOgrProviderMetadata final: public QgsProviderMetadata
+class QgsOgrProviderMetadata final : public QgsProviderMetadata
 {
     Q_OBJECT
   public:
-
     QgsOgrProviderMetadata();
     QIcon icon() const override;
     void initProvider() override;
     void cleanupProvider() override;
     QList< QgsDataItemProvider * > dataItemProviders() const override;
-    QgsDataProvider *createProvider( const QString &uri, const QgsDataProvider::ProviderOptions &options, QgsDataProvider::ReadFlags flags = QgsDataProvider::ReadFlags() ) override;
+    QgsDataProvider *createProvider( const QString &uri, const QgsDataProvider::ProviderOptions &options, Qgis::DataProviderReadFlags flags = Qgis::DataProviderReadFlags() ) override;
     QVariantMap decodeUri( const QString &uri ) const override;
     QString encodeUri( const QVariantMap &parts ) const override;
     QString absoluteToRelativeUri( const QString &uri, const QgsReadWriteContext &context ) const override;
@@ -50,6 +50,14 @@ class QgsOgrProviderMetadata final: public QgsProviderMetadata
     QList< QgsProviderSublayerDetails > querySublayers( const QString &uri, Qgis::SublayerQueryFlags flags = Qgis::SublayerQueryFlags(), QgsFeedback *feedback = nullptr ) const override;
     QStringList sidecarFilesForUri( const QString &uri ) const override;
     QList< Qgis::LayerType > supportedLayerTypes() const override;
+    bool urisReferToSame( const QString &uri1, const QString &uri2, Qgis::SourceHierarchyLevel level = Qgis::SourceHierarchyLevel::Object ) const override;
+    QgsEmptyLayerCreationResult createEmptyLayer(
+      const QString &uri,
+      const QgsFields &fields,
+      Qgis::WkbType wkbType = Qgis::WkbType::NoGeometry,
+      const QgsCoordinateReferenceSystem &crs = QgsCoordinateReferenceSystem(),
+      Qgis::CreateLayerActionOnExisting actionOnExisting = Qgis::CreateLayerActionOnExisting::Abort
+    ) override;
     Qgis::VectorExportResult createEmptyLayer(
       const QString &uri,
       const QgsFields &fields,
@@ -58,19 +66,20 @@ class QgsOgrProviderMetadata final: public QgsProviderMetadata
       bool overwrite,
       QMap<int, int> &oldToNewAttrIdxMap,
       QString &errorMessage,
-      const QMap<QString, QVariant> *options ) override;
+      const QMap<QString, QVariant> *options,
+      QString &createdLayerUri
+    ) override;
     bool createDatabase( const QString &uri, QString &errorMessage ) override;
 
     // -----
     bool styleExists( const QString &uri, const QString &styleId, QString &errorCause ) override;
-    bool saveStyle( const QString &uri, const QString &qmlStyle, const QString &sldStyle,
-                    const QString &styleName, const QString &styleDescription,
-                    const QString &uiFileContent, bool useAsDefault, QString &errCause ) override;
+    bool saveStyle(
+      const QString &uri, const QString &qmlStyle, const QString &sldStyle, const QString &styleName, const QString &styleDescription, const QString &uiFileContent, bool useAsDefault, QString &errCause
+    ) override;
     bool deleteStyleById( const QString &uri, const QString &styleId, QString &errCause ) override;
     QString loadStyle( const QString &uri, QString &errCause ) override;
     QString loadStoredStyle( const QString &uri, QString &name, QString &errCause ) override;
-    int listStyles( const QString &uri, QStringList &ids, QStringList &names,
-                    QStringList &descriptions, QString &errCause ) override;
+    int listStyles( const QString &uri, QStringList &ids, QStringList &names, QStringList &descriptions, QString &errCause ) override;
     QString getStyleById( const QString &uri, const QString &styleId, QString &errCause ) override;
     bool saveLayerMetadata( const QString &uri, const QgsLayerMetadata &metadata, QString &errorMessage ) final;
 
@@ -85,10 +94,7 @@ class QgsOgrProviderMetadata final: public QgsProviderMetadata
     void saveConnection( const QgsAbstractProviderConnection *connection, const QString &name ) override;
 
   protected:
-
     QgsAbstractProviderConnection *createConnection( const QString &uri, const QVariantMap &configuration ) override;
-
-
 };
 
 ///@endcond

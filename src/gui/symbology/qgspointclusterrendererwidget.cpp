@@ -16,13 +16,20 @@
  ***************************************************************************/
 
 #include "qgspointclusterrendererwidget.h"
+
+#include "qgsapplication.h"
+#include "qgsmarkersymbol.h"
 #include "qgspointclusterrenderer.h"
 #include "qgsrendererregistry.h"
 #include "qgsstyle.h"
 #include "qgssymbolselectordialog.h"
 #include "qgsvectorlayer.h"
-#include "qgsapplication.h"
-#include "qgsmarkersymbol.h"
+
+#include <QString>
+
+#include "moc_qgspointclusterrendererwidget.cpp"
+
+using namespace Qt::StringLiterals;
 
 QgsRendererWidget *QgsPointClusterRendererWidget::create( QgsVectorLayer *layer, QgsStyle *style, QgsFeatureRenderer *renderer )
 {
@@ -48,23 +55,24 @@ QgsPointClusterRendererWidget::QgsPointClusterRendererWidget( QgsVectorLayer *la
   }
   setupUi( this );
   connect( mRendererComboBox, static_cast<void ( QComboBox::* )( int )>( &QComboBox::currentIndexChanged ), this, &QgsPointClusterRendererWidget::mRendererComboBox_currentIndexChanged );
-  connect( mDistanceSpinBox, static_cast < void ( QDoubleSpinBox::* )( double ) > ( &QDoubleSpinBox::valueChanged ), this, &QgsPointClusterRendererWidget::mDistanceSpinBox_valueChanged );
+  connect( mDistanceSpinBox, static_cast<void ( QDoubleSpinBox::* )( double )>( &QDoubleSpinBox::valueChanged ), this, &QgsPointClusterRendererWidget::mDistanceSpinBox_valueChanged );
   connect( mDistanceUnitWidget, &QgsUnitSelectionWidget::changed, this, &QgsPointClusterRendererWidget::mDistanceUnitWidget_changed );
   connect( mRendererSettingsButton, &QPushButton::clicked, this, &QgsPointClusterRendererWidget::mRendererSettingsButton_clicked );
   this->layout()->setContentsMargins( 0, 0, 0, 0 );
 
-  mDistanceUnitWidget->setUnits( { Qgis::RenderUnit::Millimeters, Qgis::RenderUnit::MetersInMapUnits, Qgis::RenderUnit::MapUnits, Qgis::RenderUnit::Pixels,
-                                   Qgis::RenderUnit::Points, Qgis::RenderUnit::Inches } );
+  mDistanceUnitWidget->setUnits(
+    { Qgis::RenderUnit::Millimeters, Qgis::RenderUnit::MetersInMapUnits, Qgis::RenderUnit::MapUnits, Qgis::RenderUnit::Pixels, Qgis::RenderUnit::Points, Qgis::RenderUnit::Inches }
+  );
 
   mCenterSymbolToolButton->setSymbolType( Qgis::SymbolType::Marker );
 
   if ( renderer )
   {
-    mRenderer.reset( QgsPointClusterRenderer::convertFromRenderer( renderer ) );
+    mRenderer = QgsPointClusterRenderer::convertFromRenderer( renderer );
   }
   if ( !mRenderer )
   {
-    mRenderer = std::make_unique< QgsPointClusterRenderer >();
+    mRenderer = std::make_unique<QgsPointClusterRenderer>();
     if ( renderer )
       renderer->copyRendererData( mRenderer.get() );
   }
@@ -76,7 +84,7 @@ QgsPointClusterRendererWidget::QgsPointClusterRendererWidget( QgsVectorLayer *la
   QStringList::const_iterator it = rendererList.constBegin();
   for ( ; it != rendererList.constEnd(); ++it )
   {
-    if ( *it != QLatin1String( "pointDisplacement" ) && *it != QLatin1String( "pointCluster" ) && *it != QLatin1String( "heatmapRenderer" ) )
+    if ( *it != "pointDisplacement"_L1 && *it != "pointCluster"_L1 && *it != "heatmapRenderer"_L1 )
     {
       QgsRendererAbstractMetadata *m = QgsApplication::rendererRegistry()->rendererMetadata( *it );
       mRendererComboBox->addItem( m->icon(), m->visibleName(), *it );
@@ -134,12 +142,12 @@ void QgsPointClusterRendererWidget::mRendererComboBox_currentIndexChanged( int i
   if ( m )
   {
     // unfortunately renderer conversion is only available through the creation of a widget...
-    const std::unique_ptr< QgsFeatureRenderer > oldRenderer( mRenderer->embeddedRenderer()->clone() );
+    const std::unique_ptr<QgsFeatureRenderer> oldRenderer( mRenderer->embeddedRenderer()->clone() );
     QgsRendererWidget *tempRenderWidget = m->createRendererWidget( mLayer, mStyle, oldRenderer.get() );
     mRenderer->setEmbeddedRenderer( tempRenderWidget->renderer()->clone() );
     delete tempRenderWidget;
   }
-  emit widgetChanged();
+  emit changed();
 }
 
 void QgsPointClusterRendererWidget::mRendererSettingsButton_clicked()
@@ -156,13 +164,13 @@ void QgsPointClusterRendererWidget::mRendererSettingsButton_clicked()
     QgsExpressionContextScope scope;
     scope.addVariable( QgsExpressionContextScope::StaticVariable( QgsExpressionContext::EXPR_CLUSTER_COLOR, "", true ) );
     scope.addVariable( QgsExpressionContextScope::StaticVariable( QgsExpressionContext::EXPR_CLUSTER_SIZE, 0, true ) );
-    QList< QgsExpressionContextScope > scopes = mContext.additionalExpressionContextScopes();
+    QList<QgsExpressionContextScope> scopes = mContext.additionalExpressionContextScopes();
     scopes << scope;
     QgsSymbolWidgetContext context = mContext;
     context.setAdditionalExpressionContextScopes( scopes );
     w->setContext( context );
     w->disableSymbolLevels();
-    connect( w, &QgsPanelWidget::widgetChanged, this, &QgsPointClusterRendererWidget::updateRendererFromWidget );
+    connect( w, &QgsPanelWidget::changed, this, &QgsPointClusterRendererWidget::updateRendererFromWidget );
     w->setDockMode( this->dockMode() );
     openPanel( w );
   }
@@ -174,7 +182,7 @@ void QgsPointClusterRendererWidget::mDistanceSpinBox_valueChanged( double d )
   {
     mRenderer->setTolerance( d );
   }
-  emit widgetChanged();
+  emit changed();
 }
 
 void QgsPointClusterRendererWidget::mDistanceUnitWidget_changed()
@@ -184,7 +192,7 @@ void QgsPointClusterRendererWidget::mDistanceUnitWidget_changed()
     mRenderer->setToleranceUnit( mDistanceUnitWidget->unit() );
     mRenderer->setToleranceMapUnitScale( mDistanceUnitWidget->getMapUnitScale() );
   }
-  emit widgetChanged();
+  emit changed();
 }
 
 void QgsPointClusterRendererWidget::blockAllSignals( bool block )
@@ -205,20 +213,21 @@ QgsExpressionContext QgsPointClusterRendererWidget::createExpressionContext() co
   QgsExpressionContextScope scope;
   scope.addVariable( QgsExpressionContextScope::StaticVariable( QgsExpressionContext::EXPR_CLUSTER_COLOR, "", true ) );
   scope.addVariable( QgsExpressionContextScope::StaticVariable( QgsExpressionContext::EXPR_CLUSTER_SIZE, 0, true ) );
-  QList< QgsExpressionContextScope > scopes = mContext.additionalExpressionContextScopes();
+  QList<QgsExpressionContextScope> scopes = mContext.additionalExpressionContextScopes();
   scopes << scope;
   const auto constScopes = scopes;
   for ( const QgsExpressionContextScope &s : constScopes )
   {
     context << new QgsExpressionContextScope( s );
   }
+  context.setHighlightedVariables( QStringList() << QgsExpressionContext::EXPR_CLUSTER_COLOR << QgsExpressionContext::EXPR_CLUSTER_SIZE );
   return context;
 }
 
 void QgsPointClusterRendererWidget::centerSymbolChanged()
 {
-  mRenderer->setClusterSymbol( mCenterSymbolToolButton->clonedSymbol< QgsMarkerSymbol >() );
-  emit widgetChanged();
+  mRenderer->setClusterSymbol( mCenterSymbolToolButton->clonedSymbol<QgsMarkerSymbol>() );
+  emit changed();
 }
 
 void QgsPointClusterRendererWidget::updateRendererFromWidget()
@@ -228,12 +237,13 @@ void QgsPointClusterRendererWidget::updateRendererFromWidget()
     return;
 
   mRenderer->setEmbeddedRenderer( w->renderer()->clone() );
-  emit widgetChanged();
+  emit changed();
 }
 
 void QgsPointClusterRendererWidget::setupBlankUi( const QString &layerName )
 {
   QGridLayout *layout = new QGridLayout( this );
-  QLabel *label = new QLabel( tr( "The point cluster renderer only applies to (single) point layers. \n'%1' is not a (single) point layer and cannot be displayed by the point cluster renderer." ).arg( layerName ), this );
+  QLabel *label
+    = new QLabel( tr( "The point cluster renderer only applies to (single) point layers. \n'%1' is not a (single) point layer and cannot be displayed by the point cluster renderer." ).arg( layerName ), this );
   layout->addWidget( label );
 }

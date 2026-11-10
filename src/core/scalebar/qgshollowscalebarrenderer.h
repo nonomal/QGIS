@@ -19,22 +19,21 @@
 
 #include "qgis_core.h"
 #include "qgsscalebarrenderer.h"
+
 #include <QString>
 
 /**
  * \class QgsHollowScaleBarRenderer
  * \ingroup core
  * \brief Scalebar style that draws a single box with alternating color for the segments, with horizontal lines through
- * alternating segments. AKA "South African" style.
+ * alternating segments.
+ *
+ * AKA "South African" style.
  * \since QGIS 3.14
  */
-class CORE_EXPORT QgsHollowScaleBarRenderer: public QgsScaleBarRenderer
+class CORE_EXPORT QgsHollowScaleBarRenderer : public QgsScaleBarRenderer
 {
   public:
-
-    /**
-     * Constructor for QgsHollowScaleBarRenderer.
-     */
     QgsHollowScaleBarRenderer() = default;
 
     QString id() const override;
@@ -43,11 +42,8 @@ class CORE_EXPORT QgsHollowScaleBarRenderer: public QgsScaleBarRenderer
     int sortKey() const override;
     QgsHollowScaleBarRenderer *clone() const override SIP_FACTORY;
 
-    void draw( QgsRenderContext &context,
-               const QgsScaleBarSettings &settings,
-               const QgsScaleBarRenderer::ScaleBarContext &scaleContext ) const override;
+    void draw( QgsRenderContext &context, const QgsScaleBarSettings &settings, const QgsScaleBarRenderer::ScaleBarContext &scaleContext ) const override;
     bool applyDefaultSettings( QgsScaleBarSettings &settings ) const override;
-
 };
 
 #endif // QGSHOLLOWSCALEBARRENDERER_H

@@ -17,40 +17,43 @@
 #ifndef QGSGLOWEFFECT_H
 #define QGSGLOWEFFECT_H
 
-#include "qgis_core.h"
 #include "qgis.h"
-#include "qgspainteffect.h"
+#include "qgis_core.h"
 #include "qgscolorramp.h"
 #include "qgsmapunitscale.h"
+#include "qgspainteffect.h"
 
 #include <QPainter>
+#include <QString>
 
+using namespace Qt::StringLiterals;
 
 /**
  * \ingroup core
  * \class QgsGlowEffect
- * \brief Base class for paint effect which draw a glow inside or outside a
+ * \brief Base class for paint effects which draw a glow inside or outside a
  * picture.
  *
  */
 
 class CORE_EXPORT QgsGlowEffect : public QgsPaintEffect
 {
-
   public:
-
     //! Color sources for the glow
     enum GlowColorType
     {
       SingleColor, //!< Use a single color and fade the color to totally transparent
-      ColorRamp //!< Use colors from a color ramp
+      ColorRamp    //!< Use colors from a color ramp
     };
 
     QgsGlowEffect();
     QgsGlowEffect( const QgsGlowEffect &other );
     ~QgsGlowEffect() override;
 
+    Qgis::PaintEffectFlags flags() const override;
     QVariantMap properties() const override;
+
+    using QgsPaintEffect::readProperties;
     void readProperties( const QVariantMap &props ) override;
 
     /**
@@ -218,7 +221,7 @@ class CORE_EXPORT QgsGlowEffect : public QgsPaintEffect
      * \see setRamp
      * \see colorType
      */
-    QgsColorRamp *ramp() const { return mRamp; }
+    QgsColorRamp *ramp() const { return mRamp.get(); }
 
     /**
      * Sets the blend mode for the effect
@@ -260,7 +263,6 @@ class CORE_EXPORT QgsGlowEffect : public QgsPaintEffect
     QgsGlowEffect &operator=( const QgsGlowEffect &rhs );
 
   protected:
-
     QRectF boundingRect( const QRectF &rect, const QgsRenderContext &context ) const override;
     void draw( QgsRenderContext &context ) override;
 
@@ -275,7 +277,7 @@ class CORE_EXPORT QgsGlowEffect : public QgsPaintEffect
     double mSpread = 2.0;
     Qgis::RenderUnit mSpreadUnit = Qgis::RenderUnit::Millimeters;
     QgsMapUnitScale mSpreadMapUnitScale;
-    QgsColorRamp *mRamp = nullptr;
+    std::unique_ptr<QgsColorRamp> mRamp;
     double mBlurLevel = 2.645;
     Qgis::RenderUnit mBlurUnit = Qgis::RenderUnit::Millimeters;
     QgsMapUnitScale mBlurMapUnitScale;
@@ -283,7 +285,6 @@ class CORE_EXPORT QgsGlowEffect : public QgsPaintEffect
     QColor mColor;
     QPainter::CompositionMode mBlendMode = QPainter::CompositionMode_SourceOver;
     GlowColorType mColorType = SingleColor;
-
 };
 
 
@@ -296,25 +297,21 @@ class CORE_EXPORT QgsGlowEffect : public QgsPaintEffect
 
 class CORE_EXPORT QgsOuterGlowEffect : public QgsGlowEffect
 {
-
   public:
-
     /**
      * Creates a new QgsOuterGlowEffect effect from a properties string map.
      * \param map encoded properties string map
      * \returns new QgsOuterGlowEffect
      */
-    static QgsPaintEffect *create( const QVariantMap &map ) SIP_FACTORY;
+    static std::unique_ptr<QgsPaintEffect> create( const QVariantMap &map );
 
     QgsOuterGlowEffect();
 
-    QString type() const override { return QStringLiteral( "outerGlow" ); }
+    QString type() const override { return u"outerGlow"_s; }
     QgsOuterGlowEffect *clone() const override SIP_FACTORY;
 
   protected:
-
     bool shadeExterior() const override { return true; }
-
 };
 
 
@@ -327,26 +324,21 @@ class CORE_EXPORT QgsOuterGlowEffect : public QgsGlowEffect
 
 class CORE_EXPORT QgsInnerGlowEffect : public QgsGlowEffect
 {
-
   public:
-
     /**
      * Creates a new QgsInnerGlowEffect effect from a properties string map.
      * \param map encoded properties string map
      * \returns new QgsInnerGlowEffect
      */
-    static QgsPaintEffect *create( const QVariantMap &map ) SIP_FACTORY;
+    static std::unique_ptr<QgsPaintEffect> create( const QVariantMap &map );
 
     QgsInnerGlowEffect();
 
-    QString type() const override { return QStringLiteral( "innerGlow" ); }
+    QString type() const override { return u"innerGlow"_s; }
     QgsInnerGlowEffect *clone() const override SIP_FACTORY;
 
   protected:
-
     bool shadeExterior() const override { return false; }
-
 };
 
 #endif // QGSGLOWEFFECT_H
-

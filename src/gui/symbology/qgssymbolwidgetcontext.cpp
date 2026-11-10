@@ -13,10 +13,13 @@
  *                                                                         *
  ***************************************************************************/
 #include "qgssymbolwidgetcontext.h"
+
+#include <memory>
+
+#include "qgsexpressioncontextutils.h"
 #include "qgsmapcanvas.h"
 #include "qgsmessagebar.h"
 #include "qgsproject.h"
-#include "qgsexpressioncontextutils.h"
 #include "qgstemporalcontroller.h"
 
 QgsSymbolWidgetContext::QgsSymbolWidgetContext( const QgsSymbolWidgetContext &other )
@@ -27,19 +30,22 @@ QgsSymbolWidgetContext::QgsSymbolWidgetContext( const QgsSymbolWidgetContext &ot
 {
   if ( other.mExpressionContext )
   {
-    mExpressionContext.reset( new QgsExpressionContext( *other.mExpressionContext ) );
+    mExpressionContext = std::make_unique<QgsExpressionContext>( *other.mExpressionContext );
   }
 }
 
 QgsSymbolWidgetContext &QgsSymbolWidgetContext::operator=( const QgsSymbolWidgetContext &other )
 {
+  if ( &other == this )
+    return *this;
+
   mMapCanvas = other.mMapCanvas;
   mMessageBar = other.mMessageBar;
   mAdditionalScopes = other.mAdditionalScopes;
   mSymbolType = other.mSymbolType;
   if ( other.mExpressionContext )
   {
-    mExpressionContext.reset( new QgsExpressionContext( *other.mExpressionContext ) );
+    mExpressionContext = std::make_unique<QgsExpressionContext>( *other.mExpressionContext );
   }
   else
   {
@@ -71,7 +77,7 @@ QgsMessageBar *QgsSymbolWidgetContext::messageBar() const
 void QgsSymbolWidgetContext::setExpressionContext( QgsExpressionContext *context )
 {
   if ( context )
-    mExpressionContext.reset( new QgsExpressionContext( *context ) );
+    mExpressionContext = std::make_unique<QgsExpressionContext>( *context );
   else
     mExpressionContext.reset();
 }
@@ -91,29 +97,29 @@ QList<QgsExpressionContextScope> QgsSymbolWidgetContext::additionalExpressionCon
   return mAdditionalScopes;
 }
 
-QList<QgsExpressionContextScope *> QgsSymbolWidgetContext::globalProjectAtlasMapLayerScopes( const QgsMapLayer *layer ) const
+std::vector<std::unique_ptr<QgsExpressionContextScope>> QgsSymbolWidgetContext::globalProjectAtlasMapLayerScopes( const QgsMapLayer *layer ) const
 {
-  QList<QgsExpressionContextScope *> scopes;
-  scopes << QgsExpressionContextUtils::globalScope()
-         << QgsExpressionContextUtils::projectScope( QgsProject::instance() )
-         << QgsExpressionContextUtils::atlasScope( nullptr );
+  std::vector<std::unique_ptr<QgsExpressionContextScope>> scopes;
+  scopes.push_back( QgsExpressionContextUtils::globalScope() );
+  scopes.push_back( QgsExpressionContextUtils::projectScope( QgsProject::instance() ) );
+  scopes.push_back( QgsExpressionContextUtils::atlasScope( nullptr ) );
   if ( mMapCanvas )
   {
-    scopes << QgsExpressionContextUtils::mapSettingsScope( mMapCanvas->mapSettings() )
-           << mMapCanvas->defaultExpressionContextScope()
-           << new QgsExpressionContextScope( mMapCanvas->expressionContextScope() );
+    scopes.push_back( QgsExpressionContextUtils::mapSettingsScope( mMapCanvas->mapSettings() ) );
+    scopes.push_back( mMapCanvas->defaultExpressionContextScope() );
+    scopes.push_back( std::make_unique<QgsExpressionContextScope>( mMapCanvas->expressionContextScope() ) );
 
-    if ( const QgsExpressionContextScopeGenerator *generator = dynamic_cast< const QgsExpressionContextScopeGenerator * >( mMapCanvas->temporalController() ) )
+    if ( const QgsExpressionContextScopeGenerator *generator = dynamic_cast<const QgsExpressionContextScopeGenerator *>( mMapCanvas->temporalController() ) )
     {
-      scopes << generator->createExpressionContextScope();
+      scopes.push_back( std::unique_ptr<QgsExpressionContextScope>( generator->createExpressionContextScope() ) );
     }
   }
   else
   {
-    scopes << QgsExpressionContextUtils::mapSettingsScope( QgsMapSettings() );
+    scopes.push_back( QgsExpressionContextUtils::mapSettingsScope( QgsMapSettings() ) );
   }
   if ( layer )
-    scopes << QgsExpressionContextUtils::layerScope( layer );
+    scopes.push_back( QgsExpressionContextUtils::layerScope( layer ) );
   return scopes;
 }
 

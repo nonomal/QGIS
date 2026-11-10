@@ -15,31 +15,35 @@
 
 #include "qgsvectortilelayer.h"
 
+#include "qgsblockingnetworkrequest.h"
+#include "qgsdatasourceuri.h"
+#include "qgsgeometryengine.h"
+#include "qgsjsonutils.h"
+#include "qgslayermetadataformatter.h"
 #include "qgslogger.h"
-#include "qgsvectortilelayerrenderer.h"
+#include "qgsmapboxglstyleconverter.h"
+#include "qgsmaplayerfactory.h"
+#include "qgspainting.h"
+#include "qgsproviderregistry.h"
+#include "qgsselectioncontext.h"
+#include "qgssetrequestinitiator_p.h"
+#include "qgsthreadingutils.h"
 #include "qgsvectortilebasiclabeling.h"
 #include "qgsvectortilebasicrenderer.h"
-#include "qgsvectortilelabeling.h"
-#include "qgsvectortileloader.h"
-#include "qgsvectortileutils.h"
-#include "qgsnetworkaccessmanager.h"
-#include "qgssetrequestinitiator_p.h"
-#include "qgsdatasourceuri.h"
-#include "qgslayermetadataformatter.h"
-#include "qgsblockingnetworkrequest.h"
-#include "qgsmapboxglstyleconverter.h"
-#include "qgsjsonutils.h"
-#include "qgspainting.h"
-#include "qgsmaplayerfactory.h"
-#include "qgsselectioncontext.h"
-#include "qgsgeometryengine.h"
-#include "qgsvectortilemvtdecoder.h"
-#include "qgsthreadingutils.h"
-#include "qgsproviderregistry.h"
 #include "qgsvectortiledataprovider.h"
+#include "qgsvectortilelabeling.h"
+#include "qgsvectortilelayerrenderer.h"
+#include "qgsvectortileloader.h"
+#include "qgsvectortilemvtdecoder.h"
+#include "qgsvectortileutils.h"
 
+#include <QString>
 #include <QUrl>
 #include <QUrlQuery>
+
+#include "moc_qgsvectortilelayer.cpp"
+
+using namespace Qt::StringLiterals;
 
 QgsVectorTileLayer::QgsVectorTileLayer( const QString &uri, const QString &baseName, const LayerOptions &options )
   : QgsMapLayer( Qgis::LayerType::VectorTile, baseName )
@@ -58,7 +62,7 @@ QgsVectorTileLayer::QgsVectorTileLayer( const QString &uri, const QString &baseN
   connect( this, &QgsVectorTileLayer::selectionChanged, this, [this] { triggerRepaint(); } );
 }
 
-void QgsVectorTileLayer::setDataSourcePrivate( const QString &dataSource, const QString &baseName, const QString &, const QgsDataProvider::ProviderOptions &, QgsDataProvider::ReadFlags )
+void QgsVectorTileLayer::setDataSourcePrivate( const QString &dataSource, const QString &baseName, const QString &, const QgsDataProvider::ProviderOptions &, Qgis::DataProviderReadFlags )
 {
   QGIS_PROTECT_QOBJECT_THREAD_ACCESS
 
@@ -76,37 +80,37 @@ bool QgsVectorTileLayer::loadDataSource()
   QgsDataSourceUri dsUri;
   dsUri.setEncodedUri( mDataSource );
 
-  setCrs( QgsCoordinateReferenceSystem( QStringLiteral( "EPSG:3857" ) ) );
+  setCrs( QgsCoordinateReferenceSystem( u"EPSG:3857"_s ) );
 
   const QgsDataProvider::ProviderOptions providerOptions { mTransformContext };
-  const QgsDataProvider::ReadFlags flags;
+  const Qgis::DataProviderReadFlags flags;
 
-  mSourceType = dsUri.param( QStringLiteral( "type" ) );
+  mSourceType = dsUri.param( u"type"_s );
   QString providerKey;
-  if ( mSourceType == QLatin1String( "xyz" ) && dsUri.param( QStringLiteral( "serviceType" ) ) == QLatin1String( "arcgis" ) )
+  if ( mSourceType == "xyz"_L1 && dsUri.param( u"serviceType"_s ) == "arcgis"_L1 )
   {
-    providerKey = QStringLiteral( "arcgisvectortileservice" );
+    providerKey = u"arcgisvectortileservice"_s;
   }
-  else if ( mSourceType == QLatin1String( "xyz" ) )
+  else if ( mSourceType == "xyz"_L1 )
   {
-    providerKey = QStringLiteral( "xyzvectortiles" );
+    providerKey = u"xyzvectortiles"_s;
   }
-  else if ( mSourceType == QLatin1String( "mbtiles" ) )
+  else if ( mSourceType == "mbtiles"_L1 )
   {
-    providerKey = QStringLiteral( "mbtilesvectortiles" );
+    providerKey = u"mbtilesvectortiles"_s;
   }
-  else if ( mSourceType == QLatin1String( "vtpk" ) )
+  else if ( mSourceType == "vtpk"_L1 )
   {
-    providerKey = QStringLiteral( "vtpkvectortiles" );
+    providerKey = u"vtpkvectortiles"_s;
   }
   else
   {
-    QgsDebugError( QStringLiteral( "Unknown source type: " ) + mSourceType );
+    QgsDebugError( u"Unknown source type: "_s + mSourceType );
     return false;
   }
 
   mDataProvider.reset( qobject_cast<QgsVectorTileDataProvider *>( QgsProviderRegistry::instance()->createProvider( providerKey, mDataSource, providerOptions, flags ) ) );
-  mProviderKey = mDataProvider->name();
+  mProviderKey = mDataProvider ? mDataProvider->name() : providerKey;
 
   if ( mDataProvider )
   {
@@ -118,7 +122,10 @@ bool QgsVectorTileLayer::loadDataSource()
   return mDataProvider && mDataProvider->isValid();
 }
 
-QgsVectorTileLayer::~QgsVectorTileLayer() = default;
+QgsVectorTileLayer::~QgsVectorTileLayer()
+{
+  emit willBeDeleted();
+};
 
 QgsVectorTileLayer *QgsVectorTileLayer::clone() const
 {
@@ -127,6 +134,7 @@ QgsVectorTileLayer *QgsVectorTileLayer::clone() const
   const QgsVectorTileLayer::LayerOptions options( mTransformContext );
   QgsVectorTileLayer *layer = new QgsVectorTileLayer( source(), name(), options );
   layer->setRenderer( renderer() ? renderer()->clone() : nullptr );
+  layer->setLabeling( labeling() ? labeling()->clone() : nullptr );
   return layer;
 }
 
@@ -159,7 +167,7 @@ bool QgsVectorTileLayer::readXml( const QDomNode &layerNode, QgsReadWriteContext
 
   if ( !mDataProvider || !( qobject_cast< QgsVectorTileDataProvider * >( mDataProvider.get() )->providerFlags() & Qgis::VectorTileProviderFlag::AlwaysUseTileMatrixSetFromProvider ) )
   {
-    const QDomElement matrixSetElement = layerNode.firstChildElement( QStringLiteral( "matrixSet" ) );
+    const QDomElement matrixSetElement = layerNode.firstChildElement( u"matrixSet"_s );
     if ( !matrixSetElement.isNull() )
     {
       mMatrixSet.readXml( matrixSetElement, context );
@@ -180,7 +188,7 @@ bool QgsVectorTileLayer::writeXml( QDomNode &layerNode, QDomDocument &doc, const
   QGIS_PROTECT_QOBJECT_THREAD_ACCESS
 
   QDomElement mapLayerNode = layerNode.toElement();
-  mapLayerNode.setAttribute( QStringLiteral( "type" ), QgsMapLayerFactory::typeToString( Qgis::LayerType::VectorTile ) );
+  mapLayerNode.setAttribute( u"type"_s, QgsMapLayerFactory::typeToString( Qgis::LayerType::VectorTile ) );
 
   if ( !mDataProvider || !( qobject_cast< QgsVectorTileDataProvider * >( mDataProvider.get() )->providerFlags() & Qgis::VectorTileProviderFlag::AlwaysUseTileMatrixSetFromProvider ) )
   {
@@ -190,7 +198,7 @@ bool QgsVectorTileLayer::writeXml( QDomNode &layerNode, QDomDocument &doc, const
   // add provider node
   if ( mDataProvider )
   {
-    QDomElement provider  = doc.createElement( QStringLiteral( "provider" ) );
+    QDomElement provider = doc.createElement( u"provider"_s );
     const QDomText providerText = doc.createTextNode( providerType() );
     provider.appendChild( providerText );
     mapLayerNode.appendChild( provider );
@@ -210,18 +218,18 @@ bool QgsVectorTileLayer::readSymbology( const QDomNode &node, QString &errorMess
 
   readCommonStyle( elem, context, categories );
 
-  const QDomElement elemRenderer = elem.firstChildElement( QStringLiteral( "renderer" ) );
+  const QDomElement elemRenderer = elem.firstChildElement( u"renderer"_s );
   if ( elemRenderer.isNull() )
   {
     errorMessage = tr( "Missing <renderer> tag" );
     return false;
   }
-  const QString rendererType = elemRenderer.attribute( QStringLiteral( "type" ) );
+  const QString rendererType = elemRenderer.attribute( u"type"_s );
 
   if ( categories.testFlag( Symbology ) )
   {
     QgsVectorTileRenderer *r = nullptr;
-    if ( rendererType == QLatin1String( "basic" ) )
+    if ( rendererType == "basic"_L1 )
       r = new QgsVectorTileBasicRenderer;
     else
     {
@@ -236,20 +244,20 @@ bool QgsVectorTileLayer::readSymbology( const QDomNode &node, QString &errorMess
   if ( categories.testFlag( Labeling ) )
   {
     setLabeling( nullptr );
-    const QDomElement elemLabeling = elem.firstChildElement( QStringLiteral( "labeling" ) );
+    const QDomElement elemLabeling = elem.firstChildElement( u"labeling"_s );
     if ( !elemLabeling.isNull() )
     {
-      const QString labelingType = elemLabeling.attribute( QStringLiteral( "type" ) );
+      const QString labelingType = elemLabeling.attribute( u"type"_s );
       QgsVectorTileLabeling *labeling = nullptr;
-      if ( labelingType == QLatin1String( "basic" ) )
+      if ( labelingType == "basic"_L1 )
         labeling = new QgsVectorTileBasicLabeling;
       else
       {
         errorMessage = tr( "Unknown labeling type: " ) + rendererType;
       }
 
-      if ( elemLabeling.hasAttribute( QStringLiteral( "labelsEnabled" ) ) )
-        mLabelsEnabled = elemLabeling.attribute( QStringLiteral( "labelsEnabled" ) ).toInt();
+      if ( elemLabeling.hasAttribute( u"labelsEnabled"_s ) )
+        mLabelsEnabled = elemLabeling.attribute( u"labelsEnabled"_s ).toInt();
       else
         mLabelsEnabled = true;
 
@@ -264,7 +272,7 @@ bool QgsVectorTileLayer::readSymbology( const QDomNode &node, QString &errorMess
   if ( categories.testFlag( Symbology ) )
   {
     // get and set the blend mode if it exists
-    const QDomNode blendModeNode = node.namedItem( QStringLiteral( "blendMode" ) );
+    const QDomNode blendModeNode = node.namedItem( u"blendMode"_s );
     if ( !blendModeNode.isNull() )
     {
       const QDomElement e = blendModeNode.toElement();
@@ -275,7 +283,7 @@ bool QgsVectorTileLayer::readSymbology( const QDomNode &node, QString &errorMess
   // get and set the layer transparency
   if ( categories.testFlag( Rendering ) )
   {
-    const QDomNode layerOpacityNode = node.namedItem( QStringLiteral( "layerOpacity" ) );
+    const QDomNode layerOpacityNode = node.namedItem( u"layerOpacity"_s );
     if ( !layerOpacityNode.isNull() )
     {
       const QDomElement e = layerOpacityNode.toElement();
@@ -297,8 +305,8 @@ bool QgsVectorTileLayer::writeSymbology( QDomNode &node, QDomDocument &doc, QStr
 
   if ( mRenderer )
   {
-    QDomElement elemRenderer = doc.createElement( QStringLiteral( "renderer" ) );
-    elemRenderer.setAttribute( QStringLiteral( "type" ), mRenderer->type() );
+    QDomElement elemRenderer = doc.createElement( u"renderer"_s );
+    elemRenderer.setAttribute( u"type"_s, mRenderer->type() );
     if ( categories.testFlag( Symbology ) )
     {
       mRenderer->writeXml( elemRenderer, context );
@@ -308,9 +316,9 @@ bool QgsVectorTileLayer::writeSymbology( QDomNode &node, QDomDocument &doc, QStr
 
   if ( mLabeling && categories.testFlag( Labeling ) )
   {
-    QDomElement elemLabeling = doc.createElement( QStringLiteral( "labeling" ) );
-    elemLabeling.setAttribute( QStringLiteral( "type" ), mLabeling->type() );
-    elemLabeling.setAttribute( QStringLiteral( "labelsEnabled" ), mLabelsEnabled ? QStringLiteral( "1" ) : QStringLiteral( "0" ) );
+    QDomElement elemLabeling = doc.createElement( u"labeling"_s );
+    elemLabeling.setAttribute( u"type"_s, mLabeling->type() );
+    elemLabeling.setAttribute( u"labelsEnabled"_s, mLabelsEnabled ? u"1"_s : u"0"_s );
     mLabeling->writeXml( elemLabeling, context );
     elem.appendChild( elemLabeling );
   }
@@ -318,7 +326,7 @@ bool QgsVectorTileLayer::writeSymbology( QDomNode &node, QDomDocument &doc, QStr
   if ( categories.testFlag( Symbology ) )
   {
     // add the blend mode field
-    QDomElement blendModeElem  = doc.createElement( QStringLiteral( "blendMode" ) );
+    QDomElement blendModeElem = doc.createElement( u"blendMode"_s );
     const QDomText blendModeText = doc.createTextNode( QString::number( static_cast< int >( QgsPainting::getBlendModeEnum( blendMode() ) ) ) );
     blendModeElem.appendChild( blendModeText );
     node.appendChild( blendModeElem );
@@ -327,7 +335,7 @@ bool QgsVectorTileLayer::writeSymbology( QDomNode &node, QDomDocument &doc, QStr
   // add the layer opacity
   if ( categories.testFlag( Rendering ) )
   {
-    QDomElement layerOpacityElem  = doc.createElement( QStringLiteral( "layerOpacity" ) );
+    QDomElement layerOpacityElem = doc.createElement( u"layerOpacity"_s );
     const QDomText layerOpacityText = doc.createTextNode( QString::number( opacity() ) );
     layerOpacityElem.appendChild( layerOpacityText );
     node.appendChild( layerOpacityElem );
@@ -362,7 +370,7 @@ Qgis::MapLayerProperties QgsVectorTileLayer::properties() const
   QGIS_PROTECT_QOBJECT_THREAD_ACCESS
 
   Qgis::MapLayerProperties res;
-  if ( mSourceType == QLatin1String( "xyz" ) )
+  if ( mSourceType == "xyz"_L1 )
   {
     // always consider xyz vector tiles as basemap layers
     res |= Qgis::MapLayerProperty::IsBasemapLayer;
@@ -392,7 +400,7 @@ bool QgsVectorTileLayer::loadDefaultStyleAndSubLayers( QString &error, QStringLi
 bool QgsVectorTileLayer::loadDefaultStyleAndSubLayersPrivate( QString &error, QStringList &warnings, QList<QgsMapLayer *> *subLayers )
 {
   QGIS_PROTECT_QOBJECT_THREAD_ACCESS
-  QgsVectorTileDataProvider *vtProvider = qgis::down_cast< QgsVectorTileDataProvider *> ( mDataProvider.get() );
+  QgsVectorTileDataProvider *vtProvider = qgis::down_cast< QgsVectorTileDataProvider *>( mDataProvider.get() );
   if ( !vtProvider )
     return false;
 
@@ -402,9 +410,9 @@ bool QgsVectorTileLayer::loadDefaultStyleAndSubLayersPrivate( QString &error, QS
   QVariantMap styleDefinition;
   QgsMapBoxGlStyleConversionContext context;
   QString styleUrl;
-  if ( !dsUri.param( QStringLiteral( "styleUrl" ) ).isEmpty() )
+  if ( !dsUri.param( u"styleUrl"_s ).isEmpty() )
   {
-    styleUrl = dsUri.param( QStringLiteral( "styleUrl" ) );
+    styleUrl = dsUri.param( u"styleUrl"_s );
   }
   else
   {
@@ -425,7 +433,7 @@ bool QgsVectorTileLayer::loadDefaultStyleAndSubLayersPrivate( QString &error, QS
     {
       QNetworkRequest request = QNetworkRequest( QUrl( styleUrl ) );
 
-      QgsSetRequestInitiatorClass( request, QStringLiteral( "QgsVectorTileLayer" ) );
+      QgsSetRequestInitiatorClass( request, u"QgsVectorTileLayer"_s );
 
       QgsBlockingNetworkRequest networkRequest;
       switch ( networkRequest.get( request ) )
@@ -463,8 +471,8 @@ bool QgsVectorTileLayer::loadDefaultStyleAndSubLayersPrivate( QString &error, QS
       return false;
     }
 
-    setRenderer( converter.renderer() );
-    setLabeling( converter.labeling() );
+    setRenderer( converter.renderer().release() );
+    setLabeling( converter.labeling().release() );
     warnings = converter.warnings();
 
     if ( subLayers )
@@ -522,57 +530,77 @@ QString QgsVectorTileLayer::htmlMetadata() const
 
   const QgsLayerMetadataFormatter htmlFormatter( metadata() );
 
-  QString info = QStringLiteral( "<html><head></head>\n<body>\n" );
+  QString info = u"<html><head></head>\n<body>\n"_s;
 
   info += generalHtmlMetadata();
 
-  info += QStringLiteral( "<h1>" ) + tr( "Information from provider" ) + QStringLiteral( "</h1>\n<hr>\n" ) %
-          QStringLiteral( "<table class=\"list-view\">\n" );
+  info += u"<h1>"_s + tr( "Information from provider" ) + u"</h1>\n<hr>\n"_s % u"<table class=\"list-view\">\n"_s;
 
-  info += QStringLiteral( "<tr><td class=\"highlight\">" ) % tr( "Source type" ) % QStringLiteral( "</td><td>" ) % sourceType() % QStringLiteral( "</td></tr>\n" );
+  info += u"<tr><td class=\"highlight\">"_s % tr( "Source type" ) % u"</td><td>"_s % sourceType() % u"</td></tr>\n"_s;
 
-  info += QStringLiteral( "<tr><td class=\"highlight\">" ) % tr( "Zoom levels" ) % QStringLiteral( "</td><td>" ) % QStringLiteral( "%1 - %2" ).arg( sourceMinZoom() ).arg( sourceMaxZoom() ) % QStringLiteral( "</td></tr>\n" );
+  info += u"<tr><td class=\"highlight\">"_s % tr( "Zoom levels" ) % u"</td><td>"_s % u"%1 - %2"_s.arg( sourceMinZoom() ).arg( sourceMaxZoom() ) % u"</td></tr>\n"_s;
 
   if ( mDataProvider )
     info += qobject_cast< const QgsVectorTileDataProvider * >( mDataProvider.get() )->htmlMetadata();
 
-  info += QLatin1String( "</table>\n<br>" );
+  info += "</table>\n<br>"_L1;
 
   // CRS
   info += crsHtmlMetadata();
 
   // Identification section
-  info += QStringLiteral( "<h1>" ) % tr( "Identification" ) % QStringLiteral( "</h1>\n<hr>\n" ) %
-          htmlFormatter.identificationSectionHtml() %
-          QStringLiteral( "<br>\n" ) %
+  info += u"<h1>"_s
+          % tr( "Identification" )
+          % u"</h1>\n<hr>\n"_s
+          % htmlFormatter.identificationSectionHtml()
+          % u"<br>\n"_s
+          %
 
           // extent section
-          QStringLiteral( "<h1>" ) % tr( "Extent" ) % QStringLiteral( "</h1>\n<hr>\n" ) %
-          htmlFormatter.extentSectionHtml( ) %
-          QStringLiteral( "<br>\n" ) %
+          u"<h1>"_s
+          % tr( "Extent" )
+          % u"</h1>\n<hr>\n"_s
+          % htmlFormatter.extentSectionHtml()
+          % u"<br>\n"_s
+          %
 
           // Start the Access section
-          QStringLiteral( "<h1>" ) % tr( "Access" ) % QStringLiteral( "</h1>\n<hr>\n" ) %
-          htmlFormatter.accessSectionHtml( ) %
-          QStringLiteral( "<br>\n" ) %
+          u"<h1>"_s
+          % tr( "Access" )
+          % u"</h1>\n<hr>\n"_s
+          % htmlFormatter.accessSectionHtml()
+          % u"<br>\n"_s
+          %
 
 
           // Start the contacts section
-          QStringLiteral( "<h1>" ) % tr( "Contacts" ) % QStringLiteral( "</h1>\n<hr>\n" ) %
-          htmlFormatter.contactsSectionHtml( ) %
-          QStringLiteral( "<br><br>\n" ) %
+          u"<h1>"_s
+          % tr( "Contacts" )
+          % u"</h1>\n<hr>\n"_s
+          % htmlFormatter.contactsSectionHtml()
+          % u"<br><br>\n"_s
+          %
 
           // Start the links section
-          QStringLiteral( "<h1>" ) % tr( "References" ) % QStringLiteral( "</h1>\n<hr>\n" ) %
-          htmlFormatter.linksSectionHtml( ) %
-          QStringLiteral( "<br>\n" ) %
+          u"<h1>"_s
+          % tr( "References" )
+          % u"</h1>\n<hr>\n"_s
+          % htmlFormatter.linksSectionHtml()
+          % u"<br>\n"_s
+          %
 
           // Start the history section
-          QStringLiteral( "<h1>" ) % tr( "History" ) % QStringLiteral( "</h1>\n<hr>\n" ) %
-          htmlFormatter.historySectionHtml( ) %
-          QStringLiteral( "<br>\n" ) %
+          u"<h1>"_s
+          % tr( "History" )
+          % u"</h1>\n<hr>\n"_s
+          % htmlFormatter.historySectionHtml()
+          % u"<br>\n"_s
+          %
 
-          QStringLiteral( "\n</body>\n</html>\n" );
+          customPropertyHtmlMetadata()
+          %
+
+          u"\n</body>\n</html>\n"_s;
 
   return info;
 }
@@ -660,13 +688,15 @@ int QgsVectorTileLayer::selectedFeatureCount() const
   return mSelectedFeatures.size();
 }
 
-void QgsVectorTileLayer::selectByGeometry( const QgsGeometry &geometry, const QgsSelectionContext &context, Qgis::SelectBehavior behavior, Qgis::SelectGeometryRelationship relationship, Qgis::SelectionFlags flags, QgsRenderContext *renderContext )
+void QgsVectorTileLayer::selectByGeometry(
+  const QgsGeometry &geometry, const QgsSelectionContext &context, Qgis::SelectBehavior behavior, Qgis::SelectGeometryRelationship relationship, Qgis::SelectionFlags flags, QgsRenderContext *renderContext
+)
 {
   QGIS_PROTECT_QOBJECT_THREAD_ACCESS
 
   if ( !isInScaleRange( context.scale() ) )
   {
-    QgsDebugMsgLevel( QStringLiteral( "Out of scale limits" ), 2 );
+    QgsDebugMsgLevel( u"Out of scale limits"_s, 2 );
     return;
   }
 
@@ -703,14 +733,13 @@ void QgsVectorTileLayer::selectByGeometry( const QgsGeometry &geometry, const Qg
   else
   {
     // we have a polygon - maybe it is a rectangle - in such case we can avoid costly instersection tests later
-    isPointOrRectangle = QgsGeometry::fromRect( selectionGeom.boundingBox() ).isGeosEqual( selectionGeom );
+    isPointOrRectangle = QgsGeometry::fromRect( selectionGeom.boundingBox() ).isTopologicallyEqual( selectionGeom );
   }
 
-  auto addDerivedFields = []( QgsFeature & feature, const int tileZoom, const QString & layer )
-  {
+  auto addDerivedFields = []( QgsFeature &feature, const int tileZoom, const QString &layer ) {
     QgsFields fields = feature.fields();
-    fields.append( QgsField( QStringLiteral( "tile_zoom" ), QVariant::Int ) );
-    fields.append( QgsField( QStringLiteral( "tile_layer" ), QVariant::String ) );
+    fields.append( QgsField( u"tile_zoom"_s, QMetaType::Type::Int ) );
+    fields.append( QgsField( u"tile_layer"_s, QMetaType::Type::QString ) );
     QgsAttributes attributes = feature.attributes();
     attributes << tileZoom << layer;
     feature.setFields( fields );
@@ -732,7 +761,7 @@ void QgsVectorTileLayer::selectByGeometry( const QgsGeometry &geometry, const Qg
     if ( !isPointOrRectangle || relationship == Qgis::SelectGeometryRelationship::Within )
     {
       // use prepared geometry for faster intersection test
-      selectionGeomPrepared.reset( QgsGeometry::createGeometryEngine( selectionGeom.constGet() ) );
+      selectionGeomPrepared = QgsGeometry::createGeometryEngine( selectionGeom.constGet() );
     }
   }
 
@@ -751,11 +780,11 @@ void QgsVectorTileLayer::selectByGeometry( const QgsGeometry &geometry, const Qg
       {
         const QgsVectorTileRawData data = getRawTile( tileID );
         if ( data.data.isEmpty() )
-          continue;  // failed to get data
+          continue; // failed to get data
 
         QgsVectorTileMVTDecoder decoder( tileMatrixSet() );
         if ( !decoder.decode( data ) )
-          continue;  // failed to decode
+          continue; // failed to decode
 
         QMap<QString, QgsFields> perLayerFields;
         const QStringList layerNames = decoder.layers();
@@ -846,8 +875,7 @@ void QgsVectorTileLayer::selectByGeometry( const QgsGeometry &geometry, const Qg
           singleSelectCandidates << it.value();
           it++;
         }
-        else if ( ( matchesGeometry && behavior == Qgis::SelectBehavior::IntersectSelection )
-                  || ( !matchesGeometry && behavior == Qgis::SelectBehavior::RemoveFromSelection ) )
+        else if ( ( matchesGeometry && behavior == Qgis::SelectBehavior::IntersectSelection ) || ( !matchesGeometry && behavior == Qgis::SelectBehavior::RemoveFromSelection ) )
         {
           it++;
         }
@@ -1006,5 +1034,3 @@ void QgsVectorTileLayer::removeSelection()
   mSelectedFeatures.clear();
   emit selectionChanged();
 }
-
-

@@ -15,19 +15,24 @@
 
 #include "qgslayertreeviewfilterindicator.h"
 
+#include "qgisapp.h"
 #include "qgslayertree.h"
 #include "qgslayertreeview.h"
-#include "qgsvectorlayer.h"
-#include "qgsrasterlayer.h"
-#include "qgspointcloudlayer.h"
-#include "qgisapp.h"
-#include "qgsstringutils.h"
 #include "qgsmessagebar.h"
+#include "qgspointcloudlayer.h"
+#include "qgsrasterlayer.h"
+#include "qgsstringutils.h"
+#include "qgsvectorlayer.h"
+
+#include <QString>
+
+#include "moc_qgslayertreeviewfilterindicator.cpp"
+
+using namespace Qt::StringLiterals;
 
 QgsLayerTreeViewFilterIndicatorProvider::QgsLayerTreeViewFilterIndicatorProvider( QgsLayerTreeView *view )
   : QgsLayerTreeViewIndicatorProvider( view )
-{
-}
+{}
 
 void QgsLayerTreeViewFilterIndicatorProvider::onIndicatorClicked( const QModelIndex &index )
 {
@@ -36,10 +41,9 @@ void QgsLayerTreeViewFilterIndicatorProvider::onIndicatorClicked( const QModelIn
     return;
 
   QgsMapLayer *layer = QgsLayerTree::toLayer( node )->layer();
-  QgsVectorLayer *vl = qobject_cast<QgsVectorLayer *>( layer );
-  if ( vl && vl->isEditable() )
+  if ( layer && layer->isEditable() )
   {
-    QgisApp::instance()->messageBar()->pushWarning( tr( "Edit filter" ),  tr( "Cannot edit filter when layer is in edit mode" ) );
+    QgisApp::instance()->messageBar()->pushWarning( tr( "Edit filter" ), tr( "Cannot edit filter when layer is in edit mode" ) );
     return;
   }
 
@@ -49,7 +53,7 @@ void QgsLayerTreeViewFilterIndicatorProvider::onIndicatorClicked( const QModelIn
 QString QgsLayerTreeViewFilterIndicatorProvider::iconName( QgsMapLayer *layer )
 {
   Q_UNUSED( layer )
-  return QStringLiteral( "/mIndicatorFilter.svg" );
+  return u"/mIndicatorFilter.svg"_s;
 }
 
 QString QgsLayerTreeViewFilterIndicatorProvider::tooltipText( QgsMapLayer *layer )
@@ -76,7 +80,7 @@ QString QgsLayerTreeViewFilterIndicatorProvider::tooltipText( QgsMapLayer *layer
     filter = QgsStringUtils::truncateMiddleOfString( filter, 1024 );
   }
 
-  return QStringLiteral( "<b>%1:</b><br>%2" ).arg( tr( "Filter" ), filter.toHtmlEscaped() );
+  return u"<b>%1:</b><br>%2"_s.arg( tr( "Filter" ), filter.toHtmlEscaped() );
 }
 
 void QgsLayerTreeViewFilterIndicatorProvider::connectSignals( QgsMapLayer *layer )
@@ -157,17 +161,17 @@ bool QgsLayerTreeViewFilterIndicatorProvider::acceptLayer( QgsMapLayer *layer )
     case Qgis::LayerType::Vector:
     {
       QgsVectorLayer *vlayer = qobject_cast<QgsVectorLayer *>( layer );
-      return ! vlayer->subsetString().isEmpty();
+      return !vlayer->subsetString().isEmpty();
     }
     case Qgis::LayerType::Raster:
     {
       QgsRasterLayer *rlayer = qobject_cast<QgsRasterLayer *>( layer );
-      return ! rlayer->subsetString().isEmpty();
+      return !rlayer->subsetString().isEmpty();
     }
     case Qgis::LayerType::PointCloud:
     {
       QgsPointCloudLayer *pclayer = qobject_cast<QgsPointCloudLayer *>( layer );
-      return ! pclayer->subsetString().isEmpty();
+      return !pclayer->subsetString().isEmpty();
     }
     case Qgis::LayerType::Annotation:
     case Qgis::LayerType::Group:

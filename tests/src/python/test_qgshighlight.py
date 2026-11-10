@@ -5,6 +5,7 @@ it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or
 (at your option) any later version.
 """
+
 __author__ = "Matthias Kuhn"
 __date__ = "8.11.2017"
 __copyright__ = "Copyright 2017, The QGIS Project"
@@ -13,21 +14,20 @@ import os
 import unittest
 from typing import Optional
 
-from qgis.PyQt.QtCore import QSize, Qt
-from qgis.PyQt.QtGui import QColor, QImage, QPainter
 from qgis.core import (
-    QgsMapLayer,
     QgsCoordinateReferenceSystem,
     QgsFillSymbol,
     QgsGeometryGeneratorSymbolLayer,
+    QgsMapLayer,
     QgsRectangle,
     QgsSingleSymbolRenderer,
     QgsSymbol,
     QgsVectorLayer,
 )
 from qgis.gui import QgsHighlight, QgsMapCanvas
-from qgis.testing import start_app, QgisTestCase
-
+from qgis.PyQt.QtCore import QSize, Qt
+from qgis.PyQt.QtGui import QColor, QImage, QPainter
+from qgis.testing import QgisTestCase, start_app
 from utilities import unitTestDataPath
 
 app = start_app()
@@ -116,9 +116,7 @@ class TestQgsHighlight(QgisTestCase):
         symbol.setOpacity(0.3)
         layer.setRenderer(QgsSingleSymbolRenderer(symbol))
         self.assertTrue(layer.isValid())
-        self.assertTrue(
-            self.run_test_for_layer(layer, "polygons", use_feature=False)
-        )
+        self.assertTrue(self.run_test_for_layer(layer, "polygons", use_feature=False))
         self.assertTrue(
             self.run_test_for_layer(
                 layer,

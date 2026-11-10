@@ -18,10 +18,15 @@
 #ifndef QGSALGORITHMPOINTTOLAYER_H
 #define QGSALGORITHMPOINTTOLAYER_H
 
-#define SIP_NO_FILE
 
 #include "qgis_sip.h"
 #include "qgsprocessingalgorithm.h"
+
+#include <QString>
+
+#define SIP_NO_FILE
+
+using namespace Qt::StringLiterals;
 
 ///@cond PRIVATE
 
@@ -30,28 +35,22 @@
  */
 class QgsPointToLayerAlgorithm : public QgsProcessingAlgorithm
 {
-
   public:
-
     QgsPointToLayerAlgorithm() = default;
     void initAlgorithm( const QVariantMap &configuration = QVariantMap() ) override;
     QString name() const override;
     QString displayName() const override { return QObject::tr( "Create layer from point" ); }
     QStringList tags() const override { return QObject::tr( "point,layer,polygon,create,new" ).split( ',' ); }
-    QString group() const override { return QObject::tr( "Vector geometry" ); }
-    QString groupId() const override { return QStringLiteral( "vectorgeometry" ); }
+    QString group() const override { return QObject::tr( "Vector creation" ); }
+    QString groupId() const override { return u"vectorcreation"_s; }
     QString shortHelpString() const override;
+    QString shortDescription() const override;
     QgsPointToLayerAlgorithm *createInstance() const override SIP_FACTORY;
 
   protected:
-
-    QVariantMap processAlgorithm( const QVariantMap &parameters,
-                                  QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
-
+    QVariantMap processAlgorithm( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
 };
 
 ///@endcond PRIVATE
 
 #endif // QGSALGORITHMPOINTTOLAYER_H
-
-

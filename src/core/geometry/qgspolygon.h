@@ -22,6 +22,10 @@
 #include "qgis_sip.h"
 #include "qgscurvepolygon.h"
 
+#include <QString>
+
+using namespace Qt::StringLiterals;
+
 class QgsLineString;
 
 /**
@@ -29,15 +33,15 @@ class QgsLineString;
  * \class QgsPolygon
  * \brief Polygon geometry type.
  */
-class CORE_EXPORT QgsPolygon: public QgsCurvePolygon
+class CORE_EXPORT QgsPolygon : public QgsCurvePolygon
 {
   public:
-
-
+    // clang-format off
     /**
      * Constructor for an empty polygon geometry.
      */
     QgsPolygon() SIP_HOLDGIL;
+    // clang-format on
 
     /**
      * Constructor for QgsPolygon, with the specified \a exterior ring and interior \a rings.
@@ -79,12 +83,14 @@ class CORE_EXPORT QgsPolygon: public QgsCurvePolygon
 #ifndef SIP_RUN
 
     /**
-     * Cast the \a geom to a QgsPolygonV2.
+     * Cast the \a geom to a QgsPolygon.
      * Should be used by qgsgeometry_cast<QgsPolygon *>( geometry ).
      *
-     * \note Not available in Python. Objects will be automatically be converted to the appropriate target type.
+     * Objects will be automatically converted to the appropriate target type.
+     *
+     * \note Not available in Python.
      */
-    inline static const QgsPolygon *cast( const QgsAbstractGeometry *geom )
+    inline static const QgsPolygon *cast( const QgsAbstractGeometry *geom ) // cppcheck-suppress duplInheritedMember
     {
       if ( !geom )
         return nullptr;
@@ -96,19 +102,45 @@ class CORE_EXPORT QgsPolygon: public QgsCurvePolygon
         return static_cast<const QgsPolygon *>( geom );
       return nullptr;
     }
+
+    /**
+     * Cast the \a geom to a QgsPolygon.
+     * Should be used by qgsgeometry_cast<QgsPolygon *>( geometry ).
+     *
+     * Objects will be automatically converted to the appropriate target type.
+     *
+     * \note Not available in Python.
+     */
+    inline static QgsPolygon *cast( QgsAbstractGeometry *geom ) // cppcheck-suppress duplInheritedMember
+    {
+      if ( !geom )
+        return nullptr;
+
+      const Qgis::WkbType flatType = QgsWkbTypes::flatType( geom->wkbType() );
+
+      if ( flatType == Qgis::WkbType::Polygon
+           || flatType == Qgis::WkbType::Triangle )
+        return static_cast<QgsPolygon *>( geom );
+      return nullptr;
+    }
+
+    json asJsonObject(int precision = 17, Qgis::GeoJsonProfile profile = Qgis::GeoJsonProfile::Legacy ) const override;
+
 #endif
 
     QgsPolygon *createEmptyWithSameType() const override SIP_FACTORY;
 
 #ifdef SIP_RUN
+// clang-format off
     SIP_PYOBJECT __repr__();
     % MethodCode
     QString wkt = sipCpp->asWkt();
     if ( wkt.length() > 1000 )
-      wkt = wkt.left( 1000 ) + QStringLiteral( "..." );
-    QString str = QStringLiteral( "<QgsPolygon: %1>" ).arg( wkt );
+      wkt = wkt.left( 1000 ) + u"..."_s;
+    QString str = u"<QgsPolygon: %1>"_s.arg( wkt );
     sipRes = PyUnicode_FromString( str.toUtf8().constData() );
     % End
+// clang-format on
 #endif
 
   protected:

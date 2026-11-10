@@ -16,13 +16,15 @@
 #ifndef QGSHISTORYENTRYNODE_H
 #define QGSHISTORYENTRYNODE_H
 
+#include <deque>
+#include <memory>
+
+#include "qgis.h"
 #include "qgis_gui.h"
 #include "qgis_sip.h"
-#include "qgis.h"
+
 #include <QString>
 #include <QVariantMap>
-#include <memory>
-#include <deque>
 
 class QWidget;
 class QAction;
@@ -39,16 +41,10 @@ class QgsHistoryWidgetContext;
 class GUI_EXPORT QgsHistoryEntryNode
 {
   public:
-
-    /**
-     * Constructor for QgsHistoryEntryNode.
-     */
     QgsHistoryEntryNode() = default;
     virtual ~QgsHistoryEntryNode();
 
-    //! QgsHistoryEntryNode cannot be copied
     QgsHistoryEntryNode( const QgsHistoryEntryNode &other ) = delete;
-    //! QgsHistoryEntryNode cannot be copied
     QgsHistoryEntryNode &operator=( const QgsHistoryEntryNode &other ) = delete;
 
     /**
@@ -120,7 +116,6 @@ class GUI_EXPORT QgsHistoryEntryNode
     QgsHistoryEntryGroup *mParent = nullptr;
 
     friend class QgsHistoryEntryGroup;
-
 };
 
 
@@ -133,14 +128,10 @@ class GUI_EXPORT QgsHistoryEntryNode
 class GUI_EXPORT QgsHistoryEntryGroup : public QgsHistoryEntryNode
 {
   public:
-
-    //! Constructor for QgsHistoryEntryGroup
     QgsHistoryEntryGroup() = default;
     ~QgsHistoryEntryGroup() override;
 
-    //! QgsHistoryEntryGroup cannot be copied
     QgsHistoryEntryGroup( const QgsHistoryEntryGroup &other ) = delete;
-    //! QgsHistoryEntryGroup cannot be copied
     QgsHistoryEntryGroup &operator=( const QgsHistoryEntryGroup &other ) = delete;
 
     /**
@@ -179,20 +170,15 @@ class GUI_EXPORT QgsHistoryEntryGroup : public QgsHistoryEntryNode
      */
     void clear();
 
-    int childCount() const FINAL;
+    int childCount() const final;
 
   protected:
-    std::deque< std::unique_ptr< QgsHistoryEntryNode > > mChildren SIP_SKIP;
+    std::deque<std::unique_ptr<QgsHistoryEntryNode>> mChildren SIP_SKIP;
 
   private:
 #ifdef SIP_RUN
     QgsHistoryEntryGroup( const QgsHistoryEntryGroup &other );
 #endif
-
-
 };
 
 #endif // QGSHISTORYENTRYNODE_H
-
-
-

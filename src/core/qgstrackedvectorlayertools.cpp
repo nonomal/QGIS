@@ -13,21 +13,27 @@
  *   (at your option) any later version.                                   *
  *                                                                         *
  ***************************************************************************/
+
 #include "qgstrackedvectorlayertools.h"
+
 #include "qgsvectorlayer.h"
+#include "qgsvectorlayertoolscontext.h"
 
+#include "moc_qgstrackedvectorlayertools.cpp"
 
-bool QgsTrackedVectorLayerTools::addFeature( QgsVectorLayer *layer, const QgsAttributeMap &defaultValues, const QgsGeometry &defaultGeometry, QgsFeature *feature, QWidget *parentWidget, bool showModal, bool hideParent ) const
+bool QgsTrackedVectorLayerTools::addFeatureV2(
+  QgsVectorLayer *layer, const QgsAttributeMap &defaultValues, const QgsGeometry &defaultGeometry, QgsFeature *feature, const QgsVectorLayerToolsContext &context
+) const
 {
   QgsFeature *f = feature;
   if ( !feature )
     f = new QgsFeature();
 
   const_cast<QgsVectorLayerTools *>( mBackend )->setForceSuppressFormPopup( forceSuppressFormPopup() );
-
-  if ( mBackend->addFeature( layer, defaultValues, defaultGeometry, f, parentWidget, showModal, hideParent ) )
+  if ( mBackend->addFeatureV2( layer, defaultValues, defaultGeometry, f, context ) )
   {
-    mAddedFeatures[layer].insert( f->id() );
+    connect( layer, &QgsVectorLayer::willBeDeleted, this, &QgsTrackedVectorLayerTools::layerWillBeDeleted, Qt::UniqueConnection );
+    mAddedFeatures[layer->id()].insert( f->id() );
     if ( !feature )
       delete f;
     return true;
@@ -55,7 +61,9 @@ bool QgsTrackedVectorLayerTools::saveEdits( QgsVectorLayer *layer ) const
   return mBackend->saveEdits( layer );
 }
 
-bool QgsTrackedVectorLayerTools::copyMoveFeatures( QgsVectorLayer *layer, QgsFeatureRequest &request, double dx, double dy, QString *errorMsg, const bool topologicalEditing, QgsVectorLayer *topologicalLayer, QString *childrenInfoMsg ) const
+bool QgsTrackedVectorLayerTools::copyMoveFeatures(
+  QgsVectorLayer *layer, QgsFeatureRequest &request, double dx, double dy, QString *errorMsg, const bool topologicalEditing, QgsVectorLayer *topologicalLayer, QString *childrenInfoMsg
+) const
 {
   return mBackend->copyMoveFeatures( layer, request, dx, dy, errorMsg, topologicalEditing, topologicalLayer, childrenInfoMsg );
 }
@@ -67,12 +75,25 @@ void QgsTrackedVectorLayerTools::setVectorLayerTools( const QgsVectorLayerTools 
 
 void QgsTrackedVectorLayerTools::rollback()
 {
-  QMapIterator<QgsVectorLayer *, QgsFeatureIds> it( mAddedFeatures );
-  while ( it.hasNext() )
-  {
-    it.next();
-    it.key()->deleteFeatures( it.value() );
-  }
+  QgsProject *p = project();
+  if ( !p )
+    return;
 
+  for ( auto it = mAddedFeatures.constBegin(); it != mAddedFeatures.constEnd(); ++it )
+  {
+    if ( QgsVectorLayer *layer = qobject_cast< QgsVectorLayer * >( p->mapLayer( it.key() ) ) )
+    {
+      layer->deleteFeatures( it.value() );
+    }
+  }
   mAddedFeatures.clear();
+}
+
+void QgsTrackedVectorLayerTools::layerWillBeDeleted()
+{
+  if ( QgsVectorLayer *layer = qobject_cast< QgsVectorLayer * >( sender() ) )
+  {
+    // make sure there's no dangling references left to a layer which will be deleted
+    mAddedFeatures.remove( layer->id() );
+  }
 }

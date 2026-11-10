@@ -18,13 +18,15 @@
 #ifndef QGSRENDEREDITEMRESULTS_H
 #define QGSRENDEREDITEMRESULTS_H
 
+#include <memory>
+#include <unordered_map>
+#include <vector>
+
 #include "qgis_core.h"
 #include "qgis_sip.h"
 #include "qgsrectangle.h"
-#include <memory>
+
 #include <QList>
-#include <vector>
-#include <unordered_map>
 
 class QgsRenderedItemDetails;
 class QgsRenderContext;
@@ -42,7 +44,6 @@ class QgsRenderedItemResultsSpatialIndex;
 class CORE_EXPORT QgsRenderedItemResults
 {
   public:
-
     /**
      * Constructor for QgsRenderedItemResults.
      *
@@ -52,9 +53,7 @@ class CORE_EXPORT QgsRenderedItemResults
     QgsRenderedItemResults( const QgsRectangle &extent = QgsRectangle() );
     ~QgsRenderedItemResults();
 
-    //! QgsRenderedItemResults cannot be copied.
     QgsRenderedItemResults( const QgsRenderedItemResults & ) = delete;
-    //! QgsRenderedItemResults cannot be copied.
     QgsRenderedItemResults &operator=( const QgsRenderedItemResults &rh ) = delete;
 
     /**
@@ -112,7 +111,6 @@ class CORE_EXPORT QgsRenderedItemResults
 
     std::unordered_map< QString, std::vector< std::unique_ptr< QgsRenderedItemDetails > > > mDetails;
     std::unique_ptr< QgsRenderedItemResultsSpatialIndex > mAnnotationItemsIndex;
-
 };
 
 #endif // QGSRENDEREDITEMRESULTS_H

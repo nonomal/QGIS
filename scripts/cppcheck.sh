@@ -14,10 +14,12 @@ case $SCRIPT_DIR in
         ;;
 esac
 
+SRC_DIR=${1:-${SCRIPT_DIR}/../src}
+
 LOG_FILE=/tmp/cppcheck_qgis.txt
 
 rm -f ${LOG_FILE}
-echo "Checking ${SCRIPT_DIR}/../src ..."
+echo "Checking ${SRC_DIR} ..."
 
 # qgsgcptransformer.cpp causes an effective hang on newer cppcheck!
 
@@ -26,28 +28,37 @@ cppcheck --library=qt.cfg --inline-suppr \
          --enable=all --inconclusive --std=c++11 \
          -DPROJ_VERSION_MAJOR=6 \
          -USIP_RUN \
+         -UEXCLUDE_CPPCHECK \
          -DSIP_TRANSFER= \
          -DSIP_TRANSFERTHIS= \
          -DSIP_INOUT= \
          -DSIP_OUT= \
+         -DSIP_DOCSTRING_OUT= \
          -DSIP_FACTORY= \
          -DSIP_PYNAME= \
          -DSIP_THROW= \
+         -DSIP_INSERT_QLIST_ENUM_CONVERSION_CODE= \
          -DFINAL="final" \
          -DCMAKE_SOURCE_DIR="/foo/bar" \
          -DQ_NOWARN_DEPRECATED_PUSH= \
          -DQ_NOWARN_DEPRECATED_POP= \
+         -DQ_NOWARN_UNREACHABLE_PUSH= \
+         -DQ_NOWARN_UNREACHABLE_POP= \
          -DQ_DECLARE_OPAQUE_POINTER= \
          -DQGIS_PROTECT_QOBJECT_THREAD_ACCESS = \
+         -DQGIS_CHECK_MAIN_THREAD_ACCESS= \
          -DQ_DECLARE_SQLDRIVER_PRIVATE = \
          -DSIP_MONKEYPATCH_SCOPEENUM_UNNEST = \
          -DSIP_ENUM_BASETYPE = \
+         -DSIP_TYPEHEADER_INCLUDE = \
          -DQT3D_FUNCTOR = \
          -DQgsSetCPLHTTPFetchOverriderInitiatorClass = \
+         -DQgsSetRequestInitiatorClass = \
+         -DQGS_MARK_ALGORITHM_SOURCE ="(void)0;" \
          -DBUILTIN_UNREACHABLE="__builtin_unreachable();" \
          -i src/analysis/georeferencing/qgsgcptransformer.cpp \
          -j $(nproc) \
-         ${SCRIPT_DIR}/../src \
+         ${SRC_DIR} \
          >>${LOG_FILE} 2>&1 &
 
 PID=$!

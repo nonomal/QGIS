@@ -3,10 +3,8 @@
  *                                                                      *
  * src/core/./3d/qgsabstract3dsymbol.h                                  *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/
-
-
 
 
 
@@ -16,7 +14,8 @@
 class QgsAbstract3DSymbol
 {
 %Docstring(signature="appended")
-Abstract base class for 3D symbols that are used by VectorLayer3DRenderer objects.
+Abstract base class for 3D symbols that are used by
+VectorLayer3DRenderer objects.
 
 3D symbol objects define appearance of GIS data.
 
@@ -38,7 +37,8 @@ Abstract base class for 3D symbols that are used by VectorLayer3DRenderer object
 
     virtual QString type() const = 0;
 %Docstring
-Returns identifier of symbol type. Each 3D symbol implementation should return a different type.
+Returns identifier of symbol type. Each 3D symbol implementation should
+return a different type.
 %End
     virtual QgsAbstract3DSymbol *clone() const = 0 /Factory/;
 %Docstring
@@ -56,15 +56,25 @@ Reads symbol configuration from the given DOM element
 
     virtual QList< Qgis::GeometryType > compatibleGeometryTypes() const;
 %Docstring
-Returns the list of the vector layer geometry types which are compatible with this symbol.
+Returns the list of the vector layer geometry types which are compatible
+with this symbol.
 
 .. versionadded:: 3.16
 %End
 
     enum class Property /BaseType=IntEnum/
-      {
+    {
       Height,
       ExtrusionHeight,
+      ScaleX,
+      ScaleY,
+      ScaleZ,
+      TranslationX,
+      TranslationY,
+      TranslationZ,
+      RotationX,
+      RotationY,
+      RotationZ,
     };
 
     static const QgsPropertiesDefinition &propertyDefinitions();
@@ -74,13 +84,15 @@ Returns the symbol layer property definitions.
 
     QgsPropertyCollection &dataDefinedProperties();
 %Docstring
-Returns a reference to the symbol layer's property collection, used for data defined overrides.
+Returns a reference to the symbol layer's property collection, used for
+data defined overrides.
 %End
 
 
     void setDataDefinedProperties( const QgsPropertyCollection &collection );
 %Docstring
-Sets the symbol layer's property collection, used for data defined overrides.
+Sets the symbol layer's property collection, used for data defined
+overrides.
 %End
 
 
@@ -91,8 +103,17 @@ Sets default properties for the symbol based on a layer's configuration.
 .. versionadded:: 3.26
 %End
 
-  protected:
 
+    virtual void setMaterialSettings( QgsAbstractMaterialSettings *materialSettings /Transfer/ ) = 0;
+%Docstring
+Sets the material settings used for shading of the symbol.
+
+Ownership of ``materialSettings`` is transferred to the symbol.
+
+.. versionadded:: 4.2
+%End
+
+  protected:
     virtual void copyBaseSettings( QgsAbstract3DSymbol *destination ) const;
 %Docstring
 Copies base class settings from this object to a ``destination`` object.
@@ -106,5 +127,5 @@ Copies base class settings from this object to a ``destination`` object.
  *                                                                      *
  * src/core/./3d/qgsabstract3dsymbol.h                                  *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/

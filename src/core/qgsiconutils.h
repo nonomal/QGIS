@@ -17,12 +17,15 @@
 #ifndef QGSICONUTILS_H
 #define QGSICONUTILS_H
 
-#include "qgis_sip.h"
-#include "qgis_core.h"
 #include "qgis.h"
+#include "qgis_core.h"
+#include "qgis_sip.h"
+
+#include <QSize>
 
 class QgsMapLayer;
 class QIcon;
+class QString;
 
 /**
  * \ingroup core
@@ -31,9 +34,7 @@ class QIcon;
 */
 class CORE_EXPORT QgsIconUtils
 {
-
   public:
-
     /**
      * Returns the icon for a vector layer whose geometry \a type is provided.
      */
@@ -116,8 +117,17 @@ class CORE_EXPORT QgsIconUtils
      */
     static QIcon iconForLayerType( Qgis::LayerType type );
 
+    /**
+     * Returns a copy of \a icon with an overlay icon rendered from the
+     * image file at \a overlayPath.
+     *
+     * \param icon The base icon to which the overlay will be added.
+     * \param overlayPath The path to the overlay image file.
+     * \param size The requested size of the resultant icon. Default value is the standard small icon size 16x16 pixels.
+     *
+     * \since QGIS 4.4
+     */
+    static QIcon addOverlay( const QIcon &icon, const QString &overlayPath, QSize size = QSize( 16, 16 ) );
 };
 
 #endif // QGSICONUTILS_H
-
-

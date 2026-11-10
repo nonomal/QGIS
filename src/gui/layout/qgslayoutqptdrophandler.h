@@ -17,10 +17,11 @@
 #define QGSLAYOUTQPTDROPHANDLER_H
 
 // We don't want to expose this in the public API
-#define SIP_NO_FILE
 
 #include "qgis_gui.h"
 #include "qgslayoutcustomdrophandler.h"
+
+#define SIP_NO_FILE
 
 /**
  * \ingroup gui
@@ -34,10 +35,10 @@ class GUI_EXPORT QgsLayoutQptDropHandler : public QgsLayoutCustomDropHandler
     Q_OBJECT
 
   public:
-
     //! constructor
     QgsLayoutQptDropHandler( QObject *parent = nullptr );
 
+    using QgsLayoutCustomDropHandler::handleFileDrop;
     bool handleFileDrop( QgsLayoutDesignerInterface *iface, QPointF point, const QString &file ) override;
 };
 

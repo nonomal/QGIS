@@ -1,4 +1,4 @@
-/* **************************************************************************
+/***************************************************************************
               qgscontrastenhancementfunction.cpp -  description
                        -------------------
 begin                : Fri Nov 16 2007
@@ -7,7 +7,7 @@ email                : ersts@amnh.org
 
 ****************************************************************************/
 
-/* **************************************************************************
+/***************************************************************************
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
  *   it under the terms of the GNU General Public License as published by  *
@@ -17,6 +17,7 @@ email                : ersts@amnh.org
  ***************************************************************************/
 
 #include "qgscontrastenhancementfunction.h"
+
 #include "qgscontrastenhancement.h"
 
 QgsContrastEnhancementFunction::QgsContrastEnhancementFunction( Qgis::DataType dataType, double minimumValue, double maximumValue )
@@ -26,8 +27,7 @@ QgsContrastEnhancementFunction::QgsContrastEnhancementFunction( Qgis::DataType d
   , mQgsRasterDataType( dataType )
   , mMaximumValuePossible( QgsContrastEnhancement::maximumValuePossible( mQgsRasterDataType ) )
   , mMinimumValuePossible( QgsContrastEnhancement::minimumValuePossible( mQgsRasterDataType ) )
-{
-}
+{}
 
 QgsContrastEnhancementFunction::QgsContrastEnhancementFunction( const QgsContrastEnhancementFunction &f )
   : mMaximumValue( f.mMaximumValue )
@@ -36,8 +36,7 @@ QgsContrastEnhancementFunction::QgsContrastEnhancementFunction( const QgsContras
   , mQgsRasterDataType( f.mQgsRasterDataType )
   , mMaximumValuePossible( f.mMaximumValuePossible )
   , mMinimumValuePossible( f.mMinimumValuePossible )
-{
-}
+{}
 
 int QgsContrastEnhancementFunction::enhance( double value )
 {
@@ -74,7 +73,6 @@ void QgsContrastEnhancementFunction::setMaximumValue( double value )
 
 void QgsContrastEnhancementFunction::setMinimumValue( double value )
 {
-
   if ( mMinimumValuePossible > value )
   {
     mMinimumValue = mMinimumValuePossible;

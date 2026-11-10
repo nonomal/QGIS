@@ -15,16 +15,16 @@
  *                                                                         *
  ***************************************************************************/
 
-#include "qgis.h"
 #include "qgspointcloudrequest.h"
+
+#include "qgis.h"
 #include "qgspointcloudattribute.h"
 
 QgsPointCloudRequest::QgsPointCloudRequest() = default;
 
 bool QgsPointCloudRequest::operator==( const QgsPointCloudRequest &other ) const
 {
-  return mFilterRect == other.filterRect() &&
-         mAttributes.toFields() == other.attributes().toFields();
+  return mIgnoreIndexFilter == other.ignoreIndexFilterEnabled() && mFilterRect == other.filterRect() && mAttributes.toFields() == other.attributes().toFields();
 }
 
 QgsPointCloudAttributeCollection QgsPointCloudRequest::attributes() const
@@ -35,9 +35,4 @@ QgsPointCloudAttributeCollection QgsPointCloudRequest::attributes() const
 void QgsPointCloudRequest::setAttributes( const QgsPointCloudAttributeCollection &attributes )
 {
   mAttributes = attributes;
-}
-
-uint qHash( const QgsPointCloudRequest &request )
-{
-  return qHash( request.filterRect() ) ^ qHash( request.attributes().toFields() );
 }

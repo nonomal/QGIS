@@ -19,17 +19,17 @@
 #define QGSPROJECTFILETRANSFORM_H
 
 #include "qgis_core.h"
-#include <QString>
-#include <QDomDocument>
 #include "qgsprojectversion.h"
 
+#include <QDomDocument>
+#include <QString>
 
 class QgsRasterLayer;
 class QgsMapLayer;
 
 /**
  * \ingroup core
- * \brief Class to convert from older project file versions to newer.
+ * \brief Convert from older project file versions to newer.
  *
  * This class provides possibility to store a project file as a QDomDocument,
  * and provides the ability to specify version of the project file, and
@@ -46,8 +46,7 @@ class CORE_EXPORT QgsProjectFileTransform
      * \param domDocument The Dom document to use as content
      * \param version Version number
      */
-    QgsProjectFileTransform( QDomDocument &domDocument,
-                             const QgsProjectVersion &version )
+    QgsProjectFileTransform( QDomDocument &domDocument, const QgsProjectVersion &version )
     {
       mDom = domDocument;
       mCurrentVersion = version;
@@ -57,7 +56,7 @@ class CORE_EXPORT QgsProjectFileTransform
     bool updateRevision( const QgsProjectVersion &version );
 
     /**
-     * Prints the contents via QgsDebugMsgLevel()
+     * Prints the contents to the console.
      */
     void dump();
 
@@ -82,12 +81,11 @@ class CORE_EXPORT QgsProjectFileTransform
      * key (rule for QgsRuleBasedRenderer for instance) and index path, so this method migrates \a mapLayers old references
      * to new ones.
      * \since QGIS 3.30
-     * \deprecated since QGIS 3.30
+     * \deprecated QGIS 3.30
      */
     Q_DECL_DEPRECATED static void fixOldSymbolLayerReferences( const QMap<QString, QgsMapLayer *> &mapLayers );
 
   private:
-
     QDomDocument mDom;
     QgsProjectVersion mCurrentVersion;
 };

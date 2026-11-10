@@ -16,15 +16,17 @@
 #ifndef QGSVECTORTILEBASICLABELINGWIDGET_H
 #define QGSVECTORTILEBASICLABELINGWIDGET_H
 
-#include "qgsmaplayerconfigwidget.h"
-
 #include "ui_qgsvectortilebasiclabelingwidget.h"
 
 #include <memory>
+
+#include "qgsmaplayerconfigwidget.h"
+
 #include <QSortFilterProxyModel>
 
-///@cond PRIVATE
 #define SIP_NO_FILE
+
+///@cond PRIVATE
 
 class QgsVectorTileBasicLabeling;
 class QgsVectorTileBasicLabelingListModel;
@@ -61,9 +63,10 @@ class GUI_EXPORT QgsVectorTileBasicLabelingWidget : public QgsMapLayerConfigWidg
 
     void labelModeChanged();
     void updateLabelingFromWidget();
+    void resyncToCurrentLayer();
 
   private:
-    QPointer< QgsVectorTileLayer > mVTLayer;
+    QPointer<QgsVectorTileLayer> mVTLayer;
     std::unique_ptr<QgsVectorTileBasicLabeling> mLabeling;
     QgsVectorTileBasicLabelingListModel *mModel = nullptr;
     QgsVectorTileBasicLabelingProxyModel *mProxyModel = nullptr;
@@ -105,7 +108,6 @@ class QgsVectorTileBasicLabelingListModel : public QAbstractListModel
 {
     Q_OBJECT
   public:
-
     enum Role
     {
       MinZoom = Qt::UserRole + 1,
@@ -151,7 +153,6 @@ class QgsVectorTileBasicLabelingProxyModel : public QSortFilterProxyModel
     bool filterAcceptsRow( int source_row, const QModelIndex &source_parent ) const override;
 
   private:
-
     bool mFilterVisible = false;
     QString mFilterString;
     int mCurrentZoom = -1;

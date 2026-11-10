@@ -18,13 +18,13 @@
 
 #include "qgis_core.h"
 #include "qgis_sip.h"
+#include "qgsmaplayer.h"
+
 #include <QMap>
 #include <QObject>
 #include <QPointer>
 #include <QSet>
 #include <QStringList>
-
-#include "qgsmaplayer.h"
 
 class QDomDocument;
 class QgsLayerTreeModel;
@@ -48,7 +48,6 @@ class CORE_EXPORT QgsMapThemeCollection : public QObject
     Q_PROPERTY( QgsProject *project READ project WRITE setProject NOTIFY projectChanged )
 
   public:
-
     /**
      * \ingroup core
      * \brief Individual record of a visible layer in a map theme record.
@@ -57,20 +56,23 @@ class CORE_EXPORT QgsMapThemeCollection : public QObject
     {
       public:
         //! Initialize layer record with a map layer - it will be stored as a weak pointer
-        MapThemeLayerRecord( QgsMapLayer *l = nullptr ): mLayer( l ) {}
+        MapThemeLayerRecord( QgsMapLayer *l = nullptr )
+          : mLayer( l )
+        {}
 
         // TODO c++20 - replace with = default
         bool operator==( const QgsMapThemeCollection::MapThemeLayerRecord &other ) const
         {
-          return mLayer == other.mLayer && isVisible == other.isVisible &&
-                 usingCurrentStyle == other.usingCurrentStyle && currentStyle == other.currentStyle &&
-                 usingLegendItems == other.usingLegendItems && checkedLegendItems == other.checkedLegendItems &&
-                 expandedLegendItems == other.expandedLegendItems && expandedLayerNode == other.expandedLayerNode;
+          return mLayer == other.mLayer
+                 && isVisible == other.isVisible
+                 && usingCurrentStyle == other.usingCurrentStyle
+                 && currentStyle == other.currentStyle
+                 && usingLegendItems == other.usingLegendItems
+                 && checkedLegendItems == other.checkedLegendItems
+                 && expandedLegendItems == other.expandedLegendItems
+                 && expandedLayerNode == other.expandedLayerNode;
         }
-        bool operator!=( const QgsMapThemeCollection::MapThemeLayerRecord &other ) const
-        {
-          return !( *this == other );
-        }
+        bool operator!=( const QgsMapThemeCollection::MapThemeLayerRecord &other ) const { return !( *this == other ); }
 
         //! Returns map layer or NULLPTR if the layer does not exist anymore
         QgsMapLayer *layer() const { return mLayer; }
@@ -105,6 +107,7 @@ class CORE_EXPORT QgsMapThemeCollection : public QObject
          * \since QGIS 3.2
          */
         bool expandedLayerNode = false;
+
       private:
         //! Weak pointer to the layer
         QgsWeakMapLayerPointer mLayer;
@@ -118,17 +121,14 @@ class CORE_EXPORT QgsMapThemeCollection : public QObject
     class CORE_EXPORT MapThemeRecord
     {
       public:
-
         bool operator==( const QgsMapThemeCollection::MapThemeRecord &other ) const
         {
-          return validLayerRecords() == other.validLayerRecords() &&
-                 mHasExpandedStateInfo == other.mHasExpandedStateInfo &&
-                 mExpandedGroupNodes == other.mExpandedGroupNodes && mCheckedGroupNodes == other.mCheckedGroupNodes;
+          return validLayerRecords() == other.validLayerRecords()
+                 && mHasExpandedStateInfo == other.mHasExpandedStateInfo
+                 && mExpandedGroupNodes == other.mExpandedGroupNodes
+                 && mCheckedGroupNodes == other.mCheckedGroupNodes;
         }
-        bool operator!=( const QgsMapThemeCollection::MapThemeRecord &other ) const
-        {
-          return !( *this == other );
-        }
+        bool operator!=( const QgsMapThemeCollection::MapThemeRecord &other ) const { return !( *this == other ); }
 
         //! Returns a list of records for all visible layer belonging to the theme.
         QList<QgsMapThemeCollection::MapThemeLayerRecord> layerRecords() const { return mLayerRecords; }
@@ -202,6 +202,24 @@ class CORE_EXPORT QgsMapThemeCollection : public QObject
          * \since QGIS 3.10.1
          */
         void setCheckedGroupNodes( const QSet<QString> &checkedGroupNodes ) { mCheckedGroupNodes = checkedGroupNodes; }
+
+        /**
+         * Reads the map theme record from XML
+         * \param element DOM element
+         * \param project the QGIS project
+         * \see writeXml
+         * \since QGIS 3.42
+         */
+        static MapThemeRecord readXml( const QDomElement &element, const QgsProject *project );
+
+        /**
+         * Writes the map theme record to XML.
+         * \param element DOM element
+         * \param document DOM document
+         * \see readXml
+         * \since QGIS 3.42
+         */
+        void writeXml( QDomElement element, QDomDocument &document ) const;
 
       private:
         //! Layer-specific records for the theme. Only visible layers are listed.
@@ -309,7 +327,7 @@ class CORE_EXPORT QgsMapThemeCollection : public QObject
      * \param doc DOM document
      * \see readXml
      */
-    void writeXml( QDomDocument &doc );
+    void writeXml( QDomDocument &doc ) const;
 
     /**
      * Static method to create theme from the current state of layer visibilities in layer tree,
@@ -324,13 +342,18 @@ class CORE_EXPORT QgsMapThemeCollection : public QObject
     void applyTheme( const QString &name, QgsLayerTreeGroup *root, QgsLayerTreeModel *model );
 
     /**
-     * The QgsProject on which this map theme collection works.
+     * Returns the QgsProject on which this map theme collection works.
      *
+     * \see setProject()
+     * \see projectChanged()
      */
     QgsProject *project();
 
     /**
-     * \copydoc project()
+     * Sets the \a project on which this map theme collection works.
+     *
+     * \see project()
+     * \see projectChanged()
      */
     void setProject( QgsProject *project );
 
@@ -370,7 +393,8 @@ class CORE_EXPORT QgsMapThemeCollection : public QObject
     /**
      * Emitted when the project changes
      *
-     * \copydoc project()
+     * \see project()
+     * \see setProject()
      */
     void projectChanged();
 
@@ -385,7 +409,6 @@ class CORE_EXPORT QgsMapThemeCollection : public QObject
     void layerStyleRenamed( const QString &oldName, const QString &newName );
 
   private:
-
     /**
      * Apply check states of legend nodes of a given layer as defined in the map theme.
      */

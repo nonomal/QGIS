@@ -20,8 +20,8 @@
 
 #include "qgis_core.h"
 #include "qgis_sip.h"
-#include "qgsraster.h"
 #include "qgserror.h"
+#include "qgsraster.h"
 
 /**
  * \ingroup core
@@ -30,10 +30,6 @@
 class CORE_EXPORT QgsRasterIdentifyResult
 {
   public:
-
-    /**
-     * Constructor for QgsRasterIdentifyResult.
-     */
     QgsRasterIdentifyResult() = default;
 
     /**
@@ -76,7 +72,7 @@ class CORE_EXPORT QgsRasterIdentifyResult
     QgsError error() const { return mError; }
 
     //! Sets the last error
-    void setError( const QgsError &error ) { mError = error;}
+    void setError( const QgsError &error ) { mError = error; }
 
   private:
     //! \brief Is valid
@@ -99,5 +95,3 @@ class CORE_EXPORT QgsRasterIdentifyResult
 };
 
 #endif
-
-

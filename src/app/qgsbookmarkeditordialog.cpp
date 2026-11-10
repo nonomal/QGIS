@@ -23,12 +23,18 @@
 #include "qgsextentgroupbox.h"
 #include "qgsgui.h"
 #include "qgsguiutils.h"
-#include "qgsprojectionselectiondialog.h"
-#include "qgsproject.h"
-#include "qgsmapcanvas.h"
 #include "qgshelp.h"
+#include "qgsmapcanvas.h"
+#include "qgsproject.h"
+#include "qgsprojectionselectiondialog.h"
 
-QgsBookmarkEditorDialog::QgsBookmarkEditorDialog( QgsBookmark bookmark, bool inProject, QWidget *parent, QgsMapCanvas *mapCanvas )
+#include <QString>
+
+#include "moc_qgsbookmarkeditordialog.cpp"
+
+using namespace Qt::StringLiterals;
+
+QgsBookmarkEditorDialog::QgsBookmarkEditorDialog( const QgsBookmark &bookmark, bool inProject, QWidget *parent, QgsMapCanvas *mapCanvas )
   : QDialog( parent )
   , mBookmark( bookmark )
   , mInProject( inProject )
@@ -72,7 +78,7 @@ void QgsBookmarkEditorDialog::crsChanged( const QgsCoordinateReferenceSystem &cr
 
 void QgsBookmarkEditorDialog::showHelp()
 {
-  QgsHelp::openHelp( QStringLiteral( "map_views/map_view.html#sec-bookmarks" ) );
+  QgsHelp::openHelp( u"map_views/map_view.html#sec-bookmarks"_s );
 }
 
 void QgsBookmarkEditorDialog::onAccepted()
@@ -106,4 +112,3 @@ void QgsBookmarkEditorDialog::onAccepted()
       QgsProject::instance()->bookmarkManager()->moveBookmark( bookmark.id(), QgsApplication::bookmarkManager() );
   }
 }
-

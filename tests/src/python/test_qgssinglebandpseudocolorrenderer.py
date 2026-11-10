@@ -10,15 +10,14 @@ the Free Software Foundation; either version 2 of the License, or
 """
 
 import os
+import unittest
 
-from qgis.PyQt.QtCore import QFileInfo
 from qgis.core import (
     QgsRasterLayer,
     QgsSingleBandPseudoColorRenderer,
 )
-import unittest
-from qgis.testing import start_app, QgisTestCase
-
+from qgis.PyQt.QtCore import QFileInfo
+from qgis.testing import QgisTestCase, start_app
 from utilities import unitTestDataPath
 
 # Convenience instances in case you may need them
@@ -27,17 +26,14 @@ start_app()
 
 
 class TestQgsSingleBandPseudoColorRenderer(QgisTestCase):
-
     def test_renderer(self):
-        path = os.path.join(unitTestDataPath(),
-                            'landsat.tif')
+        path = os.path.join(unitTestDataPath(), "landsat.tif")
         info = QFileInfo(path)
         base_name = info.baseName()
         layer = QgsRasterLayer(path, base_name)
-        self.assertTrue(layer.isValid(), f'Raster not loaded: {path}')
+        self.assertTrue(layer.isValid(), f"Raster not loaded: {path}")
 
-        renderer = QgsSingleBandPseudoColorRenderer(layer.dataProvider(),
-                                                    1)
+        renderer = QgsSingleBandPseudoColorRenderer(layer.dataProvider(), 1)
 
         self.assertEqual(renderer.inputBand(), 1)
 
@@ -52,8 +48,7 @@ class TestQgsSingleBandPseudoColorRenderer(QgisTestCase):
         """
         Test renderer band with a broken layer path
         """
-        renderer = QgsSingleBandPseudoColorRenderer(None,
-                                                    11)
+        renderer = QgsSingleBandPseudoColorRenderer(None, 11)
 
         self.assertEqual(renderer.inputBand(), 11)
 
@@ -62,5 +57,5 @@ class TestQgsSingleBandPseudoColorRenderer(QgisTestCase):
         self.assertEqual(renderer.inputBand(), 10)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

@@ -14,22 +14,47 @@
  ***************************************************************************/
 
 #include "qgssensorthingsconnectionpropertiestask.h"
+
 #include "qgsfeedback.h"
 #include "qgssensorthingsutils.h"
 
-///@cond PRIVATE
+#include "moc_qgssensorthingsconnectionpropertiestask.cpp"
 
+///@cond PRIVATE
+///
+//
+// QgsSensorThingsConnectionCapabilitiesTask
+//
+QgsSensorThingsConnectionCapabilitiesTask::QgsSensorThingsConnectionCapabilitiesTask( const QString &uri )
+  : QgsTask( tr( "Querying SensorThings connection" ), QgsTask::CanCancel | QgsTask::CancelWithoutPrompt | QgsTask::Silent )
+  , mUri( uri )
+{}
+
+bool QgsSensorThingsConnectionCapabilitiesTask::run()
+{
+  mFeedback = std::make_unique<QgsFeedback>();
+  mCapabilities = QgsSensorThingsUtils::determineServiceCapabilities( mUri, mFeedback.get() );
+  return !mFeedback->isCanceled();
+}
+
+void QgsSensorThingsConnectionCapabilitiesTask::cancel()
+{
+  if ( mFeedback )
+    mFeedback->cancel();
+}
+
+//
+// QgsSensorThingsConnectionPropertiesTask
+//
 QgsSensorThingsConnectionPropertiesTask::QgsSensorThingsConnectionPropertiesTask( const QString &uri, Qgis::SensorThingsEntity entity )
   : QgsTask( tr( "Querying SensorThings connection" ), QgsTask::CanCancel | QgsTask::CancelWithoutPrompt | QgsTask::Silent )
   , mUri( uri )
   , mEntity( entity )
-{
-
-}
+{}
 
 bool QgsSensorThingsConnectionPropertiesTask::run()
 {
-  mFeedback = std::make_unique< QgsFeedback >();
+  mFeedback = std::make_unique<QgsFeedback>();
   mGeometryTypes = QgsSensorThingsUtils::availableGeometryTypes( mUri, mEntity, mFeedback.get() );
   return !mFeedback->isCanceled();
 }

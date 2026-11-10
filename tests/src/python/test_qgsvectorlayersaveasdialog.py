@@ -5,31 +5,34 @@ it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or
 (at your option) any later version.
 """
-__author__ = 'Benjamin Jakimow'
-__date__ = '2023-04'
-__copyright__ = 'Copyright 2023, The QGIS Project'
+
+__author__ = "Benjamin Jakimow"
+__date__ = "2023-04"
+__copyright__ = "Copyright 2023, The QGIS Project"
 
 import unittest
-from qgis.testing import start_app, TestCase
+
+from qgis.core import QgsFeature, QgsVectorLayer, edit
 from qgis.gui import QgsVectorLayerSaveAsDialog
-from qgis.core import QgsFeature, edit, QgsVectorLayer
+from qgis.testing import TestCase, start_app
 
 start_app()
 
 
 class TestQgsMapCanvas(TestCase):
-
     def testOpenDialog(self):
 
-        layer = QgsVectorLayer("Polygon?crs=epsg:4326&field=text:string", "layer", "memory")
+        layer = QgsVectorLayer(
+            "Polygon?crs=epsg:4326&field=text:string", "layer", "memory"
+        )
 
         with edit(layer):
             f = QgsFeature(layer.fields())
-            f.setAttribute('text', 'foo')
+            f.setAttribute("text", "foo")
             layer.addFeature(f)
 
             f = QgsFeature(layer.fields())
-            f.setAttribute('text', 'bar')
+            f.setAttribute("text", "bar")
             layer.addFeature(f)
 
         layer.select(layer.allFeatureIds()[0])
@@ -43,5 +46,5 @@ class TestQgsMapCanvas(TestCase):
         self.assertTrue(d.onlySelected())
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

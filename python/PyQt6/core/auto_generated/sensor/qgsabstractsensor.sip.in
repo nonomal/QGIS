@@ -3,15 +3,16 @@
  *                                                                      *
  * src/core/sensor/qgsabstractsensor.h                                  *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/
+
 
 
 
 class QgsAbstractSensor : QObject
 {
 %Docstring(signature="appended")
-An abstract base class for sensor classes
+An abstract base class for sensors.
 
 .. versionadded:: 3.32
 %End
@@ -52,17 +53,16 @@ An abstract base class for sensor classes
 
     struct SensorData
     {
+        QVariant lastValue;
 
-      QVariant lastValue;
-
-      QDateTime lastTimestamp;
+        QDateTime lastTimestamp;
     };
 
     explicit QgsAbstractSensor( QObject *parent /TransferThis/ = 0 );
 %Docstring
 Constructor for an abstract sensor, bound to the specified ``parent``.
 %End
-    virtual ~QgsAbstractSensor();
+    ~QgsAbstractSensor();
 
     QString id() const;
 %Docstring
@@ -75,7 +75,8 @@ Returns the sensor ID.
 
     virtual QString type() const;
 %Docstring
-Returns the sensor type. This will match the type string of the sensor class, as used by :py:class:`QgsSensorRegistry`.
+Returns the sensor type. This will match the type string of the sensor
+class, as used by :py:class:`QgsSensorRegistry`.
 %End
 
     QString name() const;
@@ -85,7 +86,7 @@ Returns the user-friendly name identifying the sensor.
 
     void setName( const QString &name );
 %Docstring
-Sets the  user-friendly name identfying the sensor.
+Sets the user-friendly name identfying the sensor.
 %End
 
     Qgis::DeviceConnectionStatus status() const;
@@ -174,11 +175,11 @@ Emitted when the captured sensor data has changed.
 
     void errorOccurred( const QString &errorString );
 %Docstring
-Emitted when an error has occurred. The ``errorString`` describes the error.
+Emitted when an error has occurred. The ``errorString`` describes the
+error.
 %End
 
   protected:
-
     virtual void handleConnect() = 0;
 %Docstring
 Handles the connection to the sensor.
@@ -206,5 +207,5 @@ Handles the disconnection from the sensor.
  *                                                                      *
  * src/core/sensor/qgsabstractsensor.h                                  *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/

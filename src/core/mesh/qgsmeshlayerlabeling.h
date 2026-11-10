@@ -19,11 +19,13 @@
 
 #include <memory>
 
+#include "qgis.h"
+
+#include <QDomNode>
 #include <QString>
 #include <QStringList>
-#include <QDomNode>
 
-#include "qgis.h"
+using namespace Qt::StringLiterals;
 
 class QDomDocument;
 class QDomElement;
@@ -44,8 +46,6 @@ class QgsStyleEntityVisitorInterface;
 class CORE_EXPORT QgsAbstractMeshLayerLabeling
 {
   public:
-
-    //! Default constructor
     QgsAbstractMeshLayerLabeling() = default;
     virtual ~QgsAbstractMeshLayerLabeling() = default;
 
@@ -59,7 +59,11 @@ class CORE_EXPORT QgsAbstractMeshLayerLabeling
      * Factory for label provider implementation
      * \note not available in Python bindings
      */
-    virtual QgsMeshLayerLabelProvider *provider( QgsMeshLayer *layer ) const SIP_SKIP { Q_UNUSED( layer ) return nullptr; }
+    virtual QgsMeshLayerLabelProvider *provider( QgsMeshLayer *layer ) const SIP_SKIP
+    {
+      Q_UNUSED( layer )
+      return nullptr;
+    }
 
     //! Returns labeling configuration as XML element
     virtual QDomElement save( QDomDocument &doc, const QgsReadWriteContext &context ) const = 0;
@@ -89,6 +93,19 @@ class CORE_EXPORT QgsAbstractMeshLayerLabeling
     virtual bool requiresAdvancedEffects() const = 0;
 
     /**
+     * Returns TRUE the labeling requires a non-default composition mode.
+     *
+     * This method is pessimistic, in that it will return TRUE in cases where composition
+     * modes cannot be easily determined in advance (e.g. when data-defined overrides are
+     * in place for composition modes).
+     *
+     * The default composition mode is QPainter::CompositionMode_SourceOver.
+     *
+     * \since QGIS 3.44
+     */
+    virtual bool hasNonDefaultCompositionMode() const = 0;
+
+    /**
      * Multiply opacity by \a opacityFactor.
      *
      * This method multiplies the opacity of the labeling elements (text, shadow, buffer etc.)
@@ -100,7 +117,7 @@ class CORE_EXPORT QgsAbstractMeshLayerLabeling
     // static stuff
 
     //! Try to create instance of an implementation based on the XML data
-    static QgsAbstractMeshLayerLabeling *create( const QDomElement &element, const QgsReadWriteContext &context ) SIP_FACTORY;
+    static std::unique_ptr<QgsAbstractMeshLayerLabeling> create( const QDomElement &element, const QgsReadWriteContext &context );
 
     /**
      * Writes the SE 1.1 TextSymbolizer element based on the current layer labeling settings
@@ -110,7 +127,7 @@ class CORE_EXPORT QgsAbstractMeshLayerLabeling
       Q_UNUSED( parent )
       Q_UNUSED( props )
       QDomDocument doc = parent.ownerDocument();
-      parent.appendChild( doc.createComment( QStringLiteral( "SE Export for %1 not implemented yet" ).arg( type() ) ) );
+      parent.appendChild( doc.createComment( u"SE Export for %1 not implemented yet"_s.arg( type() ) ) );
     }
 
     /**
@@ -133,19 +150,17 @@ class CORE_EXPORT QgsAbstractMeshLayerLabeling
 #ifdef SIP_RUN
     QgsAbstractMeshLayerLabeling( const QgsAbstractMeshLayerLabeling &rhs );
 #endif
-
 };
 
 /**
  * \ingroup core
- * \brief Basic implementation of the labeling interface for mesh layer.
+ * \brief Basic implementation of the labeling interface for mesh layers.
  *
  * \since QGIS 3.36
  */
 class CORE_EXPORT QgsMeshLayerSimpleLabeling : public QgsAbstractMeshLayerLabeling
 {
   public:
-
     /**
      *  Constructs simple labeling configuration with given initial \a settings.
      *  Labels are placed on mesh vertices unless \a labelFaces is TRUE, when they are placed on mesh faces.
@@ -169,9 +184,10 @@ class CORE_EXPORT QgsMeshLayerSimpleLabeling : public QgsAbstractMeshLayerLabeli
     void setSettings( QgsPalLayerSettings *settings SIP_TRANSFER, const QString &providerId = QString() ) override;
 
     bool requiresAdvancedEffects() const override;
+    bool hasNonDefaultCompositionMode() const override;
     void multiplyOpacity( double opacityFactor ) override;
     //! Create the instance from a DOM element with saved configuration
-    static QgsMeshLayerSimpleLabeling *create( const QDomElement &element, const QgsReadWriteContext &context );
+    static std::unique_ptr<QgsMeshLayerSimpleLabeling> create( const QDomElement &element, const QgsReadWriteContext &context ); // cppcheck-suppress duplInheritedMember
 
   private:
     std::unique_ptr<QgsPalLayerSettings> mSettings;

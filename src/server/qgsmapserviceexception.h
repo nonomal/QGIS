@@ -18,12 +18,13 @@
 #ifndef QGSMAPSERVICEEXCEPTION
 #define QGSMAPSERVICEEXCEPTION
 
-#define SIP_NO_FILE
+
+#include "qgis_server.h"
+#include "qgsserverexception.h"
 
 #include <QString>
 
-#include "qgsserverexception.h"
-#include "qgis_server.h"
+#define SIP_NO_FILE
 
 /**
  * \ingroup server
@@ -38,12 +39,11 @@
  * - "LayerNotDefined" / "StyleNotDefined"
  * - "OperationNotSupported"
  *
- * \deprecated Use QsgServerException
+ * \deprecated QGIS 3.40. Use QsgServerException.
  */
 class SERVER_EXPORT QgsMapServiceException : public QgsOgcServiceException
 {
   public:
-
     /**
      * Constructor for QgsMapServiceException.
      * \param code HTTP error code

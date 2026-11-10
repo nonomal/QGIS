@@ -17,6 +17,16 @@
 
 #include <limits>
 
+#include "qgsabstractgeometry.h"
+#include "qgsfields.h"
+#include "qgsgeometry.h"
+#include "qgswkbtypes.h"
+
+#include <QRegularExpression>
+#include <QString>
+
+using namespace Qt::StringLiterals;
+
 std::vector<QgsOAPIFJson::Link> QgsOAPIFJson::parseLinks( const json &jParent )
 {
   std::vector<Link> links;
@@ -27,9 +37,7 @@ std::vector<QgsOAPIFJson::Link> QgsOAPIFJson::parseLinks( const json &jParent )
     {
       for ( const auto &jLink : jLinks )
       {
-        if ( jLink.is_object() &&
-             jLink.contains( "href" ) &&
-             jLink.contains( "rel" ) )
+        if ( jLink.is_object() && jLink.contains( "href" ) && jLink.contains( "rel" ) )
         {
           const auto href = jLink["href"];
           const auto rel = jLink["rel"];
@@ -62,6 +70,18 @@ std::vector<QgsOAPIFJson::Link> QgsOAPIFJson::parseLinks( const json &jParent )
                 link.length = length.get<qint64>();
               }
             }
+            if ( jLink.contains( "profile" ) )
+            {
+              const auto profile = jLink["profile"];
+              if ( profile.is_array() )
+              {
+                for ( const auto &jProfile : profile )
+                {
+                  if ( jProfile.is_string() )
+                    link.profiles << QString::fromStdString( jProfile.get<std::string>() );
+                }
+              }
+            }
             links.push_back( link );
           }
         }
@@ -71,9 +91,7 @@ std::vector<QgsOAPIFJson::Link> QgsOAPIFJson::parseLinks( const json &jParent )
   return links;
 }
 
-QString QgsOAPIFJson::findLink( const std::vector<QgsOAPIFJson::Link> &links,
-                                const QString &rel,
-                                const QStringList &preferableTypes )
+QString QgsOAPIFJson::findLink( const std::vector<QgsOAPIFJson::Link> &links, const QString &rel, const QStringList &preferableTypes )
 {
   QString resultHref;
   int resultPriority = std::numeric_limits<int>::max();
@@ -98,4 +116,211 @@ QString QgsOAPIFJson::findLink( const std::vector<QgsOAPIFJson::Link> &links,
     }
   }
   return resultHref;
+}
+
+// Parse stuff like:
+//  <http://127.0.0.1:8000/ogcapi/collections/points/items.geojson?limit=1000&bbox=3.73157209270740253,47.85947790913954947,12.14601359659364022,51.56769206482390899>; rel="alternate"; title="This document as GEOJSON"; type="application/geo+json"; profile="json", <http://127.0.0.1:8000/ogcapi/collections/points/items.html?limit=1000&bbox=3.73157209270740253,47.85947790913954947,12.14601359659364022,51.56769206482390899>; rel="alternate"; title="This document as HTML"; type="text/html", <http://127.0.0.1:8000/ogcapi/collections/points/items.fgb?bbox=3.73157209270740253,47.85947790913954947,12.14601359659364022,51.56769206482390899&offset=1000&limit=1000>; rel="next"; title="Next page"; type="application/flatgeobuf"
+//
+// Split on commas, except when they are in double quotes or between <...>, and skip padding space before/after separator
+static QStringList splitLinkHeaderOnComma( const QString &header )
+{
+  QStringList parts;
+  QString currentPart;
+
+  bool inQuotes = false;
+  bool inAngle = false;
+  bool inEscape = false;
+
+  for ( QChar ch : header )
+  {
+    if ( inQuotes )
+    {
+      if ( inEscape )
+      {
+        inEscape = false;
+      }
+      else if ( ch == '"' )
+      {
+        inQuotes = false;
+      }
+      else if ( ch == '\\' )
+      {
+        inEscape = true;
+      }
+      currentPart += ch;
+    }
+    else if ( ch == '"' )
+    {
+      inQuotes = true;
+      currentPart += ch;
+    }
+    else if ( inAngle )
+    {
+      if ( ch == '>' )
+      {
+        inAngle = false;
+      }
+      currentPart += ch;
+    }
+    else if ( ch == '<' )
+    {
+      inAngle = true;
+      currentPart += ch;
+    }
+    else if ( ch == ',' )
+    {
+      parts << currentPart.trimmed();
+      currentPart.clear();
+    }
+    else
+    {
+      currentPart += ch;
+    }
+  }
+
+  currentPart = currentPart.trimmed();
+  if ( !currentPart.isEmpty() )
+    parts << currentPart;
+
+  return parts;
+}
+
+QString QgsOAPIFGetNextLinkFromResponseHeader( const QList<QNetworkReply::RawHeaderPair> &responseHeaders, const QString &formatType )
+{
+  QString nextUrl;
+  for ( const auto &headerKeyValue : responseHeaders )
+  {
+    if ( headerKeyValue.first.compare( QByteArray( "Link" ), Qt::CaseSensitivity::CaseInsensitive ) == 0 )
+    {
+      // Parse stuff like:
+      //  <https://ogc-api.nrw.de/lika/v1/collections/flurstueck/items?f=html>; rel="alternate"; title="This document as HTML"; type="text/html", <https://ogc-api.nrw.de/lika/v1/collections/flurstueck/items?f=fgb&offset=10>; rel="next"; title="Next page"; type="application/flatgeobuf"
+      // Note that QgsNetworkReply::rawHeaderPairs() folds multiple link values
+      // in a pseudo-single one, with values separated by commas.
+      // Cf https://doc.qt.io/archives/qt-6.9/qnetworkreply.html#setRawHeader
+
+      // Split on commas, except when they are in double quotes or between <...>, and skip padding space before/after separator
+      const QStringList links = splitLinkHeaderOnComma( QString::fromUtf8( headerKeyValue.second ) );
+      QString nextUrlCandidate, nextUrlCandidateJsonFGPlus, nextUrlCandidateJsonFG;
+      for ( const QString &link : std::as_const( links ) )
+      {
+        if ( link.isEmpty() || link[0] != '<'_L1 )
+          continue;
+        const int idxClosingBracket = static_cast<int>( link.indexOf( '>'_L1 ) );
+        if ( idxClosingBracket < 0 )
+          continue;
+        const QString href = link.mid( 1, idxClosingBracket - 1 );
+        const int idxSemiColon = static_cast<int>( link.indexOf( ';'_L1, idxClosingBracket ) );
+        if ( idxSemiColon < 0 )
+          continue;
+        // Split on semi-colon, except when they are in double quotes, and skip padding space before/after separator
+        const thread_local QRegularExpression splitOnSemiColon( R"(\s*;\s*(?=(?:[^"]*"[^"]*")*[^"]*$))" );
+        const QStringList linkParts = link.mid( idxSemiColon + 1 ).split( splitOnSemiColon );
+        QString rel, type, profile;
+        for ( const QString &linkPart : std::as_const( linkParts ) )
+        {
+          // Split on equal, except when they are in double quotes, and skip padding space before/after separator
+          const thread_local QRegularExpression splitOnEqual( R"(\s*\=\s*(?=(?:[^"]*"[^"]*")*[^"]*$))" );
+          const QStringList keyValue = linkPart.split( splitOnEqual );
+          if ( keyValue.size() == 2 )
+          {
+            const QString key = keyValue[0].trimmed();
+            QString value = keyValue[1].trimmed();
+            if ( !value.isEmpty() && value[0] == '"'_L1 && value.back() == '"'_L1 )
+            {
+              value = value.mid( 1, value.size() - 2 );
+            }
+            if ( key == "rel"_L1 )
+            {
+              rel = value;
+            }
+            else if ( key == "type"_L1 )
+            {
+              type = value;
+            }
+            else if ( key == "profile"_L1 )
+            {
+              profile = value;
+            }
+          }
+        }
+        if ( rel == "next"_L1 )
+        {
+          if ( type == formatType )
+          {
+            nextUrl = href;
+            break;
+          }
+          else if ( type == QgsOapifUtils::MEDIA_TYPE_GEOJSON && formatType == QgsOapifUtils::MEDIA_TYPE_PSEUDO_JSONFG )
+          {
+            if ( profile.compare( QgsOapifUtils::PROFILE_JSONFG, Qt::CaseInsensitive ) == 0 )
+            {
+              nextUrl = href;
+              break;
+            }
+            else if ( profile.compare( QgsOapifUtils::PROFILE_JSONFG_PLUS, Qt::CaseInsensitive ) == 0 )
+            {
+              nextUrlCandidateJsonFGPlus = href;
+            }
+            else if ( profile.isEmpty() )
+            {
+              nextUrlCandidateJsonFG = href;
+            }
+          }
+          else if ( nextUrlCandidate.isEmpty() && !href.contains( "f="_L1 ) )
+          {
+            // Some servers return a "next" link but advertizing only application/geojson
+            // whereas they actually support paging for other types
+            // So use that URL if it doesn't include a f= parameter
+            nextUrlCandidate = href;
+          }
+        }
+      }
+
+      if ( nextUrl.isEmpty() && !nextUrlCandidateJsonFGPlus.isEmpty() )
+        nextUrl = nextUrlCandidateJsonFGPlus;
+      else if ( nextUrl.isEmpty() && !nextUrlCandidateJsonFG.isEmpty() )
+        nextUrl = nextUrlCandidateJsonFG;
+      else if ( nextUrl.isEmpty() && !nextUrlCandidate.isEmpty() )
+        nextUrl = nextUrlCandidate;
+      break;
+    }
+  }
+
+  return nextUrl;
+}
+
+void QgsOAPIFJson::writeJsonFgPlace( json &feature, const QgsGeometry &geometry, Qgis::WkbType layerType, const QString &contentCrs, bool asDocument )
+{
+  if ( geometry.isNull() )
+  {
+    feature["geometry"] = nullptr;
+    feature["place"] = nullptr;
+    return;
+  }
+
+  const QVector<QgsGeometry> geometries = geometry.coerceToType( layerType );
+  const QgsGeometry coerced = geometries.size() == 1 ? geometries.at( 0 ) : geometry;
+  feature["place"] = coerced.constGet()->asJsonObject( 17, Qgis::GeoJsonProfile::JsonFg );
+
+  if ( !contentCrs.isEmpty() )
+    feature["coordRefSys"] = contentCrs.toStdString();
+
+  if ( asDocument )
+  {
+    feature["geometry"] = nullptr;
+    feature["conformsTo"] = { "http://www.opengis.net/spec/json-fg-1/1.0/conf/core", "http://www.opengis.net/spec/json-fg-1/1.0/conf/circular-arcs" };
+  }
+}
+
+void QgsOAPIFJson::removeReadOnlyProperties( json &feature, const QgsFields &fields )
+{
+  auto properties = feature.find( "properties" );
+  if ( properties == feature.end() || !properties->is_object() )
+    return;
+
+  for ( const QgsField &field : fields )
+  {
+    if ( field.isReadOnly() )
+      properties->erase( field.name().toStdString() );
+  }
 }

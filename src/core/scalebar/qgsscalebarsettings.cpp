@@ -15,13 +15,14 @@
  ***************************************************************************/
 
 #include "qgsscalebarsettings.h"
-#include "qgsnumericformat.h"
+
 #include "qgsbasicnumericformat.h"
-#include "qgslinesymbollayer.h"
-#include "qgssymbol.h"
+#include "qgsfillsymbol.h"
 #include "qgsfillsymbollayer.h"
 #include "qgslinesymbol.h"
-#include "qgsfillsymbol.h"
+#include "qgslinesymbollayer.h"
+#include "qgsnumericformat.h"
+#include "qgssymbol.h"
 
 QgsScaleBarSettings::QgsScaleBarSettings()
 {
@@ -78,16 +79,18 @@ QgsScaleBarSettings::QgsScaleBarSettings( const QgsScaleBarSettings &other )
   , mLabelBarSpace( other.mLabelBarSpace )
   , mLabelVerticalPlacement( other.mLabelVerticalPlacement )
   , mLabelHorizontalPlacement( other.mLabelHorizontalPlacement )
+  , mUnitLabelPlacements( other.mUnitLabelPlacements )
   , mBoxContentSpace( other.mBoxContentSpace )
   , mAlignment( other.mAlignment )
   , mUnits( other.mUnits )
   , mNumericFormat( other.mNumericFormat->clone() )
-{
-
-}
+{}
 
 QgsScaleBarSettings &QgsScaleBarSettings::operator=( const QgsScaleBarSettings &other )
 {
+  if ( &other == this )
+    return *this;
+
   mNumSegments = other.mNumSegments;
   mNumSegmentsLeft = other.mNumSegmentsLeft;
   mNumSubdivisions = other.mNumSubdivisions;
@@ -108,6 +111,7 @@ QgsScaleBarSettings &QgsScaleBarSettings::operator=( const QgsScaleBarSettings &
   mLabelBarSpace = other.mLabelBarSpace;
   mLabelVerticalPlacement = other.mLabelVerticalPlacement;
   mLabelHorizontalPlacement = other.mLabelHorizontalPlacement;
+  mUnitLabelPlacements = other.mUnitLabelPlacements;
   mBoxContentSpace = other.mBoxContentSpace;
   mAlignment = other.mAlignment;
   mUnits = other.mUnits;
@@ -332,4 +336,3 @@ void QgsScaleBarSettings::setNumericFormat( QgsNumericFormat *format )
 }
 
 QgsScaleBarSettings::~QgsScaleBarSettings() = default;
-

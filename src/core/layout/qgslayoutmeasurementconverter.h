@@ -18,20 +18,22 @@
 #ifndef QGSLAYOUTMEASUREMENTCONVERTER_H
 #define QGSLAYOUTMEASUREMENTCONVERTER_H
 
-#include "qgis_core.h"
 #include "qgis.h"
+#include "qgis_core.h"
 #include "qgslayoutmeasurement.h"
-#include "qgslayoutsize.h"
 #include "qgslayoutpoint.h"
-#include <QSizeF>
-#include <QPointF>
+#include "qgslayoutsize.h"
 
+#include <QPointF>
+#include <QSizeF>
 
 /**
  * \ingroup core
  * \class QgsLayoutMeasurementConverter
- * \brief This class provides a method of converting QgsLayoutMeasurements from
- * one unit to another. Conversion to or from pixel units utilizes a specified
+ * \brief Provides a method of converting QgsLayoutMeasurements from
+ * one unit to another.
+ *
+ * Conversion to or from pixel units utilizes a specified
  * dots per inch (DPI) property for the converter. Converters default to using
  * 300 DPI.
  * \see QgsLayoutMeasurement
@@ -39,10 +41,6 @@
 class CORE_EXPORT QgsLayoutMeasurementConverter
 {
   public:
-
-    /**
-     * Constructor for QgsLayoutMeasurementConverter.
-     */
     QgsLayoutMeasurementConverter() = default;
 
     /**
@@ -84,7 +82,6 @@ class CORE_EXPORT QgsLayoutMeasurementConverter
     QgsLayoutPoint convert( const QgsLayoutPoint &point, Qgis::LayoutUnit targetUnits ) const;
 
   private:
-
     double mDpi = 300.0;
 
     double convertToMillimeters( QgsLayoutMeasurement measurement ) const;
@@ -95,7 +92,6 @@ class CORE_EXPORT QgsLayoutMeasurementConverter
     double convertToPoints( QgsLayoutMeasurement measurement ) const;
     double convertToPicas( QgsLayoutMeasurement measurement ) const;
     double convertToPixels( QgsLayoutMeasurement measurement ) const;
-
 };
 
 #endif // QGSLAYOUTMEASUREMENTCONVERTER_H

@@ -14,26 +14,33 @@
  ***************************************************************************/
 
 #include "qgsnumericformatselectorwidget.h"
-#include "qgsapplication.h"
-#include "qgsnumericformatregistry.h"
-#include "qgsnumericformat.h"
-#include "qgsnumericformatwidget.h"
-#include "qgis.h"
-#include "qgsgui.h"
-#include "qgsnumericformatguiregistry.h"
-#include "qgsreadwritecontext.h"
-#include "qgsbasicnumericformat.h"
-#include <mutex>
 
+#include "qgis.h"
+#include "qgsapplication.h"
+#include "qgsbasicnumericformat.h"
+#include "qgsgui.h"
+#include "qgsnumericformat.h"
+#include "qgsnumericformatguiregistry.h"
+#include "qgsnumericformatregistry.h"
+#include "qgsnumericformatwidget.h"
+#include "qgsreadwritecontext.h"
+
+#include <QDialogButtonBox>
+#include <QPushButton>
+#include <QString>
+
+#include "moc_qgsnumericformatselectorwidget.cpp"
+
+using namespace Qt::StringLiterals;
 
 QgsNumericFormatSelectorWidget::QgsNumericFormatSelectorWidget( QWidget *parent )
   : QgsPanelWidget( parent )
 {
   setupUi( this );
 
-  mCurrentFormat.reset( QgsApplication::numericFormatRegistry()->fallbackFormat() );
+  mCurrentFormat = QgsApplication::numericFormatRegistry()->fallbackFormat();
 
-  mPreviewFormat = std::make_unique< QgsBasicNumericFormat >();
+  mPreviewFormat = std::make_unique<QgsBasicNumericFormat>();
   mPreviewFormat->setShowThousandsSeparator( false );
   mPreviewFormat->setShowPlusSign( false );
   mPreviewFormat->setShowTrailingZeros( false );
@@ -59,8 +66,7 @@ void QgsNumericFormatSelectorWidget::setFormat( const QgsNumericFormat *format )
   const int index = mCategoryCombo->findData( id );
   if ( index < 0 )
   {
-    whileBlocking( mCategoryCombo )->setCurrentIndex( mCategoryCombo->findData( QStringLiteral( "fallback" ) ) );
-
+    whileBlocking( mCategoryCombo )->setCurrentIndex( mCategoryCombo->findData( u"fallback"_s ) );
   }
   else
     mCategoryCombo->setCurrentIndex( index );
@@ -73,6 +79,13 @@ void QgsNumericFormatSelectorWidget::setFormat( const QgsNumericFormat *format )
 QgsNumericFormat *QgsNumericFormatSelectorWidget::format() const
 {
   return mCurrentFormat->clone();
+}
+
+void QgsNumericFormatSelectorWidget::registerExpressionContextGenerator( QgsExpressionContextGenerator *generator )
+{
+  mExpressionContextGenerator = generator;
+  if ( QgsNumericFormatWidget *w = qobject_cast<QgsNumericFormatWidget *>( stackedWidget->currentWidget() ) )
+    w->registerExpressionContextGenerator( mExpressionContextGenerator );
 }
 
 void QgsNumericFormatSelectorWidget::formatTypeChanged()
@@ -94,7 +107,7 @@ void QgsNumericFormatSelectorWidget::formatTypeChanged()
 
 void QgsNumericFormatSelectorWidget::formatChanged()
 {
-  if ( QgsNumericFormatWidget *w = qobject_cast< QgsNumericFormatWidget * >( stackedWidget->currentWidget() ) )
+  if ( QgsNumericFormatWidget *w = qobject_cast<QgsNumericFormatWidget *>( stackedWidget->currentWidget() ) )
     mCurrentFormat.reset( w->format() );
 
   updateSampleText();
@@ -105,8 +118,7 @@ void QgsNumericFormatSelectorWidget::populateTypes()
 {
   QStringList ids = QgsApplication::numericFormatRegistry()->formats();
 
-  std::sort( ids.begin(), ids.end(), [ = ]( const QString & a, const QString & b )->bool
-  {
+  std::sort( ids.begin(), ids.end(), []( const QString &a, const QString &b ) -> bool {
     if ( QgsApplication::numericFormatRegistry()->sortKey( a ) < QgsApplication::numericFormatRegistry()->sortKey( b ) )
       return true;
     else if ( QgsApplication::numericFormatRegistry()->sortKey( a ) > QgsApplication::numericFormatRegistry()->sortKey( b ) )
@@ -131,7 +143,7 @@ void QgsNumericFormatSelectorWidget::updateFormatWidget()
   if ( stackedWidget->currentWidget() != pageDummy )
   {
     // stop updating from the original widget
-    if ( QgsNumericFormatWidget *w = qobject_cast< QgsNumericFormatWidget * >( stackedWidget->currentWidget() ) )
+    if ( QgsNumericFormatWidget *w = qobject_cast<QgsNumericFormatWidget *>( stackedWidget->currentWidget() ) )
       disconnect( w, &QgsNumericFormatWidget::changed, this, &QgsNumericFormatSelectorWidget::formatChanged );
     stackedWidget->removeWidget( stackedWidget->currentWidget() );
   }
@@ -142,6 +154,7 @@ void QgsNumericFormatSelectorWidget::updateFormatWidget()
     stackedWidget->setCurrentWidget( w );
     // start receiving updates from widget
     connect( w, &QgsNumericFormatWidget::changed, this, &QgsNumericFormatSelectorWidget::formatChanged );
+    w->registerExpressionContextGenerator( mExpressionContextGenerator );
   }
   else
   {
@@ -154,7 +167,47 @@ void QgsNumericFormatSelectorWidget::updateFormatWidget()
 void QgsNumericFormatSelectorWidget::updateSampleText()
 {
   const double sampleValue = mCurrentFormat->suggestSampleValue();
-  mSampleLabel->setText( QStringLiteral( "%1 %2 <b>%3</b>" ).arg( mPreviewFormat->formatDouble( sampleValue, QgsNumericFormatContext() ) )
-                         .arg( QChar( 0x2192 ) )
-                         .arg( mCurrentFormat->formatDouble( sampleValue, QgsNumericFormatContext() ) ) );
+  mSampleLabel->setText(
+    u"%1 %2 <b>%3</b>"_s.arg( mPreviewFormat->formatDouble( sampleValue, QgsNumericFormatContext() ) ).arg( QChar( 0x2192 ) ).arg( mCurrentFormat->formatDouble( sampleValue, QgsNumericFormatContext() ) )
+  );
+}
+
+//
+// QgsNumericFormatSelectorDialog
+//
+
+QgsNumericFormatSelectorDialog::QgsNumericFormatSelectorDialog( QWidget *parent, Qt::WindowFlags fl )
+  : QDialog( parent, fl )
+{
+  setWindowTitle( tr( "Numeric Format" ) );
+
+  mFormatWidget = new QgsNumericFormatSelectorWidget( this );
+  mFormatWidget->layout()->setContentsMargins( 0, 0, 0, 0 );
+
+  QVBoxLayout *layout = new QVBoxLayout( this );
+  layout->addWidget( mFormatWidget );
+
+  mButtonBox = new QDialogButtonBox( QDialogButtonBox::Ok | QDialogButtonBox::Cancel | QDialogButtonBox::Help, Qt::Horizontal, this );
+  layout->addWidget( mButtonBox );
+
+  setLayout( layout );
+  QgsGui::enableAutoGeometryRestore( this );
+
+  connect( mButtonBox->button( QDialogButtonBox::Ok ), &QAbstractButton::clicked, this, &QDialog::accept );
+  connect( mButtonBox->button( QDialogButtonBox::Cancel ), &QAbstractButton::clicked, this, &QDialog::reject );
+}
+
+void QgsNumericFormatSelectorDialog::setFormat( const QgsNumericFormat *format )
+{
+  mFormatWidget->setFormat( format );
+}
+
+QgsNumericFormat *QgsNumericFormatSelectorDialog::format() const
+{
+  return mFormatWidget->format();
+}
+
+void QgsNumericFormatSelectorDialog::registerExpressionContextGenerator( QgsExpressionContextGenerator *generator )
+{
+  mFormatWidget->registerExpressionContextGenerator( generator );
 }

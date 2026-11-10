@@ -18,8 +18,9 @@
 
 #include "qgis_core.h"
 #include "qgis_sip.h"
-#include <QDomElement>
+
 #include <QDomDocument>
+#include <QDomElement>
 #include <QMap>
 #include <QVariantMap>
 
@@ -39,7 +40,6 @@ class QgsPaintEffectWidget SIP_EXTERNAL;
 class CORE_EXPORT QgsPaintEffectAbstractMetadata
 {
   public:
-
     /**
      * Construct a new QgsPaintEffectAbstractMetadata
      * \param name unique string representing paint effect class
@@ -80,10 +80,9 @@ class CORE_EXPORT QgsPaintEffectAbstractMetadata
   protected:
     QString mName;
     QString mVisibleName;
-
 };
 
-typedef QgsPaintEffect *( *QgsPaintEffectCreateFunc )( const QVariantMap & ) SIP_SKIP;
+typedef std::unique_ptr<QgsPaintEffect> ( *QgsPaintEffectCreateFunc )( const QVariantMap & ) SIP_SKIP;
 typedef QgsPaintEffectWidget *( *QgsPaintEffectWidgetFunc )() SIP_SKIP;
 
 /**
@@ -95,9 +94,7 @@ typedef QgsPaintEffectWidget *( *QgsPaintEffectWidgetFunc )() SIP_SKIP;
  */
 class CORE_EXPORT QgsPaintEffectMetadata : public QgsPaintEffectAbstractMetadata SIP_SKIP
 {
-
   public:
-
     /**
      * Create effect metadata from static functions
      * \param name unique string representing paint effect class
@@ -106,12 +103,10 @@ class CORE_EXPORT QgsPaintEffectMetadata : public QgsPaintEffectAbstractMetadata
      * \param pfWidget widget creation function
      * \note not available in Python bindings
      */
-    QgsPaintEffectMetadata( const QString &name, const QString &visibleName,
-                            QgsPaintEffectCreateFunc pfCreate,
-                            QgsPaintEffectWidgetFunc pfWidget = nullptr ) SIP_SKIP
-  : QgsPaintEffectAbstractMetadata( name, visibleName )
-    , mCreateFunc( pfCreate )
-    , mWidgetFunc( pfWidget )
+    QgsPaintEffectMetadata( const QString &name, const QString &visibleName, QgsPaintEffectCreateFunc pfCreate, QgsPaintEffectWidgetFunc pfWidget = nullptr ) SIP_SKIP
+      : QgsPaintEffectAbstractMetadata( name, visibleName ),
+        mCreateFunc( pfCreate ),
+        mWidgetFunc( pfWidget )
     {}
 
     /**
@@ -119,7 +114,7 @@ class CORE_EXPORT QgsPaintEffectMetadata : public QgsPaintEffectAbstractMetadata
      * \returns creation function
      * \note not available in Python bindings
      */
-    QgsPaintEffectCreateFunc createFunction() const { return mCreateFunc; } SIP_SKIP
+    QgsPaintEffectCreateFunc createFunction() const SIP_SKIP { return mCreateFunc; }
 
     /**
      * Returns the paint effect properties widget creation function for the paint effect class
@@ -127,7 +122,7 @@ class CORE_EXPORT QgsPaintEffectMetadata : public QgsPaintEffectAbstractMetadata
      * \note not available in Python bindings
      * \see setWidgetFunction
      */
-    QgsPaintEffectWidgetFunc widgetFunction() const { return mWidgetFunc; } SIP_SKIP
+    QgsPaintEffectWidgetFunc widgetFunction() const SIP_SKIP { return mWidgetFunc; }
 
     /**
      * Sets the paint effect properties widget creation function for the paint effect class
@@ -135,7 +130,7 @@ class CORE_EXPORT QgsPaintEffectMetadata : public QgsPaintEffectAbstractMetadata
      * \note not available in Python bindings
      * \see widgetFunction
      */
-    void setWidgetFunction( QgsPaintEffectWidgetFunc f ) { mWidgetFunc = f; } SIP_SKIP
+    void setWidgetFunction( QgsPaintEffectWidgetFunc f ) SIP_SKIP { mWidgetFunc = f; }
 
     /**
      * Creates a new paint effect of the metadata's effect class
@@ -144,7 +139,7 @@ class CORE_EXPORT QgsPaintEffectMetadata : public QgsPaintEffectAbstractMetadata
      * \note not available in Python bindings
      * \see createWidget
      */
-    QgsPaintEffect *createPaintEffect( const QVariantMap &map ) override { return mCreateFunc ? mCreateFunc( map ) : nullptr; } SIP_SKIP
+    QgsPaintEffect *createPaintEffect( const QVariantMap &map ) override SIP_SKIP;
 
     /**
      * Creates a new paint effect properties widget for the metadata's effect class
@@ -152,7 +147,7 @@ class CORE_EXPORT QgsPaintEffectMetadata : public QgsPaintEffectAbstractMetadata
      * \note not available in Python bindings
      * \see createWidget
      */
-    QgsPaintEffectWidget *createWidget() override SIP_FACTORY { return mWidgetFunc ? mWidgetFunc() : nullptr; } SIP_SKIP
+    QgsPaintEffectWidget *createWidget() override SIP_FACTORY SIP_SKIP { return mWidgetFunc ? mWidgetFunc() : nullptr; }
 
   protected:
     QgsPaintEffectCreateFunc mCreateFunc;
@@ -172,13 +167,10 @@ class CORE_EXPORT QgsPaintEffectMetadata : public QgsPaintEffectAbstractMetadata
 class CORE_EXPORT QgsPaintEffectRegistry
 {
   public:
-
     QgsPaintEffectRegistry();
     ~QgsPaintEffectRegistry();
 
-    //! QgsPaintEffectRegistry cannot be copied.
     QgsPaintEffectRegistry( const QgsPaintEffectRegistry &rh ) = delete;
-    //! QgsPaintEffectRegistry cannot be copied.
     QgsPaintEffectRegistry &operator=( const QgsPaintEffectRegistry &rh ) = delete;
 
     /**
@@ -202,7 +194,7 @@ class CORE_EXPORT QgsPaintEffectRegistry
      * \returns new paint effect of specified class, or NULLPTR if matching
      * paint effect could not be created
      */
-    QgsPaintEffect *createEffect( const QString &name, const QVariantMap &properties = QVariantMap() ) const SIP_FACTORY;
+    std::unique_ptr<QgsPaintEffect> createEffect( const QString &name, const QVariantMap &properties = QVariantMap() ) const;
 
     /**
      * Creates a new paint effect given a DOM element storing paint effect
@@ -211,7 +203,7 @@ class CORE_EXPORT QgsPaintEffectRegistry
      * \returns new paint effect, or NULLPTR if matching
      * paint effect could not be created
      */
-    QgsPaintEffect *createEffect( const QDomElement &element ) const SIP_FACTORY;
+    std::unique_ptr<QgsPaintEffect> createEffect( const QDomElement &element ) const;
 
     /**
      * Returns a list of known paint effects.
@@ -226,7 +218,7 @@ class CORE_EXPORT QgsPaintEffectRegistry
      * \returns default effects stack
      * \see isDefaultStack()
      */
-    static QgsPaintEffect *defaultStack() SIP_FACTORY;
+    static std::unique_ptr<QgsPaintEffect> defaultStack();
 
     /**
      * Tests whether a paint effect matches the default effects stack.

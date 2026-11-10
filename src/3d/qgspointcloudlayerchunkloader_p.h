@@ -27,70 +27,27 @@
 // version without notice, or even be removed.
 //
 
-#include "qgschunkloader_p.h"
-#include "qgsfeature3dhandler_p.h"
-#include "qgschunkedentity_p.h"
-#include "qgspointcloud3dsymbol.h"
-#include "qgspointcloud3dsymbol_p.h"
-#include "qgspointcloudlayer3drenderer.h"
-
 #include <memory>
 
+#include "qgschunkedentity.h"
+#include "qgschunkloader.h"
+#include "qgspointcloud3dsymbol.h"
+#include "qgspointcloud3dsymbol_p.h"
+#include "qgspointcloudindex.h"
+#include "qgspointcloudlayer3drenderer.h"
+
 #include <QFutureWatcher>
-#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
-#include <Qt3DRender/QGeometry>
-#include <Qt3DRender/QBuffer>
-#else
-#include <Qt3DCore/QGeometry>
-#include <Qt3DCore/QBuffer>
-#endif
-#include <Qt3DRender/QMaterial>
 #include <QVector3D>
+#include <Qt3DCore/QBuffer>
+#include <Qt3DCore/QGeometry>
 
 #define SIP_NO_FILE
 
 /**
- * \ingroup 3d
- * \brief This loader factory is responsible for creation of loaders for individual tiles
- * of QgsQgsPointCloudLayerChunkedEntity whenever a new tile is requested by the entity.
- *
- * \since QGIS 3.18
- */
-class QgsPointCloudLayerChunkLoaderFactory : public QgsChunkLoaderFactory
-{
-    Q_OBJECT
-
-  public:
-
-    /**
-     * Constructs the factory
-     * The factory takes ownership over the passed \a symbol
-     */
-    QgsPointCloudLayerChunkLoaderFactory( const Qgs3DMapSettings &map, const QgsCoordinateTransform &coordinateTransform, QgsPointCloudIndex *pc, QgsPointCloud3DSymbol *symbol,
-                                          double zValueScale, double zValueOffset, int pointBudget );
-
-    //! Creates loader for the given chunk node. Ownership of the returned is passed to the caller.
-    virtual QgsChunkLoader *createChunkLoader( QgsChunkNode *node ) const override;
-    virtual QgsChunkNode *createRootNode() const override;
-    virtual QVector<QgsChunkNode *> createChildren( QgsChunkNode *node ) const override;
-    virtual int primitivesCount( QgsChunkNode *node ) const override;
-    const Qgs3DMapSettings &mMap;
-    QgsCoordinateTransform mCoordinateTransform;
-    QgsPointCloudIndex *mPointCloudIndex;
-    std::unique_ptr< QgsPointCloud3DSymbol > mSymbol;
-    double mZValueScale = 1.0;
-    double mZValueOffset = 0;
-    int mPointBudget = 1000000;
-    bool mTriangulate = false;
-    QgsRectangle mExtent; //!< This should hold the map's extent in layer's crs
-};
-
-
-/**
- * \ingroup 3d
- * \brief This loader class is responsible for async loading of data for a single tile
- * of QgsPointCloudLayerChunkedEntity and creation of final 3D entity from the data
- * previously prepared in a worker thread.
+ * \ingroup qgis_3d
+ * \brief This loader is responsible for creation of individual tiles of
+ * QgsQgsPointCloudLayerChunkedEntity whenever a new tile is requested by
+ * the entity.
  *
  * \since QGIS 3.18
  */
@@ -99,33 +56,44 @@ class QgsPointCloudLayerChunkLoader : public QgsChunkLoader
     Q_OBJECT
 
   public:
-
     /**
      * Constructs the loader
-     * QgsPointCloudLayerChunkLoader takes ownership over symbol
+     * The loader takes ownership over the passed \a symbol
      */
-    QgsPointCloudLayerChunkLoader( const QgsPointCloudLayerChunkLoaderFactory *factory, QgsChunkNode *node, std::unique_ptr< QgsPointCloud3DSymbol > symbol,
-                                   const QgsCoordinateTransform &coordinateTransform, double zValueScale, double zValueOffset );
-    ~QgsPointCloudLayerChunkLoader() override;
+    QgsPointCloudLayerChunkLoader(
+      const Qgs3DRenderContext &context, const QgsCoordinateTransform &coordinateTransform, QgsPointCloudIndex pc, QgsPointCloud3DSymbol *symbol, double zValueScale, double zValueOffset
+    );
 
-    virtual void cancel() override;
-    virtual Qt3DCore::QEntity *createEntity( Qt3DCore::QEntity *parent ) override;
+    QFuture<QgsChunkLoaderResult> loadChunk( QgsChunkNode *node ) override;
+    QgsChunkNode *createRootNode() const override;
+    QFuture<QVector<QgsChunkNode *>> createChildren( QgsChunkNode *node ) override;
+    int primitivesCount( QgsChunkNode *node ) const override;
 
   private:
-    const QgsPointCloudLayerChunkLoaderFactory *mFactory;
-    std::unique_ptr<QgsPointCloud3DSymbolHandler> mHandler;
-    QgsPointCloud3DRenderContext mContext;
-    QFutureWatcher<void> *mFutureWatcher = nullptr;
+    //! Fetches hierarchy for node, children and grand children in a background thread
+    QFuture<void> fetchHierarchyForNode( const QgsPointCloudNodeId &nodeId );
+    //! Creates children with hierarchy already fetched
+    QVector<QgsChunkNode *> createChildrenInner( QgsChunkNode *node );
+
+    Qgs3DRenderContext mRenderContext;
+    QgsCoordinateTransform mCoordinateTransform;
+    QgsPointCloudIndex mPointCloudIndex;
+    std::unique_ptr<QgsPointCloud3DSymbol> mSymbol;
+    double mZValueScale = 1.0;
+    double mZValueOffset = 0;
+    QgsRectangle mExtent; //!< This should hold the map's extent in layer's crs
+
+    friend class QgsPointCloudLayerChunkedEntity;
 };
 
 
 /**
- * \ingroup 3d
+ * \ingroup qgis_3d
  * \brief 3D entity used for rendering of point cloud layers with a single 3D symbol for all points.
  *
- * It is implemented using tiling approach with QgsChunkedEntity. Internally it uses
- * QgsPointCloudLayerChunkLoaderFactory and QgsPointCloudLayerChunkLoader to do the actual work
- * of loading and creating 3D sub-entities for each tile.
+ * It is implemented using tiling approach with QgsChunkedEntity. Internally it
+ * uses QgsPointCloudLayerChunkLoader to do the actual work of loading and
+ * creating 3D sub-entities for each tile.
  *
  * \since QGIS 3.18
  */
@@ -133,12 +101,38 @@ class QgsPointCloudLayerChunkedEntity : public QgsChunkedEntity
 {
     Q_OBJECT
   public:
-    explicit QgsPointCloudLayerChunkedEntity( QgsPointCloudIndex *pc, const Qgs3DMapSettings &map, const QgsCoordinateTransform &coordinateTransform, QgsPointCloud3DSymbol *symbol, float maxScreenError, bool showBoundingBoxes,
-        double zValueScale, double zValueOffset, int pointBudget );
+    explicit QgsPointCloudLayerChunkedEntity(
+      Qgs3DMapSettings *map,
+      QgsPointCloudLayer *pcl,
+      const int indexPosition,
+      const QgsCoordinateTransform &coordinateTransform,
+      QgsPointCloud3DSymbol *symbol,
+      float maxScreenError,
+      bool showBoundingBoxes,
+      double zValueScale,
+      double zValueOffset,
+      int pointBudget
+    );
 
-    QVector<QgsRayCastingUtils::RayHit> rayIntersection( const QgsRayCastingUtils::Ray3D &ray, const QgsRayCastingUtils::RayCastContext &context ) const override;
+    QList<QgsRayCastHit> rayIntersection( const QgsRay3D &ray, const QgsRayCastContext &context ) const override;
 
-    ~QgsPointCloudLayerChunkedEntity();
+    ~QgsPointCloudLayerChunkedEntity() override;
+
+  private slots:
+    void updateIndex();
+
+  private:
+    /**
+     * Get the point cloud index from a layer using the index position, according to the following scheme:
+     * Zero or positive \a indexPosition will return the nth zero-based sub index of a VPC layer.
+     * -1 will return the point cloud index of a standard non VPC layer.
+     * -2 will return the first VPC overview index.
+     * -3 will return the second VPC overview index, and so on.
+     */
+    static QgsPointCloudIndex resolveIndex( const QgsPointCloudLayer *pcl, int indexPosition );
+
+    QgsPointCloudLayer *mLayer = nullptr;
+    int mIndexPosition;
 };
 
 /// @endcond

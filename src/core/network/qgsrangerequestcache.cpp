@@ -17,15 +17,18 @@
 
 #include "qgsrangerequestcache.h"
 
-#include <QtDebug>
-#include <QFile>
-#include <QDir>
+#include "qgsnetworkdiskcache.h"
+
 #include <QDateTime>
+#include <QDir>
+#include <QFile>
+#include <QString>
+#include <QtDebug>
+
+using namespace Qt::StringLiterals;
 
 QgsRangeRequestCache::QgsRangeRequestCache()
-{
-
-}
+{}
 
 QByteArray QgsRangeRequestCache::entry( const QNetworkRequest &request )
 {
@@ -75,13 +78,19 @@ bool QgsRangeRequestCache::setCacheDirectory( const QString &path )
 
 void QgsRangeRequestCache::setCacheSize( qint64 cacheSize )
 {
+  if ( cacheSize == 0 )
+  {
+    // Calculate maximum cache size based on available free space
+    cacheSize = QgsNetworkDiskCache::smartCacheSize( mCacheDir );
+  }
+
   mMaxDataSize = cacheSize;
   expire();
 }
 
 QString QgsRangeRequestCache::rangeFileName( const QNetworkRequest &request ) const
 {
-  return mCacheDir + QStringLiteral( "%1-%2" ).arg( qHash( request.url().toString() ) ).arg( QString::fromUtf8( request.rawHeader( "Range" ) ) );
+  return mCacheDir + u"%1-%2"_s.arg( qHash( request.url().toString() ) ).arg( QString::fromUtf8( request.rawHeader( "Range" ) ) );
 }
 
 QByteArray QgsRangeRequestCache::readFile( const QString &fileName )
@@ -146,8 +155,7 @@ QFileInfoList QgsRangeRequestCache::cacheEntries()
 {
   QDir dir( mCacheDir );
   QFileInfoList filesList = dir.entryInfoList( QDir::Filter::Files, QDir::SortFlags() );
-  std::sort( filesList.begin(), filesList.end(), []( QFileInfo & f1, QFileInfo & f2 )
-  {
+  std::sort( filesList.begin(), filesList.end(), []( QFileInfo &f1, QFileInfo &f2 ) {
     QDateTime t1 = f1.fileTime( QFile::FileTime::FileAccessTime );
     if ( !t1.isValid() )
       t1 = f1.fileTime( QFile::FileTime::FileBirthTime );

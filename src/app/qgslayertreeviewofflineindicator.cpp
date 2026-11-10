@@ -14,16 +14,19 @@
  ***************************************************************************/
 
 #include "qgslayertreeviewofflineindicator.h"
-#include "qgslayertreeview.h"
-#include "qgslayertree.h"
-#include "qgslayertreemodel.h"
+
 #include "qgisapp.h"
+#include "qgslayertreeview.h"
+
+#include <QString>
+
+#include "moc_qgslayertreeviewofflineindicator.cpp"
+
+using namespace Qt::StringLiterals;
 
 QgsLayerTreeViewOfflineIndicatorProvider::QgsLayerTreeViewOfflineIndicatorProvider( QgsLayerTreeView *view )
   : QgsLayerTreeViewIndicatorProvider( view )
-{
-
-}
+{}
 
 void QgsLayerTreeViewOfflineIndicatorProvider::connectSignals( QgsMapLayer *layer )
 {
@@ -43,26 +46,17 @@ void QgsLayerTreeViewOfflineIndicatorProvider::disconnectSignals( QgsMapLayer *l
 
 bool QgsLayerTreeViewOfflineIndicatorProvider::acceptLayer( QgsMapLayer *layer )
 {
-  return layer->customProperty( QStringLiteral( "isOfflineEditable" ), false ).toBool();
+  return layer->customProperty( u"isOfflineEditable"_s, false ).toBool();
 }
 
 QString QgsLayerTreeViewOfflineIndicatorProvider::iconName( QgsMapLayer *layer )
 {
   Q_UNUSED( layer )
-  return QStringLiteral( "/mIndicatorOffline.svg" );
+  return u"/mIndicatorOffline.svg"_s;
 }
 
 QString QgsLayerTreeViewOfflineIndicatorProvider::tooltipText( QgsMapLayer *layer )
 {
   Q_UNUSED( layer )
   return tr( "<b>Offline layer</b>" );
-}
-
-void QgsLayerTreeViewOfflineIndicatorProvider::onLayerChanged()
-{
-  QgsMapLayer *layer = qobject_cast<QgsMapLayer *>( sender() );
-  if ( !layer )
-    return;
-
-  updateLayerIndicator( layer );
 }

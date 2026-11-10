@@ -71,6 +71,12 @@ namespace MDAL
   std::string pathJoin( const std::string &path1, const std::string &path2 );
   std::string readFileToString( const std::string &filename );
 
+  //! Deletes a file. Returns true on success, false otherwise
+  bool deleteFile( const std::string &path );
+
+  //! Renames a file. Returns true on success, false otherwise
+  bool renameFile( const std::string &from, const std::string &to );
+
   // strings
   enum ContainsBehaviour
   {
@@ -111,7 +117,8 @@ namespace MDAL
 
   //! Returns a string with scientific format
   //! precision is the number of signifiant digits
-  std::string doubleToString( double value, int precision = 6 );
+  //! forceScientific forces the scientific notation of the number even if not necessary
+  std::string doubleToString( double value, int precision = 6, bool forceScientific = false );
 
   /**
    * Splits by deliminer and skips empty parts.
@@ -122,7 +129,7 @@ namespace MDAL
   //! Splits by deliminer and skips empty parts
   std::vector<std::string> split( const std::string &str, const std::string &delimiter );
 
-  std::string join( const std::vector<std::string> parts, const std::string &delimiter );
+  std::string join( const std::vector<std::string> &parts, const std::string &delimiter );
 
   //! Right trim
   std::string rtrim(

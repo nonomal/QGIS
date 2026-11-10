@@ -19,13 +19,13 @@
 #define QGSRASTERMINMAXWIDGET_H
 
 #include "ui_qgsrasterminmaxwidgetbase.h"
-#include "qgis.h"
-#include "qgsrectangle.h"
 
+#include "qgis.h"
+#include "qgis_gui.h"
+#include "qgscontrastenhancement.h"
 #include "qgsraster.h"
 #include "qgsrasterminmaxorigin.h"
-#include "qgscontrastenhancement.h"
-#include "qgis_gui.h"
+#include "qgsrectangle.h"
 
 class QgsMapCanvas;
 class QgsRasterLayer;
@@ -33,12 +33,12 @@ class QgsRasterLayer;
 /**
  * \ingroup gui
  * \class QgsRasterMinMaxWidget
+ * \brief A widget for configuring how the minimum and maximum value of a raster layer is determined.
  */
-class GUI_EXPORT QgsRasterMinMaxWidget: public QWidget, private Ui::QgsRasterMinMaxWidgetBase
+class GUI_EXPORT QgsRasterMinMaxWidget : public QWidget, private Ui::QgsRasterMinMaxWidgetBase
 {
     Q_OBJECT
   public:
-
     //! Constructor for QgsRasterMinMaxWidget
     QgsRasterMinMaxWidget( QgsRasterLayer *layer, QWidget *parent SIP_TRANSFERTHIS = nullptr );
 
@@ -111,14 +111,33 @@ class GUI_EXPORT QgsRasterMinMaxWidget: public QWidget, private Ui::QgsRasterMin
   private slots:
 
     void mUserDefinedRadioButton_toggled( bool );
-    void mMinMaxRadioButton_toggled( bool b ) { if ( b ) emit widgetChanged(); }
-    void mStdDevRadioButton_toggled( bool b ) { if ( b ) emit widgetChanged(); }
-    void mCumulativeCutRadioButton_toggled( bool b ) { if ( b ) emit widgetChanged(); }
-    void mStatisticsExtentCombo_currentIndexChanged( int ) { emit widgetChanged(); }
-    void mCumulativeCutLowerDoubleSpinBox_valueChanged( double ) { emit widgetChanged(); }
-    void mCumulativeCutUpperDoubleSpinBox_valueChanged( double ) { emit widgetChanged(); }
-    void mStdDevSpinBox_valueChanged( double ) { emit widgetChanged(); }
-    void cboAccuracy_currentIndexChanged( int ) { emit widgetChanged(); }
+    void mMinMaxRadioButton_toggled( bool b )
+    {
+      if ( b )
+      {
+        onWidgetChanged();
+      }
+    }
+    void mStdDevRadioButton_toggled( bool b )
+    {
+      if ( b )
+      {
+        onWidgetChanged();
+      }
+    }
+    void mCumulativeCutRadioButton_toggled( bool b )
+    {
+      if ( b )
+      {
+        onWidgetChanged();
+      }
+    }
+    void mStatisticsExtentCombo_currentIndexChanged( int ) { onWidgetChanged(); }
+    void mCumulativeCutLowerDoubleSpinBox_valueChanged( double ) { onWidgetChanged(); }
+    void mCumulativeCutUpperDoubleSpinBox_valueChanged( double ) { onWidgetChanged(); }
+    void mStdDevSpinBox_valueChanged( double ) { onWidgetChanged(); }
+    void cboAccuracy_currentIndexChanged( int ) { onWidgetChanged(); }
+    void onWidgetChanged();
 
   private:
     QgsRasterLayer *mLayer = nullptr;
@@ -127,11 +146,11 @@ class GUI_EXPORT QgsRasterMinMaxWidget: public QWidget, private Ui::QgsRasterMin
 
     QgsMapCanvas *mCanvas = nullptr;
 
-    bool mLastRectangleValid;
+    bool mLastRectangleValid = false;
     QgsRectangle mLastRectangle;
     QgsRasterMinMaxOrigin mLastMinMaxOrigin;
 
-    bool mBandsChanged;
+    bool mBandsChanged = false;
 };
 
 #endif // QGSRASTERMINMAXWIDGET_H

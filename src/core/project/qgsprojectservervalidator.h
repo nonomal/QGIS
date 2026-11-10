@@ -20,9 +20,8 @@
 
 #include "qgis_core.h"
 #include "qgis_sip.h"
-#include "qgslayertreegroup.h"
 #include "qgslayertree.h"
-
+#include "qgslayertreegroup.h"
 
 /**
  * \ingroup core
@@ -32,12 +31,7 @@
  */
 class CORE_EXPORT QgsProjectServerValidator
 {
-
   public:
-
-    /**
-     * Constructor for QgsProjectServerValidator.
-     */
     QgsProjectServerValidator() = default;
 
     /**
@@ -45,11 +39,12 @@ class CORE_EXPORT QgsProjectServerValidator
      */
     enum ValidationError
     {
-      DuplicatedNames = 0, //!< A duplicated layer/group name in the layer tree.
-      LayerShortName = 1, //!< Layer/group short name is not valid.
-      LayerEncoding = 2,  //!< Encoding is not correctly set on a vector layer.
-      ProjectShortName = 3,  //!< The project short name is not valid.
-      ProjectRootNameConflict = 4,  //!< The project root name is already used by a layer or a group.
+      DuplicatedNames = 0,              //!< A duplicated layer/group name in the layer tree.
+      LayerShortName = 1,               //!< Layer/group short name is not valid.
+      LayerEncoding = 2,                //!< Encoding is not correctly set on a vector layer.
+      ProjectShortName = 3,             //!< The project short name is not valid.
+      ProjectRootNameConflict = 4,      //!< The project root name is already used by a layer or a group.
+      OnlyMaptipTrueButEmptyMaptip = 5, //!< Use only maptip for HTML GetFeatureInfo response is enabled but HTML maptip is empty
     };
 
     /**
@@ -64,24 +59,23 @@ class CORE_EXPORT QgsProjectServerValidator
      */
     struct ValidationResult
     {
-
-      /**
+        /**
        * Constructor for ValidationResult.
        */
-      ValidationResult( const QgsProjectServerValidator::ValidationError error, const QVariant &identifier )
-        : error( error )
-        , identifier( identifier )
-      {}
+        ValidationResult( const QgsProjectServerValidator::ValidationError error, const QVariant &identifier )
+          : error( error )
+          , identifier( identifier )
+        {}
 
-      /**
+        /**
        * Error which occurred during the validation process.
        */
-      QgsProjectServerValidator::ValidationError error;
+        QgsProjectServerValidator::ValidationError error;
 
-      /**
+        /**
        * Identifier related to the error. It can be a layer/group name.
        */
-      QVariant identifier;
+        QVariant identifier;
     };
 
     /**
@@ -95,8 +89,8 @@ class CORE_EXPORT QgsProjectServerValidator
     static bool validate( QgsProject *project, QList< QgsProjectServerValidator::ValidationResult > &results SIP_OUT );
 
   private:
-    static void browseLayerTree( QgsLayerTreeGroup *treeGroup, QStringList &owsNames, QStringList &encodingMessages );
-
+    static void browseLayerTree( QgsLayerTreeGroup *treeGroup, QStringList &owsNames, QStringList &encodingMessages, QStringList &layerNames, QStringList &maptipTemplates );
+    static bool isOnlyMaptipEnabled( QgsProject *project );
 };
 
 #endif // QGSPROJECTSERVERVALIDATOR_H

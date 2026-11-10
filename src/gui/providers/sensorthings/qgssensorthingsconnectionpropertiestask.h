@@ -17,12 +17,36 @@
 #define QGSSENSORTHINGSCONNECTIONPROPERTIESTASK_H
 
 ///@cond PRIVATE
+
+#include "qgis.h"
+#include "qgssensorthingsutils.h"
+#include "qgstaskmanager.h"
+
 #define SIP_NO_FILE
 
-#include "qgstaskmanager.h"
-#include "qgis.h"
+class QgsSensorThingsConnectionCapabilitiesTask : public QgsTask
+{
+    Q_OBJECT
+  public:
+    QgsSensorThingsConnectionCapabilitiesTask( const QString &uri );
+    void cancel() final;
 
-class QgsSensorThingsConnectionPropertiesTask: public QgsTask
+    /**
+   * Returns the retrieved service capabilities.
+   */
+    QgsSensorThingsUtils::ServiceCapabilities capabilities() const { return mCapabilities; };
+
+  protected:
+    bool run() final;
+
+  private:
+    QString mUri;
+    std::unique_ptr<QgsFeedback> mFeedback;
+    QgsSensorThingsUtils::ServiceCapabilities mCapabilities;
+};
+
+
+class QgsSensorThingsConnectionPropertiesTask : public QgsTask
 {
     Q_OBJECT
   public:
@@ -32,16 +56,16 @@ class QgsSensorThingsConnectionPropertiesTask: public QgsTask
     /**
      * Returns the retrieved available geometry types.
      */
-    QList< Qgis::GeometryType > geometryTypes() const { return mGeometryTypes; };
+    QList<Qgis::GeometryType> geometryTypes() const { return mGeometryTypes; };
 
   protected:
     bool run() final;
-  private:
 
+  private:
     QString mUri;
     Qgis::SensorThingsEntity mEntity = Qgis::SensorThingsEntity::Invalid;
-    std::unique_ptr< QgsFeedback > mFeedback;
-    QList< Qgis::GeometryType > mGeometryTypes;
+    std::unique_ptr<QgsFeedback> mFeedback;
+    QList<Qgis::GeometryType> mGeometryTypes;
 };
 
 ///@endcond PRIVATE

@@ -3,8 +3,10 @@
  *                                                                      *
  * src/core/gps/qgsbabelformatregistry.h                                *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/
+
+
 
 
 
@@ -14,7 +16,8 @@ class QgsBabelFormatRegistry
 %Docstring(signature="appended")
 A registry for :py:class:`QgsAbstractBabelFormat` GPSBabel formats.
 
-:py:class:`QgsBabelFormatRegistry` is not usually directly created, but rather accessed through
+:py:class:`QgsBabelFormatRegistry` is not usually directly created, but
+rather accessed through
 :py:func:`QgsApplication.gpsBabelFormatRegistry()`.
 
 .. versionadded:: 3.22
@@ -25,13 +28,12 @@ A registry for :py:class:`QgsAbstractBabelFormat` GPSBabel formats.
 %End
   public:
 
-
     QgsBabelFormatRegistry();
 %Docstring
 Constructor for QgsBabelFormatRegistry.
 
-The registry will automatically be populated with standard formats, and with
-devices previously configured and stored in QSettings.
+The registry will automatically be populated with standard formats, and
+with devices previously configured and stored in QSettings.
 %End
     ~QgsBabelFormatRegistry();
 
@@ -98,5 +100,5 @@ Reloads the registry's members from the currently stored configuration.
  *                                                                      *
  * src/core/gps/qgsbabelformatregistry.h                                *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/

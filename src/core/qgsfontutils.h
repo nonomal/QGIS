@@ -16,23 +16,25 @@
 #ifndef QGSFONTUTILS_H
 #define QGSFONTUTILS_H
 
-#include <QFont>
-#include <QString>
-#include <QDomElement>
-
 #include "qgis_core.h"
 #include "qgis_sip.h"
+
+#include <QDomElement>
+#include <QFont>
+#include <QString>
+
+class QgsSettingsEntryStringList;
 
 class QMimeData;
 
 /**
  * \ingroup core
  * \class QgsFontUtils
+ * \brief Contains utility functions for working with fonts.
  */
 class CORE_EXPORT QgsFontUtils
 {
   public:
-
     /**
      * Check whether exact font is on system
      * \param f The font to test for match
@@ -83,7 +85,7 @@ class CORE_EXPORT QgsFontUtils
      * \param fontstyle The style to try and switch the font to
      * \param fallback If no matching fontstyle found for font, assign most similar or first style found to font
      * \returns Whether the font was updated (also returns TRUE if the requested style matches font's current style)
-     * \note This is a more featured replacement for a Qt 4.8+ function: void QFont::setStyleName ( const QString & styleName )
+     * \note This is a more featured replacement for a Qt 4.8+ function: void QFont::setStyleName().
      */
     static bool updateFontViaStyle( QFont &f, const QString &fontstyle, bool fallback = false );
 
@@ -211,6 +213,10 @@ class CORE_EXPORT QgsFontUtils
      * \since QGIS 3.34
      */
     static QFont createFont( const QString &family, int pointSize = -1, int weight = -1, bool italic = false );
+
+#ifndef SIP_RUN
+    static const QgsSettingsEntryStringList *settingsRecentFontFamilies SIP_SKIP;
+#endif
 };
 
 // clazy:excludeall=qstring-allocations

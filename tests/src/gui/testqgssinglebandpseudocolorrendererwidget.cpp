@@ -12,15 +12,17 @@
  *   (at your option) any later version.                                   *
  *                                                                         *
  ***************************************************************************/
+#include "qgsapplication.h"
+#include "qgsrasterlayer.h"
+#include "qgsrastershader.h"
+#include "qgssinglebandpseudocolorrenderer.h"
+#include "qgssinglebandpseudocolorrendererwidget.h"
 #include "qgstest.h"
+
 #include <QObject>
 #include <QString>
 
-#include <qgsapplication.h>
-#include <qgsrasterlayer.h>
-#include "qgssinglebandpseudocolorrendererwidget.h"
-#include "qgssinglebandpseudocolorrenderer.h"
-#include "qgsrastershader.h"
+using namespace Qt::StringLiterals;
 
 /**
  * \ingroup UnitTests
@@ -31,18 +33,16 @@ class TestQgsSingleBandPseudoColorRendererWidget : public QObject
     Q_OBJECT
 
   public:
-
     TestQgsSingleBandPseudoColorRendererWidget() {}
 
   private:
-
     QgsRasterLayer *mRasterLayer = nullptr;
 
   private slots:
 
     // init / cleanup
-    void initTestCase();// will be called before the first testfunction is executed.
-    void cleanupTestCase();// will be called after the last testfunction was executed.
+    void initTestCase();    // will be called before the first testfunction is executed.
+    void cleanupTestCase(); // will be called after the last testfunction was executed.
 
     // tests
     void testEditLabel();
@@ -74,7 +74,7 @@ void TestQgsSingleBandPseudoColorRendererWidget::testEditLabel()
 
   QgsRasterShader *rasterShader = new QgsRasterShader();
   QgsColorRampShader *colorRampShader = new QgsColorRampShader();
-  colorRampShader->setColorRampType( QgsColorRampShader::Interpolated );
+  colorRampShader->setColorRampType( Qgis::ShaderInterpolationMethod::Linear );
 
   const double min = 122.123456;
   const double max = 129.123456;
@@ -103,15 +103,15 @@ void TestQgsSingleBandPseudoColorRendererWidget::testEditLabel()
   // it should not triggers classification and we should get the initial ramp item
   widget.loadMinMax( 1, min, max );
 
-  QgsSingleBandPseudoColorRenderer *newRasterRenderer = dynamic_cast<QgsSingleBandPseudoColorRenderer *>( widget.renderer() );
+  std::unique_ptr< QgsSingleBandPseudoColorRenderer > newRasterRenderer( dynamic_cast<QgsSingleBandPseudoColorRenderer *>( widget.renderer() ) );
   QVERIFY( newRasterRenderer );
-  QVERIFY( rasterRenderer->shader() );
+  QVERIFY( newRasterRenderer->shader() );
 
   QgsColorRampShader *newColorRampShader = dynamic_cast<QgsColorRampShader *>( newRasterRenderer->shader()->rasterShaderFunction() );
   QVERIFY( newColorRampShader );
 
   const QList<QgsColorRampShader::ColorRampItem> newColorRampItems = newColorRampShader->colorRampItemList();
-  QCOMPARE( newColorRampItems.at( 0 ).label, QStringLiteral( "zero" ) );
+  QCOMPARE( newColorRampItems.at( 0 ).label, u"zero"_s );
 
   QCOMPARE( widget.mMinLineEdit->text(), widget.displayValueWithMaxPrecision( widget.mColorRampShaderWidget->minimum() ) );
   QCOMPARE( widget.mMaxLineEdit->text(), widget.displayValueWithMaxPrecision( widget.mColorRampShaderWidget->maximum() ) );
@@ -128,7 +128,6 @@ void TestQgsSingleBandPseudoColorRendererWidget::testEditLabel()
   QCOMPARE( widget.mMinLineEdit->text(), widget.displayValueWithMaxPrecision( widget.mColorRampShaderWidget->shader().minimumValue() ) );
   QCOMPARE( widget.mMaxLineEdit->text(), widget.displayValueWithMaxPrecision( widget.mColorRampShaderWidget->shader().maximumValue() ) );
 }
-
 
 
 QGSTEST_MAIN( TestQgsSingleBandPseudoColorRendererWidget )

@@ -17,12 +17,11 @@
 #ifndef QGS3DMEASUREDIALOG_H
 #define QGS3DMEASUREDIALOG_H
 
-#include <QCloseEvent>
-
 #include "ui_qgsmeasurebase.h"
-#include "qgs3dmaptoolmeasureline.h"
-#include "qgsunittypes.h"
 
+#include <QDialog>
+
+class Qgs3DMapToolMeasureLine;
 
 class Qgs3DMeasureDialog : public QDialog, private Ui::QgsMeasureBase
 {
@@ -30,7 +29,7 @@ class Qgs3DMeasureDialog : public QDialog, private Ui::QgsMeasureBase
 
   public:
     // Constructor
-    Qgs3DMeasureDialog( Qgs3DMapToolMeasureLine *tool, Qt::WindowFlags f = Qt::WindowFlags() );
+    Qgs3DMeasureDialog( Qgs3DMapToolMeasureLine *tool, QWidget *parent, Qt::WindowFlags f = Qt::WindowFlags() );
 
     //! Save position
     void saveWindowLocation();
@@ -86,10 +85,10 @@ class Qgs3DMeasureDialog : public QDialog, private Ui::QgsMeasureBase
     int mDecimalPlaces = 3;
 
     //! Distance unit of the map
-    Qgis::DistanceUnit mMapDistanceUnit  = Qgis::DistanceUnit::Unknown;
+    Qgis::DistanceUnit mMapDistanceUnit = Qgis::DistanceUnit::Unknown;
 
     //! Distance unit of the displayed value
-    Qgis::DistanceUnit mDisplayedDistanceUnit  = Qgis::DistanceUnit::Unknown;
+    Qgis::DistanceUnit mDisplayedDistanceUnit = Qgis::DistanceUnit::Unknown;
 
     //! Convert from mMapDistanceUnit to mDisplayedDistanceUnit
     double convertLength( double length, Qgis::DistanceUnit toUnit ) const;

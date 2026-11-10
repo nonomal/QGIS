@@ -3,16 +3,18 @@
  *                                                                      *
  * src/core/geometry/qgscompoundcurve.h                                 *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/
 
 
 
 
-class QgsCompoundCurve: QgsCurve
+
+
+class QgsCompoundCurve : QgsCurve
 {
 %Docstring(signature="appended")
-Compound curve geometry type
+Compound curve geometry type.
 %End
 
 %TypeHeaderCode
@@ -70,22 +72,29 @@ Compound curve geometry type
     virtual bool isValid( QString &error /Out/, Qgis::GeometryValidityFlags flags = Qgis::GeometryValidityFlags() ) const;
 
     int indexOf( const QgsPoint &point ) const final;
+    virtual bool isSimpleCurve() const /HoldGIL/;
+
 
     virtual QgsLineString *curveToLine( double tolerance = M_PI_2 / 90, SegmentationToleranceType toleranceType = MaximumAngle ) const /Factory/;
 
 %Docstring
-Returns a new line string geometry corresponding to a segmentized approximation
-of the curve.
+Returns a new line string geometry corresponding to a segmentized
+approximation of the curve.
 
 :param tolerance: segmentation tolerance
-:param toleranceType: maximum segmentation angle or maximum difference between approximation and curve
+:param toleranceType: maximum segmentation angle or maximum difference
+                      between approximation and curve
 %End
 
-    virtual QgsCompoundCurve *snappedToGrid( double hSpacing, double vSpacing, double dSpacing = 0, double mSpacing = 0 ) const /Factory/;
+    virtual QgsCompoundCurve *snappedToGrid( double hSpacing, double vSpacing, double dSpacing = 0, double mSpacing = 0, bool removeRedundantPoints = false ) const /Factory/;
+
+    virtual QgsAbstractGeometry *simplifyByDistance( double tolerance ) const /Factory/;
 
     virtual bool removeDuplicateNodes( double epsilon = 4 * DBL_EPSILON, bool useZValues = false );
 
+
     virtual bool boundingBoxIntersects( const QgsBox3D &box3d ) const /HoldGIL/;
+
 
     virtual const QgsAbstractGeometry *simplifiedTypeRef() const /HoldGIL/;
 
@@ -104,11 +113,13 @@ Returns the curve at the specified index.
 %Docstring
 Adds a curve to the geometry (takes ownership).
 
-Since QGIS 3.20, if ``extendPrevious`` is ``True``, then adding a LineString when the last existing curve
-in the compound curve is also a LineString will cause the existing linestring to be
-extended with the newly added LineString vertices instead of appending a whole new
-LineString curve to the compound curve. This can result in simplified compound curves with lesser number
-of component curves while still being topologically identical to the desired result.
+Since QGIS 3.20, if ``extendPrevious`` is ``True``, then adding a
+LineString when the last existing curve in the compound curve is also a
+LineString will cause the existing linestring to be extended with the
+newly added LineString vertices instead of appending a whole new
+LineString curve to the compound curve. This can result in simplified
+compound curves with lesser number of component curves while still being
+topologically identical to the desired result.
 %End
 
     void removeCurve( int i );
@@ -125,8 +136,9 @@ Adds a vertex to the end of the geometry.
 
     void condenseCurves();
 %Docstring
-Condenses the curves in this geometry by combining adjacent linestrings a to a single continuous linestring,
-and combining adjacent circularstrings to a single continuous circularstring.
+Condenses the curves in this geometry by combining adjacent linestrings
+a to a single continuous linestring, and combining adjacent
+circularstrings to a single continuous circularstring.
 
 .. versionadded:: 3.20
 %End
@@ -135,16 +147,17 @@ and combining adjacent circularstrings to a single continuous circularstring.
 %Docstring
 Converts the vertex at the given position from/to circular
 
-:return: ``False`` if atVertex does not correspond to a valid vertex
-         on this geometry (including if this geometry is a Point),
-         or if the specified vertex can't be converted (e.g. start/end points).
+:return: ``False`` if atVertex does not correspond to a valid vertex on
+         this geometry (including if this geometry is a Point), or if
+         the specified vertex can't be converted (e.g. start/end
+         points).
 
 .. versionadded:: 3.20
 %End
 
     virtual void draw( QPainter &p ) const;
 
-    virtual void transform( const QgsCoordinateTransform &ct, Qgis::TransformDirection d = Qgis::TransformDirection::Forward, bool transformZ = false )  throw( QgsCsException );
+    virtual void transform( const QgsCoordinateTransform &ct, Qgis::TransformDirection d = Qgis::TransformDirection::Forward, bool transformZ = false );
 
     virtual void transform( const QTransform &t, double zTranslate = 0.0, double zScale = 1.0, double mTranslate = 0.0, double mScale = 1.0 );
 
@@ -156,13 +169,15 @@ Converts the vertex at the given position from/to circular
 
     virtual bool moveVertex( QgsVertexId position, const QgsPoint &newPos );
 
-    virtual bool deleteVertex( QgsVertexId position );
+    virtual bool deleteVertices( const QSet<QgsVertexId> &positions );
 
     virtual double closestSegment( const QgsPoint &pt, QgsPoint &segmentPt /Out/, QgsVertexId &vertexAfter /Out/, int *leftOf /Out/ = 0, double epsilon = 4 * DBL_EPSILON ) const;
 
     virtual bool pointAt( int node, QgsPoint &point, Qgis::VertexType &type ) const;
 
     virtual void sumUpArea( double &sum /Out/ ) const;
+
+    virtual void sumUpArea3D( double &sum /Out/ ) const;
 
 
     void close();
@@ -175,6 +190,8 @@ Appends first point if not already closed.
     virtual double vertexAngle( QgsVertexId vertex ) const;
 
     virtual double segmentLength( QgsVertexId startVertex ) const;
+
+    virtual double distanceBetweenVertices( QgsVertexId fromVertex, QgsVertexId toVertex ) const;
 
     virtual QgsCompoundCurve *reversed() const /Factory/;
 
@@ -235,5 +252,5 @@ Appends first point if not already closed.
  *                                                                      *
  * src/core/geometry/qgscompoundcurve.h                                 *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/

@@ -18,16 +18,17 @@
 #ifndef QGISAPPSTYLESHEET_H
 #define QGISAPPSTYLESHEET_H
 
-#include <QObject>
+#include "qgis_app.h"
+
 #include <QFont>
 #include <QMap>
-#include "qgis_app.h"
+#include <QObject>
 
 /**
  * \class QgisAppStyleSheet
  * \brief Adjustable stylesheet for the QGIS application
  */
-class APP_EXPORT QgisAppStyleSheet: public QObject
+class APP_EXPORT QgisAppStyleSheet : public QObject
 {
     Q_OBJECT
 
@@ -40,8 +41,9 @@ class APP_EXPORT QgisAppStyleSheet: public QObject
     /**
      * Build and apply a stylesheet.
      *
+     * The stylesheet will be set as the application stylesheet via QgsGui::setApplicationStyleSheet().
+     *
      * \param opts generated default option values, or a changed copy of them
-     * \note on success emits appStyleSheetChanged
      */
     void applyStyleSheet( const QMap<QString, QVariant> &opts );
 
@@ -64,7 +66,7 @@ class APP_EXPORT QgisAppStyleSheet: public QObject
     void saveToSettings( const QMap<QString, QVariant> &opts );
 
     //! Gets reference font for initial qApp
-    QFont defaultFont() { return mDefaultFont; }
+    QFont defaultFont() const { return mDefaultFont; }
 
     /**
      * Returns the user set font size override value, or -1 if not set and the Qt default font size should be used.
@@ -88,20 +90,12 @@ class APP_EXPORT QgisAppStyleSheet: public QObject
      */
     QString fontFamily() const { return !mUserFontFamily.isEmpty() ? mUserFontFamily : mDefaultFont.family(); }
 
-  signals:
-
-    /**
-     * Signal the successful stylesheet build results
-     * \note connect to (app|widget)->setStyleSheet or similar custom slot
-     */
-    void appStyleSheetChanged( const QString &appStyleSheet );
-
   private:
     //! Sets active configuration values
     void setActiveValues();
 
     // qt styles
-    QString mStyle; // active style name (lowercase)
+    QString mStyle;         // active style name (lowercase)
     bool mMacStyle = false; // macintosh (aqua)
     bool mOxyStyle = false; // oxygen
 
@@ -114,8 +108,6 @@ class APP_EXPORT QgisAppStyleSheet: public QObject
     // platforms, specific
     bool mWinOS = false;
     bool mAndroidOS = false;
-
-    static bool sIsFirstRun;
 };
 
 #endif //QGISAPPSTYLESHEET_H

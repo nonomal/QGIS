@@ -3,9 +3,8 @@
  *                                                                      *
  * src/core/qgsfieldproxymodel.h                                        *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/
-
 
 
 
@@ -14,14 +13,13 @@
 class QgsFieldProxyModel : QSortFilterProxyModel
 {
 %Docstring(signature="appended")
-The :py:class:`QgsFieldProxyModel` class provides an easy to use model to display the list of fields of a layer.
+A proxy model to filter the list of fields of a layer.
 %End
 
 %TypeHeaderCode
 #include "qgsfieldproxymodel.h"
 %End
   public:
-
     enum Filter /BaseType=IntEnum/
     {
       String,
@@ -43,8 +41,9 @@ The :py:class:`QgsFieldProxyModel` class provides an easy to use model to displa
 
     explicit QgsFieldProxyModel( QObject *parent /TransferThis/ = 0 );
 %Docstring
-:py:class:`QgsFieldProxModel` creates a proxy model with a :py:class:`QgsFieldModel` as source model.
-It can be used to filter the fields based on their types.
+:py:class:`QgsFieldProxModel` creates a proxy model with a
+:py:class:`QgsFieldModel` as source model. It can be used to filter the
+fields based on their types.
 %End
 
     QgsFieldModel *sourceFieldModel();
@@ -83,5 +82,5 @@ QFlags<QgsFieldProxyModel::Filter> operator|(QgsFieldProxyModel::Filter f1, QFla
  *                                                                      *
  * src/core/qgsfieldproxymodel.h                                        *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/

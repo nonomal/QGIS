@@ -18,13 +18,13 @@
 #ifndef QGSWKBTYPES_H
 #define QGSWKBTYPES_H
 
-#include <QObject>
-#include <QMap>
-#include <QString>
-
+#include "qgis.h"
 #include "qgis_core.h"
 #include "qgis_sip.h"
-#include "qgis.h"
+
+#include <QMap>
+#include <QObject>
+#include <QString>
 
 /***************************************************************************
  * This class is considered CRITICAL and any change MUST be accompanied with
@@ -42,7 +42,7 @@ class CORE_EXPORT QgsWkbTypes
 {
     Q_GADGET
   public:
-
+    // clang-format off
     /**
      * Returns the single type for a WKB type. For example, for MultiPolygon WKB types the single type would be Polygon.
      * \see isSingleType()
@@ -51,6 +51,7 @@ class CORE_EXPORT QgsWkbTypes
      * \see flatType()
      */
     static Qgis::WkbType singleType( Qgis::WkbType type ) SIP_HOLDGIL
+      // clang-format on
     {
       switch ( type )
       {
@@ -110,19 +111,15 @@ class CORE_EXPORT QgsWkbTypes
           return Qgis::WkbType::PolygonZM;
 
         case Qgis::WkbType::Triangle:
-          // case MultiTriangle:
           return Qgis::WkbType::Triangle;
 
         case Qgis::WkbType::TriangleZ:
-          // case MultiTriangleZ:
           return Qgis::WkbType::TriangleZ;
 
         case Qgis::WkbType::TriangleM:
-          // case MultiTriangleM:
           return Qgis::WkbType::TriangleM;
 
         case Qgis::WkbType::TriangleZM:
-          // case MultiTriangleZM:
           return Qgis::WkbType::TriangleZM;
 
         case Qgis::WkbType::CircularString:
@@ -136,6 +133,18 @@ class CORE_EXPORT QgsWkbTypes
 
         case Qgis::WkbType::CircularStringZM:
           return Qgis::WkbType::CircularStringZM;
+
+        case Qgis::WkbType::NurbsCurve:
+          return Qgis::WkbType::NurbsCurve;
+
+        case Qgis::WkbType::NurbsCurveZ:
+          return Qgis::WkbType::NurbsCurveZ;
+
+        case Qgis::WkbType::NurbsCurveM:
+          return Qgis::WkbType::NurbsCurveM;
+
+        case Qgis::WkbType::NurbsCurveZM:
+          return Qgis::WkbType::NurbsCurveZM;
 
         case Qgis::WkbType::CompoundCurve:
         case Qgis::WkbType::MultiCurve:
@@ -169,6 +178,30 @@ class CORE_EXPORT QgsWkbTypes
         case Qgis::WkbType::MultiSurfaceZM:
           return Qgis::WkbType::CurvePolygonZM;
 
+        case Qgis::WkbType::PolyhedralSurface:
+          return Qgis::WkbType::PolyhedralSurface;
+
+        case Qgis::WkbType::PolyhedralSurfaceZ:
+          return Qgis::WkbType::PolyhedralSurfaceZ;
+
+        case Qgis::WkbType::PolyhedralSurfaceM:
+          return Qgis::WkbType::PolyhedralSurfaceM;
+
+        case Qgis::WkbType::PolyhedralSurfaceZM:
+          return Qgis::WkbType::PolyhedralSurfaceZM;
+
+        case Qgis::WkbType::TIN:
+          return Qgis::WkbType::TIN;
+
+        case Qgis::WkbType::TINZ:
+          return Qgis::WkbType::TINZ;
+
+        case Qgis::WkbType::TINM:
+          return Qgis::WkbType::TINM;
+
+        case Qgis::WkbType::TINZM:
+          return Qgis::WkbType::TINZM;
+
         case Qgis::WkbType::NoGeometry:
           return Qgis::WkbType::NoGeometry;
 
@@ -183,7 +216,6 @@ class CORE_EXPORT QgsWkbTypes
         case Qgis::WkbType::Polygon25D:
         case Qgis::WkbType::MultiPolygon25D:
           return Qgis::WkbType::Polygon25D;
-
       }
       return Qgis::WkbType::Unknown;
     }
@@ -204,7 +236,6 @@ class CORE_EXPORT QgsWkbTypes
         case Qgis::WkbType::Unknown:
           return Qgis::WkbType::Unknown;
 
-        // until we support TIN types, use multipolygon
         case Qgis::WkbType::Triangle:
           return Qgis::WkbType::MultiPolygon;
 
@@ -263,37 +294,49 @@ class CORE_EXPORT QgsWkbTypes
 
         case Qgis::WkbType::Polygon:
         case Qgis::WkbType::MultiPolygon:
+        case Qgis::WkbType::PolyhedralSurface:
+        case Qgis::WkbType::TIN:
           return Qgis::WkbType::MultiPolygon;
 
         case Qgis::WkbType::PolygonZ:
         case Qgis::WkbType::MultiPolygonZ:
+        case Qgis::WkbType::PolyhedralSurfaceZ:
+        case Qgis::WkbType::TINZ:
           return Qgis::WkbType::MultiPolygonZ;
 
         case Qgis::WkbType::PolygonM:
         case Qgis::WkbType::MultiPolygonM:
+        case Qgis::WkbType::PolyhedralSurfaceM:
+        case Qgis::WkbType::TINM:
           return Qgis::WkbType::MultiPolygonM;
 
         case Qgis::WkbType::PolygonZM:
         case Qgis::WkbType::MultiPolygonZM:
+        case Qgis::WkbType::PolyhedralSurfaceZM:
+        case Qgis::WkbType::TINZM:
           return Qgis::WkbType::MultiPolygonZM;
 
         case Qgis::WkbType::CompoundCurve:
         case Qgis::WkbType::CircularString:
+        case Qgis::WkbType::NurbsCurve:
         case Qgis::WkbType::MultiCurve:
           return Qgis::WkbType::MultiCurve;
 
         case Qgis::WkbType::CompoundCurveZ:
         case Qgis::WkbType::CircularStringZ:
+        case Qgis::WkbType::NurbsCurveZ:
         case Qgis::WkbType::MultiCurveZ:
           return Qgis::WkbType::MultiCurveZ;
 
         case Qgis::WkbType::CompoundCurveM:
         case Qgis::WkbType::CircularStringM:
+        case Qgis::WkbType::NurbsCurveM:
         case Qgis::WkbType::MultiCurveM:
           return Qgis::WkbType::MultiCurveM;
 
         case Qgis::WkbType::CompoundCurveZM:
         case Qgis::WkbType::CircularStringZM:
+        case Qgis::WkbType::NurbsCurveZM:
         case Qgis::WkbType::MultiCurveZM:
           return Qgis::WkbType::MultiCurveZM;
 
@@ -424,6 +467,7 @@ class CORE_EXPORT QgsWkbTypes
         case Qgis::WkbType::LineString:
         case Qgis::WkbType::CompoundCurve:
         case Qgis::WkbType::CircularString:
+        case Qgis::WkbType::NurbsCurve:
           return Qgis::WkbType::CompoundCurve;
 
         case Qgis::WkbType::MultiLineString:
@@ -433,6 +477,7 @@ class CORE_EXPORT QgsWkbTypes
         case Qgis::WkbType::LineStringZ:
         case Qgis::WkbType::CompoundCurveZ:
         case Qgis::WkbType::CircularStringZ:
+        case Qgis::WkbType::NurbsCurveZ:
         case Qgis::WkbType::LineString25D:
           return Qgis::WkbType::CompoundCurveZ;
 
@@ -444,6 +489,7 @@ class CORE_EXPORT QgsWkbTypes
         case Qgis::WkbType::LineStringM:
         case Qgis::WkbType::CompoundCurveM:
         case Qgis::WkbType::CircularStringM:
+        case Qgis::WkbType::NurbsCurveM:
           return Qgis::WkbType::CompoundCurveM;
 
         case Qgis::WkbType::MultiLineStringM:
@@ -453,6 +499,7 @@ class CORE_EXPORT QgsWkbTypes
         case Qgis::WkbType::LineStringZM:
         case Qgis::WkbType::CompoundCurveZM:
         case Qgis::WkbType::CircularStringZM:
+        case Qgis::WkbType::NurbsCurveZM:
           return Qgis::WkbType::CompoundCurveZM;
 
         case Qgis::WkbType::MultiLineStringZM:
@@ -465,6 +512,8 @@ class CORE_EXPORT QgsWkbTypes
 
         case Qgis::WkbType::MultiPolygon:
         case Qgis::WkbType::MultiSurface:
+        case Qgis::WkbType::PolyhedralSurface:
+        case Qgis::WkbType::TIN:
           return Qgis::WkbType::MultiSurface;
 
         case Qgis::WkbType::PolygonZ:
@@ -474,6 +523,8 @@ class CORE_EXPORT QgsWkbTypes
 
         case Qgis::WkbType::MultiPolygonZ:
         case Qgis::WkbType::MultiSurfaceZ:
+        case Qgis::WkbType::PolyhedralSurfaceZ:
+        case Qgis::WkbType::TINZ:
         case Qgis::WkbType::MultiPolygon25D:
           return Qgis::WkbType::MultiSurfaceZ;
 
@@ -483,6 +534,8 @@ class CORE_EXPORT QgsWkbTypes
 
         case Qgis::WkbType::MultiPolygonM:
         case Qgis::WkbType::MultiSurfaceM:
+        case Qgis::WkbType::PolyhedralSurfaceM:
+        case Qgis::WkbType::TINM:
           return Qgis::WkbType::MultiSurfaceM;
 
         case Qgis::WkbType::PolygonZM:
@@ -491,6 +544,8 @@ class CORE_EXPORT QgsWkbTypes
 
         case Qgis::WkbType::MultiPolygonZM:
         case Qgis::WkbType::MultiSurfaceZM:
+        case Qgis::WkbType::PolyhedralSurfaceZM:
+        case Qgis::WkbType::TINZM:
           return Qgis::WkbType::MultiSurfaceZM;
 
         case Qgis::WkbType::NoGeometry:
@@ -519,21 +574,24 @@ class CORE_EXPORT QgsWkbTypes
     {
       switch ( type )
       {
-
         case Qgis::WkbType::CircularString:
         case Qgis::WkbType::CompoundCurve:
+        case Qgis::WkbType::NurbsCurve:
           return Qgis::WkbType::LineString;
 
         case Qgis::WkbType::CircularStringM:
         case Qgis::WkbType::CompoundCurveM:
+        case Qgis::WkbType::NurbsCurveM:
           return Qgis::WkbType::LineStringM;
 
         case Qgis::WkbType::CircularStringZ:
         case Qgis::WkbType::CompoundCurveZ:
+        case Qgis::WkbType::NurbsCurveZ:
           return Qgis::WkbType::LineStringZ;
 
         case Qgis::WkbType::CircularStringZM:
         case Qgis::WkbType::CompoundCurveZM:
+        case Qgis::WkbType::NurbsCurveZM:
           return Qgis::WkbType::LineStringZM;
 
         case Qgis::WkbType::MultiCurve:
@@ -607,13 +665,20 @@ class CORE_EXPORT QgsWkbTypes
         case Qgis::WkbType::PolygonM:
         case Qgis::WkbType::PolygonZ:
         case Qgis::WkbType::PolygonZM:
+        case Qgis::WkbType::PolyhedralSurface:
+        case Qgis::WkbType::PolyhedralSurfaceM:
+        case Qgis::WkbType::PolyhedralSurfaceZ:
+        case Qgis::WkbType::PolyhedralSurfaceZM:
+        case Qgis::WkbType::TIN:
+        case Qgis::WkbType::TINM:
+        case Qgis::WkbType::TINZ:
+        case Qgis::WkbType::TINZM:
         case Qgis::WkbType::Triangle:
         case Qgis::WkbType::TriangleM:
         case Qgis::WkbType::TriangleZ:
         case Qgis::WkbType::TriangleZM:
         case Qgis::WkbType::Unknown:
           return type;
-
       }
       return Qgis::WkbType::Unknown;
     }
@@ -692,6 +757,12 @@ class CORE_EXPORT QgsWkbTypes
         case Qgis::WkbType::CircularStringZM:
           return Qgis::WkbType::CircularString;
 
+        case Qgis::WkbType::NurbsCurve:
+        case Qgis::WkbType::NurbsCurveZ:
+        case Qgis::WkbType::NurbsCurveM:
+        case Qgis::WkbType::NurbsCurveZM:
+          return Qgis::WkbType::NurbsCurve;
+
         case Qgis::WkbType::CompoundCurve:
         case Qgis::WkbType::CompoundCurveZ:
         case Qgis::WkbType::CompoundCurveM:
@@ -716,9 +787,20 @@ class CORE_EXPORT QgsWkbTypes
         case Qgis::WkbType::MultiSurfaceZM:
           return Qgis::WkbType::MultiSurface;
 
+        case Qgis::WkbType::PolyhedralSurface:
+        case Qgis::WkbType::PolyhedralSurfaceZ:
+        case Qgis::WkbType::PolyhedralSurfaceM:
+        case Qgis::WkbType::PolyhedralSurfaceZM:
+          return Qgis::WkbType::PolyhedralSurface;
+
+        case Qgis::WkbType::TIN:
+        case Qgis::WkbType::TINZ:
+        case Qgis::WkbType::TINM:
+        case Qgis::WkbType::TINZM:
+          return Qgis::WkbType::TIN;
+
         case Qgis::WkbType::NoGeometry:
           return Qgis::WkbType::NoGeometry;
-
       }
       return Qgis::WkbType::Unknown;
     }
@@ -745,7 +827,7 @@ class CORE_EXPORT QgsWkbTypes
      * \see isMultiType()
      * \see singleType()
      */
-    static bool isSingleType( Qgis::WkbType type ) SIP_HOLDGIL
+    Q_INVOKABLE static bool isSingleType( Qgis::WkbType type ) SIP_HOLDGIL
     {
       return ( type != Qgis::WkbType::Unknown && !isMultiType( type ) );
     }
@@ -755,7 +837,7 @@ class CORE_EXPORT QgsWkbTypes
      * \see isSingleType()
      * \see multiType()
      */
-    static bool isMultiType( Qgis::WkbType type ) SIP_HOLDGIL
+    Q_INVOKABLE static bool isMultiType( Qgis::WkbType type ) SIP_HOLDGIL
     {
       switch ( type )
       {
@@ -766,7 +848,10 @@ class CORE_EXPORT QgsWkbTypes
         case Qgis::WkbType::Triangle:
         case Qgis::WkbType::CircularString:
         case Qgis::WkbType::CompoundCurve:
+        case Qgis::WkbType::NurbsCurve:
         case Qgis::WkbType::CurvePolygon:
+        case Qgis::WkbType::PolyhedralSurface:
+        case Qgis::WkbType::TIN:
         case Qgis::WkbType::NoGeometry:
         case Qgis::WkbType::PointZ:
         case Qgis::WkbType::LineStringZ:
@@ -774,21 +859,30 @@ class CORE_EXPORT QgsWkbTypes
         case Qgis::WkbType::TriangleZ:
         case Qgis::WkbType::CircularStringZ:
         case Qgis::WkbType::CompoundCurveZ:
+        case Qgis::WkbType::NurbsCurveZ:
         case Qgis::WkbType::CurvePolygonZ:
+        case Qgis::WkbType::PolyhedralSurfaceZ:
+        case Qgis::WkbType::TINZ:
         case Qgis::WkbType::PointM:
         case Qgis::WkbType::LineStringM:
         case Qgis::WkbType::PolygonM:
         case Qgis::WkbType::TriangleM:
         case Qgis::WkbType::CircularStringM:
         case Qgis::WkbType::CompoundCurveM:
+        case Qgis::WkbType::NurbsCurveM:
         case Qgis::WkbType::CurvePolygonM:
+        case Qgis::WkbType::PolyhedralSurfaceM:
+        case Qgis::WkbType::TINM:
         case Qgis::WkbType::PointZM:
         case Qgis::WkbType::LineStringZM:
         case Qgis::WkbType::PolygonZM:
         case Qgis::WkbType::TriangleZM:
         case Qgis::WkbType::CircularStringZM:
         case Qgis::WkbType::CompoundCurveZM:
+        case Qgis::WkbType::NurbsCurveZM:
         case Qgis::WkbType::CurvePolygonZM:
+        case Qgis::WkbType::PolyhedralSurfaceZM:
+        case Qgis::WkbType::TINZM:
         case Qgis::WkbType::Point25D:
         case Qgis::WkbType::LineString25D:
         case Qgis::WkbType::Polygon25D:
@@ -796,19 +890,19 @@ class CORE_EXPORT QgsWkbTypes
 
         default:
           return true;
-
       }
     }
 
     /**
      * Returns TRUE if the WKB type is a curved type or can contain curved geometries.
      */
-    static bool isCurvedType( Qgis::WkbType type ) SIP_HOLDGIL
+    Q_INVOKABLE static bool isCurvedType( Qgis::WkbType type ) SIP_HOLDGIL
     {
       switch ( flatType( type ) )
       {
         case Qgis::WkbType::CircularString:
         case Qgis::WkbType::CompoundCurve:
+        case Qgis::WkbType::NurbsCurve:
         case Qgis::WkbType::CurvePolygon:
         case Qgis::WkbType::MultiCurve:
         case Qgis::WkbType::MultiSurface:
@@ -817,6 +911,17 @@ class CORE_EXPORT QgsWkbTypes
         default:
           return false;
       }
+    }
+
+    /**
+     * Returns TRUE if the WKB type is a NURBS curve type.
+     *
+     * \returns TRUE if the WKB type is a NURBS curve type.
+     * \since QGIS 4.0
+     */
+    Q_INVOKABLE static bool isNurbsType( Qgis::WkbType type ) SIP_HOLDGIL
+    {
+      return flatType( type ) == Qgis::WkbType::NurbsCurve;
     }
 
     /**
@@ -846,7 +951,7 @@ class CORE_EXPORT QgsWkbTypes
      * Invalid geometry types will return a dimension of 0.
      * \see wkbDimensions()
      */
-    static int coordDimensions( Qgis::WkbType type ) SIP_HOLDGIL
+    Q_INVOKABLE static int coordDimensions( Qgis::WkbType type ) SIP_HOLDGIL
     {
       if ( type == Qgis::WkbType::Unknown || type == Qgis::WkbType::NoGeometry )
         return 0;
@@ -894,15 +999,19 @@ class CORE_EXPORT QgsWkbTypes
         case Qgis::WkbType::MultiLineString25D:
         case Qgis::WkbType::CircularString:
         case Qgis::WkbType::CompoundCurve:
+        case Qgis::WkbType::NurbsCurve:
         case Qgis::WkbType::MultiCurve:
         case Qgis::WkbType::CircularStringZ:
         case Qgis::WkbType::CompoundCurveZ:
+        case Qgis::WkbType::NurbsCurveZ:
         case Qgis::WkbType::MultiCurveZ:
         case Qgis::WkbType::CircularStringM:
         case Qgis::WkbType::CompoundCurveM:
+        case Qgis::WkbType::NurbsCurveM:
         case Qgis::WkbType::MultiCurveM:
         case Qgis::WkbType::CircularStringZM:
         case Qgis::WkbType::CompoundCurveZM:
+        case Qgis::WkbType::NurbsCurveZM:
         case Qgis::WkbType::MultiCurveZM:
           return Qgis::GeometryType::Line;
 
@@ -922,12 +1031,20 @@ class CORE_EXPORT QgsWkbTypes
         case Qgis::WkbType::MultiPolygon25D:
         case Qgis::WkbType::CurvePolygon:
         case Qgis::WkbType::MultiSurface:
+        case Qgis::WkbType::PolyhedralSurface:
+        case Qgis::WkbType::TIN:
         case Qgis::WkbType::CurvePolygonZ:
         case Qgis::WkbType::MultiSurfaceZ:
+        case Qgis::WkbType::PolyhedralSurfaceZ:
+        case Qgis::WkbType::TINZ:
         case Qgis::WkbType::CurvePolygonM:
         case Qgis::WkbType::MultiSurfaceM:
+        case Qgis::WkbType::PolyhedralSurfaceM:
+        case Qgis::WkbType::TINM:
         case Qgis::WkbType::CurvePolygonZM:
         case Qgis::WkbType::MultiSurfaceZM:
+        case Qgis::WkbType::PolyhedralSurfaceZM:
+        case Qgis::WkbType::TINZM:
           return Qgis::GeometryType::Polygon;
 
         case Qgis::WkbType::NoGeometry:
@@ -940,14 +1057,14 @@ class CORE_EXPORT QgsWkbTypes
     /**
      * Returns a non-translated display string type for a WKB type, e.g., the geometry name used in WKT geometry representations.
      */
-    static QString displayString( Qgis::WkbType type ) SIP_HOLDGIL;
+    Q_INVOKABLE static QString displayString( Qgis::WkbType type ) SIP_HOLDGIL;
 
     /**
      * Returns a translated display string type for a WKB type, e.g., the geometry name used in WKT geometry representations.
      *
      * \since QGIS 3.18
      */
-    static QString translatedDisplayString( Qgis::WkbType type ) SIP_HOLDGIL;
+    Q_INVOKABLE static QString translatedDisplayString( Qgis::WkbType type ) SIP_HOLDGIL;
 
     /**
      * Returns a display string for a geometry type.
@@ -962,7 +1079,7 @@ class CORE_EXPORT QgsWkbTypes
      * - Invalid Geometry
      *
      */
-    static QString geometryDisplayString( Qgis::GeometryType type ) SIP_HOLDGIL;
+    Q_INVOKABLE static QString geometryDisplayString( Qgis::GeometryType type ) SIP_HOLDGIL;
 
     /**
      * Tests whether a WKB type contains the z-dimension.
@@ -970,13 +1087,15 @@ class CORE_EXPORT QgsWkbTypes
      * \see addZ()
      * \see hasM()
      */
-    static bool hasZ( Qgis::WkbType type ) SIP_HOLDGIL
+    Q_INVOKABLE static bool hasZ( Qgis::WkbType type ) SIP_HOLDGIL
     {
       switch ( type )
       {
         case Qgis::WkbType::PointZ:
         case Qgis::WkbType::LineStringZ:
         case Qgis::WkbType::PolygonZ:
+        case Qgis::WkbType::PolyhedralSurfaceZ:
+        case Qgis::WkbType::TINZ:
         case Qgis::WkbType::TriangleZ:
         case Qgis::WkbType::MultiPointZ:
         case Qgis::WkbType::MultiLineStringZ:
@@ -990,6 +1109,8 @@ class CORE_EXPORT QgsWkbTypes
         case Qgis::WkbType::PointZM:
         case Qgis::WkbType::LineStringZM:
         case Qgis::WkbType::PolygonZM:
+        case Qgis::WkbType::PolyhedralSurfaceZM:
+        case Qgis::WkbType::TINZM:
         case Qgis::WkbType::TriangleZM:
         case Qgis::WkbType::MultiPointZM:
         case Qgis::WkbType::MultiLineStringZM:
@@ -1000,6 +1121,8 @@ class CORE_EXPORT QgsWkbTypes
         case Qgis::WkbType::CurvePolygonZM:
         case Qgis::WkbType::MultiCurveZM:
         case Qgis::WkbType::MultiSurfaceZM:
+        case Qgis::WkbType::NurbsCurveZ:
+        case Qgis::WkbType::NurbsCurveZM:
         case Qgis::WkbType::Point25D:
         case Qgis::WkbType::LineString25D:
         case Qgis::WkbType::Polygon25D:
@@ -1010,7 +1133,6 @@ class CORE_EXPORT QgsWkbTypes
 
         default:
           return false;
-
       }
     }
 
@@ -1020,13 +1142,15 @@ class CORE_EXPORT QgsWkbTypes
      * \see addM()
      * \see hasZ()
      */
-    static bool hasM( Qgis::WkbType type ) SIP_HOLDGIL
+    Q_INVOKABLE static bool hasM( Qgis::WkbType type ) SIP_HOLDGIL
     {
       switch ( type )
       {
         case Qgis::WkbType::PointM:
         case Qgis::WkbType::LineStringM:
         case Qgis::WkbType::PolygonM:
+        case Qgis::WkbType::PolyhedralSurfaceM:
+        case Qgis::WkbType::TINM:
         case Qgis::WkbType::TriangleM:
         case Qgis::WkbType::MultiPointM:
         case Qgis::WkbType::MultiLineStringM:
@@ -1040,6 +1164,8 @@ class CORE_EXPORT QgsWkbTypes
         case Qgis::WkbType::PointZM:
         case Qgis::WkbType::LineStringZM:
         case Qgis::WkbType::PolygonZM:
+        case Qgis::WkbType::PolyhedralSurfaceZM:
+        case Qgis::WkbType::TINZM:
         case Qgis::WkbType::TriangleZM:
         case Qgis::WkbType::MultiPointZM:
         case Qgis::WkbType::MultiLineStringZM:
@@ -1050,11 +1176,12 @@ class CORE_EXPORT QgsWkbTypes
         case Qgis::WkbType::CurvePolygonZM:
         case Qgis::WkbType::MultiCurveZM:
         case Qgis::WkbType::MultiSurfaceZM:
+        case Qgis::WkbType::NurbsCurveM:
+        case Qgis::WkbType::NurbsCurveZM:
           return true;
 
         default:
           return false;
-
       }
     }
 
@@ -1168,7 +1295,6 @@ class CORE_EXPORT QgsWkbTypes
       else
         return Qgis::WkbType::Unknown;
     }
-
 };
 
 #endif // QGSWKBTYPES_H

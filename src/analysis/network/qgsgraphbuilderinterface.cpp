@@ -17,8 +17,7 @@
 
 #include "qgsproject.h"
 
-QgsGraphBuilderInterface::QgsGraphBuilderInterface( const QgsCoordinateReferenceSystem &crs, bool ctfEnabled,
-    double topologyTolerance, const QString &ellipsoidID )
+QgsGraphBuilderInterface::QgsGraphBuilderInterface( const QgsCoordinateReferenceSystem &crs, bool ctfEnabled, double topologyTolerance, const QString &ellipsoidID )
   : mCrs( crs )
   , mCtfEnabled( ctfEnabled )
   , mTopologyTolerance( topologyTolerance )
@@ -27,15 +26,14 @@ QgsGraphBuilderInterface::QgsGraphBuilderInterface( const QgsCoordinateReference
   mDa.setEllipsoid( ellipsoidID );
 }
 
-void QgsGraphBuilderInterface::addVertex( int id, const QgsPointXY &pt )
+int QgsGraphBuilderInterface::addVertex( int id, const QgsPointXY &pt )
 {
   Q_UNUSED( id )
   Q_UNUSED( pt )
+  return 0;
 }
 
-void QgsGraphBuilderInterface::addEdge( int pt1id, const QgsPointXY &pt1,
-                                        int pt2id, const QgsPointXY &pt2,
-                                        const QVector<QVariant> &strategies )
+void QgsGraphBuilderInterface::addEdge( int pt1id, const QgsPointXY &pt1, int pt2id, const QgsPointXY &pt2, const QVector<QVariant> &strategies )
 {
   Q_UNUSED( pt1id )
   Q_UNUSED( pt1 )

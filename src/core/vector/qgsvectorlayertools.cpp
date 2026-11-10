@@ -14,23 +14,32 @@
  ***************************************************************************/
 
 
-#include "qgsvectorlayer.h"
 #include "qgsvectorlayertools.h"
+
 #include "qgsfeaturerequest.h"
 #include "qgslogger.h"
-#include "qgsvectorlayerutils.h"
 #include "qgsproject.h"
+#include "qgsvectorlayer.h"
+#include "qgsvectorlayerutils.h"
 
+#include <QString>
+
+#include "moc_qgsvectorlayertools.cpp"
+
+using namespace Qt::StringLiterals;
 
 QgsVectorLayerTools::QgsVectorLayerTools()
   : QObject( nullptr )
 {}
 
-bool QgsVectorLayerTools::copyMoveFeatures( QgsVectorLayer *layer, QgsFeatureRequest &request, double dx, double dy, QString *errorMsg, const bool topologicalEditing, QgsVectorLayer *topologicalLayer, QString *childrenInfoMsg ) const
+bool QgsVectorLayerTools::copyMoveFeatures(
+  QgsVectorLayer *layer, QgsFeatureRequest &request, double dx, double dy, QString *errorMsg, const bool topologicalEditing, QgsVectorLayer *topologicalLayer, QString *childrenInfoMsg
+) const
 {
   bool res = false;
   if ( !layer || !layer->isEditable() )
   {
+    request = QgsFeatureRequest();
     return false;
   }
 
@@ -62,7 +71,7 @@ bool QgsVectorLayerTools::copyMoveFeatures( QgsVectorLayer *layer, QgsFeatureReq
       if ( !newFeature.isValid() )
       {
         couldNotWriteCount++;
-        QgsDebugError( QStringLiteral( "Could not add new feature. Original copied feature id: %1" ).arg( f.id() ) );
+        QgsDebugError( u"Could not add new feature. Original copied feature id: %1"_s.arg( f.id() ) );
       }
       else
       {
@@ -88,7 +97,7 @@ bool QgsVectorLayerTools::copyMoveFeatures( QgsVectorLayer *layer, QgsFeatureReq
       if ( !layer->addFeature( newFeature ) )
       {
         couldNotWriteCount++;
-        QgsDebugError( QStringLiteral( "Could not add new feature. Original copied feature id: %1" ).arg( f.id() ) );
+        QgsDebugError( u"Could not add new feature. Original copied feature id: %1"_s.arg( f.id() ) );
       }
       else
       {
@@ -135,8 +144,7 @@ bool QgsVectorLayerTools::copyMoveFeatures( QgsVectorLayer *layer, QgsFeatureReq
   }
   else if ( errorMsg )
   {
-    errorMsg = new QString( tr( "Only %1 out of %2 features were copied." )
-                            .arg( browsedFeatureCount - couldNotWriteCount - noGeometryCount, browsedFeatureCount ) );
+    errorMsg = new QString( tr( "Only %1 out of %2 features were copied." ).arg( browsedFeatureCount - couldNotWriteCount - noGeometryCount, browsedFeatureCount ) );
     if ( noGeometryCount )
     {
       errorMsg->append( " " );

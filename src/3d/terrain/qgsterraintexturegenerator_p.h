@@ -27,23 +27,27 @@
 // version without notice, or even be removed.
 //
 
-#define SIP_NO_FILE
 
 class QgsMapRendererSequentialJob;
 class QgsMapSettings;
 class QgsProject;
 class QgsRasterLayer;
 
+#include "qgschunknode.h"
+#include "qgsrectangle.h"
+
+#include <QFuture>
+#include <QFutureWatcher>
+#include <QImage>
 #include <QObject>
 #include <QSize>
 
-#include "qgschunknode_p.h"
-#include "qgsrectangle.h"
+#define SIP_NO_FILE
 
 class Qgs3DMapSettings;
 
 /**
- * \ingroup 3d
+ * \ingroup qgis_3d
  * \brief Class responsible for rendering map images in background for the purposes of their use
  * as textures for terrain's tiles.
  *
@@ -61,24 +65,13 @@ class QgsTerrainTextureGenerator : public QObject
 
     /**
      * Starts async rendering of a map for the given extent (must be a square!).
-     * Returns job ID. The class will emit tileReady() signal with the job ID when rendering is done.
      */
-    int render( const QgsRectangle &extent, QgsChunkNodeId nodeId, const QString &debugText = QString() );
-
-    //! Cancels a rendering job
-    void cancelJob( int jobId );
-
-    //! Waits for the texture generator to finish
-    void waitForFinished();
+    QFuture<QImage> render( const QgsRectangle &extent, QgsChunkNodeId nodeId, const QString &debugText = QString() );
 
     //! Returns the generated texture size (in pixel)
     QSize textureSize() const { return mTextureSize; }
     //! Sets the generated textures size (in pixel)
     void setTextureSize( QSize textureSize ) { mTextureSize = textureSize; }
-
-  signals:
-    //! Signal emitted when rendering of a map tile has finished and passes the output image
-    void tileReady( int jobId, const QImage &image );
 
   private slots:
     void onRenderingFinished();
@@ -90,15 +83,15 @@ class QgsTerrainTextureGenerator : public QObject
 
     struct JobData
     {
-      int jobId;
-      QgsChunkNodeId tileId;
-      QgsMapRendererSequentialJob *job = nullptr;
-      QgsRectangle extent;
-      QString debugText;
+        QgsChunkNodeId tileId;
+        QgsMapRendererSequentialJob *job = nullptr;
+        QgsRectangle extent;
+        QString debugText;
+        QPromise<QImage> promise;
+        QFutureWatcher<QImage> watcher;
     };
 
-    QHash<QgsMapRendererSequentialJob *, JobData> mJobs;
-    int mLastJobId;
+    std::unordered_map<QgsMapRendererSequentialJob *, std::unique_ptr<JobData>> mJobs;
     QSize mTextureSize;
 };
 

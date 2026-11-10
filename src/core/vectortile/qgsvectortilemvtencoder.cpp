@@ -25,61 +25,46 @@
 #include "qgsvectorlayer.h"
 #include "qgsvectortilemvtutils.h"
 
-
 //! Helper class for writing of geometry commands
 struct MVTGeometryWriter
 {
-  vector_tile::Tile_Feature *feature = nullptr;
-  int resolution;
-  double tileXMin, tileYMax, tileDX, tileDY;
-  QPoint cursor;
+    vector_tile::Tile_Feature *feature = nullptr;
+    int resolution;
+    double tileXMin, tileYMax, tileDX, tileDY;
+    QPoint cursor;
 
-  MVTGeometryWriter( vector_tile::Tile_Feature *f, int res, const QgsRectangle &tileExtent )
-    : feature( f )
-    , resolution( res )
-    , tileXMin( tileExtent.xMinimum() )
-    , tileYMax( tileExtent.yMaximum() )
-    , tileDX( tileExtent.width() )
-    , tileDY( tileExtent.height() )
-  {
-  }
+    MVTGeometryWriter( vector_tile::Tile_Feature *f, int res, const QgsRectangle &tileExtent )
+      : feature( f )
+      , resolution( res )
+      , tileXMin( tileExtent.xMinimum() )
+      , tileYMax( tileExtent.yMaximum() )
+      , tileDX( tileExtent.width() )
+      , tileDY( tileExtent.height() )
+    {}
 
-  void addMoveTo( int count )
-  {
-    feature->add_geometry( 1 | ( count << 3 ) );
-  }
-  void addLineTo( int count )
-  {
-    feature->add_geometry( 2 | ( count << 3 ) );
-  }
-  void addClosePath()
-  {
-    feature->add_geometry( 7 | ( 1 << 3 ) );
-  }
+    void addMoveTo( int count ) { feature->add_geometry( 1 | ( count << 3 ) ); }
+    void addLineTo( int count ) { feature->add_geometry( 2 | ( count << 3 ) ); }
+    void addClosePath() { feature->add_geometry( 7 | ( 1 << 3 ) ); }
 
-  void addPoint( const QgsPoint &pt )
-  {
-    addPoint( mapToTileCoordinates( pt.x(), pt.y() ) );
-  }
+    void addPoint( const QgsPoint &pt ) { addPoint( mapToTileCoordinates( pt.x(), pt.y() ) ); }
 
-  void addPoint( const QPoint &pt )
-  {
-    const qint32 vx = pt.x() - cursor.x();
-    const qint32 vy = pt.y() - cursor.y();
+    void addPoint( const QPoint &pt )
+    {
+      const qint32 vx = pt.x() - cursor.x();
+      const qint32 vy = pt.y() - cursor.y();
 
-    // (quint32)(-(qint32)((quint32)vx >> 31)) is a C/C++ compliant way
-    // of doing vx >> 31, which is undefined behavior since vx is signed
-    feature->add_geometry( ( ( quint32 )vx << 1 ) ^ ( ( quint32 )( -( qint32 )( ( quint32 )vx >> 31 ) ) ) );
-    feature->add_geometry( ( ( quint32 )vy << 1 ) ^ ( ( quint32 )( -( qint32 )( ( quint32 )vy >> 31 ) ) ) );
+      // (quint32)(-(qint32)((quint32)vx >> 31)) is a C/C++ compliant way
+      // of doing vx >> 31, which is undefined behavior since vx is signed
+      feature->add_geometry( ( ( quint32 ) vx << 1 ) ^ ( ( quint32 ) ( -( qint32 ) ( ( quint32 ) vx >> 31 ) ) ) );
+      feature->add_geometry( ( ( quint32 ) vy << 1 ) ^ ( ( quint32 ) ( -( qint32 ) ( ( quint32 ) vy >> 31 ) ) ) );
 
-    cursor = pt;
-  }
+      cursor = pt;
+    }
 
-  QPoint mapToTileCoordinates( double x, double y )
-  {
-    return QPoint( static_cast<int>( round( ( x - tileXMin ) * resolution / tileDX ) ),
-                   static_cast<int>( round( ( tileYMax - y ) * resolution / tileDY ) ) );
-  }
+    QPoint mapToTileCoordinates( double x, double y ) const
+    {
+      return QPoint( static_cast<int>( round( ( x - tileXMin ) * resolution / tileDX ) ), static_cast<int>( round( ( tileYMax - y ) * resolution / tileDY ) ) );
+    }
 };
 
 
@@ -90,7 +75,7 @@ static void encodeLineString( const QgsLineString *lineString, bool isRing, bool
   const double *yData = lineString->yData();
 
   if ( isRing )
-    count--;  // the last point in linear ring is repeated - but not in MVT
+    count--; // the last point in linear ring is repeated - but not in MVT
 
   // de-duplicate points
   QVector<QPoint> tilePoints;
@@ -172,7 +157,7 @@ void QgsVectorTileMVTEncoder::addLayer( QgsVectorLayer *layer, QgsFeedback *feed
     layerTileExtent = extentTransform.transformBoundingBox( layerTileExtent, Qgis::TransformDirection::Reverse );
     if ( !layerTileExtent.intersects( layer->extent() ) )
     {
-      return;  // tile is completely outside of the layer'e extent
+      return; // tile is completely outside of the layer'e extent
     }
   }
   catch ( const QgsCsException & )
@@ -199,18 +184,18 @@ void QgsVectorTileMVTEncoder::addLayer( QgsVectorLayer *layer, QgsFeedback *feed
   QgsFeature f;
   if ( !fit.nextFeature( f ) )
   {
-    return;  // nothing to write - do not add the layer at all
+    return; // nothing to write - do not add the layer at all
   }
 
   vector_tile::Tile_Layer *tileLayer = tile.add_layers();
-  tileLayer->set_name( layerName.toUtf8() );
-  tileLayer->set_version( 2 );  // 2 means MVT spec version 2.1
+  tileLayer->set_name( layerName.toUtf8().constData() );
+  tileLayer->set_version( 2 ); // 2 means MVT spec version 2.1
   tileLayer->set_extent( static_cast<::google::protobuf::uint32>( mResolution ) );
 
   const QgsFields fields = layer->fields();
   for ( int i = 0; i < fields.count(); ++i )
   {
-    tileLayer->add_keys( fields[i].name().toUtf8() );
+    tileLayer->add_keys( fields[i].name().toUtf8().constData() );
   }
 
   do
@@ -232,13 +217,19 @@ void QgsVectorTileMVTEncoder::addLayer( QgsVectorLayer *layer, QgsFeedback *feed
     }
 
     // clip
-    g = g.clipped( tileExtent );
-
-    f.setGeometry( g );
+    const QgsGeometry clippedToTile = g.clipped( tileExtent, feedback );
+    if ( clippedToTile.isEmpty() )
+    {
+      // this can often happen -- the transformation of the tile's bounding box to the layer's bounding box
+      // may have expanded the extent that we are using to filter features by, so we may have retrieved
+      // features that do NOT intersect with the tile extent after reprojection. In this case we must
+      // skip these features as empty geometries are not valid for vector tiles.
+      continue;
+    }
+    f.setGeometry( clippedToTile );
 
     addFeature( tileLayer, f );
-  }
-  while ( fit.nextFeature( f ) );
+  } while ( fit.nextFeature( f ) );
 
   mKnownValues.clear();
 }
@@ -286,14 +277,36 @@ void QgsVectorTileMVTEncoder::addFeature( vector_tile::Tile_Layer *tileLayer, co
       valueIndex = tileLayer->values_size() - 1;
       mKnownValues[v] = valueIndex;
 
-      if ( v.type() == QVariant::Double )
-        value->set_double_value( v.toDouble() );
-      else if ( v.type() == QVariant::Int )
-        value->set_int_value( v.toInt() );
-      else if ( v.type() == QVariant::Bool )
-        value->set_bool_value( v.toBool() );
-      else
-        value->set_string_value( v.toString().toUtf8().toStdString() );
+      switch ( v.userType() )
+      {
+        case QMetaType::Type::Double:
+          value->set_double_value( v.toDouble() );
+          break;
+
+        case QMetaType::Type::Float:
+          value->set_float_value( v.toFloat() );
+          break;
+
+        case QMetaType::Type::Int:
+        case QMetaType::Type::Long:
+        case QMetaType::Type::LongLong:
+          value->set_int_value( v.toLongLong() );
+          break;
+
+        case QMetaType::Type::UInt:
+        case QMetaType::Type::ULong:
+        case QMetaType::Type::ULongLong:
+          value->set_uint_value( v.toULongLong() );
+          break;
+
+        case QMetaType::Type::Bool:
+          value->set_bool_value( v.toBool() );
+          break;
+
+        default:
+          value->set_string_value( v.toString().toUtf8().toStdString() );
+          break;
+      }
     }
 
     feature->add_tags( static_cast<quint32>( i ) );

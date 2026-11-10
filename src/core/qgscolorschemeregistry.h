@@ -20,23 +20,30 @@
 
 #include "qgis_core.h"
 #include "qgscolorscheme.h"
+
 #include <QList>
+#include <QPointer>
+
+class QgsProject;
 
 /**
  * \ingroup core
  * \class QgsColorSchemeRegistry
- * \brief Registry of color schemes
+ * \brief Registry of color schemes.
  *
  * A registry of QgsColorScheme color schemes. This class can be created directly, or
  * accessed via a QgsApplication::colorSchemeRegistry().
  */
 class CORE_EXPORT QgsColorSchemeRegistry
 {
-
   public:
-
     /**
      * Constructor for an empty color scheme registry
+     *
+     * \note Since QGIS 4.4 the default construction of QgsColorSchemeRegistry
+     * no longer includes project colors by default. To include the "Project colors"
+     * scheme, associate a project with the registry using setProject() and
+     * then call addDefaultSchemes() to fill the registry with the project colors.
      */
     QgsColorSchemeRegistry() = default;
 
@@ -177,19 +184,28 @@ class CORE_EXPORT QgsColorSchemeRegistry
      */
     QColor fetchRandomStyleColor() const;
 
-  private:
+    /**
+     * Sets the \a project associated with the registry, used to provide the "Project colors" scheme.
+     *
+     * If \a project is NULLPTR, the project colors scheme is removed from the registry.
+     *
+     * \since QGIS 4.4
+     */
+    void setProject( QgsProject *project );
 
+
+  private:
     QList< QgsColorScheme * > mColorSchemeList;
 
     QgsColorScheme *mRandomStyleColorScheme = nullptr;
     QgsNamedColorList mRandomStyleColors;
 
+    QPointer< QgsProject > mProject;
+
     mutable int mNextRandomStyleColorIndex = 0;
 
     int mNextRandomStyleColorDirection = 1;
-
 };
-
 
 
 #endif

@@ -3,7 +3,7 @@
  *                                                                      *
  * src/server/qgsserverlogger.h                                         *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/
 
 
@@ -14,14 +14,13 @@
 class QgsServerLogger : QgsMessageLogConsole
 {
 %Docstring(signature="appended")
-Writes message log into server logfile
+Writes message log into server log files.
 %End
 
 %TypeHeaderCode
 #include "qgsserverlogger.h"
 %End
   public:
-
     static QgsServerLogger *instance();
 %Docstring
 Gets the singleton instance
@@ -57,13 +56,8 @@ Activates logging to stderr.
 
     virtual void logMessage( const QString &message, const QString &tag, Qgis::MessageLevel level );
 
-%Docstring
-Log a message from the server context
+    virtual void logMessage( const QString &message, const QString &tag, Qgis::MessageLevel level, Qgis::StringFormat format );
 
-:param message: the message
-:param tag: tag of the message
-:param level: log level of the message
-%End
 
   protected:
     QgsServerLogger();
@@ -75,5 +69,5 @@ Log a message from the server context
  *                                                                      *
  * src/server/qgsserverlogger.h                                         *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/

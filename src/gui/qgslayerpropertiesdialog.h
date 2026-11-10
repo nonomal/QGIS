@@ -17,8 +17,8 @@
 #define QGSLAYERPROPERTIESDIALOG_H
 
 #include "qgsgui.h"
-#include "qgsoptionsdialogbase.h"
 #include "qgsmaplayerstyle.h"
+#include "qgsoptionsdialogbase.h"
 
 #include <QObject>
 #include <QPointer>
@@ -32,7 +32,7 @@ class QgsMapCanvas;
 /**
  * \ingroup gui
  * \class QgsLayerPropertiesDialog
- * \brief Base class for "layer properties" dialogs, containing common utilities for handling functionality in these dialog.
+ * \brief Base class for "layer properties" dialogs, containing common utilities for handling functionality in these dialogs.
  * \warning This is exposed to SIP bindings for legacy reasons only, and is NOT to be considered as stable API.
  * \since QGIS 3.34
  */
@@ -41,7 +41,6 @@ class GUI_EXPORT QgsLayerPropertiesDialog : public QgsOptionsDialogBase SIP_ABST
     Q_OBJECT
 
   public:
-
 #ifndef SIP_RUN
 
     /**
@@ -67,7 +66,9 @@ class GUI_EXPORT QgsLayerPropertiesDialog : public QgsOptionsDialogBase SIP_ABST
      * \param fl widget flags
      * \param settings custom QgsSettings pointer
      */
-    QgsLayerPropertiesDialog( QgsMapLayer *layer, QgsMapCanvas *canvas, const QString &settingsKey, QWidget *parent SIP_TRANSFERTHIS = nullptr, Qt::WindowFlags fl = Qt::WindowFlags(), QgsSettings *settings = nullptr );
+    QgsLayerPropertiesDialog(
+      QgsMapLayer *layer, QgsMapCanvas *canvas, const QString &settingsKey, QWidget *parent SIP_TRANSFERTHIS = nullptr, Qt::WindowFlags fl = Qt::WindowFlags(), QgsSettings *settings = nullptr
+    );
 
     /**
      * Sets the metadata \a widget and \a page associated with the dialog.
@@ -159,7 +160,6 @@ class GUI_EXPORT QgsLayerPropertiesDialog : public QgsOptionsDialogBase SIP_ABST
     void loadDefaultStyle();
 
   protected:
-
     /**
      * Initialize the dialog. Must be called in the subclass constructor
      * as the final call.
@@ -222,17 +222,15 @@ class GUI_EXPORT QgsLayerPropertiesDialog : public QgsOptionsDialogBase SIP_ABST
     void openUrl( const QUrl &url );
 
   private:
-
     /**
      * Generates the window title for the dialog.
      */
     QString generateDialogTitle() const;
 
-    QPointer< QgsMapLayer> mLayer;
+    QPointer<QgsMapLayer> mLayer;
 
     QgsMetadataWidget *mMetadataWidget = nullptr;
     QWidget *mMetadataPage = nullptr;
-
 };
 
 #endif // QGSLAYERPROPERTIESDIALOG_H

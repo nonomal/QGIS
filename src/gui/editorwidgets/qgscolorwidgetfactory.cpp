@@ -18,10 +18,9 @@
 #include "qgscolorwidgetwrapper.h"
 #include "qgsdummyconfigdlg.h"
 
-QgsColorWidgetFactory::QgsColorWidgetFactory( const QString &name )
-  : QgsEditorWidgetFactory( name )
-{
-}
+QgsColorWidgetFactory::QgsColorWidgetFactory( const QString &name, const QIcon &icon )
+  : QgsEditorWidgetFactory( name, icon )
+{}
 
 
 QgsEditorWidgetWrapper *QgsColorWidgetFactory::create( QgsVectorLayer *vl, int fieldIdx, QWidget *editor, QWidget *parent ) const
@@ -37,8 +36,8 @@ QgsEditorConfigWidget *QgsColorWidgetFactory::configWidget( QgsVectorLayer *vl, 
 unsigned int QgsColorWidgetFactory::fieldScore( const QgsVectorLayer *vl, int fieldIdx ) const
 {
   const QgsField field = vl->fields().field( fieldIdx );
-  const QVariant::Type type = field.type();
-  if ( type == QVariant::Color )
+  const QMetaType::Type type = field.type();
+  if ( type == QMetaType::Type::QColor )
   {
     return 20;
   }

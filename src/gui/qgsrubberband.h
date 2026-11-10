@@ -15,19 +15,19 @@
 #ifndef QGSRUBBERBAND_H
 #define QGSRUBBERBAND_H
 
-#include "qgsmapcanvasitem.h"
+#include "qgis_gui.h"
 #include "qgis_sip.h"
-#include "qgsgeometry.h"
 #include "qgscoordinatereferencesystem.h"
+#include "qgsgeometry.h"
+#include "qgsmapcanvasitem.h"
 
 #include <QBrush>
-#include <QVector>
-#include <QPen>
-#include <QPolygon>
 #include <QObject>
+#include <QPen>
+#include <QPointer>
+#include <QPolygon>
 #include <QSvgRenderer>
-
-#include "qgis_gui.h"
+#include <QVector>
 
 class QgsMapLayer;
 class QgsVectorLayer;
@@ -36,15 +36,59 @@ class QPaintEvent;
 class QgsSymbol;
 
 #ifdef SIP_RUN
-% ModuleHeaderCode
+//%ModuleHeaderCode
 // For ConvertToSubClassCode.
 #include <qgsrubberband.h>
-% End
+//%End
 #endif
+
+class QgsRubberBand;
 
 /**
  * \ingroup gui
- * \brief A class for drawing transient features (e.g. digitizing lines) on the map.
+ * \brief Abstract interface for rendering custom preview overlays attached to a QgsRubberBand.
+ *
+ * \since QGIS 4.4
+ */
+class GUI_EXPORT QgsRubberBandPreviewItem
+{
+  public:
+    virtual ~QgsRubberBandPreviewItem() = default;
+
+    /**
+     * Returns the rubber band associated with the item.
+     */
+    QgsRubberBand *rubberBand();
+
+    /**
+     * Renders the custom preview overlay using the specified render \a context.
+    */
+    virtual void render( QgsRenderContext &context ) = 0;
+
+    /**
+     * Returns the bounding rect required for drawing the preview item.
+     *
+     * If non-empty, these bounds will be combined with the parent rubber band's bounds in order
+     * to avoid graphical artifacts when the band is moved.
+     *
+     * The default implementation returns an empty rect.
+     */
+    virtual QRectF boundingRect() const;
+
+  protected:
+    /**
+     * Constructor for a QgsRubberBandPreviewItem, attached to the specified \a rubberBand.
+     */
+    QgsRubberBandPreviewItem( QgsRubberBand *rubberBand );
+
+  private:
+    QPointer< QgsRubberBand > mRubberBand;
+};
+
+
+/**
+ * \ingroup gui
+ * \brief Responsible for drawing transient features (e.g. digitizing lines) on the map.
  *
  * The QgsRubberBand class provides a transparent overlay widget
  * for tracking the mouse while drawing polylines or polygons.
@@ -70,66 +114,14 @@ class GUI_EXPORT QgsRubberBand : public QgsMapCanvasItem
     }
     else
       sipType = nullptr;
-    SIP_END
+  SIP_END
 #endif
   public:
-
     Q_PROPERTY( QColor fillColor READ fillColor WRITE setFillColor )
     Q_PROPERTY( QColor strokeColor READ strokeColor WRITE setStrokeColor )
     Q_PROPERTY( int iconSize READ iconSize WRITE setIconSize )
     Q_PROPERTY( QColor secondaryStrokeColor READ secondaryStrokeColor WRITE setSecondaryStrokeColor )
     Q_PROPERTY( int width READ width WRITE setWidth )
-
-    //! Icons
-    enum IconType
-    {
-
-      /**
-       * No icon is used
-       */
-      ICON_NONE,
-
-      /**
-       * A cross is used to highlight points (+)
-       */
-      ICON_CROSS,
-
-      /**
-       * A cross is used to highlight points (x)
-       */
-      ICON_X,
-
-      /**
-       * A box is used to highlight points (□)
-       */
-      ICON_BOX,
-
-      /**
-       * A circle is used to highlight points (○)
-       */
-      ICON_CIRCLE,
-
-      /**
-       * A full box is used to highlight points (■)
-       */
-      ICON_FULL_BOX,
-
-      /**
-       * A diamond is used to highlight points (◇)
-       */
-      ICON_DIAMOND,
-
-      /**
-       * A diamond is used to highlight points (◆)
-       */
-      ICON_FULL_DIAMOND,
-
-      /**
-       * An svg image is used to highlight points
-       * \since QGIS 3.10
-       */
-      ICON_SVG
-    };
 
     /**
      * Creates a new RubberBand.
@@ -187,7 +179,7 @@ class GUI_EXPORT QgsRubberBand : public QgsMapCanvasItem
      * Sets the width of the line. Stroke width for polygon.
      *  \param width The width for any lines painted for this rubberband
      */
-    void setWidth( int width );
+    void setWidth( double width );
 
     /**
      * Returns the current width of the line or stroke width for polygon.
@@ -198,7 +190,7 @@ class GUI_EXPORT QgsRubberBand : public QgsMapCanvasItem
      * Sets the icon type to highlight point geometries.
      *  \param icon The icon to visualize point geometries
      */
-    void setIcon( IconType icon );
+    void setIcon( Qgis::RubberBandIconType icon );
 
     /**
      * Set the path to the svg file to use to draw points.
@@ -213,17 +205,17 @@ class GUI_EXPORT QgsRubberBand : public QgsMapCanvasItem
     /**
      * Returns the current icon type to highlight point geometries.
      */
-    IconType icon() const { return mIconType; }
+    Qgis::RubberBandIconType icon() const { return mIconType; }
 
     /**
      * Sets the size of the point icons
      */
-    void setIconSize( int iconSize );
+    void setIconSize( double iconSize );
 
     /**
      * Returns the current icon size of the point icons.
      */
-    int iconSize() const { return mIconSize; }
+    double iconSize() const { return mIconSize; }
 
     /**
      * Sets the style of the line
@@ -241,6 +233,24 @@ class GUI_EXPORT QgsRubberBand : public QgsMapCanvasItem
      *  \param geometryType Defines how the data should be drawn onto the screen. (Use Qgis::Line, Qgis::Polygon or Qgis::Point)
      */
     void reset( Qgis::GeometryType geometryType = Qgis::GeometryType::Line );
+
+    /**
+     * Adds a custom preview \a item decorator to the rubber band.
+     *
+     * Ownership of the item is transferred to the rubber band.
+     *
+     * \see clearPreviewItems()
+     * \since QGIS 4.4
+     */
+    void addPreviewItem( QgsRubberBandPreviewItem *item SIP_TRANSFER );
+
+    /**
+     * Clears all registered preview items.
+     *
+     * \see addPreviewItem()
+     * \since QGIS 4.4
+     */
+    void clearPreviewItems();
 
     /**
      * Adds a vertex to the rubberband and update canvas.
@@ -376,8 +386,8 @@ class GUI_EXPORT QgsRubberBand : public QgsMapCanvasItem
      */
     int numberOfVertices() const;
 
-    // TODO QGIS 4: rename i to geometryIndex, j to vertexIndex
-    // TODO QGIS 4: reorder parameters to geom, ring, ring
+    // TODO QGIS 5: rename i to geometryIndex, j to vertexIndex
+    // TODO QGIS 5: reorder parameters to geom, ring, ring
 
     /**
      * Returns a vertex
@@ -418,7 +428,25 @@ class GUI_EXPORT QgsRubberBand : public QgsMapCanvasItem
      */
     void setSymbol( QgsSymbol *symbol SIP_TRANSFER );
 
+    /**
+     * Returns the rubber band components that will be rendered for this band.
+     *
+     * \see setRenderedComponents()
+     * \since QGIS 4.4
+     */
+    Qgis::RubberBandComponents renderedComponents() const;
+
+    /**
+     * Sets the rubber band \a components that should be rendered for this band.
+     *
+     * \see renderedComponents()
+     * \since QGIS 4.4
+     */
+    void setRenderedComponents( Qgis::RubberBandComponents components );
+    QRectF boundingRect() const override;
+
   protected:
+    using QgsMapCanvasItem::paint;
 
     /**
      * Paints the rubber band in response to an update event.
@@ -449,25 +477,27 @@ class GUI_EXPORT QgsRubberBand : public QgsMapCanvasItem
     QPen mSecondaryPen;
 
     //! The size of the icon for points.
-    int mIconSize = 5;
+    double mIconSize = 5;
 
     //! Icon to be shown.
-    IconType mIconType = ICON_CIRCLE;
+    Qgis::RubberBandIconType mIconType = Qgis::RubberBandIconType::Circle;
+    Qgis::RubberBandComponents mComponentsToRender = Qgis::RubberBandComponent::Symbol | Qgis::RubberBandComponent::PreviewItems;
     std::unique_ptr<QSvgRenderer> mSvgRenderer;
     QPoint mSvgOffset;
 
-    std::unique_ptr< QgsSymbol > mSymbol;
+    std::unique_ptr<QgsSymbol> mSymbol;
 
     /**
      * Nested lists used for multitypes
      */
-    QVector< QVector< QVector <QgsPointXY> > > mPoints;
+    QVector<QVector<QVector<QgsPointXY>>> mPoints;
     Qgis::GeometryType mGeometryType = Qgis::GeometryType::Polygon;
     double mTranslationOffsetX = 0.0;
     double mTranslationOffsetY = 0.0;
 
-    QgsRubberBand();
+    std::vector<std::unique_ptr<QgsRubberBandPreviewItem>> mPreviewItems;
 
+    QgsRubberBand();
 };
 
 #endif

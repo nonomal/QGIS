@@ -14,18 +14,30 @@
  ***************************************************************************/
 
 #include "qgsannotationmanager.h"
-#include "qgsproject.h"
+
 #include "qgsannotation.h"
+#include "qgsannotationitem.h"
+#include "qgsannotationlayer.h"
+#include "qgsannotationpictureitem.h"
+#include "qgsannotationrectangletextitem.h"
 #include "qgsannotationregistry.h"
 #include "qgsapplication.h"
+#include "qgsfillsymbol.h"
+#include "qgsmarkersymbol.h"
+#include "qgsproject.h"
 #include "qgsstyleentityvisitor.h"
+#include "qgssvgannotation.h"
+
+#include <QString>
+
+#include "moc_qgsannotationmanager.cpp"
+
+using namespace Qt::StringLiterals;
 
 QgsAnnotationManager::QgsAnnotationManager( QgsProject *project )
   : QObject( project )
   , mProject( project )
-{
-
-}
+{}
 
 QgsAnnotationManager::~QgsAnnotationManager()
 {
@@ -87,50 +99,215 @@ QList<QgsAnnotation *> QgsAnnotationManager::cloneAnnotations() const
 
 bool QgsAnnotationManager::readXml( const QDomElement &element, const QgsReadWriteContext &context )
 {
+  return readXmlPrivate( element, context, nullptr, QgsCoordinateTransformContext() );
+}
+
+bool QgsAnnotationManager::readXmlAndUpgradeToAnnotationLayerItems(
+  const QDomElement &element, const QgsReadWriteContext &context, QgsAnnotationLayer *layer, const QgsCoordinateTransformContext &transformContext
+)
+{
+  return readXmlPrivate( element, context, layer, transformContext );
+}
+
+bool QgsAnnotationManager::readXmlPrivate( const QDomElement &element, const QgsReadWriteContext &context, QgsAnnotationLayer *layer, const QgsCoordinateTransformContext &transformContext )
+{
   clear();
   //restore each annotation
   bool result = true;
 
-  QDomElement annotationsElem = element.firstChildElement( QStringLiteral( "Annotations" ) );
+  auto createAnnotationFromElement = [this, &context, layer, &transformContext]( const QDomElement &element ) {
+    std::unique_ptr< QgsAnnotation > annotation( createAnnotationFromXml( element, context ) );
+    if ( !annotation )
+      return;
 
-  QDomElement annotationElement = annotationsElem.firstChildElement( QStringLiteral( "Annotation" ) );
-  while ( ! annotationElement .isNull() )
+    if ( layer )
+    {
+      std::unique_ptr< QgsAnnotationItem > annotationItem = convertToAnnotationItem( annotation.get(), layer, transformContext );
+      if ( annotationItem )
+      {
+        layer->addItem( annotationItem.release() );
+      }
+      else
+      {
+        // could not convert to QgsAnnotationItem, just leave as QgsAnnotation
+        addAnnotation( annotation.release() );
+      }
+    }
+    else
+    {
+      addAnnotation( annotation.release() );
+    }
+  };
+
+  QDomElement annotationsElem = element.firstChildElement( u"Annotations"_s );
+
+  QDomElement annotationElement = annotationsElem.firstChildElement( u"Annotation"_s );
+  while ( !annotationElement.isNull() )
   {
-    createAnnotationFromXml( annotationElement, context );
-    annotationElement = annotationElement.nextSiblingElement( QStringLiteral( "Annotation" ) );
+    createAnnotationFromElement( annotationElement );
+    annotationElement = annotationElement.nextSiblingElement( u"Annotation"_s );
   }
 
   // restore old (pre 3.0) project annotations
   if ( annotationElement.isNull() )
   {
-    QDomNodeList oldItemList = element.elementsByTagName( QStringLiteral( "TextAnnotationItem" ) );
+    QDomNodeList oldItemList = element.elementsByTagName( u"TextAnnotationItem"_s );
     for ( int i = 0; i < oldItemList.size(); ++i )
     {
-      createAnnotationFromXml( oldItemList.at( i ).toElement(), context );
+      createAnnotationFromElement( oldItemList.at( i ).toElement() );
     }
-    oldItemList = element.elementsByTagName( QStringLiteral( "FormAnnotationItem" ) );
+    oldItemList = element.elementsByTagName( u"FormAnnotationItem"_s );
     for ( int i = 0; i < oldItemList.size(); ++i )
     {
-      createAnnotationFromXml( oldItemList.at( i ).toElement(), context );
+      createAnnotationFromElement( oldItemList.at( i ).toElement() );
     }
-    oldItemList = element.elementsByTagName( QStringLiteral( "HtmlAnnotationItem" ) );
+    oldItemList = element.elementsByTagName( u"HtmlAnnotationItem"_s );
     for ( int i = 0; i < oldItemList.size(); ++i )
     {
-      createAnnotationFromXml( oldItemList.at( i ).toElement(), context );
+      createAnnotationFromElement( oldItemList.at( i ).toElement() );
     }
-    oldItemList = element.elementsByTagName( QStringLiteral( "SVGAnnotationItem" ) );
+    oldItemList = element.elementsByTagName( u"SVGAnnotationItem"_s );
     for ( int i = 0; i < oldItemList.size(); ++i )
     {
-      createAnnotationFromXml( oldItemList.at( i ).toElement(), context );
+      createAnnotationFromElement( oldItemList.at( i ).toElement() );
     }
   }
 
   return result;
 }
 
+std::unique_ptr<QgsAnnotationItem> QgsAnnotationManager::convertToAnnotationItem( QgsAnnotation *annotation, QgsAnnotationLayer *layer, const QgsCoordinateTransformContext &transformContext )
+{
+  auto setCommonProperties = [layer, &transformContext]( const QgsAnnotation *source, QgsAnnotationItem *destination ) -> bool {
+    destination->setEnabled( source->isVisible() );
+    if ( source->hasFixedMapPosition() )
+    {
+      QgsPointXY mapPosition = source->mapPosition();
+      QgsCoordinateTransform transform( source->mapPositionCrs(), layer->crs(), transformContext );
+      try
+      {
+        mapPosition = transform.transform( mapPosition );
+      }
+      catch ( QgsCsException & )
+      {
+        QgsDebugError( u"Error transforming annotation position"_s );
+        return false;
+      }
+
+      destination->setCalloutAnchor( QgsGeometry::fromPointXY( mapPosition ) );
+
+      auto callout = std::make_unique< QgsBalloonCallout >();
+      if ( QgsFillSymbol *fill = source->fillSymbol() )
+        callout->setFillSymbol( fill->clone() );
+
+      if ( QgsMarkerSymbol *marker = source->markerSymbol() )
+        callout->setMarkerSymbol( marker->clone() );
+      callout->setMargins( source->contentsMargin() );
+      callout->setMarginsUnit( Qgis::RenderUnit::Millimeters );
+      destination->setCallout( callout.release() );
+    }
+
+    if ( source->mapLayer() )
+      layer->setLinkedVisibilityLayer( source->mapLayer() );
+
+    return true;
+  };
+
+  if ( const QgsSvgAnnotation *svg = dynamic_cast< const QgsSvgAnnotation *>( annotation ) )
+  {
+    QgsPointXY mapPosition = svg->mapPosition();
+    QgsCoordinateTransform transform( svg->mapPositionCrs(), layer->crs(), transformContext );
+    try
+    {
+      transform.transform( mapPosition );
+    }
+    catch ( QgsCsException & )
+    {
+      QgsDebugError( u"Error transforming annotation position"_s );
+    }
+
+    auto item = std::make_unique< QgsAnnotationPictureItem >( Qgis::PictureFormat::SVG, svg->filePath(), QgsRectangle::fromCenterAndSize( mapPosition, 1, 1 ) );
+    if ( !setCommonProperties( annotation, item.get() ) )
+      return nullptr;
+
+    const QgsMargins margins = svg->contentsMargin();
+    item->setFixedSize( QSizeF( svg->frameSizeMm().width() - margins.left() - margins.right(), svg->frameSizeMm().height() - margins.top() - margins.bottom() ) );
+    item->setFixedSizeUnit( Qgis::RenderUnit::Millimeters );
+
+    if ( svg->hasFixedMapPosition() )
+    {
+      item->setPlacementMode( Qgis::AnnotationPlacementMode::FixedSize );
+
+      item->setOffsetFromCallout( QSizeF( svg->frameOffsetFromReferencePointMm().x() + margins.left(), svg->frameOffsetFromReferencePointMm().y() + margins.top() ) );
+      item->setOffsetFromCalloutUnit( Qgis::RenderUnit::Millimeters );
+    }
+    else
+    {
+      item->setPlacementMode( Qgis::AnnotationPlacementMode::RelativeToMapFrame );
+      item->setBounds( QgsRectangle( svg->relativePosition().x(), svg->relativePosition().y(), svg->relativePosition().x(), svg->relativePosition().y() ) );
+      if ( QgsFillSymbol *fill = svg->fillSymbol() )
+      {
+        item->setBackgroundEnabled( true );
+        item->setBackgroundSymbol( fill->clone() );
+      }
+    }
+
+    return item;
+  }
+  else if ( const QgsTextAnnotation *text = dynamic_cast< const QgsTextAnnotation *>( annotation ) )
+  {
+    QgsPointXY mapPosition = text->mapPosition();
+    QgsCoordinateTransform transform( text->mapPositionCrs(), layer->crs(), transformContext );
+    try
+    {
+      transform.transform( mapPosition );
+    }
+    catch ( QgsCsException & )
+    {
+      QgsDebugError( u"Error transforming annotation position"_s );
+    }
+
+    auto item = std::make_unique< QgsAnnotationRectangleTextItem >( text->document()->toHtml(), QgsRectangle::fromCenterAndSize( mapPosition, 1, 1 ) );
+    if ( !setCommonProperties( annotation, item.get() ) )
+      return nullptr;
+
+    QgsTextFormat format = item->format();
+    format.setAllowHtmlFormatting( true );
+    item->setFormat( format );
+
+    const QgsMargins margins = text->contentsMargin();
+    item->setFixedSize( QSizeF( text->frameSizeMm().width() - margins.left() - margins.right(), text->frameSizeMm().height() - margins.top() - margins.bottom() ) );
+    item->setFixedSizeUnit( Qgis::RenderUnit::Millimeters );
+
+    if ( text->hasFixedMapPosition() )
+    {
+      item->setPlacementMode( Qgis::AnnotationPlacementMode::FixedSize );
+
+      item->setOffsetFromCallout( QSizeF( text->frameOffsetFromReferencePointMm().x() + margins.left(), text->frameOffsetFromReferencePointMm().y() + margins.top() ) );
+      item->setOffsetFromCalloutUnit( Qgis::RenderUnit::Millimeters );
+      item->setBackgroundEnabled( false );
+      item->setFrameEnabled( false );
+    }
+    else
+    {
+      item->setPlacementMode( Qgis::AnnotationPlacementMode::RelativeToMapFrame );
+      item->setBounds( QgsRectangle( text->relativePosition().x(), text->relativePosition().y(), text->relativePosition().x(), text->relativePosition().y() ) );
+      if ( QgsFillSymbol *fill = text->fillSymbol() )
+      {
+        item->setBackgroundEnabled( true );
+        item->setBackgroundSymbol( fill->clone() );
+      }
+    }
+
+    return item;
+  }
+
+  return nullptr;
+}
+
 QDomElement QgsAnnotationManager::writeXml( QDomDocument &doc, const QgsReadWriteContext &context ) const
 {
-  QDomElement annotationsElem = doc.createElement( QStringLiteral( "Annotations" ) );
+  QDomElement annotationsElem = doc.createElement( u"Annotations"_s );
   QListIterator<QgsAnnotation *> i( mAnnotations );
   // save lowermost annotation (at end of list) first
   i.toBack();
@@ -154,7 +331,7 @@ bool QgsAnnotationManager::accept( QgsStyleEntityVisitorInterface *visitor ) con
     return true;
 
   // NOTE: if visitEnter returns false it means "don't visit any annotations", not "abort all further visitations"
-  if ( !visitor->visitEnter( QgsStyleEntityVisitorInterface::Node( QgsStyleEntityVisitorInterface::NodeType::Annotations, QStringLiteral( "annotations" ), tr( "Annotations" ) ) ) )
+  if ( !visitor->visitEnter( QgsStyleEntityVisitorInterface::Node( QgsStyleEntityVisitorInterface::NodeType::Annotations, u"annotations"_s, tr( "Annotations" ) ) ) )
     return true;
 
   for ( QgsAnnotation *a : mAnnotations )
@@ -163,18 +340,18 @@ bool QgsAnnotationManager::accept( QgsStyleEntityVisitorInterface *visitor ) con
       return false;
   }
 
-  if ( !visitor->visitExit( QgsStyleEntityVisitorInterface::Node( QgsStyleEntityVisitorInterface::NodeType::Annotations, QStringLiteral( "annotations" ), tr( "Annotations" ) ) ) )
+  if ( !visitor->visitExit( QgsStyleEntityVisitorInterface::Node( QgsStyleEntityVisitorInterface::NodeType::Annotations, u"annotations"_s, tr( "Annotations" ) ) ) )
     return false;
 
   return true;
 }
 
-void QgsAnnotationManager::createAnnotationFromXml( const QDomElement &element, const QgsReadWriteContext &context )
+QgsAnnotation *QgsAnnotationManager::createAnnotationFromXml( const QDomElement &element, const QgsReadWriteContext &context )
 {
   QString type = element.tagName();
   QgsAnnotation *annotation = QgsApplication::annotationRegistry()->create( type );
   if ( !annotation )
-    return;
+    return nullptr;
 
   annotation->readXml( element, context );
 
@@ -183,5 +360,5 @@ void QgsAnnotationManager::createAnnotationFromXml( const QDomElement &element, 
     annotation->setMapPositionCrs( mProject->crs() );
   }
 
-  addAnnotation( annotation );
+  return annotation;
 }

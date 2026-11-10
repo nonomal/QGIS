@@ -18,20 +18,25 @@
 
 #include "qgsproject.h"
 #include "qgstransaction.h"
-#include "qgsvectorlayereditbuffer.h"
 #include "qgsvectorlayer.h"
+#include "qgsvectorlayereditbuffer.h"
 
 #include <QQueue>
 
+#include "moc_qgsvectorlayereditbuffergroup.cpp"
+
 QgsVectorLayerEditBufferGroup::QgsVectorLayerEditBufferGroup( QObject *parent )
   : QObject( parent )
-{
-
-}
+{}
 
 void QgsVectorLayerEditBufferGroup::addLayer( QgsVectorLayer *layer )
 {
   mLayers.insert( layer );
+}
+
+void QgsVectorLayerEditBufferGroup::removeLayer( QgsVectorLayer *layer )
+{
+  mLayers.remove( layer );
 }
 
 void QgsVectorLayerEditBufferGroup::clear()
@@ -101,10 +106,10 @@ bool QgsVectorLayerEditBufferGroup::startEditing()
     emit layer->editingStarted();
   }
 
-  if ( ! editingStarted )
+  if ( !editingStarted )
   {
     QStringList rollbackErrors;
-    if ( ! rollBack( rollbackErrors, true ) )
+    if ( !rollBack( rollbackErrors, true ) )
       QgsLogger::debug( tr( "Can't rollback after start editing failure. Roll back detailed errors: %1" ).arg( rollbackErrors.join( " / " ) ) );
   }
 
@@ -117,11 +122,28 @@ bool QgsVectorLayerEditBufferGroup::commitChanges( QStringList &commitErrors, bo
   bool success = true;
 
   const QSet<QgsVectorLayer *> constModifiedLayers = modifiedLayers();
+
   if ( constModifiedLayers.isEmpty() )
   {
     editingFinished( stopEditing );
     mIsEditing = !stopEditing;
     return success;
+  }
+
+  // trigger geometry checks for all the modified layers
+  for ( QgsVectorLayer *modifiedLayer : constModifiedLayers )
+  {
+    emit modifiedLayer->beforeCommitChecks( stopEditing );
+  }
+
+  // and if at least one does not allow commit, return
+  for ( const QgsVectorLayer *modifiedLayer : constModifiedLayers )
+  {
+    if ( !modifiedLayer->allowCommit() )
+    {
+      commitErrors << tr( "ERROR: Commit not allowed because of failed checks." );
+      return false;
+    }
   }
 
   QMap<QString, QSet<QgsVectorLayer *> > connectionStringsLayers;
@@ -146,7 +168,7 @@ bool QgsVectorLayerEditBufferGroup::commitChanges( QStringList &commitErrors, bo
     }
 
     QString errorMsg;
-    if ( ! transaction->begin( errorMsg ) )
+    if ( !transaction->begin( errorMsg ) )
     {
       commitErrors << tr( "ERROR: could not start a transaction on data provider '%1', detailed error: '%2'." ).arg( providerKey, errorMsg );
       success = false;
@@ -156,7 +178,7 @@ bool QgsVectorLayerEditBufferGroup::commitChanges( QStringList &commitErrors, bo
     const auto constLayers = connectionStringsLayers.value( connectionString );
     for ( QgsVectorLayer *layer : constLayers )
     {
-      if ( ! transaction->addLayer( layer, true ) )
+      if ( !transaction->addLayer( layer, true ) )
       {
         commitErrors << tr( "ERROR: could not add layer '%1' to transaction on data provider '%2'." ).arg( layer->name(), providerKey );
         success = false;
@@ -181,7 +203,7 @@ bool QgsVectorLayerEditBufferGroup::commitChanges( QStringList &commitErrors, bo
   {
     for ( orderedLayersIterator = orderedLayers.constBegin(); orderedLayersIterator != orderedLayers.constEnd(); ++orderedLayersIterator )
     {
-      if ( ( *orderedLayersIterator )->editBuffer() == nullptr )
+      if ( !( *orderedLayersIterator )->editBuffer() )
       {
         commitErrors << tr( "ERROR: edit buffer of layer '%1' is not valid." ).arg( ( *orderedLayersIterator )->name() );
         success = false;
@@ -189,7 +211,7 @@ bool QgsVectorLayerEditBufferGroup::commitChanges( QStringList &commitErrors, bo
       }
 
       success = ( *orderedLayersIterator )->editBuffer()->commitChangesCheckGeometryTypeCompatibility( commitErrors );
-      if ( ! success )
+      if ( !success )
         break;
     }
   }
@@ -205,26 +227,26 @@ bool QgsVectorLayerEditBufferGroup::commitChanges( QStringList &commitErrors, bo
 
       bool attributesDeleted = false;
       success = ( *orderedLayersIterator )->editBuffer()->commitChangesDeleteAttributes( attributesDeleted, commitErrors );
-      if ( ! success )
+      if ( !success )
         break;
 
       bool attributesRenamed = false;
       success = ( *orderedLayersIterator )->editBuffer()->commitChangesRenameAttributes( attributesRenamed, commitErrors );
-      if ( ! success )
+      if ( !success )
         break;
 
       bool attributesAdded = false;
       success = ( *orderedLayersIterator )->editBuffer()->commitChangesAddAttributes( attributesAdded, commitErrors );
-      if ( ! success )
+      if ( !success )
         break;
 
       if ( attributesDeleted || attributesRenamed || attributesAdded )
       {
-        if ( ! transactionLayers.contains( ( *orderedLayersIterator ) ) )
+        if ( !transactionLayers.contains( ( *orderedLayersIterator ) ) )
           modifiedLayersOnProviderSide.insert( ( *orderedLayersIterator ) );
 
         success = ( *orderedLayersIterator )->editBuffer()->commitChangesCheckAttributesModifications( oldFields, commitErrors );
-        if ( ! success )
+        if ( !success )
           break;
       }
     }
@@ -239,7 +261,7 @@ bool QgsVectorLayerEditBufferGroup::commitChanges( QStringList &commitErrors, bo
       --orderedLayersIterator;
       bool featuresDeleted;
       success = ( *orderedLayersIterator )->editBuffer()->commitChangesDeleteFeatures( featuresDeleted, commitErrors );
-      if ( ! success )
+      if ( !success )
         break;
 
       if ( featuresDeleted && transactionLayers.contains( ( *orderedLayersIterator ) ) )
@@ -253,8 +275,8 @@ bool QgsVectorLayerEditBufferGroup::commitChanges( QStringList &commitErrors, bo
     for ( orderedLayersIterator = orderedLayers.constBegin(); orderedLayersIterator != orderedLayers.constEnd(); ++orderedLayersIterator )
     {
       bool featuresAdded;
-      ( *orderedLayersIterator )->editBuffer()->commitChangesAddFeatures( featuresAdded, commitErrors );
-      if ( ! success )
+      success = ( *orderedLayersIterator )->editBuffer()->commitChangesAddFeatures( featuresAdded, commitErrors );
+      if ( !success )
         break;
 
       if ( featuresAdded && transactionLayers.contains( ( *orderedLayersIterator ) ) )
@@ -272,7 +294,7 @@ bool QgsVectorLayerEditBufferGroup::commitChanges( QStringList &commitErrors, bo
 
       bool attributesChanged;
       success = ( *orderedLayersIterator )->editBuffer()->commitChangesChangeAttributes( attributesChanged, commitErrors );
-      if ( ! success )
+      if ( !success )
         break;
 
       if ( attributesChanged && transactionLayers.contains( ( *orderedLayersIterator ) ) )
@@ -303,7 +325,7 @@ bool QgsVectorLayerEditBufferGroup::commitChanges( QStringList &commitErrors, bo
   if ( !success )
   {
     // Append additional information about layer which can't be rollbacked
-    if ( ! modifiedLayersOnProviderSide.isEmpty() )
+    if ( !modifiedLayersOnProviderSide.isEmpty() )
     {
       if ( modifiedLayersOnProviderSide.size() == 1 )
         commitErrors << tr( "WARNING: changes to layer '%1' were already sent to data provider and cannot be rolled back." ).arg( ( *modifiedLayersOnProviderSide.begin() )->name() );
@@ -334,7 +356,7 @@ bool QgsVectorLayerEditBufferGroup::rollBack( QStringList &rollbackErrors, bool 
 {
   for ( QgsVectorLayer *layer : std::as_const( mLayers ) )
   {
-    if ( ! layer->editBuffer() )
+    if ( !layer->editBuffer() )
       continue;
 
     if ( !layer->dataProvider() )
@@ -343,9 +365,7 @@ bool QgsVectorLayerEditBufferGroup::rollBack( QStringList &rollbackErrors, bool 
       return false;
     }
 
-    bool rollbackExtent = !layer->editBuffer()->deletedFeatureIds().isEmpty() ||
-                          !layer->editBuffer()->addedFeatures().isEmpty() ||
-                          !layer->editBuffer()->changedGeometries().isEmpty();
+    bool rollbackExtent = !layer->editBuffer()->deletedFeatureIds().isEmpty() || !layer->editBuffer()->addedFeatures().isEmpty() || !layer->editBuffer()->changedGeometries().isEmpty();
 
     emit layer->beforeRollBack();
 
@@ -378,7 +398,7 @@ bool QgsVectorLayerEditBufferGroup::rollBack( QStringList &rollbackErrors, bool 
     layer->triggerRepaint();
   }
 
-  mIsEditing = ! stopEditing;
+  mIsEditing = !stopEditing;
   return true;
 }
 
@@ -393,14 +413,17 @@ QList<QgsVectorLayer *> QgsVectorLayerEditBufferGroup::orderLayersParentsToChild
   QSet<QgsVectorLayer *> unorderedLayers = layers;
 
   bool layerOrdered = true;
-  while ( ! unorderedLayers.isEmpty() && layerOrdered )
+  while ( !unorderedLayers.isEmpty() && layerOrdered )
   {
     layerOrdered = false;
     QSet<QgsVectorLayer *>::iterator unorderedLayerIterator = unorderedLayers.begin();
     while ( unorderedLayerIterator != unorderedLayers.end() )
     {
+      // TODO QGIS 5.0 -- if layer has no associated project, return empty list of referencing relations insted of getting it from project instance
       // Get referencing relation to find referenced layers
-      const QList<QgsRelation> referencingRelations = QgsProject::instance()->relationManager()->referencingRelations( *unorderedLayerIterator );
+      const QList<QgsRelation> referencingRelations = !layers.empty() && *layers.constBegin()
+                                                        ? ( *layers.constBegin() )->project()->relationManager()->referencingRelations( *unorderedLayerIterator )
+                                                        : QgsProject::instance()->relationManager()->referencingRelations( *unorderedLayerIterator ); // skip-keyword-check
 
       // If this layer references at least one modified layer continue
       bool layerReferencingModifiedLayer = false;
@@ -425,7 +448,7 @@ QList<QgsVectorLayer *> QgsVectorLayerEditBufferGroup::orderLayersParentsToChild
     }
   }
 
-  if ( ! unorderedLayers.isEmpty() )
+  if ( !unorderedLayers.isEmpty() )
   {
     QgsLogger::warning( tr( "Circular relation between some layers. Correct saving order of layers can't be guaranteed" ) );
     orderedLayers.append( unorderedLayers.values() );
@@ -455,7 +478,11 @@ void QgsVectorLayerEditBufferGroup::editingFinished( bool stopEditing )
     layer->updateFields();
 
     layer->dataProvider()->updateExtents();
-    layer->dataProvider()->leaveUpdateMode();
+
+    if ( stopEditing )
+    {
+      layer->dataProvider()->leaveUpdateMode();
+    }
 
     // This second call is required because OGR provider with JSON
     // driver might have changed fields order after the call to

@@ -18,7 +18,6 @@
 
 #include "qgis_core.h"
 #include "qgis_sip.h"
-
 #include "qgsvectortilerenderer.h"
 
 class QgsLineSymbol;
@@ -29,7 +28,9 @@ class QgsSymbol;
 
 /**
  * \ingroup core
- * \brief Definition of map rendering of a subset of vector tile data. The subset of data is defined by:
+ * \brief Definition of map rendering of a subset of vector tile data.
+ *
+ * The subset of data is defined by:
  *
  * - sub-layer name
  * - geometry type (a single sub-layer may have multiple geometry types)
@@ -49,7 +50,7 @@ class CORE_EXPORT QgsVectorTileBasicRendererStyle
   public:
     //! Constructs a style object
     QgsVectorTileBasicRendererStyle( const QString &stName = QString(), const QString &laName = QString(), Qgis::GeometryType geomType = Qgis::GeometryType::Unknown );
-    //! Constructs a style object as a copy of another style
+
     QgsVectorTileBasicRendererStyle( const QgsVectorTileBasicRendererStyle &other );
     QgsVectorTileBasicRendererStyle &operator=( const QgsVectorTileBasicRendererStyle &other );
     ~QgsVectorTileBasicRendererStyle();
@@ -137,10 +138,7 @@ class CORE_EXPORT QgsVectorTileBasicRendererStyle
     int maxZoomLevel() const { return mMaxZoomLevel; }
 
     //! Returns whether the style is active at given zoom level (also checks "enabled" flag)
-    bool isActive( int zoomLevel ) const
-    {
-      return mEnabled && ( mMinZoomLevel == -1 || zoomLevel >= mMinZoomLevel ) && ( mMaxZoomLevel == -1 || zoomLevel <= mMaxZoomLevel );
-    }
+    bool isActive( int zoomLevel ) const { return mEnabled && ( mMinZoomLevel == -1 || zoomLevel >= mMinZoomLevel ) && ( mMaxZoomLevel == -1 || zoomLevel <= mMaxZoomLevel ); }
 
     //! Writes object content to given DOM element
     void writeXml( QDomElement &elem, const QgsReadWriteContext &context ) const;
@@ -161,8 +159,9 @@ class CORE_EXPORT QgsVectorTileBasicRendererStyle
 
 /**
  * \ingroup core
- * \brief The default vector tile renderer implementation. It has an ordered list of "styles",
- * each defines a rendering rule.
+ * \brief The default vector tile renderer implementation.
+ *
+ * It has an ordered list of "styles", each defines a rendering rule.
  *
  * \since QGIS 3.14
  */
@@ -196,9 +195,15 @@ class CORE_EXPORT QgsVectorTileBasicRenderer : public QgsVectorTileRenderer
 
     //! Returns a list of styles to render all layers with the given fill/stroke colors, stroke widths and marker sizes
     static QList<QgsVectorTileBasicRendererStyle> simpleStyle(
-      const QColor &polygonFillColor, const QColor &polygonStrokeColor, double polygonStrokeWidth,
-      const QColor &lineStrokeColor, double lineStrokeWidth,
-      const QColor &pointFillColor, const QColor &pointStrokeColor, double pointSize );
+      const QColor &polygonFillColor,
+      const QColor &polygonStrokeColor,
+      double polygonStrokeWidth,
+      const QColor &lineStrokeColor,
+      double lineStrokeWidth,
+      const QColor &pointFillColor,
+      const QColor &pointStrokeColor,
+      double pointSize
+    );
 
     //! Returns a list of styles to render all layers, using random colors
     static QList<QgsVectorTileBasicRendererStyle> simpleStyleWithRandomColors();
@@ -214,7 +219,6 @@ class CORE_EXPORT QgsVectorTileBasicRenderer : public QgsVectorTileRenderer
 
     //! Names of required fields for each sub-layer (only valid between startRender/stopRender calls)
     QMap<QString, QSet<QString> > mRequiredFields;
-
 };
 
 #endif // QGSVECTORTILEBASICRENDERER_H

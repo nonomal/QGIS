@@ -18,19 +18,20 @@
 #ifndef QGSPROCESSINGMODELRESULT_H
 #define QGSPROCESSINGMODELRESULT_H
 
-#include "qgis_core.h"
 #include "qgis.h"
+#include "qgis_core.h"
+
+#include <QSet>
 
 /**
  * \ingroup core
- * \brief Encapsulates the results of running a child algorithm within a model
+ * \brief Encapsulates the results of running a child algorithm within a model.
  *
  * \since QGIS 3.38
 */
 class CORE_EXPORT QgsProcessingModelChildAlgorithmResult
 {
   public:
-
     QgsProcessingModelChildAlgorithmResult();
 
     /**
@@ -91,37 +92,41 @@ class CORE_EXPORT QgsProcessingModelChildAlgorithmResult
 
     bool operator==( const QgsProcessingModelChildAlgorithmResult &other ) const
     {
-      return mExecutionStatus == other.mExecutionStatus
-             && mHtmlLog == other.mHtmlLog
-             && mInputs == other.mInputs
-             && mOutputs == other.mOutputs;
+      return mExecutionStatus == other.mExecutionStatus && mHtmlLog == other.mHtmlLog && mInputs == other.mInputs && mOutputs == other.mOutputs;
     }
-    bool operator!=( const QgsProcessingModelChildAlgorithmResult &other ) const
-    {
-      return !( *this == other );
-    }
+    bool operator!=( const QgsProcessingModelChildAlgorithmResult &other ) const { return !( *this == other ); }
 
   private:
-
     Qgis::ProcessingModelChildAlgorithmExecutionStatus mExecutionStatus = Qgis::ProcessingModelChildAlgorithmExecutionStatus::NotExecuted;
     QVariantMap mInputs;
     QVariantMap mOutputs;
     QString mHtmlLog;
-
 };
+
+Q_DECLARE_METATYPE( QgsProcessingModelChildAlgorithmResult );
 
 /**
  * \ingroup core
- * \brief Encapsulates the results of running a Processing model
+ * \brief Encapsulates the results of running a Processing model.
  *
  * \since QGIS 3.38
 */
 class CORE_EXPORT QgsProcessingModelResult
 {
   public:
-
     QgsProcessingModelResult();
 
+    /**
+     * Clears any existing results.
+     */
+    void clear();
+
+    /**
+     * Merges this set of results with an \a other set of results.
+     *
+     * Conflicting results from \a other will replace results in this object.
+     */
+    void mergeWith( const QgsProcessingModelResult &other );
 
     /**
      * Returns the map of child algorithm results.
@@ -139,15 +144,46 @@ class CORE_EXPORT QgsProcessingModelResult
      */
     QMap< QString, QgsProcessingModelChildAlgorithmResult > &childResults() SIP_SKIP { return mChildResults; }
 
-  private:
+    /**
+     * Returns a reference to the map of raw child algorithm inputs.
+     *
+     * Map keys refer to the child algorithm IDs. Map values may take any form, including
+     * values which are not safe to access from Python.
+     *
+     * \note Not available in Python bindings
+     */
+    QVariantMap &rawChildInputs() SIP_SKIP { return mRawChildInputs; }
 
+    /**
+     * Returns a reference to the map of raw child algorithm outputs.
+     *
+     * Map keys refer to the child algorithm IDs. Map values may take any form, including
+     * values which are not safe to access from Python.
+     *
+     * \note Not available in Python bindings
+     */
+    QVariantMap &rawChildOutputs() SIP_SKIP { return mRawChildOutputs; }
+
+    /**
+     * Returns a reference to the set of child algorithm IDs which were executed
+     * during the model execution.
+     *
+     * \note Not available in Python bindings
+     */
+    QSet< QString > &executedChildIds() SIP_SKIP { return mExecutedChildren; }
+
+    /**
+     * Returns the set of child algorithm IDs which were executed during the model execution.
+     */
+    QSet< QString > executedChildIds() const { return mExecutedChildren; }
+
+  private:
     QMap< QString, QgsProcessingModelChildAlgorithmResult > mChildResults;
 
+    QSet< QString > mExecutedChildren;
+    QVariantMap mRawChildInputs;
+    QVariantMap mRawChildOutputs;
 };
 
 
 #endif // QGSPROCESSINGMODELRESULT_H
-
-
-
-

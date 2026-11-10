@@ -14,28 +14,30 @@
  *   (at your option) any later version.                                   *
  *                                                                         *
  ***************************************************************************/
-#include "qgswmtsutils.h"
-#include "qgswmtsparameters.h"
 #include "qgswmtsgetfeatureinfo.h"
+
+#include "qgswmtsparameters.h"
+#include "qgswmtsutils.h"
+
+#include <QString>
+
+using namespace Qt::StringLiterals;
 
 namespace QgsWmts
 {
 
-  void writeGetFeatureInfo( QgsServerInterface *serverIface, const QgsProject *project,
-                            const QString &version, const QgsServerRequest &request,
-                            QgsServerResponse &response )
+  void writeGetFeatureInfo( QgsServerInterface *serverIface, const QgsProject *project, const QString &version, const QgsServerRequest &request, QgsServerResponse &response )
   {
     Q_UNUSED( version )
     const QgsWmtsParameters params( QUrlQuery( request.url() ) );
 
     // WMS query
-    QUrlQuery query = translateWmtsParamToWmsQueryItem( QStringLiteral( "GetFeatureInfo" ), params, project, serverIface );
+    QUrlQuery query = translateWmtsParamToWmsQueryItem( u"GetFeatureInfo"_s, params, project, serverIface );
 
     // GetFeatureInfo query items
     query.addQueryItem( QgsWmsParameterForWmts::name( QgsWmsParameterForWmts::QUERY_LAYERS ), params.layer() );
     query.addQueryItem( QgsWmsParameterForWmts::name( QgsWmsParameterForWmts::I ), params.i() );
     query.addQueryItem( QgsWmsParameterForWmts::name( QgsWmsParameterForWmts::J ), params.j() );
-    query.addQueryItem( QgsWmsParameterForWmts::name( QgsWmsParameterForWmts::INFO_FORMAT ), params.infoFormatAsString() );
 
     const QgsServerParameters wmsParams( query );
     const QgsServerRequest wmsRequest( "?" + query.query( QUrl::FullyDecoded ) );
@@ -44,7 +46,3 @@ namespace QgsWmts
   }
 
 } // namespace QgsWmts
-
-
-
-

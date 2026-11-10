@@ -5,11 +5,13 @@ it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or
 (at your option) any later version.
 """
-__author__ = 'Nyall Dawson'
-__date__ = '6/01/2020'
-__copyright__ = 'Copyright 2020, The QGIS Project'
 
-from qgis.PyQt.QtTest import QSignalSpy
+__author__ = "Nyall Dawson"
+__date__ = "6/01/2020"
+__copyright__ = "Copyright 2020, The QGIS Project"
+
+import unittest
+
 from qgis.core import (
     QgsApplication,
     QgsBasicNumericFormat,
@@ -28,26 +30,25 @@ from qgis.gui import (
     QgsNumericFormatSelectorWidget,
     QgsNumericFormatWidget,
 )
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.PyQt.QtTest import QSignalSpy
+from qgis.testing import QgisTestCase, start_app
 
 start_app()
 
 
 class TestFormat(QgsNumericFormat):
-
     def __init__(self):
         super().__init__()
         self.xx = 1
 
     def id(self):
-        return 'test'
+        return "test"
 
     def formatDouble(self, value, context):
-        return 'xxx' + str(value)
+        return "xxx" + str(value)
 
     def visibleName(self):
-        return 'Test'
+        return "Test"
 
     def clone(self):
         res = TestFormat()
@@ -56,15 +57,14 @@ class TestFormat(QgsNumericFormat):
 
     def create(self, configuration, context):
         res = TestFormat()
-        res.xx = configuration['xx']
+        res.xx = configuration["xx"]
         return res
 
     def configuration(self, context):
-        return {'xx': self.xx}
+        return {"xx": self.xx}
 
 
 class TestFormatWidget(QgsNumericFormatWidget):
-
     def __init__(self, parent=None):
         super().__init__(parent)
         self.f = None
@@ -77,7 +77,6 @@ class TestFormatWidget(QgsNumericFormatWidget):
 
 
 class TestWidgetFactory(QgsNumericFormatConfigurationWidgetFactory):
-
     def create(self, format):
         w = TestFormatWidget()
         w.setFormat(format)
@@ -85,7 +84,6 @@ class TestWidgetFactory(QgsNumericFormatConfigurationWidgetFactory):
 
 
 class TestQgsNumericFormatGui(QgisTestCase):
-
     def testRegistry(self):
         """
         Test the GUI registry for numeric formats
@@ -94,7 +92,7 @@ class TestQgsNumericFormatGui(QgisTestCase):
         self.assertFalse(reg.formatConfigurationWidget(None))
         self.assertFalse(reg.formatConfigurationWidget(TestFormat()))
 
-        reg.addFormatConfigurationWidgetFactory('test', TestWidgetFactory())
+        reg.addFormatConfigurationWidgetFactory("test", TestWidgetFactory())
         original = TestFormat()
         original.xx = 55
         w = reg.formatConfigurationWidget(original)
@@ -103,9 +101,9 @@ class TestQgsNumericFormatGui(QgisTestCase):
         self.assertIsInstance(w.format(), TestFormat)
         self.assertEqual(w.format().xx, 55)
 
-        reg.removeFormatConfigurationWidgetFactory('test')
+        reg.removeFormatConfigurationWidgetFactory("test")
         self.assertFalse(reg.formatConfigurationWidget(TestFormat()))
-        reg.removeFormatConfigurationWidgetFactory('test')
+        reg.removeFormatConfigurationWidgetFactory("test")
 
     def testSelectorWidget(self):
         w = QgsNumericFormatSelectorWidget()
@@ -123,7 +121,9 @@ class TestQgsNumericFormatGui(QgisTestCase):
         self.assertEqual(len(spy), 3)
 
         QgsApplication.numericFormatRegistry().addFormat(TestFormat())
-        QgsGui.numericFormatGuiRegistry().addFormatConfigurationWidgetFactory('test', TestWidgetFactory())
+        QgsGui.numericFormatGuiRegistry().addFormatConfigurationWidgetFactory(
+            "test", TestWidgetFactory()
+        )
         original = TestFormat()
         original.xx = 55
 
@@ -146,7 +146,9 @@ class TestQgsNumericFormatGui(QgisTestCase):
 
         self.assertIsInstance(new, QgsBasicNumericFormat)
         self.assertEqual(new.showPlusSign(), original.showPlusSign())
-        self.assertEqual(new.showThousandsSeparator(), original.showThousandsSeparator())
+        self.assertEqual(
+            new.showThousandsSeparator(), original.showThousandsSeparator()
+        )
         self.assertEqual(new.numberDecimalPlaces(), original.numberDecimalPlaces())
         self.assertEqual(new.showTrailingZeros(), original.showTrailingZeros())
 
@@ -158,15 +160,17 @@ class TestQgsNumericFormatGui(QgisTestCase):
         original.setShowThousandsSeparator(False)
         original.setNumberDecimalPlaces(4)
         original.setShowTrailingZeros(True)
-        original.setPrefix('$$')
-        original.setSuffix('AUD')
+        original.setPrefix("$$")
+        original.setSuffix("AUD")
 
         w.setFormat(original)
         new = w.format()
 
         self.assertIsInstance(new, QgsCurrencyNumericFormat)
         self.assertEqual(new.showPlusSign(), original.showPlusSign())
-        self.assertEqual(new.showThousandsSeparator(), original.showThousandsSeparator())
+        self.assertEqual(
+            new.showThousandsSeparator(), original.showThousandsSeparator()
+        )
         self.assertEqual(new.numberDecimalPlaces(), original.numberDecimalPlaces())
         self.assertEqual(new.showTrailingZeros(), original.showTrailingZeros())
         self.assertEqual(new.prefix(), original.prefix())
@@ -178,7 +182,9 @@ class TestQgsNumericFormatGui(QgisTestCase):
         original = QgsBearingNumericFormat()
         original.setNumberDecimalPlaces(4)
         original.setShowTrailingZeros(True)
-        original.setDirectionFormat(QgsBearingNumericFormat.FormatDirectionOption.UseRange0To360)
+        original.setDirectionFormat(
+            QgsBearingNumericFormat.FormatDirectionOption.UseRange0To360
+        )
 
         w.setFormat(original)
         new = w.format()
@@ -194,7 +200,9 @@ class TestQgsNumericFormatGui(QgisTestCase):
         original = QgsGeographicCoordinateNumericFormat()
         original.setNumberDecimalPlaces(4)
         original.setShowTrailingZeros(True)
-        original.setAngleFormat(QgsGeographicCoordinateNumericFormat.AngleFormat.DegreesMinutes)
+        original.setAngleFormat(
+            QgsGeographicCoordinateNumericFormat.AngleFormat.DegreesMinutes
+        )
         original.setShowDirectionalSuffix(True)
         original.setShowLeadingZeros(True)
         original.setShowDegreeLeadingZeros(True)
@@ -208,7 +216,9 @@ class TestQgsNumericFormatGui(QgisTestCase):
         self.assertEqual(new.showDirectionalSuffix(), original.showDirectionalSuffix())
         self.assertEqual(new.angleFormat(), original.angleFormat())
         self.assertEqual(new.showLeadingZeros(), original.showLeadingZeros())
-        self.assertEqual(new.showDegreeLeadingZeros(), original.showDegreeLeadingZeros())
+        self.assertEqual(
+            new.showDegreeLeadingZeros(), original.showDegreeLeadingZeros()
+        )
 
     def testPercentageFormat(self):
         w = QgsNumericFormatSelectorWidget()
@@ -216,7 +226,9 @@ class TestQgsNumericFormatGui(QgisTestCase):
         original = QgsPercentageNumericFormat()
         original.setNumberDecimalPlaces(4)
         original.setShowTrailingZeros(True)
-        original.setInputValues(QgsPercentageNumericFormat.InputValues.ValuesAreFractions)
+        original.setInputValues(
+            QgsPercentageNumericFormat.InputValues.ValuesAreFractions
+        )
 
         w.setFormat(original)
         new = w.format()
@@ -253,5 +265,5 @@ class TestQgsNumericFormatGui(QgisTestCase):
         self.assertIsInstance(new, QgsFallbackNumericFormat)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

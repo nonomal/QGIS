@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/effects/qgspainteffectwidget.h                               *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/
 
 
@@ -36,13 +36,15 @@ Sets the paint effect to modify with the widget
 %Docstring
 Emitted when properties of the effect are changed through the widget
 %End
-
 };
 
 
 
 class QgsDrawSourceWidget : QgsPaintEffectWidget
 {
+%Docstring(signature="appended")
+A widget for configuring :py:class:`QgsDrawSourceEffect` effects.
+%End
 
 %TypeHeaderCode
 #include "qgspainteffectwidget.h"
@@ -59,9 +61,11 @@ class QgsDrawSourceWidget : QgsPaintEffectWidget
 
 
 
-
 class QgsBlurWidget : QgsPaintEffectWidget
 {
+%Docstring(signature="appended")
+A widget for configuring :py:class:`QgsBlurEffect` effects.
+%End
 
 %TypeHeaderCode
 #include "qgspainteffectwidget.h"
@@ -78,9 +82,11 @@ class QgsBlurWidget : QgsPaintEffectWidget
 
 
 
-
 class QgsShadowEffectWidget : QgsPaintEffectWidget
 {
+%Docstring(signature="appended")
+A widget for configuring :py:class:`QgsShadowEffect` effects.
+%End
 
 %TypeHeaderCode
 #include "qgspainteffectwidget.h"
@@ -99,6 +105,9 @@ class QgsShadowEffectWidget : QgsPaintEffectWidget
 
 class QgsGlowWidget : QgsPaintEffectWidget
 {
+%Docstring(signature="appended")
+A widget for configuring :py:class:`QgsGlowEffect` effects.
+%End
 
 %TypeHeaderCode
 #include "qgspainteffectwidget.h"
@@ -116,6 +125,9 @@ class QgsGlowWidget : QgsPaintEffectWidget
 
 class QgsTransformWidget : QgsPaintEffectWidget
 {
+%Docstring(signature="appended")
+A widget for configuring :py:class:`QgsTransformEffect` effects.
+%End
 
 %TypeHeaderCode
 #include "qgspainteffectwidget.h"
@@ -134,6 +146,9 @@ class QgsTransformWidget : QgsPaintEffectWidget
 
 class QgsColorEffectWidget : QgsPaintEffectWidget
 {
+%Docstring(signature="appended")
+A widget for configuring :py:class:`QgsColorEffect` effects.
+%End
 
 %TypeHeaderCode
 #include "qgspainteffectwidget.h"
@@ -149,11 +164,10 @@ class QgsColorEffectWidget : QgsPaintEffectWidget
 };
 
 
-
 /************************************************************************
  * This file has been generated automatically from                      *
  *                                                                      *
  * src/gui/effects/qgspainteffectwidget.h                               *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/

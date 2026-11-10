@@ -17,17 +17,21 @@
  ***************************************************************************/
 
 
+#ifndef QGSPROJECTPROPERTIES_H
+#define QGSPROJECTPROPERTIES_H
+
 #include "ui_qgsprojectpropertiesbase.h"
 
+#include "qgis.h"
+#include "qgis_app.h"
+#include "qgsguiutils.h"
+#include "qgshelp.h"
 #include "qgsoptionsdialogbase.h"
 #include "qgsoptionswidgetfactory.h"
-#include "qgis.h"
-#include "qgsunittypes.h"
-#include "qgsguiutils.h"
 #include "qgsscalewidget.h"
-#include "qgshelp.h"
-#include "qgis_app.h"
+#include "qgsunittypes.h"
 
+#include <QColorSpace>
 #include <QList>
 
 class QgsMapCanvas;
@@ -54,8 +58,9 @@ class APP_EXPORT QgsProjectProperties : public QgsOptionsDialogBase, private Ui:
 
   public:
     //! Constructor
-    QgsProjectProperties( QgsMapCanvas *mapCanvas, QWidget *parent = nullptr, Qt::WindowFlags fl = QgsGuiUtils::ModalDialogFlags,
-                          const QList<QgsOptionsWidgetFactory *> &optionsFactories = QList<QgsOptionsWidgetFactory *>() );
+    QgsProjectProperties(
+      QgsMapCanvas *mapCanvas, QWidget *parent = nullptr, Qt::WindowFlags fl = QgsGuiUtils::ModalDialogFlags, const QList<QgsOptionsWidgetFactory *> &optionsFactories = QList<QgsOptionsWidgetFactory *>()
+    );
 
     ~QgsProjectProperties() override;
 
@@ -204,8 +209,36 @@ class APP_EXPORT QgsProjectProperties : public QgsOptionsDialogBase, private Ui:
     void removeStyleDatabase();
     void newStyleDatabase();
 
-  private:
+#if QT_VERSION >= QT_VERSION_CHECK( 6, 8, 0 )
 
+    /**
+     * Called whenever user select the add ICC profile button
+     */
+    void addIccProfile();
+
+    /**
+     * load \a iccProfileFilePath and set resulting color space to project
+     */
+    void addIccProfile( const QString &iccProfileFilePath );
+
+    /**
+     * Called whenever user select the remove ICC profile button
+     */
+    void removeIccProfile();
+
+    /**
+     * Called whenever user select the save ICC profile button
+     */
+    void saveIccProfile();
+
+    /**
+     * Update color space widget according to current project color space
+     */
+    void updateColorSpaceWidgets();
+
+#endif
+
+  private:
     /**
       * Called when the user sets a CRS for the project.
       */
@@ -219,6 +252,8 @@ class APP_EXPORT QgsProjectProperties : public QgsOptionsDialogBase, private Ui:
 
     QDoubleSpinBox *mWMSDefaultMapUnitsPerMm = nullptr;
     QgsScaleWidget *mWMSDefaultMapUnitScale = nullptr;
+    QgsExtentWidget *mExtentWidget;
+
 
     QgsCoordinateReferenceSystem mCrs;
 
@@ -232,19 +267,20 @@ class APP_EXPORT QgsProjectProperties : public QgsOptionsDialogBase, private Ui:
     // List for all ellispods, also None and Custom
     struct EllipsoidDefs
     {
-      QString acronym;
-      QString description;
-      double semiMajor;
-      double semiMinor;
+        QString acronym;
+        QString description;
+        double semiMajor;
+        double semiMinor;
     };
     QList<EllipsoidDefs> mEllipsoidList;
-    int mEllipsoidIndex;
+    int mEllipsoidIndex = 0;
     bool mBlockCrsUpdates = false;
+    QColorSpace mColorSpace;
 
-    QList< QgsOptionsPageWidget * > mAdditionalProjectPropertiesWidgets;
+    QList<QgsOptionsPageWidget *> mAdditionalProjectPropertiesWidgets;
 
-    std::unique_ptr< QgsBearingNumericFormat > mBearingFormat;
-    std::unique_ptr< QgsGeographicCoordinateNumericFormat > mGeographicCoordinateFormat;
+    std::unique_ptr<QgsBearingNumericFormat> mBearingFormat;
+    std::unique_ptr<QgsGeographicCoordinateNumericFormat> mGeographicCoordinateFormat;
 
     //! populate WMTS tree
     void populateWmtsTree( const QgsLayerTreeGroup *treeGroup, QgsTreeWidgetItem *treeItem );
@@ -274,3 +310,4 @@ class APP_EXPORT QgsProjectProperties : public QgsOptionsDialogBase, private Ui:
 
     friend class TestQgsProjectProperties;
 };
+#endif // QGSPROJECTPROPERTIES_H

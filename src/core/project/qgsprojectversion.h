@@ -18,22 +18,21 @@
 #ifndef QGSPROJECTVERSION_H
 #define QGSPROJECTVERSION_H
 
+#include "qgis_core.h"
+
 #include <QString>
 #include <QStringList>
-#include "qgis_core.h"
 
 /**
  * \ingroup core
- * \brief A class to describe the version of a project.
+ * \brief Describes the version of a project.
  *
  * Used in places where you need to check if the current version
  * of QGIS is greater than the one used to create a project file.
  */
 class CORE_EXPORT QgsProjectVersion
 {
-
   public:
-
     /**
      * Creates a new NULL version
      */
@@ -52,17 +51,17 @@ class CORE_EXPORT QgsProjectVersion
     /**
      * Returns the major version number.
      */
-    int majorVersion() const { return mMajor;}
+    int majorVersion() const { return mMajor; }
 
     /**
      * Returns the minor version number.
      */
-    int minorVersion() const { return mMinor;}
+    int minorVersion() const { return mMinor; }
 
     /**
      * Returns the sub version number.
      */
-    int subVersion() const { return mSub;}
+    int subVersion() const { return mSub; }
 
     /**
      * Returns a string representation of the version.
@@ -74,34 +73,11 @@ class CORE_EXPORT QgsProjectVersion
      */
     bool isNull() const;
 
-    /**
-     * Boolean equal operator
-     */
     bool operator==( const QgsProjectVersion &other ) const;
-
-    /**
-     * Boolean not equal operator
-     */
     bool operator!=( const QgsProjectVersion &other ) const;
-
-    /**
-     * Boolean >= operator
-     */
     bool operator>=( const QgsProjectVersion &other ) const;
-
-    /**
-     * Boolean > operator
-     */
     bool operator>( const QgsProjectVersion &other ) const;
-
-    /**
-     * Boolean < operator
-     */
     bool operator<( const QgsProjectVersion &other ) const;
-
-    /**
-     * Boolean <= operator
-     */
     bool operator<=( const QgsProjectVersion &other ) const;
 
   private:

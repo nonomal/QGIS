@@ -18,15 +18,16 @@
 #ifndef QGSPROCESSINGRASTERCALCULATOREXPRESSIONLINEEDIT_H
 #define QGSPROCESSINGRASTERCALCULATOREXPRESSIONLINEEDIT_H
 
-#define SIP_NO_FILE
 
-#include <QWidget>
-#include <QDialog>
+#include "ui_qgsprocessingrastercalculatorexpressiondialogbase.h"
 
 #include "qgis.h"
 #include "qgis_gui.h"
-#include "ui_qgsprocessingrastercalculatorexpressiondialogbase.h"
 
+#include <QDialog>
+#include <QWidget>
+
+#define SIP_NO_FILE
 
 class QgsFilterLineEdit;
 class QToolButton;
@@ -46,7 +47,6 @@ class GUI_EXPORT QgsProcessingRasterCalculatorExpressionLineEdit : public QWidge
     Q_OBJECT
 
   public:
-
     /**
      * Constructor for QgsProcessingRasterCalculatorExpressionLineEdit.
      * \param parent parent widget
@@ -107,7 +107,6 @@ class GUI_EXPORT QgsProcessingRasterCalculatorExpressionDialog : public QDialog,
     Q_OBJECT
 
   public:
-
     /**
      * Constructor for QgsProcessingRasterCalculatorExpressionDialog.
      */

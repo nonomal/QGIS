@@ -17,17 +17,20 @@
 #define QGSLAYOUTITEMSLISTVIEW_H
 
 // We don't want to expose this in the public API
-#define SIP_NO_FILE
 
 #include "qgis_gui.h"
 #include "qgis_sip.h"
-#include <QTreeView>
+
 #include <QSortFilterProxyModel>
+#include <QTreeView>
+
+#define SIP_NO_FILE
 
 class QgsLayout;
 class QgsLayoutDesignerInterface;
 class QgsLayoutModel;
 class QgsLayoutItem;
+class QgsLayoutView;
 
 /**
  * \ingroup gui
@@ -74,7 +77,6 @@ class GUI_EXPORT QgsLayoutItemsListView : public QTreeView
     Q_OBJECT
 
   public:
-
     /**
      * Constructor for QgsLayoutItemsListView.
      */
@@ -88,21 +90,24 @@ class GUI_EXPORT QgsLayoutItemsListView : public QTreeView
 
   private slots:
 
+    void setLayoutView( QgsLayoutView *view );
+
     void showContextMenu( QPoint point );
 
     //! Update LayoutView selection from the item list
-    void updateSelection();
+    void updateSelection( const QItemSelection &selected, const QItemSelection &deselected );
     //! Update item list selected from the layout view
     void onItemFocused( QgsLayoutItem *focusedItem );
 
   private:
-
     QgsLayout *mLayout = nullptr;
     QgsLayoutItemsListViewModel *mModel = nullptr;
     QgsLayoutDesignerInterface *mDesigner = nullptr;
 
     bool mUpdatingSelection = false;
     bool mUpdatingFromView = false;
+
+    friend class TestQgsLayoutItemListView;
 };
 
 #endif // QGSLAYOUTITEMSLISTVIEW_H

@@ -16,23 +16,30 @@
  ***************************************************************************/
 
 
-#include "qgsfields.h"
+#include "qgsvectorlayerexporter.h"
+
+#include "qgsabstractgeometry.h"
+#include "qgscoordinatereferencesystem.h"
+#include "qgscoordinatetransform.h"
+#include "qgsexception.h"
 #include "qgsfeature.h"
 #include "qgsfeatureiterator.h"
+#include "qgsfields.h"
 #include "qgsgeometry.h"
+#include "qgsgeometrycollection.h"
 #include "qgslogger.h"
 #include "qgsmessagelog.h"
-#include "qgsgeometrycollection.h"
-#include "qgscoordinatereferencesystem.h"
-#include "qgsvectorlayerexporter.h"
 #include "qgsproviderregistry.h"
-#include "qgsexception.h"
 #include "qgsvectordataprovider.h"
 #include "qgsvectorlayer.h"
-#include "qgsabstractgeometry.h"
-#include "qgscoordinatetransform.h"
 
 #include <QProgressDialog>
+#include <QString>
+#include <QThread>
+
+#include "moc_qgsvectorlayerexporter.cpp"
+
+using namespace Qt::StringLiterals;
 
 typedef Qgis::VectorExportResult createEmptyLayer_t(
   const QString &uri,
@@ -46,26 +53,91 @@ typedef Qgis::VectorExportResult createEmptyLayer_t(
 );
 
 
-QgsVectorLayerExporter::QgsVectorLayerExporter( const QString &uri,
-    const QString &providerKey,
-    const QgsFields &fields,
-    Qgis::WkbType geometryType,
-    const QgsCoordinateReferenceSystem &crs,
-    bool overwrite,
-    const QMap<QString, QVariant> &options,
-    QgsFeatureSink::SinkFlags sinkFlags )
-  : mErrorCount( 0 )
-  , mAttributeCount( -1 )
+//
+// QgsVectorLayerExporter::ExportOptions
+//
 
+void QgsVectorLayerExporter::ExportOptions::setTransformContext( const QgsCoordinateTransformContext &context )
 {
-  mProvider = nullptr;
+  mTransformContext = context;
+}
 
+QgsCoordinateTransformContext QgsVectorLayerExporter::ExportOptions::transformContext() const
+{
+  return mTransformContext;
+}
+
+void QgsVectorLayerExporter::ExportOptions::setDestinationCrs( const QgsCoordinateReferenceSystem &crs )
+{
+  mDestinationCrs = crs;
+}
+
+QgsCoordinateReferenceSystem QgsVectorLayerExporter::ExportOptions::destinationCrs() const
+{
+  return mDestinationCrs;
+}
+
+void QgsVectorLayerExporter::ExportOptions::setExtent( const QgsReferencedRectangle &extent )
+{
+  mExtent = extent;
+}
+
+QgsReferencedRectangle QgsVectorLayerExporter::ExportOptions::extent() const
+{
+  return mExtent;
+}
+
+void QgsVectorLayerExporter::ExportOptions::setFilterExpression( const QString &expression )
+{
+  mFilterExpression = expression;
+}
+
+QString QgsVectorLayerExporter::ExportOptions::filterExpression() const
+{
+  return mFilterExpression;
+}
+
+void QgsVectorLayerExporter::ExportOptions::setExpressionContext( const QgsExpressionContext &context )
+{
+  mExpressionContext = context;
+}
+
+const QgsExpressionContext &QgsVectorLayerExporter::ExportOptions::expressionContext() const
+{
+  return mExpressionContext;
+}
+
+QList<QgsVectorLayerExporter::OutputField> QgsVectorLayerExporter::ExportOptions::outputFields() const
+{
+  return mOutputFields;
+}
+
+void QgsVectorLayerExporter::ExportOptions::setOutputFields( const QList<QgsVectorLayerExporter::OutputField> &fields )
+{
+  mOutputFields = fields;
+}
+
+
+//
+// QgsVectorLayerExporter
+//
+
+QgsVectorLayerExporter::QgsVectorLayerExporter(
+  const QString &uri,
+  const QString &providerKey,
+  const QgsFields &fields,
+  Qgis::WkbType geometryType,
+  const QgsCoordinateReferenceSystem &crs,
+  bool overwrite,
+  const QMap<QString, QVariant> &options,
+  QgsFeatureSink::SinkFlags sinkFlags
+)
+{
   QMap<QString, QVariant> modifiedOptions( options );
 
-  if ( providerKey == QLatin1String( "ogr" ) &&
-       options.contains( QStringLiteral( "driverName" ) ) &&
-       ( options[ QStringLiteral( "driverName" ) ].toString().compare( QLatin1String( "GPKG" ), Qt::CaseInsensitive ) == 0 ||
-         options[ QStringLiteral( "driverName" ) ].toString().compare( QLatin1String( "SQLite" ), Qt::CaseInsensitive ) == 0 ) )
+  if ( providerKey == "ogr"_L1
+       && options.contains( u"driverName"_s )
+       && ( options[u"driverName"_s].toString().compare( "GPKG"_L1, Qt::CaseInsensitive ) == 0 || options[u"driverName"_s].toString().compare( "SQLite"_L1, Qt::CaseInsensitive ) == 0 ) )
   {
     if ( geometryType != Qgis::WkbType::NoGeometry )
     {
@@ -73,22 +145,22 @@ QgsVectorLayerExporter::QgsVectorLayerExporter( const QString &uri,
       // layer creation since this would slow down inserts. Defer its creation
       // to end of exportLayer() or destruction of this object.
       QStringList modifiedLayerOptions;
-      if ( options.contains( QStringLiteral( "layerOptions" ) ) )
+      if ( options.contains( u"layerOptions"_s ) )
       {
-        const QStringList layerOptions = options.value( QStringLiteral( "layerOptions" ) ).toStringList();
+        const QStringList layerOptions = options.value( u"layerOptions"_s ).toStringList();
         for ( const QString &layerOption : layerOptions )
         {
-          if ( layerOption.compare( QLatin1String( "SPATIAL_INDEX=YES" ), Qt::CaseInsensitive ) == 0 ||
-               layerOption.compare( QLatin1String( "SPATIAL_INDEX=ON" ), Qt::CaseInsensitive ) == 0 ||
-               layerOption.compare( QLatin1String( "SPATIAL_INDEX=TRUE" ), Qt::CaseInsensitive ) == 0 ||
-               layerOption.compare( QLatin1String( "SPATIAL_INDEX=1" ), Qt::CaseInsensitive ) == 0 )
+          if ( layerOption.compare( "SPATIAL_INDEX=YES"_L1, Qt::CaseInsensitive ) == 0
+               || layerOption.compare( "SPATIAL_INDEX=ON"_L1, Qt::CaseInsensitive ) == 0
+               || layerOption.compare( "SPATIAL_INDEX=TRUE"_L1, Qt::CaseInsensitive ) == 0
+               || layerOption.compare( "SPATIAL_INDEX=1"_L1, Qt::CaseInsensitive ) == 0 )
           {
             // do nothing
           }
-          else if ( layerOption.compare( QLatin1String( "SPATIAL_INDEX=NO" ), Qt::CaseInsensitive ) == 0 ||
-                    layerOption.compare( QLatin1String( "SPATIAL_INDEX=OFF" ), Qt::CaseInsensitive ) == 0 ||
-                    layerOption.compare( QLatin1String( "SPATIAL_INDEX=FALSE" ), Qt::CaseInsensitive ) == 0 ||
-                    layerOption.compare( QLatin1String( "SPATIAL_INDEX=0" ), Qt::CaseInsensitive ) == 0 )
+          else if ( layerOption.compare( "SPATIAL_INDEX=NO"_L1, Qt::CaseInsensitive ) == 0
+                    || layerOption.compare( "SPATIAL_INDEX=OFF"_L1, Qt::CaseInsensitive ) == 0
+                    || layerOption.compare( "SPATIAL_INDEX=FALSE"_L1, Qt::CaseInsensitive ) == 0
+                    || layerOption.compare( "SPATIAL_INDEX=0"_L1, Qt::CaseInsensitive ) == 0 )
           {
             mCreateSpatialIndex = false;
           }
@@ -98,16 +170,16 @@ QgsVectorLayerExporter::QgsVectorLayerExporter( const QString &uri,
           }
         }
       }
-      modifiedLayerOptions << QStringLiteral( "SPATIAL_INDEX=FALSE" );
-      modifiedOptions[ QStringLiteral( "layerOptions" ) ] = modifiedLayerOptions;
+      modifiedLayerOptions << u"SPATIAL_INDEX=FALSE"_s;
+      modifiedOptions[u"layerOptions"_s] = modifiedLayerOptions;
     }
   }
 
   // create an empty layer
   QString errMsg;
   QgsProviderRegistry *pReg = QgsProviderRegistry::instance();
-  mError = pReg->createEmptyLayer( providerKey, uri, fields, geometryType, crs, overwrite, mOldToNewAttrIdx,
-                                   errMsg, !modifiedOptions.isEmpty() ? &modifiedOptions : nullptr );
+  QString uriUpdated;
+  mError = pReg->createEmptyLayer( providerKey, uri, fields, geometryType, crs, overwrite, mOldToNewAttrIdx, errMsg, !modifiedOptions.isEmpty() ? &modifiedOptions : nullptr, uriUpdated );
 
   if ( errorCode() != Qgis::VectorExportResult::Success )
   {
@@ -124,37 +196,21 @@ QgsVectorLayerExporter::QgsVectorLayerExporter( const QString &uri,
 
   mAttributeCount++;
 
-  QgsDebugMsgLevel( QStringLiteral( "Created empty layer" ), 2 );
-
-  QString uriUpdated( uri );
-  // HACK sorry...
-  if ( providerKey == QLatin1String( "ogr" ) )
-  {
-    QString layerName;
-    if ( options.contains( QStringLiteral( "layerName" ) ) )
-      layerName = options.value( QStringLiteral( "layerName" ) ).toString();
-    if ( !layerName.isEmpty() )
-    {
-      uriUpdated += QLatin1String( "|layername=" );
-      uriUpdated += layerName;
-    }
-  }
+  QgsDebugMsgLevel( u"Created empty layer"_s, 2 );
 
   // Oracle specific HACK: we cannot guess the geometry type when there is no rows, so we need
   // to force it in the uri
-  if ( providerKey == QLatin1String( "oracle" ) )
+  if ( providerKey == "oracle"_L1 )
   {
-    uriUpdated += QStringLiteral( " type=%1" ).arg( QgsWkbTypes::displayString( geometryType ) );
+    uriUpdated += u" type=%1"_s.arg( QgsWkbTypes::displayString( geometryType ) );
   }
 
   const QgsDataProvider::ProviderOptions providerOptions;
-  QgsVectorDataProvider *vectorProvider = qobject_cast< QgsVectorDataProvider * >( pReg->createProvider( providerKey, uriUpdated, providerOptions ) );
-  if ( !vectorProvider || !vectorProvider->isValid() || ( vectorProvider->capabilities() & QgsVectorDataProvider::AddFeatures ) == 0 )
+  auto vectorProvider = std::unique_ptr<QgsVectorDataProvider>( qobject_cast< QgsVectorDataProvider * >( pReg->createProvider( providerKey, uriUpdated, providerOptions ) ) );
+  if ( !vectorProvider || !vectorProvider->isValid() || ( vectorProvider->capabilities() & Qgis::VectorProviderCapability::AddFeatures ) == 0 )
   {
     mError = Qgis::VectorExportResult::ErrorInvalidLayer;
     mErrorMessage = QObject::tr( "Loading of layer failed" );
-
-    delete vectorProvider;
     return;
   }
 
@@ -163,10 +219,10 @@ QgsVectorLayerExporter::QgsVectorLayerExporter( const QString &uri,
   // that will be filled by ogr with unique values.
 
   // HACK sorry
-  const QString path = QgsProviderRegistry::instance()->decodeUri( QStringLiteral( "ogr" ), uri ).value( QStringLiteral( "path" ) ).toString();
-  if ( sinkFlags.testFlag( QgsFeatureSink::SinkFlag::RegeneratePrimaryKey ) && path.endsWith( QLatin1String( ".gpkg" ), Qt::CaseInsensitive ) )
+  const QString path = QgsProviderRegistry::instance()->decodeUri( u"ogr"_s, uri ).value( u"path"_s ).toString();
+  if ( sinkFlags.testFlag( QgsFeatureSink::SinkFlag::RegeneratePrimaryKey ) && path.endsWith( ".gpkg"_L1, Qt::CaseInsensitive ) )
   {
-    const QString fidName = options.value( QStringLiteral( "FID" ), QStringLiteral( "FID" ) ).toString();
+    const QString fidName = options.value( u"FID"_s, u"FID"_s ).toString();
     const int fidIdx = fields.lookupField( fidName );
     if ( fidIdx != -1 )
     {
@@ -174,7 +230,7 @@ QgsVectorLayerExporter::QgsVectorLayerExporter( const QString &uri,
     }
   }
 
-  mProvider = vectorProvider;
+  mProvider = std::move( vectorProvider );
   mError = Qgis::VectorExportResult::Success;
 }
 
@@ -186,8 +242,6 @@ QgsVectorLayerExporter::~QgsVectorLayerExporter()
   {
     createSpatialIndex();
   }
-
-  delete mProvider;
 }
 
 Qgis::VectorExportResult QgsVectorLayerExporter::errorCode() const
@@ -234,7 +288,7 @@ bool QgsVectorLayerExporter::addFeature( QgsFeature &feat, Flags )
     if ( dstIdx < 0 )
       continue;
 
-    QgsDebugMsgLevel( QStringLiteral( "moving field from pos %1 to %2" ).arg( i ).arg( dstIdx ), 3 );
+    QgsDebugMsgLevel( u"moving field from pos %1 to %2"_s.arg( i ).arg( dstIdx ), 3 );
     newFeat.setAttribute( dstIdx, attrs.at( i ) );
   }
 
@@ -265,10 +319,8 @@ bool QgsVectorLayerExporter::flushBuffer()
     const QStringList errors = mProvider->errors();
     mProvider->clearErrors();
 
-    mErrorMessage = QObject::tr( "Creation error for features from #%1 to #%2. Provider errors was: \n%3" )
-                    .arg( mFeatureBuffer.first().id() )
-                    .arg( mFeatureBuffer.last().id() )
-                    .arg( errors.join( QLatin1Char( '\n' ) ) );
+    mErrorMessage
+      = QObject::tr( "Creation error for features from #%1 to #%2. Provider errors were: \n%3" ).arg( mFeatureBuffer.first().id() ).arg( mFeatureBuffer.last().id() ).arg( errors.join( QLatin1Char( '\n' ) ) );
 
     mError = Qgis::VectorExportResult::ErrorFeatureWriteFailed;
     mErrorCount += mFeatureBuffer.count();
@@ -285,7 +337,7 @@ bool QgsVectorLayerExporter::flushBuffer()
 bool QgsVectorLayerExporter::createSpatialIndex()
 {
   mCreateSpatialIndex = false;
-  if ( mProvider && ( mProvider->capabilities() & QgsVectorDataProvider::CreateSpatialIndex ) != 0 )
+  if ( mProvider && ( mProvider->capabilities() & Qgis::VectorProviderCapability::CreateSpatialIndex ) != 0 )
   {
     return mProvider->createSpatialIndex();
   }
@@ -295,15 +347,30 @@ bool QgsVectorLayerExporter::createSpatialIndex()
   }
 }
 
-Qgis::VectorExportResult QgsVectorLayerExporter::exportLayer( QgsVectorLayer *layer,
-    const QString &uri,
-    const QString &providerKey,
-    const QgsCoordinateReferenceSystem &destCRS,
-    bool onlySelected,
-    QString *errorMessage,
-    const QMap<QString, QVariant> &options,
-    QgsFeedback *feedback )
+Qgis::VectorExportResult QgsVectorLayerExporter::exportLayer(
+  QgsVectorLayer *layer,
+  const QString &uri,
+  const QString &providerKey,
+  const QgsCoordinateReferenceSystem &destCRS,
+  bool onlySelected,
+  QString *errorMessage,
+  const QMap<QString, QVariant> &options,
+  QgsFeedback *feedback
+)
 {
+  ExportOptions exportOptions;
+  exportOptions.setSelectedOnly( onlySelected );
+  exportOptions.setDestinationCrs( destCRS );
+  exportOptions.setTransformContext( layer->transformContext() );
+  return exportLayer( layer, uri, providerKey, exportOptions, errorMessage, options, feedback );
+}
+
+Qgis::VectorExportResult QgsVectorLayerExporter::exportLayer(
+  QgsVectorLayer *layer, const QString &uri, const QString &providerKey, const ExportOptions &exportOptions, QString *errorMessage, const QMap<QString, QVariant> &_providerOptions, QgsFeedback *feedback
+)
+{
+  QgsExpressionContext expressionContext = exportOptions.expressionContext();
+
   QgsCoordinateReferenceSystem outputCRS;
   QgsCoordinateTransform ct;
   bool shallTransform = false;
@@ -311,10 +378,10 @@ Qgis::VectorExportResult QgsVectorLayerExporter::exportLayer( QgsVectorLayer *la
   if ( !layer )
     return Qgis::VectorExportResult::ErrorInvalidLayer;
 
-  if ( destCRS.isValid() )
+  if ( exportOptions.destinationCrs().isValid() )
   {
     // This means we should transform
-    outputCRS = destCRS;
+    outputCRS = exportOptions.destinationCrs();
     shallTransform = true;
   }
   else
@@ -323,29 +390,36 @@ Qgis::VectorExportResult QgsVectorLayerExporter::exportLayer( QgsVectorLayer *la
     outputCRS = layer->crs();
   }
 
+  QMap<QString, QVariant> providerOptions = _providerOptions;
+  const bool overwrite = providerOptions.take( u"overwrite"_s ).toBool();
+  const bool forceSinglePartGeom = providerOptions.take( u"forceSinglePartGeometryType"_s ).toBool();
 
-  bool overwrite = false;
-  bool forceSinglePartGeom = false;
-  QMap<QString, QVariant> providerOptions = options;
-  if ( !options.isEmpty() )
+  QgsFields outputFields;
+  bool useFieldMapping = false;
+  QList<QgsExpression> expressions;
+  if ( exportOptions.outputFields().isEmpty() )
   {
-    overwrite = providerOptions.take( QStringLiteral( "overwrite" ) ).toBool();
-    forceSinglePartGeom = providerOptions.take( QStringLiteral( "forceSinglePartGeometryType" ) ).toBool();
+    outputFields = layer->fields();
   }
-
-  QgsFields fields = layer->fields();
-
-  Qgis::WkbType wkbType = layer->wkbType();
-
-  // Special handling for Shapefiles
-  if ( layer->providerType() == QLatin1String( "ogr" ) && layer->storageType() == QLatin1String( "ESRI Shapefile" ) )
+  else
   {
-    // convert field names to lowercase
-    for ( int fldIdx = 0; fldIdx < fields.count(); ++fldIdx )
+    useFieldMapping = true;
+    const QList<QgsVectorLayerExporter::OutputField> exportFieldDefinitions = exportOptions.outputFields();
+    for ( const QgsVectorLayerExporter::OutputField &field : exportFieldDefinitions )
     {
-      fields.rename( fldIdx, fields.at( fldIdx ).name().toLower() );
+      outputFields.append( field.field );
+      expressions.append( QgsExpression( field.expression ) );
+      expressions.last().prepare( &expressionContext );
+      if ( expressions.last().hasParserError() )
+      {
+        if ( errorMessage )
+          *errorMessage = QObject::tr( "Parser error for field \"%1\" with expression \"%2\": %3" ).arg( field.field.name(), field.expression, expressions.last().parserErrorString() );
+        return Qgis::VectorExportResult::ErrorAttributeCreationFailed;
+      }
     }
   }
+
+  Qgis::WkbType wkbType = layer->wkbType();
 
   bool convertGeometryToSinglePart = false;
   if ( forceSinglePartGeom && QgsWkbTypes::isMultiType( wkbType ) )
@@ -354,8 +428,7 @@ Qgis::VectorExportResult QgsVectorLayerExporter::exportLayer( QgsVectorLayer *la
     convertGeometryToSinglePart = true;
   }
 
-  QgsVectorLayerExporter *writer =
-    new QgsVectorLayerExporter( uri, providerKey, fields, wkbType, outputCRS, overwrite, providerOptions );
+  auto writer = std::make_unique< QgsVectorLayerExporter >( uri, providerKey, outputFields, wkbType, outputCRS, overwrite, providerOptions );
 
   // check whether file creation was successful
   const Qgis::VectorExportResult err = writer->errorCode();
@@ -363,7 +436,6 @@ Qgis::VectorExportResult QgsVectorLayerExporter::exportLayer( QgsVectorLayer *la
   {
     if ( errorMessage )
       *errorMessage = writer->errorMessage();
-    delete writer;
     return err;
   }
 
@@ -372,28 +444,50 @@ Qgis::VectorExportResult QgsVectorLayerExporter::exportLayer( QgsVectorLayer *la
     errorMessage->clear();
   }
 
-  QgsFeature fet;
-
-  QgsFeatureRequest req;
-  if ( wkbType == Qgis::WkbType::NoGeometry )
-    req.setFlags( Qgis::FeatureRequestFlag::NoGeometry );
-  if ( onlySelected )
-    req.setFilterFids( layer->selectedFeatureIds() );
-
-  QgsFeatureIterator fit = layer->getFeatures( req );
-
   // Create our transform
-  if ( destCRS.isValid() )
+  if ( exportOptions.destinationCrs().isValid() )
   {
-    ct = QgsCoordinateTransform( layer->crs(), destCRS, layer->transformContext() );
+    ct = QgsCoordinateTransform( layer->crs(), exportOptions.destinationCrs(), exportOptions.transformContext() );
   }
 
   // Check for failure
   if ( !ct.isValid() )
     shallTransform = false;
 
+  QgsFeatureRequest req;
+  if ( wkbType == Qgis::WkbType::NoGeometry )
+    req.setFlags( Qgis::FeatureRequestFlag::NoGeometry );
+
+  if ( !exportOptions.extent().isNull() )
+  {
+    QgsCoordinateTransform extentFilterTransform( exportOptions.extent().crs(), layer->crs(), exportOptions.transformContext() );
+    extentFilterTransform.setBallparkTransformsAreAppropriate( true );
+
+    try
+    {
+      const QgsRectangle layerExtent = extentFilterTransform.transformBoundingBox( exportOptions.extent() );
+      req.setFilterRect( layerExtent );
+    }
+    catch ( QgsCsException &e )
+    {
+      QgsDebugError( u"Could not transform filter extent: %1"_s.arg( e.what() ) );
+    }
+  }
+
+  if ( !exportOptions.filterExpression().isEmpty() )
+  {
+    req.setFilterExpression( exportOptions.filterExpression() );
+    req.setExpressionContext( expressionContext );
+  }
+  else if ( exportOptions.selectedOnly() )
+  {
+    req.setFilterFids( layer->selectedFeatureIds() );
+  }
+
+  QgsFeatureIterator fit = layer->getFeatures( req );
+
   long long n = 0;
-  const long long approxTotal = onlySelected ? layer->selectedFeatureCount() : layer->featureCount();
+  const long long approxTotal = exportOptions.selectedOnly() ? layer->selectedFeatureCount() : layer->featureCount();
 
   if ( errorMessage )
   {
@@ -403,7 +497,8 @@ Qgis::VectorExportResult QgsVectorLayerExporter::exportLayer( QgsVectorLayer *la
   bool canceled = false;
 
   // write all features
-  while ( fit.nextFeature( fet ) )
+  QgsFeature sourceFeature;
+  while ( fit.nextFeature( sourceFeature ) )
   {
     if ( feedback && feedback->isCanceled() )
     {
@@ -424,23 +519,24 @@ Qgis::VectorExportResult QgsVectorLayerExporter::exportLayer( QgsVectorLayer *la
       break;
     }
 
+    QgsFeature outputFeature( outputFields );
+    outputFeature.setId( sourceFeature.id() );
+    outputFeature.setGeometry( sourceFeature.geometry() );
+
     if ( shallTransform )
     {
       try
       {
-        if ( fet.hasGeometry() )
+        if ( outputFeature.hasGeometry() )
         {
-          QgsGeometry g = fet.geometry();
+          QgsGeometry g = outputFeature.geometry();
           g.transform( ct );
-          fet.setGeometry( g );
+          outputFeature.setGeometry( g );
         }
       }
       catch ( QgsCsException &e )
       {
-        delete writer;
-
-        const QString msg = QObject::tr( "Failed to transform a point while drawing a feature with ID '%1'. Writing stopped. (Exception: %2)" )
-                            .arg( fet.id() ).arg( e.what() );
+        const QString msg = QObject::tr( "Failed to transform feature with ID '%1'. Writing stopped. (Exception: %2)" ).arg( sourceFeature.id() ).arg( e.what() );
         QgsMessageLog::logMessage( msg, QObject::tr( "Vector import" ) );
         if ( errorMessage )
           *errorMessage += '\n' + msg;
@@ -450,26 +546,57 @@ Qgis::VectorExportResult QgsVectorLayerExporter::exportLayer( QgsVectorLayer *la
     }
 
     // Handles conversion to single-part
-    if ( convertGeometryToSinglePart && fet.geometry().isMultipart() )
+    if ( convertGeometryToSinglePart && outputFeature.geometry().isMultipart() )
     {
-      QgsGeometry singlePartGeometry { fet.geometry() };
+      QgsGeometry singlePartGeometry { outputFeature.geometry() };
       // We want a failure if the geometry cannot be converted to single-part without data loss!
       // check if there are more than one part
       const QgsGeometryCollection *c = qgsgeometry_cast<const QgsGeometryCollection *>( singlePartGeometry.constGet() );
-      if ( ( c && c->partCount() > 1 ) || ! singlePartGeometry.convertToSingleType() )
+      if ( ( c && c->partCount() > 1 ) || !singlePartGeometry.convertToSingleType() )
       {
-        delete writer;
-        const QString msg = QObject::tr( "Failed to transform a feature with ID '%1' to single part. Writing stopped." )
-                            .arg( fet.id() );
+        const QString msg = QObject::tr( "Failed to transform a feature with ID '%1' to single part. Writing stopped." ).arg( sourceFeature.id() );
         QgsMessageLog::logMessage( msg, QObject::tr( "Vector import" ) );
         if ( errorMessage )
           *errorMessage += '\n' + msg;
         return Qgis::VectorExportResult::ErrorFeatureWriteFailed;
       }
-      fet.setGeometry( singlePartGeometry );
+      outputFeature.setGeometry( singlePartGeometry );
     }
 
-    if ( !writer->addFeature( fet ) )
+    // handle attribute mapping
+    if ( useFieldMapping )
+    {
+      QgsAttributes attributes;
+      attributes.reserve( expressions.size() );
+      for ( auto it = expressions.begin(); it != expressions.end(); ++it )
+      {
+        if ( it->isValid() )
+        {
+          expressionContext.setFeature( sourceFeature );
+          const QVariant value = it->evaluate( &expressionContext );
+          if ( it->hasEvalError() )
+          {
+            const QString msg = QObject::tr( "Evaluation error in expression \"%1\": %2" ).arg( it->expression(), it->evalErrorString() );
+            QgsMessageLog::logMessage( msg, QObject::tr( "Vector import" ) );
+            if ( errorMessage )
+              *errorMessage += '\n' + msg;
+            return Qgis::VectorExportResult::ErrorFeatureWriteFailed;
+          }
+          attributes.append( value );
+        }
+        else
+        {
+          attributes.append( QVariant() );
+        }
+      }
+      outputFeature.setAttributes( attributes );
+    }
+    else
+    {
+      outputFeature.setAttributes( sourceFeature.attributes() );
+    }
+
+    if ( !writer->addFeature( outputFeature ) )
     {
       if ( writer->errorCode() != Qgis::VectorExportResult::Success && errorMessage )
       {
@@ -480,9 +607,8 @@ Qgis::VectorExportResult QgsVectorLayerExporter::exportLayer( QgsVectorLayer *la
 
     if ( feedback )
     {
-      feedback->setProgress( 100.0 * static_cast< double >( n ) / approxTotal );
+      feedback->setProgress( 100.0 * static_cast< double >( n ) / static_cast< double >( approxTotal ) );
     }
-
   }
 
   // flush the buffer to be sure that all features are written
@@ -503,7 +629,7 @@ Qgis::VectorExportResult QgsVectorLayerExporter::exportLayer( QgsVectorLayer *la
     }
   }
 
-  delete writer;
+  writer.reset();
 
   if ( errorMessage )
   {
@@ -525,29 +651,51 @@ Qgis::VectorExportResult QgsVectorLayerExporter::exportLayer( QgsVectorLayer *la
   return Qgis::VectorExportResult::Success;
 }
 
-
 //
 // QgsVectorLayerExporterTask
 //
 
-QgsVectorLayerExporterTask::QgsVectorLayerExporterTask( QgsVectorLayer *layer, const QString &uri, const QString &providerKey, const QgsCoordinateReferenceSystem &destinationCrs, const QMap<QString, QVariant> &options, bool ownsLayer )
+QgsVectorLayerExporterTask::QgsVectorLayerExporterTask(
+  QgsVectorLayer *layer, const QString &uri, const QString &providerKey, const QgsCoordinateReferenceSystem &destinationCrs, const QMap<QString, QVariant> &options, bool ownsLayer
+)
   : QgsTask( tr( "Exporting %1" ).arg( layer->name() ), QgsTask::CanCancel )
   , mLayer( layer )
   , mOwnsLayer( ownsLayer )
   , mDestUri( uri )
   , mDestProviderKey( providerKey )
-  , mDestCrs( destinationCrs )
   , mOptions( options )
   , mOwnedFeedback( new QgsFeedback() )
 {
+  mExportOptions.setDestinationCrs( destinationCrs );
+  mExportOptions.setTransformContext( layer->transformContext() );
+
   if ( mLayer )
     setDependentLayers( QList< QgsMapLayer * >() << mLayer );
 }
 
-QgsVectorLayerExporterTask *QgsVectorLayerExporterTask::withLayerOwnership( QgsVectorLayer *layer, const QString &uri, const QString &providerKey, const QgsCoordinateReferenceSystem &destinationCrs, const QMap<QString, QVariant> &options )
+QgsVectorLayerExporterTask::QgsVectorLayerExporterTask(
+  QgsVectorLayer *layer, const QString &uri, const QString &providerKey, const QgsVectorLayerExporter::ExportOptions &exportOptions, const QMap<QString, QVariant> &providerOptions, bool ownsLayer
+)
+  : QgsTask( tr( "Exporting %1" ).arg( layer->name() ), QgsTask::CanCancel )
+  , mLayer( layer )
+  , mOwnsLayer( ownsLayer )
+  , mDestUri( uri )
+  , mDestProviderKey( providerKey )
+  , mExportOptions( exportOptions )
+  , mOptions( providerOptions )
+  , mOwnedFeedback( new QgsFeedback() )
 {
-  std::unique_ptr< QgsVectorLayerExporterTask > newTask( new QgsVectorLayerExporterTask( layer, uri, providerKey, destinationCrs, options ) );
-  newTask->mOwnsLayer = true;
+  if ( mLayer )
+    setDependentLayers( QList< QgsMapLayer * >() << mLayer );
+  if ( mLayer && mOwnsLayer )
+    mLayer->moveToThread( nullptr );
+}
+
+QgsVectorLayerExporterTask *QgsVectorLayerExporterTask::withLayerOwnership(
+  QgsVectorLayer *layer, const QString &uri, const QString &providerKey, const QgsCoordinateReferenceSystem &destinationCrs, const QMap<QString, QVariant> &options
+)
+{
+  auto newTask = std::make_unique<QgsVectorLayerExporterTask>( layer, uri, providerKey, destinationCrs, options, true );
   return newTask.release();
 }
 
@@ -562,18 +710,25 @@ bool QgsVectorLayerExporterTask::run()
   if ( !mLayer )
     return false;
 
+  if ( mOwnsLayer )
+    mLayer->moveToThread( QThread::currentThread() );
+
   connect( mOwnedFeedback.get(), &QgsFeedback::progressChanged, this, &QgsVectorLayerExporterTask::setProgress );
 
 
-  mError = QgsVectorLayerExporter::exportLayer(
-             mLayer.data(), mDestUri, mDestProviderKey, mDestCrs, false, &mErrorMessage,
-             mOptions, mOwnedFeedback.get() );
+  mError = QgsVectorLayerExporter::exportLayer( mLayer.data(), mDestUri, mDestProviderKey, mExportOptions, &mErrorMessage, mOptions, mOwnedFeedback.get() );
+
+  if ( mOwnsLayer )
+    mLayer->moveToThread( nullptr );
 
   return mError == Qgis::VectorExportResult::Success;
 }
 
 void QgsVectorLayerExporterTask::finished( bool result )
 {
+  if ( mOwnsLayer && mLayer )
+    mLayer->moveToThread( QThread::currentThread() );
+
   // QgsMapLayer has QTimer member, which must not be destroyed from another thread
   if ( mOwnsLayer )
     delete mLayer;

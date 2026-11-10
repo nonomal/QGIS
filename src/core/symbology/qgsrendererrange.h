@@ -21,6 +21,9 @@
 #include "qgssymbollayerutils.h"
 
 #include <QRegularExpression>
+#include <QString>
+
+using namespace Qt::StringLiterals;
 
 class QDomDocument;
 class QDomElement;
@@ -32,14 +35,11 @@ class QgsClassificationRange;
 /**
  * \ingroup core
  * \class QgsRendererRange
+ * \brief Represents a value range for a QgsGraduatedSymbolRenderer.
  */
 class CORE_EXPORT QgsRendererRange
 {
   public:
-
-    /**
-     * Constructor for QgsRendererRange.
-     */
     QgsRendererRange() = default;
     ~QgsRendererRange();
 
@@ -163,15 +163,29 @@ class CORE_EXPORT QgsRendererRange
      * \param props graduated renderer properties
      * \param firstRange set to TRUE if the range is the first range, where the lower value uses a <= test
      * rather than a < test.
+     * \deprecated QGIS 3.44. Use the version with QgsSldExportContext instead.
      */
-    void toSld( QDomDocument &doc, QDomElement &element, QVariantMap props, bool firstRange = false ) const;
+    Q_DECL_DEPRECATED void toSld( QDomDocument &doc, QDomElement &element, QVariantMap props, bool firstRange = false ) const SIP_DEPRECATED;
+
+    /**
+     * Creates a DOM element representing the range in SLD format.
+     * \param doc DOM document
+     * \param element destination DOM element
+     * \param classAttribute classification attribute or expression
+     * \param context conversion context
+     * \param firstRange set to TRUE if the range is the first range, where the lower value uses a <= test
+     * rather than a < test.
+     * \since QGIS 3.44
+     */
+    bool toSld( QDomDocument &doc, QDomElement &element, const QString &classAttribute, QgsSldExportContext &context, bool firstRange = false ) const;
 
 #ifdef SIP_RUN
+    // clang-format off
     SIP_PYOBJECT __repr__();
     % MethodCode
     const QString str = sipCpp->label().isEmpty()
-                        ? QStringLiteral( "<QgsRendererRange: %1 - %2>" ).arg( sipCpp->lowerValue() ).arg( sipCpp->upperValue() )
-                        : QStringLiteral( "<QgsRendererRange: %1 - %2 (%3)>" ).arg( sipCpp->lowerValue() ).arg( sipCpp->upperValue() ).arg( sipCpp->label() );
+                        ? u"<QgsRendererRange: %1 - %2>"_s.arg( sipCpp->lowerValue() ).arg( sipCpp->upperValue() )
+                        : u"<QgsRendererRange: %1 - %2 (%3)>"_s.arg( sipCpp->lowerValue() ).arg( sipCpp->upperValue() ).arg( sipCpp->label() );
     sipRes = PyUnicode_FromString( str.toUtf8().constData() );
     % End
 
@@ -191,17 +205,19 @@ class CORE_EXPORT QgsRendererRange
       PyErr_SetString( PyExc_IndexError, msg.toLatin1().constData() );
     }
     % End
+// clang-format on
 #endif
 
-  protected:
+    // clang-format off
+    protected:
+    // clang-format on
+    friend class QgsGraduatedSymbolRendererWidget;
+
     double mLowerValue = 0, mUpperValue = 0;
     std::unique_ptr<QgsSymbol> mSymbol;
     QString mLabel;
     bool mRender = true;
     QString mUuid;
-
-    // for cpy+swap idiom
-    void swap( QgsRendererRange &other );
 };
 
 typedef QList<QgsRendererRange> QgsRangeList;
@@ -210,7 +226,9 @@ typedef QList<QgsRendererRange> QgsRangeList;
 /**
  * \ingroup core
  * \class QgsRendererRangeLabelFormat
- * \deprecated since QGIS 3.10, use QgsClassificationMethod instead
+ * \brief Encapsulates the formatting for a QgsRendererRange label.
+ *
+ * \deprecated QGIS 3.10. Use QgsClassificationMethod instead.
  */
 class CORE_DEPRECATED_EXPORT QgsRendererRangeLabelFormat SIP_DEPRECATED
 {
@@ -230,7 +248,9 @@ class CORE_DEPRECATED_EXPORT QgsRendererRangeLabelFormat SIP_DEPRECATED
     bool trimTrailingZeroes() const { return mTrimTrailingZeroes; }
     void setTrimTrailingZeroes( bool trimTrailingZeroes ) { mTrimTrailingZeroes = trimTrailingZeroes; }
 
-    //! \note labelForLowerUpper in Python bindings
+    /**
+     * Returns the label to use for a range with the specified \a lower and \a upper bounds.
+     */
     QString labelForRange( double lower, double upper ) const SIP_PYNAME( labelForLowerUpper );
     QString labelForRange( const QgsRendererRange &range ) const;
     QString formatNumber( double value ) const;

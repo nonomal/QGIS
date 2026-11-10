@@ -13,16 +13,17 @@
 *                                                                         *
 ***************************************************************************/
 
-#include "qgiscustomwidgets.h"
 #include "qgsspinboxplugin.h"
+
+#include "qgiscustomwidgets.h"
 #include "qgsspinbox.h"
 
+#include "moc_qgsspinboxplugin.cpp"
 
 QgsSpinBoxPlugin::QgsSpinBoxPlugin( QObject *parent )
   : QObject( parent )
   , mInitialized( false )
-{
-}
+{}
 
 
 QString QgsSpinBoxPlugin::name() const
@@ -81,17 +82,19 @@ QString QgsSpinBoxPlugin::whatsThis() const
 
 QString QgsSpinBoxPlugin::domXml() const
 {
-  return QString( "<ui language=\"c++\">\n"
-                  " <widget class=\"%1\" name=\"mQgsSpinBox\">\n"
-                  "  <property name=\"geometry\">\n"
-                  "   <rect>\n"
-                  "    <x>0</x>\n"
-                  "    <y>0</y>\n"
-                  "    <width>90</width>\n"
-                  "    <height>27</height>\n"
-                  "   </rect>\n"
-                  "  </property>\n"
-                  " </widget>\n"
-                  "</ui>\n" )
-         .arg( name() );
+  return QString(
+           "<ui language=\"c++\">\n"
+           " <widget class=\"%1\" name=\"mQgsSpinBox\">\n"
+           "  <property name=\"geometry\">\n"
+           "   <rect>\n"
+           "    <x>0</x>\n"
+           "    <y>0</y>\n"
+           "    <width>90</width>\n"
+           "    <height>27</height>\n"
+           "   </rect>\n"
+           "  </property>\n"
+           " </widget>\n"
+           "</ui>\n"
+  )
+    .arg( name() );
 }

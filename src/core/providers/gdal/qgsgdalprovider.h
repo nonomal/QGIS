@@ -19,23 +19,25 @@
 #ifndef QGSGDALPROVIDER_H
 #define QGSGDALPROVIDER_H
 
-#include "qgscoordinatereferencesystem.h"
-#include "qgsrasterdataprovider.h"
-#include "qgsgdalproviderbase.h"
-#include "qgsrectangle.h"
 #include "qgscolorrampshader.h"
-#include "qgsrasterbandstats.h"
+#include "qgscoordinatereferencesystem.h"
+#include "qgsgdalproviderbase.h"
+#include "qgsogrutils.h"
 #include "qgsprovidermetadata.h"
 #include "qgsprovidersublayerdetails.h"
+#include "qgsrasterbandstats.h"
+#include "qgsrasterdataprovider.h"
+#include "qgsrectangle.h"
 
-#include <QString>
-#include <QStringList>
 #include <QDomElement>
 #include <QMap>
+#include <QString>
+#include <QStringList>
 #include <QVector>
 
-///@cond PRIVATE
 #define SIP_NO_FILE
+
+///@cond PRIVATE
 
 class QMutex;
 
@@ -45,9 +47,7 @@ class QgsRasterPyramid;
  * \ingroup core
  * \brief A call back function for showing progress of gdal operations.
  */
-int CPL_STDCALL progressCallback( double dfComplete,
-                                  const char *pszMessage,
-                                  void *pProgressArg );
+int CPL_STDCALL progressCallback( double dfComplete, const char *pszMessage, void *pProgressArg );
 
 
 class QgsCoordinateTransform;
@@ -60,12 +60,11 @@ class QgsCoordinateTransform;
  * to provide access to spatial data residing in a GDAL layers.
  *
 */
-class QgsGdalProvider final: public QgsRasterDataProvider, QgsGdalProviderBase
+class QgsGdalProvider final : public QgsRasterDataProvider, QgsGdalProviderBase
 {
     Q_OBJECT
 
   public:
-
     /**
      * Constructor for the provider.
      *
@@ -80,6 +79,10 @@ class QgsGdalProvider final: public QgsRasterDataProvider, QgsGdalProviderBase
     QgsGdalProvider( const QString &uri, const QgsError &error );
 
     ~QgsGdalProvider() override;
+
+    bool hasReportsDuringClose() const override;
+
+    bool closeWithProgress( QgsFeedback *feedback ) override;
 
     /**
      * Gets the data source specification. This may be a path or a protocol
@@ -131,7 +134,7 @@ class QgsGdalProvider final: public QgsRasterDataProvider, QgsGdalProviderBase
 
     QString description() const override;
     Qgis::DataProviderFlags flags() const override;
-    QgsRasterDataProvider::ProviderCapabilities providerCapabilities() const override;
+    Qgis::RasterProviderCapabilities providerCapabilities() const override;
     QgsCoordinateReferenceSystem crs() const override;
     QgsRectangle extent() const override;
     bool isValid() const override;
@@ -139,7 +142,7 @@ class QgsGdalProvider final: public QgsRasterDataProvider, QgsGdalProviderBase
     double sample( const QgsPointXY &point, int band, bool *ok = nullptr, const QgsRectangle &boundingBox = QgsRectangle(), int width = 0, int height = 0, int dpi = 96 ) override;
     QString lastErrorTitle() override;
     QString lastError() override;
-    int capabilities() const override;
+    Qgis::RasterInterfaceCapabilities capabilities() const override;
     Qgis::DataType dataType( int bandNo ) const override;
     Qgis::DataType sourceDataType( int bandNo ) const override;
     int bandCount() const override;
@@ -155,69 +158,87 @@ class QgsGdalProvider final: public QgsRasterDataProvider, QgsGdalProviderBase
     QgsRasterBlock *block( int bandNo, const QgsRectangle &extent, int width, int height, QgsRasterBlockFeedback *feedback = nullptr ) override;
 
     bool readBlock( int bandNo, int xBlock, int yBlock, void *data ) override;
-    bool readBlock( int bandNo, QgsRectangle  const &viewExtent, int width, int height, void *data, QgsRasterBlockFeedback *feedback = nullptr ) override;
+    bool readBlock( int bandNo, QgsRectangle const &viewExtent, int width, int height, void *data, QgsRasterBlockFeedback *feedback = nullptr ) override;
 
     double bandScale( int bandNo ) const override;
     double bandOffset( int bandNo ) const override;
-    QList<QgsColorRampShader::ColorRampItem> colorTable( int bandNo )const override;
+    QList<QgsColorRampShader::ColorRampItem> colorTable( int bandNo ) const override;
     QString htmlMetadata() const override;
     QString bandDescription( int bandNumber ) override;
     QStringList subLayers() const override;
 
-    static QList< QgsProviderSublayerDetails > sublayerDetails( GDALDatasetH dataset, const QString &baseUri );
+    static QList< QgsProviderSublayerDetails > sublayerDetails( GDALDatasetH dataset, const QString &baseUri, Qgis::SublayerQueryFlags flags );
 
-    bool hasStatistics( int bandNo,
-                        Qgis::RasterBandStatistics stats = Qgis::RasterBandStatistic::All,
-                        const QgsRectangle &boundingBox = QgsRectangle(),
-                        int sampleSize = 0 ) override;
+    bool hasStatistics( int bandNo, Qgis::RasterBandStatistics stats = Qgis::RasterBandStatistic::All, const QgsRectangle &boundingBox = QgsRectangle(), int sampleSize = 0 ) override;
 
-    QgsRasterBandStats bandStatistics( int bandNo,
-                                       Qgis::RasterBandStatistics stats = Qgis::RasterBandStatistic::All,
-                                       const QgsRectangle &boundingBox = QgsRectangle(),
-                                       int sampleSize = 0, QgsRasterBlockFeedback *feedback = nullptr ) override;
+    QgsRasterBandStats bandStatistics(
+      int bandNo, Qgis::RasterBandStatistics stats = Qgis::RasterBandStatistic::All, const QgsRectangle &boundingBox = QgsRectangle(), int sampleSize = 0, QgsRasterBlockFeedback *feedback = nullptr
+    ) override;
 
-    bool hasHistogram( int bandNo,
-                       int binCount = 0,
-                       double minimum = std::numeric_limits<double>::quiet_NaN(),
-                       double maximum = std::numeric_limits<double>::quiet_NaN(),
-                       const QgsRectangle &boundingBox = QgsRectangle(),
-                       int sampleSize = 0,
-                       bool includeOutOfRange = false ) override;
+    bool hasHistogram(
+      int bandNo,
+      int binCount = 0,
+      double minimum = std::numeric_limits<double>::quiet_NaN(),
+      double maximum = std::numeric_limits<double>::quiet_NaN(),
+      const QgsRectangle &boundingBox = QgsRectangle(),
+      int sampleSize = 0,
+      bool includeOutOfRange = false
+    ) override;
 
-    QgsRasterHistogram histogram( int bandNo,
-                                  int binCount = 0,
-                                  double minimum = std::numeric_limits<double>::quiet_NaN(),
-                                  double maximum = std::numeric_limits<double>::quiet_NaN(),
-                                  const QgsRectangle &boundingBox = QgsRectangle(),
-                                  int sampleSize = 0,
-                                  bool includeOutOfRange = false, QgsRasterBlockFeedback *feedback = nullptr ) override;
+    QgsRasterHistogram histogram(
+      int bandNo,
+      int binCount = 0,
+      double minimum = std::numeric_limits<double>::quiet_NaN(),
+      double maximum = std::numeric_limits<double>::quiet_NaN(),
+      const QgsRectangle &boundingBox = QgsRectangle(),
+      int sampleSize = 0,
+      bool includeOutOfRange = false,
+      QgsRasterBlockFeedback *feedback = nullptr
+    ) override;
 
-    QString buildPyramids( const QList<QgsRasterPyramid> &rasterPyramidList,
-                           const QString &resamplingMethod = "NEAREST",
-                           Qgis::RasterPyramidFormat format = Qgis::RasterPyramidFormat::GeoTiff,
-                           const QStringList &createOptions = QStringList(),
-                           QgsRasterBlockFeedback *feedback = nullptr ) override;
+    QString buildPyramids(
+      const QList<QgsRasterPyramid> &rasterPyramidList,
+      const QString &resamplingMethod = "NEAREST",
+      Qgis::RasterPyramidFormat format = Qgis::RasterPyramidFormat::GeoTiff,
+      const QStringList &creationOptions = QStringList(),
+      QgsRasterBlockFeedback *feedback = nullptr
+    ) override;
     QList<QgsRasterPyramid> buildPyramidList( const QList<int> &overviewList = QList<int>() ) override;
 
     static QMap<QString, QString> supportedMimes();
 
     bool isEditable() const override;
     bool setEditable( bool enabled ) override;
-    bool write( void *data, int band, int width, int height, int xOffset, int yOffset ) override;
+    bool write( const void *data, int band, int width, int height, int xOffset, int yOffset ) override;
 
     bool setNoDataValue( int bandNo, double noDataValue ) override;
     bool remove() override;
 
-    QString validateCreationOptions( const QStringList &createOptions, const QString &format ) override;
-    QString validatePyramidsConfigOptions( Qgis::RasterPyramidFormat pyramidsFormat,
-                                           const QStringList &configOptions, const QString &fileFormat ) override;
+    QString validateCreationOptions( const QStringList &creationOptions, const QString &format ) override;
+    QString validatePyramidsConfigOptions( Qgis::RasterPyramidFormat pyramidsFormat, const QStringList &configOptions, const QString &fileFormat ) override;
 
     QgsPoint transformCoordinates( const QgsPoint &point, TransformType type ) override;
 
-    bool enableProviderResampling( bool enable ) override { mProviderResamplingEnabled = enable; return true; }
-    bool setZoomedInResamplingMethod( ResamplingMethod method ) override { mZoomedInResamplingMethod = method; return true; }
-    bool setZoomedOutResamplingMethod( ResamplingMethod method ) override { mZoomedOutResamplingMethod = method; return true; }
-    bool setMaxOversampling( double factor ) override { mMaxOversampling = factor; return true; }
+    bool enableProviderResampling( bool enable ) override
+    {
+      mProviderResamplingEnabled = enable;
+      return true;
+    }
+    bool setZoomedInResamplingMethod( Qgis::RasterResamplingMethod method ) override
+    {
+      mZoomedInResamplingMethod = method;
+      return true;
+    }
+    bool setZoomedOutResamplingMethod( Qgis::RasterResamplingMethod method ) override
+    {
+      mZoomedOutResamplingMethod = method;
+      return true;
+    }
+    bool setMaxOversampling( double factor ) override
+    {
+      mMaxOversampling = factor;
+      return true;
+    }
 
     Qgis::ProviderStyleStorageCapabilities styleStorageCapabilities() const override;
 
@@ -234,7 +255,7 @@ class QgsGdalProvider final: public QgsRasterDataProvider, QgsGdalProviderBase
     //! Load attribute tables
     bool readNativeAttributeTable( QString *errorMessage = nullptr ) override;
 
-    bool writeNativeAttributeTable( QString *errorMessage = nullptr ) override;  //#spellok
+    bool writeNativeAttributeTable( QString *errorMessage = nullptr ) override; //#spellok
 
     // There are 2 cloning mechanisms.
     // * Either the cloned provider use the same GDAL handles as the main provider
@@ -271,6 +292,9 @@ class QgsGdalProvider final: public QgsRasterDataProvider, QgsGdalProviderBase
 
     //! \brief Whether this raster has overviews / pyramids or not
     bool mHasPyramids = false;
+
+    //! Flag indicating if the dataset is in closing
+    bool mInClosing = false;
 
     /**
      * \brief Gdal data types used to represent data in in QGIS,
@@ -329,8 +353,8 @@ class QgsGdalProvider final: public QgsRasterDataProvider, QgsGdalProviderBase
     //! Pair of GDAL base dataset and "real" dataset handles.
     struct DatasetPair
     {
-      GDALDatasetH mGdalBaseDataset;
-      GDALDatasetH mGdalDataset;
+        GDALDatasetH mGdalBaseDataset;
+        GDALDatasetH mGdalDataset;
     };
 
     // Dataset cache
@@ -366,17 +390,16 @@ class QgsGdalProvider final: public QgsRasterDataProvider, QgsGdalProviderBase
     //! Instance of GDAL transformer function used in transformCoordinates() for conversion between image and layer coordinates
     void *mGdalTransformerArg = nullptr;
 
-    bool canDoResampling(
-      int bandNo,
-      const QgsRectangle &reqExtent,
-      int bufferWidthPix,
-      int bufferHeightPix );
+    bool canDoResampling( int bandNo, const QgsRectangle &reqExtent, int bufferWidthPix, int bufferHeightPix );
+
+    //! Invalidate GDAL /vsicurl/ RAM cache for this uri
+    void invalidateNetworkCache();
 };
 
 /**
  * Metadata of the GDAL data provider
  */
-class QgsGdalProviderMetadata final: public QgsProviderMetadata
+class QgsGdalProviderMetadata final : public QgsProviderMetadata
 {
     Q_OBJECT
   public:
@@ -386,18 +409,12 @@ class QgsGdalProviderMetadata final: public QgsProviderMetadata
     QString encodeUri( const QVariantMap &parts ) const override;
     QString absoluteToRelativeUri( const QString &uri, const QgsReadWriteContext &context ) const override;
     QString relativeToAbsoluteUri( const QString &uri, const QgsReadWriteContext &context ) const override;
+    QString cleanUri( const QString &uri, Qgis::UriCleaningFlags flags = Qgis::UriCleaningFlag::RemoveCredentials ) const override;
     bool uriIsBlocklisted( const QString &uri ) const override;
-    QgsGdalProvider *createProvider( const QString &uri, const QgsDataProvider::ProviderOptions &options, QgsDataProvider::ReadFlags flags = QgsDataProvider::ReadFlags() ) override;
+    QgsGdalProvider *createProvider( const QString &uri, const QgsDataProvider::ProviderOptions &options, Qgis::DataProviderReadFlags flags = Qgis::DataProviderReadFlags() ) override;
     QgsGdalProvider *createRasterDataProvider(
-      const QString &uri,
-      const QString &format,
-      int nBands,
-      Qgis::DataType type,
-      int width,
-      int height,
-      double *geoTransform,
-      const QgsCoordinateReferenceSystem &crs,
-      const QStringList &createOptions ) override;
+      const QString &uri, const QString &format, int nBands, Qgis::DataType type, int width, int height, double *geoTransform, const QgsCoordinateReferenceSystem &crs, const QStringList &creationOptions
+    ) override;
     QString filters( Qgis::FileFilterType type ) override;
     QList<QPair<QString, QString> > pyramidResamplingMethods() override;
     QgsProviderMetadata::ProviderMetadataCapabilities capabilities() const override;
@@ -406,16 +423,20 @@ class QgsGdalProviderMetadata final: public QgsProviderMetadata
     QStringList sidecarFilesForUri( const QString &uri ) const override;
     QList< Qgis::LayerType > supportedLayerTypes() const override;
 
-    int listStyles( const QString &uri, QStringList &ids, QStringList &names,
-                    QStringList &descriptions, QString &errCause ) override;
+    QList< QgsDataItemProvider * > dataItemProviders() const override;
+    int listStyles( const QString &uri, QStringList &ids, QStringList &names, QStringList &descriptions, QString &errCause ) override;
     bool styleExists( const QString &uri, const QString &styleId, QString &errCause SIP_OUT ) override;
     QString getStyleById( const QString &uri, const QString &styleId, QString &errCause ) override;
     bool deleteStyleById( const QString &uri, const QString &styleId, QString &errCause ) override;
-    bool saveStyle( const QString &uri, const QString &qmlStyle, const QString &sldStyle,
-                    const QString &styleName, const QString &styleDescription,
-                    const QString &uiFileContent, bool useAsDefault, QString &errCause ) override;
+    bool saveStyle(
+      const QString &uri, const QString &qmlStyle, const QString &sldStyle, const QString &styleName, const QString &styleDescription, const QString &uiFileContent, bool useAsDefault, QString &errCause
+    ) override;
     QString loadStyle( const QString &uri, QString &errCause ) override;
     QString loadStoredStyle( const QString &uri, QString &styleName, QString &errCause ) override;
+
+  private:
+    //! Get layer name from gdal url
+    static QString getLayerNameForStyle( const QString &uri, gdal::dataset_unique_ptr &ds );
 };
 
 ///@endcond

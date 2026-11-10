@@ -30,8 +30,10 @@
 #ifndef PAL_H
 #define PAL_H
 
-#define SIP_NO_FILE
 
+#include <ctime>
+#include <iostream>
+#include <unordered_map>
 
 #include "qgis_core.h"
 #include "qgsgeometry.h"
@@ -39,11 +41,13 @@
 #include "qgssettingstree.h"
 
 #include <QList>
-#include <iostream>
-#include <ctime>
 #include <QMutex>
+#include <QString>
 #include <QStringList>
-#include <unordered_map>
+
+#define SIP_NO_FILE
+
+using namespace Qt::StringLiterals;
 
 class QgsSettingsEntryInteger;
 
@@ -51,23 +55,23 @@ class QgsSettingsEntryInteger;
 
 class QgsAbstractLabelProvider;
 class QgsRenderContext;
+class QgsAbstractLabelingEngineRule;
 
 namespace pal
 {
   class Layer;
   class LabelPosition;
-  class PalStat;
   class Problem;
   class PointSet;
 
   //! Search method to use
   enum SearchMethod
   {
-    CHAIN = 0, //!< Is the worst but fastest method
+    CHAIN = 0,               //!< Is the worst but fastest method
     POPMUSIC_TABU_CHAIN = 1, //!< Is the best but slowest
-    POPMUSIC_TABU = 2, //!< Is a little bit better than CHAIN but slower
-    POPMUSIC_CHAIN = 3, //!< Is slower and best than TABU, worse and faster than TABU_CHAIN
-    FALP = 4 //!< Only initial solution
+    POPMUSIC_TABU = 2,       //!< Is a little bit better than CHAIN but slower
+    POPMUSIC_CHAIN = 3,      //!< Is slower and best than TABU, worse and faster than TABU_CHAIN
+    FALP = 4                 //!< Only initial solution
   };
 
   /**
@@ -86,23 +90,25 @@ namespace pal
       friend class Layer;
 
     public:
-      static inline QgsSettingsTreeNode *sTreePal = QgsSettingsTree::sTreeRendering->createChildNode( QStringLiteral( "pal" ) );
+      static inline QgsSettingsTreeNode *sTreePal = QgsSettingsTree::sTreeRendering->createChildNode( u"pal"_s );
 
       static const QgsSettingsEntryInteger *settingsRenderingLabelCandidatesLimitPoints;
       static const QgsSettingsEntryInteger *settingsRenderingLabelCandidatesLimitLines;
       static const QgsSettingsEntryInteger *settingsRenderingLabelCandidatesLimitPolygons;
 
       /**
-       * \brief Create an new pal instance
+       * Constructor for pal labeling engine.
        */
-      Pal();
-
+      Pal( Qgis::LabelingFlags flags );
       ~Pal();
 
-      //! Pal cannot be copied.
       Pal( const Pal &other ) = delete;
-      //! Pal cannot be copied.
       Pal &operator=( const Pal &other ) = delete;
+
+      /**
+       * Returns labeling flags.
+       */
+      Qgis::LabelingFlags flags() const { return mFlags; }
 
       /**
        * \brief add a new layer
@@ -125,6 +131,7 @@ namespace pal
        */
       void removeLayer( Layer *layer );
 
+      //! Cancellation check callback function
       typedef bool ( *FnIsCanceled )( void *ctx );
 
       //! Register a function that returns whether this job has been canceled - PAL calls it during the computation
@@ -139,6 +146,17 @@ namespace pal
        * boundary, which will be used to detect whether a label is visible (or partially visible) in
        * the rendered map. This may differ from \a extent in the case of rotated or non-rectangular
        * maps.
+       *
+       * This method:
+       *
+       * - preprocesses features, eg merging connected lines, chopping features at repeat distances
+       * - creates label candidates for every feature
+       * - purges candidates outside the map extent (respecting whether partial labels should be shown at the map boundary)
+       * - creates default fallback candidates for features with no valid candidates
+       * - collects obstacles
+       * - calculates candidate costs
+       * - calculates overlaps/conflicts
+       * - eliminates hard conflicts (forbidden placement)
        */
       std::unique_ptr< Problem > extractProblem( const QgsRectangle &extent, const QgsGeometry &mapBoundary, QgsRenderContext &context );
 
@@ -162,6 +180,8 @@ namespace pal
        * \see showPartialLabels()
        */
       void setShowPartialLabels( bool show );
+
+      static constexpr bool DEFAULT_SHOW_PARTIAL_LABELS = true;
 
       /**
        * Returns whether partial labels should be allowed.
@@ -253,9 +273,31 @@ namespace pal
        */
       bool candidatesAreConflicting( const LabelPosition *lp1, const LabelPosition *lp2 ) const;
 
-    private:
+      /**
+       * Sets rules which the labeling solution must satisfy.
+       *
+       * Ownership of the rules are not transferred to the engine, and it is the caller's responsibility
+       * to ensure that the lifetime of the rules exceeds that of the pal job.
+       *
+       * \see rules()
+       * \since QGIS 3.40
+       */
+      void setRules( const QList< QgsAbstractLabelingEngineRule * > &rules );
 
-      std::unordered_map< QgsAbstractLabelProvider *, std::unique_ptr< Layer > > mLayers;
+      /**
+       * Returns the rules which the labeling solution must satisfy.
+       *
+       * \see setRules()
+       * \since QGIS 3.40
+       */
+      QList< QgsAbstractLabelingEngineRule * > rules() const { return mRules; }
+
+    private:
+      Qgis::LabelingFlags mFlags;
+
+      std::vector< std::pair< QgsAbstractLabelProvider *, std::unique_ptr< Layer > > > mLayers;
+
+      QList< QgsAbstractLabelingEngineRule * > mRules;
 
       QMutex mMutex;
 
@@ -277,7 +319,7 @@ namespace pal
       /**
        * \brief show partial labels (cut-off by the map canvas) or not
        */
-      bool mShowPartialLabels = true;
+      bool mShowPartialLabels = DEFAULT_SHOW_PARTIAL_LABELS;
 
       double mMaxLineCandidatesPerMapUnit = 0;
       double mMaxPolygonCandidatesPerMapUnitSquared = 0;
@@ -341,7 +383,6 @@ namespace pal
        * \see getMinIt()
        */
       int getMaxIt() const;
-
   };
 
 } // end namespace pal

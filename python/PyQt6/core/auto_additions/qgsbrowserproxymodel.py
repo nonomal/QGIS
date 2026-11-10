@@ -2,3 +2,8 @@
 QgsBrowserProxyModel.Normal = QgsBrowserProxyModel.FilterSyntax.Normal
 QgsBrowserProxyModel.Wildcards = QgsBrowserProxyModel.FilterSyntax.Wildcards
 QgsBrowserProxyModel.RegularExpression = QgsBrowserProxyModel.FilterSyntax.RegularExpression
+try:
+    QgsBrowserProxyModel.__overridden_methods__ = ['filterAcceptsRow', 'hasChildren']
+    QgsBrowserProxyModel.__group__ = ['browser']
+except (NameError, AttributeError):
+    pass

@@ -3,7 +3,7 @@
     ---------------------
     begin                : July 2017
     copyright            : (C) 2017
-    email                : lbartoletti at tuxfamily dot org
+    email                : lituus at free dot fr
  ***************************************************************************
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -14,10 +14,12 @@
  ***************************************************************************/
 
 #include "qgsmaptoolshapeellipseabstract.h"
+
 #include "qgsgeometryrubberband.h"
 #include "qgslinestring.h"
 #include "qgsmaptoolcapture.h"
 
+#include "moc_qgsmaptoolshapeellipseabstract.cpp"
 
 void QgsMapToolShapeEllipseAbstract::addEllipseToParentTool()
 {
@@ -29,7 +31,6 @@ void QgsMapToolShapeEllipseAbstract::addEllipseToParentTool()
   std::unique_ptr<QgsLineString> ls( mEllipse.toLineString( segments() ) );
 
   mParentTool->addCurve( ls.release() );
-
 }
 
 void QgsMapToolShapeEllipseAbstract::clean()

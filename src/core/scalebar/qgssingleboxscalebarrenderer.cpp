@@ -15,17 +15,24 @@
  ***************************************************************************/
 
 #include "qgssingleboxscalebarrenderer.h"
+
+#include "qgsfillsymbol.h"
+#include "qgsfillsymbollayer.h"
+#include "qgslinesymbol.h"
+#include "qgspainting.h"
 #include "qgsscalebarsettings.h"
 #include "qgssymbol.h"
 #include "qgstextrenderer.h"
-#include "qgslinesymbol.h"
-#include "qgsfillsymbol.h"
+
 #include <QList>
 #include <QPainter>
+#include <QString>
+
+using namespace Qt::StringLiterals;
 
 QString QgsSingleBoxScaleBarRenderer::id() const
 {
-  return QStringLiteral( "Single Box" );
+  return u"Single Box"_s;
 }
 
 QString QgsSingleBoxScaleBarRenderer::visibleName() const
@@ -40,16 +47,16 @@ int QgsSingleBoxScaleBarRenderer::sortKey() const
 
 QgsScaleBarRenderer::Flags QgsSingleBoxScaleBarRenderer::flags() const
 {
-  return Flag::FlagUsesLineSymbol |
-         Flag::FlagUsesFillSymbol |
-         Flag::FlagUsesAlternateFillSymbol |
-         Flag::FlagRespectsUnits |
-         Flag::FlagRespectsMapUnitsPerScaleBarUnit |
-         Flag::FlagUsesUnitLabel |
-         Flag::FlagUsesSegments |
-         Flag::FlagUsesLabelBarSpace |
-         Flag::FlagUsesLabelVerticalPlacement |
-         Flag::FlagUsesLabelHorizontalPlacement;
+  return Flag::FlagUsesLineSymbol
+         | Flag::FlagUsesFillSymbol
+         | Flag::FlagUsesAlternateFillSymbol
+         | Flag::FlagRespectsUnits
+         | Flag::FlagRespectsMapUnitsPerScaleBarUnit
+         | Flag::FlagUsesUnitLabel
+         | Flag::FlagUsesSegments
+         | Flag::FlagUsesLabelBarSpace
+         | Flag::FlagUsesLabelVerticalPlacement
+         | Flag::FlagUsesLabelHorizontalPlacement;
 }
 
 QgsSingleBoxScaleBarRenderer *QgsSingleBoxScaleBarRenderer::clone() const
@@ -65,13 +72,10 @@ void QgsSingleBoxScaleBarRenderer::draw( QgsRenderContext &context, const QgsSca
   }
   QPainter *painter = context.painter();
 
-  const double scaledLabelBarSpace = context.convertToPainterUnits( settings.labelBarSpace(), Qgis::RenderUnit::Millimeters );
-  const double scaledBoxContentSpace = context.convertToPainterUnits( settings.boxContentSpace(), Qgis::RenderUnit::Millimeters );
-  const QFontMetricsF fontMetrics = QgsTextRenderer::fontMetrics( context, settings.textFormat() );
-  const double barTopPosition = scaledBoxContentSpace + ( settings.labelVerticalPlacement() == QgsScaleBarSettings::LabelAboveSegment ? fontMetrics.ascent() + scaledLabelBarSpace : 0 );
+  const double barTopPosition = verticalOffset( context, settings );
   const double barHeight = context.convertToPainterUnits( settings.height(), Qgis::RenderUnit::Millimeters );
 
-  painter->save();
+  QgsScopedQPainterState painterState( painter );
   context.setPainterFlagsUsingContext( painter );
 
   std::unique_ptr< QgsLineSymbol > lineSymbol( settings.lineSymbol()->clone() );
@@ -116,12 +120,7 @@ void QgsSingleBoxScaleBarRenderer::draw( QgsRenderContext &context, const QgsSca
       maxX = thisX + thisWidth;
 
     const QRectF segmentRect( thisX, barTopPosition, thisWidth, barHeight );
-    currentSymbol->renderPolygon( QPolygonF()
-                                  << segmentRect.topLeft()
-                                  << segmentRect.topRight()
-                                  << segmentRect.bottomRight()
-                                  << segmentRect.bottomLeft()
-                                  << segmentRect.topLeft(), nullptr, nullptr, context );
+    currentSymbol->renderPolygon( QPolygonF() << segmentRect.topLeft() << segmentRect.topRight() << segmentRect.bottomRight() << segmentRect.bottomLeft() << segmentRect.topLeft(), nullptr, nullptr, context );
     useColor = !useColor;
   }
 
@@ -132,30 +131,50 @@ void QgsSingleBoxScaleBarRenderer::draw( QgsRenderContext &context, const QgsSca
     for ( int i = 1; i < positions.size(); ++i )
     {
       const double lineX = context.convertToPainterUnits( positions.at( i ), Qgis::RenderUnit::Millimeters ) + xOffset;
-      lineSymbol->renderPolyline( QPolygonF()
-                                  << QPointF( lineX, barTopPosition )
-                                  << QPointF( lineX, barTopPosition + barHeight ),
-                                  nullptr, context, layer );
+      lineSymbol->renderPolyline( QPolygonF() << QPointF( lineX, barTopPosition ) << QPointF( lineX, barTopPosition + barHeight ), nullptr, context, layer );
     }
 
     // outside line
-    lineSymbol->renderPolyline( QPolygonF()
-                                << QPointF( minX, barTopPosition )
-                                << QPointF( maxX, barTopPosition )
-                                << QPointF( maxX, barTopPosition + barHeight )
-                                << QPointF( minX, barTopPosition + barHeight )
-                                << QPointF( minX, barTopPosition ),
-                                nullptr, context, layer );
+    lineSymbol->renderPolyline(
+      QPolygonF() << QPointF( minX, barTopPosition ) << QPointF( maxX, barTopPosition ) << QPointF( maxX, barTopPosition + barHeight ) << QPointF( minX, barTopPosition + barHeight ) << QPointF( minX, barTopPosition ),
+      nullptr,
+      context,
+      layer
+    );
   }
 
   lineSymbol->stopRender( context );
   fillSymbol1->stopRender( context );
   fillSymbol2->stopRender( context );
-  painter->restore();
+
+  painterState.restore();
 
   //draw labels using the default method
   drawDefaultLabels( context, settings, scaleContext );
 }
 
+bool QgsSingleBoxScaleBarRenderer::applyDefaultSettings( QgsScaleBarSettings &settings ) const
+{
+  QgsSimpleFillSymbolLayer *fill = dynamic_cast< QgsSimpleFillSymbolLayer * >( settings.fillSymbol()->symbolLayers().at( 0 ) );
 
+  // restore the fill symbols by default
+  if ( fill && fill->brushStyle() == Qt::NoBrush )
+  {
+    auto fillSymbol = std::make_unique< QgsFillSymbol >();
+    auto fillSymbolLayer = std::make_unique< QgsSimpleFillSymbolLayer >();
+    fillSymbolLayer->setColor( QColor( 0, 0, 0 ) );
+    fillSymbolLayer->setBrushStyle( Qt::SolidPattern );
+    fillSymbolLayer->setStrokeStyle( Qt::SolidLine );
+    fillSymbol->changeSymbolLayer( 0, fillSymbolLayer.release() );
+    settings.setFillSymbol( fillSymbol.release() );
 
+    fillSymbol = std::make_unique< QgsFillSymbol >();
+    fillSymbolLayer = std::make_unique< QgsSimpleFillSymbolLayer >();
+    fillSymbolLayer->setColor( QColor( 255, 255, 255 ) );
+    fillSymbolLayer->setStrokeStyle( Qt::NoPen );
+    fillSymbol->changeSymbolLayer( 0, fillSymbolLayer.release() );
+    settings.setAlternateFillSymbol( fillSymbol.release() );
+  }
+
+  return true;
+}

@@ -19,12 +19,12 @@
 #define QGSEXPRESSIONFIELDBUFFER_H
 
 #include "qgis_core.h"
-#include <QString>
-#include <QList>
-#include <QDomNode>
-
-#include "qgsfields.h"
 #include "qgsexpression.h"
+#include "qgsfields.h"
+
+#include <QDomNode>
+#include <QList>
+#include <QString>
 
 /**
  * \ingroup core
@@ -36,18 +36,15 @@ class CORE_EXPORT QgsExpressionFieldBuffer
   public:
     struct ExpressionField
     {
-      ExpressionField( const QString &exp, const QgsField &fld )
-        : cachedExpression( exp )
-        , field( fld )
-      {}
+        ExpressionField( const QString &exp, const QgsField &fld )
+          : cachedExpression( exp )
+          , field( fld )
+        {}
 
-      QgsExpression cachedExpression;
-      QgsField field;
+        QgsExpression cachedExpression;
+        QgsField field;
     };
 
-    /**
-     * Constructor for QgsExpressionFieldBuffer.
-     */
     QgsExpressionFieldBuffer() = default;
 
     /**

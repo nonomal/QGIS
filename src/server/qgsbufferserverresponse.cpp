@@ -18,7 +18,12 @@
  ***************************************************************************/
 
 #include "qgsbufferserverresponse.h"
+
 #include "qgsmessagelog.h"
+
+#include <QString>
+
+using namespace Qt::StringLiterals;
 
 //
 // QgsBufferServerResponse
@@ -37,8 +42,22 @@ void QgsBufferServerResponse::removeHeader( const QString &key )
 
 void QgsBufferServerResponse::setHeader( const QString &key, const QString &value )
 {
-  if ( ! mHeadersSent )
-    mHeaders.insert( key, value );
+  if ( !mHeadersSent )
+  {
+    mHeaders[key] = QList<QString>() << value;
+  }
+}
+
+void QgsBufferServerResponse::addHeader( const QString &key, const QString &value )
+{
+  if ( !mHeadersSent )
+  {
+    if ( !mHeaders.contains( key ) )
+    {
+      mHeaders[key] = QList<QString>();
+    }
+    mHeaders[key].append( value );
+  }
 }
 
 void QgsBufferServerResponse::setStatusCode( int code )
@@ -48,7 +67,20 @@ void QgsBufferServerResponse::setStatusCode( int code )
 
 QString QgsBufferServerResponse::header( const QString &key ) const
 {
-  return mHeaders.value( key );
+  const QList<QString> values = mHeaders.value( key );
+  return values.isEmpty() ? QString() : values.last();
+}
+
+QMap<QString, QString> QgsBufferServerResponse::headers() const
+{
+  QMap<QString, QString> singleHeaders;
+  for ( auto it = mHeaders.keyBegin(); it != mHeaders.keyEnd(); ++it )
+  {
+    Q_NOWARN_DEPRECATED_PUSH
+    singleHeaders.insert( *it, header( *it ) );
+    Q_NOWARN_DEPRECATED_POP
+  }
+  return singleHeaders;
 }
 
 bool QgsBufferServerResponse::headersSent() const
@@ -56,7 +88,7 @@ bool QgsBufferServerResponse::headersSent() const
   return mHeadersSent;
 }
 
-void QgsBufferServerResponse::sendError( int code,  const QString &message )
+void QgsBufferServerResponse::sendError( int code, const QString &message )
 {
   if ( mHeadersSent )
   {
@@ -66,7 +98,7 @@ void QgsBufferServerResponse::sendError( int code,  const QString &message )
 
   clear();
   setStatusCode( code );
-  setHeader( QStringLiteral( "Content-Type" ), QStringLiteral( "text/plain; charset=utf-8" ) );
+  setHeader( u"Content-Type"_s, u"text/plain; charset=utf-8"_s );
   write( message );
   finish();
 }
@@ -86,9 +118,9 @@ void QgsBufferServerResponse::finish()
 
   if ( !mHeadersSent )
   {
-    if ( ! mHeaders.contains( "Content-Length" ) )
+    if ( !mHeaders.contains( "Content-Length" ) )
     {
-      mHeaders.insert( QStringLiteral( "Content-Length" ), QString::number( mBuffer.pos() ) );
+      mHeaders.insert( u"Content-Length"_s, QList<QString>() << QString::number( mBuffer.pos() ) );
     }
   }
   flush();
@@ -97,7 +129,7 @@ void QgsBufferServerResponse::finish()
 
 void QgsBufferServerResponse::flush()
 {
-  if ( ! mHeadersSent )
+  if ( !mHeadersSent )
   {
     mHeadersSent = true;
   }
@@ -127,4 +159,10 @@ void QgsBufferServerResponse::truncate()
 {
   mBuffer.seek( 0 );
   mBuffer.buffer().clear();
+}
+
+
+QList<QString> QgsBufferServerResponse::fullHeader( const QString &key ) const
+{
+  return mHeaders.value( key );
 }

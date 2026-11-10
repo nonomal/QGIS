@@ -18,19 +18,23 @@
 #ifndef QGSALGORITHMCELLSTATISTICS_H
 #define QGSALGORITHMCELLSTATISTICS_H
 
-#define SIP_NO_FILE
 
 #include "qgis_sip.h"
 #include "qgsapplication.h"
 #include "qgsprocessingalgorithm.h"
-#include "qgsrasterprojector.h"
 #include "qgsrasteranalysisutils.h"
+#include "qgsrasterprojector.h"
+
+#include <QString>
+
+#define SIP_NO_FILE
+
+using namespace Qt::StringLiterals;
 
 ///@cond PRIVATE
 
 class QgsCellStatisticsAlgorithmBase : public QgsProcessingAlgorithm
 {
-
   public:
     QString group() const final;
     QString groupId() const final;
@@ -44,7 +48,7 @@ class QgsCellStatisticsAlgorithmBase : public QgsProcessingAlgorithm
     QVariantMap processAlgorithm( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback ) final;
     virtual void processRasterStack( QgsProcessingFeedback *feedback ) = 0;
 
-    std::vector< QgsRasterAnalysisUtils::RasterLogicInput > mInputs;
+    std::vector<QgsRasterAnalysisUtils::RasterLogicInput> mInputs;
     bool mIgnoreNoData = false;
     Qgis::DataType mDataType = Qgis::DataType::UnknownDataType;
     double mNoDataValue = -9999;
@@ -54,19 +58,21 @@ class QgsCellStatisticsAlgorithmBase : public QgsProcessingAlgorithm
     QgsCoordinateReferenceSystem mCrs;
     double mRasterUnitsPerPixelX = 0;
     double mRasterUnitsPerPixelY = 0;
-    std::unique_ptr< QgsRasterDataProvider > mOutputRasterDataProvider;
+    std::unique_ptr<QgsRasterDataProvider> mOutputRasterDataProvider;
+    double mMaxProgressDuringBlockWriting = 100;
 };
 
 class QgsCellStatisticsAlgorithm : public QgsCellStatisticsAlgorithmBase
 {
   public:
     QgsCellStatisticsAlgorithm() = default;
-    QIcon icon() const override { return QgsApplication::getThemeIcon( QStringLiteral( "/algorithms/mAlgorithmCellStatistics.svg" ) ); }
-    QString svgIconPath() const override { return QgsApplication::iconPath( QStringLiteral( "/algorithms/mAlgorithmCellStatistics.svg" ) ); }
+    QIcon icon() const override { return QgsApplication::getThemeIcon( u"/algorithms/mAlgorithmCellStatistics.svg"_s ); }
+    QString svgIconPath() const override { return QgsApplication::iconPath( u"/algorithms/mAlgorithmCellStatistics.svg"_s ); }
     QString name() const override;
     QString displayName() const override;
     QStringList tags() const override;
     QString shortHelpString() const override;
+    QString shortDescription() const override;
     QgsCellStatisticsAlgorithm *createInstance() const override SIP_FACTORY;
 
   protected:
@@ -76,7 +82,6 @@ class QgsCellStatisticsAlgorithm : public QgsCellStatisticsAlgorithmBase
 
   private:
     QgsRasterAnalysisUtils::CellValueStatisticMethods mMethod = QgsRasterAnalysisUtils::CellValueStatisticMethods::Sum;
-
 };
 
 
@@ -84,12 +89,13 @@ class QgsCellStatisticsPercentileAlgorithm : public QgsCellStatisticsAlgorithmBa
 {
   public:
     QgsCellStatisticsPercentileAlgorithm() = default;
-    QIcon icon() const override { return QgsApplication::getThemeIcon( QStringLiteral( "/algorithms/mAlgorithmCellStatisticsPercentile.svg" ) ); }
-    QString svgIconPath() const override { return QgsApplication::iconPath( QStringLiteral( "/algorithms/mAlgorithmCellStatisticsPercentile.svg" ) ); }
+    QIcon icon() const override { return QgsApplication::getThemeIcon( u"/algorithms/mAlgorithmCellStatisticsPercentile.svg"_s ); }
+    QString svgIconPath() const override { return QgsApplication::iconPath( u"/algorithms/mAlgorithmCellStatisticsPercentile.svg"_s ); }
     QString name() const override;
     QString displayName() const override;
     QStringList tags() const override;
     QString shortHelpString() const override;
+    QString shortDescription() const override;
     QgsCellStatisticsPercentileAlgorithm *createInstance() const override SIP_FACTORY;
 
   protected:
@@ -107,12 +113,13 @@ class QgsCellStatisticsPercentRankFromValueAlgorithm : public QgsCellStatisticsA
 {
   public:
     QgsCellStatisticsPercentRankFromValueAlgorithm() = default;
-    QIcon icon() const override { return QgsApplication::getThemeIcon( QStringLiteral( "/algorithms/mAlgorithmCellStatisticsPercentRank.svg" ) ); }
-    QString svgIconPath() const override { return QgsApplication::iconPath( QStringLiteral( "/algorithms/mAlgorithmCellStatisticsPercentRank.svg" ) ); }
+    QIcon icon() const override { return QgsApplication::getThemeIcon( u"/algorithms/mAlgorithmCellStatisticsPercentRank.svg"_s ); }
+    QString svgIconPath() const override { return QgsApplication::iconPath( u"/algorithms/mAlgorithmCellStatisticsPercentRank.svg"_s ); }
     QString name() const override;
     QString displayName() const override;
     QStringList tags() const override;
     QString shortHelpString() const override;
+    QString shortDescription() const override;
     QgsCellStatisticsPercentRankFromValueAlgorithm *createInstance() const override SIP_FACTORY;
 
   protected:
@@ -123,7 +130,6 @@ class QgsCellStatisticsPercentRankFromValueAlgorithm : public QgsCellStatisticsA
   private:
     QgsRasterAnalysisUtils::CellValuePercentRankMethods mMethod = QgsRasterAnalysisUtils::CellValuePercentRankMethods::InterpolatedPercentRankInc;
     double mValue = 0.0;
-
 };
 
 
@@ -131,12 +137,13 @@ class QgsCellStatisticsPercentRankFromRasterAlgorithm : public QgsCellStatistics
 {
   public:
     QgsCellStatisticsPercentRankFromRasterAlgorithm() = default;
-    QIcon icon() const override { return QgsApplication::getThemeIcon( QStringLiteral( "/algorithms/mAlgorithmCellStatisticsPercentRank.svg" ) ); }
-    QString svgIconPath() const override { return QgsApplication::iconPath( QStringLiteral( "/algorithms/mAlgorithmCellStatisticsPercentRank.svg" ) ); }
+    QIcon icon() const override { return QgsApplication::getThemeIcon( u"/algorithms/mAlgorithmCellStatisticsPercentRank.svg"_s ); }
+    QString svgIconPath() const override { return QgsApplication::iconPath( u"/algorithms/mAlgorithmCellStatisticsPercentRank.svg"_s ); }
     QString name() const override;
     QString displayName() const override;
     QStringList tags() const override;
     QString shortHelpString() const override;
+    QString shortDescription() const override;
     QgsCellStatisticsPercentRankFromRasterAlgorithm *createInstance() const override SIP_FACTORY;
 
   protected:
@@ -146,13 +153,11 @@ class QgsCellStatisticsPercentRankFromRasterAlgorithm : public QgsCellStatistics
 
   private:
     QgsRasterAnalysisUtils::CellValuePercentRankMethods mMethod = QgsRasterAnalysisUtils::CellValuePercentRankMethods::InterpolatedPercentRankInc;
-    std::unique_ptr< QgsRasterInterface > mValueRasterInterface;
+    std::unique_ptr<QgsRasterInterface> mValueRasterInterface;
     int mValueRasterBand = 1;
-
 };
 
 
 ///@endcond PRIVATE
 
 #endif // QGSALGORITHMCELLSTATISTICS_H
-

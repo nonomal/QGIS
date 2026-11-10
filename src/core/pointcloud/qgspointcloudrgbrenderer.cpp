@@ -16,22 +16,27 @@
  ***************************************************************************/
 
 #include "qgspointcloudrgbrenderer.h"
-#include "qgspointcloudblock.h"
+
+#include <memory>
+
 #include "qgscontrastenhancement.h"
+#include "qgspointcloudblock.h"
+
+#include <QString>
+
+using namespace Qt::StringLiterals;
 
 QgsPointCloudRgbRenderer::QgsPointCloudRgbRenderer()
-{
-
-}
+{}
 
 QString QgsPointCloudRgbRenderer::type() const
 {
-  return QStringLiteral( "rgb" );
+  return u"rgb"_s;
 }
 
 QgsPointCloudRenderer *QgsPointCloudRgbRenderer::clone() const
 {
-  std::unique_ptr< QgsPointCloudRgbRenderer > res = std::make_unique< QgsPointCloudRgbRenderer >();
+  auto res = std::make_unique< QgsPointCloudRgbRenderer >();
   res->mRedAttribute = mRedAttribute;
   res->mGreenAttribute = mGreenAttribute;
   res->mBlueAttribute = mBlueAttribute;
@@ -93,7 +98,7 @@ void QgsPointCloudRgbRenderer::renderBlock( const QgsPointCloudBlock *block, Qgs
 
   const bool renderElevation = context.renderContext().elevationMap();
   const QgsDoubleRange zRange = context.renderContext().zRange();
-  const bool considerZ = !zRange.isInfinite() || renderElevation;
+  const bool considerZ = !zRange.isInfinite() || renderElevation || !context.mapCrsZFilter().isInfinite();
 
   int rendered = 0;
   double x = 0;
@@ -101,6 +106,8 @@ void QgsPointCloudRgbRenderer::renderBlock( const QgsPointCloudBlock *block, Qgs
   double z = 0;
   const QgsCoordinateTransform ct = context.renderContext().coordinateTransform();
   const bool reproject = ct.isValid();
+
+  bool dataDefinedPropertiesActive = dataDefinedProperties().isActive( QgsPointCloudRenderer::Property::Color );
   for ( int i = 0; i < count; ++i )
   {
     if ( context.renderContext().renderingStopped() )
@@ -130,6 +137,9 @@ void QgsPointCloudRgbRenderer::renderBlock( const QgsPointCloudBlock *block, Qgs
           continue;
         }
       }
+
+      if ( !context.mapCrsZFilter().contains( z ) )
+        continue;
 
       int red = 0;
       context.getAttribute( ptr, i * recordSize + redOffset, redType, red );
@@ -164,16 +174,20 @@ void QgsPointCloudRgbRenderer::renderBlock( const QgsPointCloudBlock *block, Qgs
       green = std::max( 0, std::min( 255, green ) );
       blue = std::max( 0, std::min( 255, blue ) );
 
+      QColor color( red, green, blue );
+      if ( dataDefinedPropertiesActive )
+        color = colorFromExpression( block, i, color, context );
+
       if ( renderAsTriangles() )
       {
-        addPointToTriangulation( x, y, z, QColor( red, green, blue ), context );
+        addPointToTriangulation( x, y, z, color, context );
 
         // We don't want to render any points if we're rendering triangles and there is no preview painter
         if ( !context.renderContext().previewRenderPainter() )
           continue;
       }
 
-      drawPoint( x, y, QColor( red, green, blue ), context );
+      drawPoint( x, y, color, context );
       if ( renderElevation )
         drawPointToElevationMap( x, y, z, context );
 
@@ -184,19 +198,19 @@ void QgsPointCloudRgbRenderer::renderBlock( const QgsPointCloudBlock *block, Qgs
 }
 
 
-QgsPointCloudRenderer *QgsPointCloudRgbRenderer::create( QDomElement &element, const QgsReadWriteContext &context )
+std::unique_ptr<QgsPointCloudRenderer> QgsPointCloudRgbRenderer::create( QDomElement &element, const QgsReadWriteContext &context )
 {
-  std::unique_ptr< QgsPointCloudRgbRenderer > r = std::make_unique< QgsPointCloudRgbRenderer >();
+  auto r = std::make_unique< QgsPointCloudRgbRenderer >();
 
-  r->setRedAttribute( element.attribute( QStringLiteral( "red" ), QStringLiteral( "Red" ) ) );
-  r->setGreenAttribute( element.attribute( QStringLiteral( "green" ), QStringLiteral( "Green" ) ) );
-  r->setBlueAttribute( element.attribute( QStringLiteral( "blue" ), QStringLiteral( "Blue" ) ) );
+  r->setRedAttribute( element.attribute( u"red"_s, u"Red"_s ) );
+  r->setGreenAttribute( element.attribute( u"green"_s, u"Green"_s ) );
+  r->setBlueAttribute( element.attribute( u"blue"_s, u"Blue"_s ) );
 
   r->restoreCommonProperties( element, context );
 
   //contrast enhancements
   QgsContrastEnhancement *redContrastEnhancement = nullptr;
-  const QDomElement redContrastElem = element.firstChildElement( QStringLiteral( "redContrastEnhancement" ) );
+  const QDomElement redContrastElem = element.firstChildElement( u"redContrastEnhancement"_s );
   if ( !redContrastElem.isNull() )
   {
     redContrastEnhancement = new QgsContrastEnhancement( Qgis::DataType::UnknownDataType );
@@ -205,7 +219,7 @@ QgsPointCloudRenderer *QgsPointCloudRgbRenderer::create( QDomElement &element, c
   }
 
   QgsContrastEnhancement *greenContrastEnhancement = nullptr;
-  const QDomElement greenContrastElem = element.firstChildElement( QStringLiteral( "greenContrastEnhancement" ) );
+  const QDomElement greenContrastElem = element.firstChildElement( u"greenContrastEnhancement"_s );
   if ( !greenContrastElem.isNull() )
   {
     greenContrastEnhancement = new QgsContrastEnhancement( Qgis::DataType::UnknownDataType );
@@ -214,7 +228,7 @@ QgsPointCloudRenderer *QgsPointCloudRgbRenderer::create( QDomElement &element, c
   }
 
   QgsContrastEnhancement *blueContrastEnhancement = nullptr;
-  const QDomElement blueContrastElem = element.firstChildElement( QStringLiteral( "blueContrastEnhancement" ) );
+  const QDomElement blueContrastElem = element.firstChildElement( u"blueContrastEnhancement"_s );
   if ( !blueContrastElem.isNull() )
   {
     blueContrastEnhancement = new QgsContrastEnhancement( Qgis::DataType::UnknownDataType );
@@ -222,37 +236,37 @@ QgsPointCloudRenderer *QgsPointCloudRgbRenderer::create( QDomElement &element, c
     r->setBlueContrastEnhancement( blueContrastEnhancement );
   }
 
-  return r.release();
+  return r;
 }
 
 QDomElement QgsPointCloudRgbRenderer::save( QDomDocument &doc, const QgsReadWriteContext &context ) const
 {
-  QDomElement rendererElem = doc.createElement( QStringLiteral( "renderer" ) );
+  QDomElement rendererElem = doc.createElement( u"renderer"_s );
 
-  rendererElem.setAttribute( QStringLiteral( "type" ), QStringLiteral( "rgb" ) );
+  rendererElem.setAttribute( u"type"_s, u"rgb"_s );
 
-  rendererElem.setAttribute( QStringLiteral( "red" ), mRedAttribute );
-  rendererElem.setAttribute( QStringLiteral( "green" ), mGreenAttribute );
-  rendererElem.setAttribute( QStringLiteral( "blue" ), mBlueAttribute );
+  rendererElem.setAttribute( u"red"_s, mRedAttribute );
+  rendererElem.setAttribute( u"green"_s, mGreenAttribute );
+  rendererElem.setAttribute( u"blue"_s, mBlueAttribute );
 
   saveCommonProperties( rendererElem, context );
 
   //contrast enhancement
   if ( mRedContrastEnhancement )
   {
-    QDomElement redContrastElem = doc.createElement( QStringLiteral( "redContrastEnhancement" ) );
+    QDomElement redContrastElem = doc.createElement( u"redContrastEnhancement"_s );
     mRedContrastEnhancement->writeXml( doc, redContrastElem );
     rendererElem.appendChild( redContrastElem );
   }
   if ( mGreenContrastEnhancement )
   {
-    QDomElement greenContrastElem = doc.createElement( QStringLiteral( "greenContrastEnhancement" ) );
+    QDomElement greenContrastElem = doc.createElement( u"greenContrastEnhancement"_s );
     mGreenContrastEnhancement->writeXml( doc, greenContrastElem );
     rendererElem.appendChild( greenContrastElem );
   }
   if ( mBlueContrastEnhancement )
   {
-    QDomElement blueContrastElem = doc.createElement( QStringLiteral( "blueContrastEnhancement" ) );
+    QDomElement blueContrastElem = doc.createElement( u"blueContrastEnhancement"_s );
     mBlueContrastEnhancement->writeXml( doc, blueContrastElem );
     rendererElem.appendChild( blueContrastElem );
   }
@@ -260,25 +274,25 @@ QDomElement QgsPointCloudRgbRenderer::save( QDomDocument &doc, const QgsReadWrit
   return rendererElem;
 }
 
-QSet<QString> QgsPointCloudRgbRenderer::usedAttributes( const QgsPointCloudRenderContext & ) const
+QSet<QString> QgsPointCloudRgbRenderer::usedAttributes( const QgsPointCloudRenderContext &context ) const
 {
-  QSet<QString> res;
+  QSet<QString> res = QgsPointCloudRenderer::usedAttributes( context );
   res << mRedAttribute << mGreenAttribute << mBlueAttribute;
   return res;
 }
 
 std::unique_ptr<QgsPreparedPointCloudRendererData> QgsPointCloudRgbRenderer::prepare()
 {
-  std::unique_ptr< QgsPointCloudRgbRendererPreparedData > data = std::make_unique< QgsPointCloudRgbRendererPreparedData >();
+  auto data = std::make_unique< QgsPointCloudRgbRendererPreparedData >();
   data->redAttribute = mRedAttribute;
   if ( mRedContrastEnhancement )
-    data->redContrastEnhancement.reset( new QgsContrastEnhancement( *mRedContrastEnhancement ) );
+    data->redContrastEnhancement = std::make_unique<QgsContrastEnhancement>( *mRedContrastEnhancement );
   data->greenAttribute = mGreenAttribute;
   if ( mGreenContrastEnhancement )
-    data->greenContrastEnhancement.reset( new QgsContrastEnhancement( *mGreenContrastEnhancement ) );
+    data->greenContrastEnhancement = std::make_unique<QgsContrastEnhancement>( *mGreenContrastEnhancement );
   data->blueAttribute = mBlueAttribute;
   if ( mBlueContrastEnhancement )
-    data->blueContrastEnhancement.reset( new QgsContrastEnhancement( *mBlueContrastEnhancement ) );
+    data->blueContrastEnhancement = std::make_unique<QgsContrastEnhancement>( *mBlueContrastEnhancement );
 
   data->useRedContrastEnhancement = mRedContrastEnhancement && mRedContrastEnhancement->contrastEnhancementAlgorithm() != QgsContrastEnhancement::NoEnhancement;
   data->useBlueContrastEnhancement = mBlueContrastEnhancement && mBlueContrastEnhancement->contrastEnhancementAlgorithm() != QgsContrastEnhancement::NoEnhancement;

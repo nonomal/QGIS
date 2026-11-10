@@ -16,17 +16,16 @@
 #ifndef QGSRUNNABLEPROVIDERCREATOR_H
 #define QGSRUNNABLEPROVIDERCREATOR_H
 
-#include <QRunnable>
-#include <QObject>
-
 #include "qgsdataprovider.h"
+
+#include <QObject>
+#include <QRunnable>
 
 #define SIP_NO_FILE
 
 /**
  * \ingroup core
- * \brief The QgsRunnableProviderCreator class is used when reading a project
- * to create asynchronously provider that support asynchronous creation
+ * \brief Used when reading a project to asynchronously create data providers that support asynchronous creation.
  *
  * \since QGIS 3.32
  */
@@ -34,13 +33,8 @@ class QgsRunnableProviderCreator : public QObject, public QRunnable
 {
     Q_OBJECT
   public:
-
     //! Constructor
-    QgsRunnableProviderCreator( const QString &layerId,
-                                QString const &providerKey,
-                                QString const &dataSource,
-                                const QgsDataProvider::ProviderOptions &options,
-                                QgsDataProvider::ReadFlags flags );
+    QgsRunnableProviderCreator( const QString &layerId, QString const &providerKey, QString const &dataSource, const QgsDataProvider::ProviderOptions &options, Qgis::DataProviderReadFlags flags );
 
     void run() override;
 
@@ -61,7 +55,7 @@ class QgsRunnableProviderCreator : public QObject, public QRunnable
     QString mProviderKey;
     QString mDataSource;
     QgsDataProvider::ProviderOptions mOptions;
-    QgsDataProvider::ReadFlags mFlags;
+    Qgis::DataProviderReadFlags mFlags;
 };
 
 #endif // QGSRUNNABLEPROVIDERCREATOR_H

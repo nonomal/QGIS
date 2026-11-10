@@ -19,12 +19,13 @@
 
 #include "qgis_core.h"
 #include "qgis_sip.h"
-#include "qgsprofilerequest.h"
 #include "qgsabstractprofilegenerator.h"
+#include "qgslinesymbol.h"
+#include "qgsprofilerequest.h"
 #include "qgsrange.h"
 
-#include <QObject>
 #include <QFutureWatcher>
+#include <QObject>
 
 class QgsAbstractProfileSource;
 class QgsAbstractProfileGenerator;
@@ -57,17 +58,14 @@ class QgsProfilePoint;
  */
 class CORE_EXPORT QgsProfilePlotRenderer : public QObject
 {
-
     Q_OBJECT
 
   public:
-
     /**
      * Constructor for QgsProfilePlotRenderer, using the provided list of profile \a sources to generate the
      * results.
      */
-    QgsProfilePlotRenderer( const QList< QgsAbstractProfileSource * > &sources,
-                            const QgsProfileRequest &request );
+    QgsProfilePlotRenderer( const QList< QgsAbstractProfileSource * > &sources, const QgsProfileRequest &request );
 
     /**
      * Constructor for QgsProfilePlotRenderer, using the provided list of profile \a generators to generate the
@@ -77,8 +75,7 @@ class CORE_EXPORT QgsProfilePlotRenderer : public QObject
      *
      * \since QGIS 3.32
      */
-    QgsProfilePlotRenderer( std::vector<std::unique_ptr<QgsAbstractProfileGenerator> > generators,
-                            const QgsProfileRequest &request ) SIP_SKIP;
+    QgsProfilePlotRenderer( std::vector<std::unique_ptr<QgsAbstractProfileGenerator> > generators, const QgsProfileRequest &request ) SIP_SKIP;
 
     ~QgsProfilePlotRenderer() override;
 
@@ -184,6 +181,40 @@ class CORE_EXPORT QgsProfilePlotRenderer : public QObject
     void render( QgsRenderContext &context, double width, double height, double distanceMin, double distanceMax, double zMin, double zMax, const QString &sourceId = QString() );
 
     /**
+     * Returns the default line symbol to use for subsections lines.
+     *
+     * \see setSubsectionsSymbol()
+     * \since QGIS 3.44
+     */
+    static std::unique_ptr<QgsLineSymbol> defaultSubSectionsSymbol();
+
+    /**
+     * Returns the line symbol used to draw the subsections.
+     *
+     * \see setSubsectionsSymbol()
+     * \since QGIS 3.44
+     */
+    QgsLineSymbol *subsectionsSymbol();
+
+    /**
+     * Sets the \a symbol used to draw the subsections. If \a symbol is NULLPTR, the subsections are not drawn.
+     * Ownership of \a symbol is transferred.
+     *
+     * \see subsectionsSymbol()
+     * \since QGIS 3.44
+     */
+    void setSubsectionsSymbol( QgsLineSymbol *symbol SIP_TRANSFER );
+
+    /**
+     * Renders the vertices of the profile curve as vertical lines using the specified render \a context.
+     * The style of the lines the style corresponds to the symbol defined by setSubsectionsSymbol().
+     *
+     * \see setSubsectionsSymbol()
+     * \since QGIS 3.44
+     */
+    void renderSubsectionsIndicator( QgsRenderContext &context, const QRectF &plotArea, double distanceMin, double distanceMax, double zMin, double zMax );
+
+    /**
      * Snap a \a point to the results.
      */
     QgsProfileSnapResult snapPoint( const QgsProfilePoint &point, const QgsProfileSnapContext &context );
@@ -215,15 +246,16 @@ class CORE_EXPORT QgsProfilePlotRenderer : public QObject
     void onGeneratingFinished();
 
   private:
+    static QTransform computeRenderTransform( double width, double height, double distanceMin, double distanceMax, double zMin, double zMax );
 
     struct ProfileJob
     {
-      QgsAbstractProfileGenerator *generator = nullptr;
-      QgsProfileGenerationContext context;
-      std::unique_ptr< QgsAbstractProfileResults > results;
-      std::unique_ptr< QgsAbstractProfileResults > invalidatedResults;
-      bool complete = false;
-      QMutex mutex;
+        QgsAbstractProfileGenerator *generator = nullptr;
+        QgsProfileGenerationContext context;
+        std::unique_ptr< QgsAbstractProfileResults > results;
+        std::unique_ptr< QgsAbstractProfileResults > invalidatedResults;
+        bool complete = false;
+        QMutex mutex;
     };
 
     static void generateProfileStatic( std::unique_ptr< ProfileJob > &job );
@@ -238,8 +270,14 @@ class CORE_EXPORT QgsProfilePlotRenderer : public QObject
     QFuture<void> mFuture;
     QFutureWatcher<void> mFutureWatcher;
 
-    enum { Idle, Generating } mStatus = Idle;
+    enum
+    {
+      Idle,
+      Generating
+    } mStatus
+      = Idle;
 
+    std::unique_ptr<QgsLineSymbol> mSubsectionsSymbol;
 };
 
 #endif // QGSPROFILERENDERER_H

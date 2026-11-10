@@ -19,13 +19,17 @@
 #ifndef QGSORIENTEDBOX3D_H
 #define QGSORIENTEDBOX3D_H
 
+#include <limits>
+
+#include "qgis.h"
 #include "qgis_core.h"
 #include "qgis_sip.h"
-#include "qgis.h"
 #include "qgsvector3d.h"
 
 #include <QList>
-#include <limits>
+#include <QString>
+
+using namespace Qt::StringLiterals;
 
 class QgsBox3D;
 class QgsCoordinateTransform;
@@ -43,7 +47,6 @@ class QgsMatrix4x4;
 class CORE_EXPORT QgsOrientedBox3D
 {
   public:
-
     /**
      * Constructor for a null oriented box.
      */
@@ -60,11 +63,19 @@ class CORE_EXPORT QgsOrientedBox3D
     QgsOrientedBox3D( const QgsVector3D &center, const QList< QgsVector3D > &halfAxes );
 
     /**
+     * Constructor for a oriented box, with a specified center, half sizes in each dimension and rotation.
+     * \since QGIS 4.0
+     */
+    QgsOrientedBox3D( const QgsVector3D &center, const QgsVector3D &halfSizes, const QQuaternion &quaternion );
+
+    /**
      * Constructs an oriented box from an axis-aligned bounding box.
      */
     static QgsOrientedBox3D fromBox3D( const QgsBox3D &box );
 
+    // clang-format off
     bool operator==( const QgsOrientedBox3D &other ) const SIP_HOLDGIL
+      // clang-format on
     {
       return qgsDoubleNear( mCenter[0], other.mCenter[0] )
              && qgsDoubleNear( mCenter[1], other.mCenter[1] )
@@ -145,6 +156,12 @@ class CORE_EXPORT QgsOrientedBox3D
     QgsVector3D size() const SIP_HOLDGIL;
 
     /**
+     * Returns size of the longest side of the box.
+     * \since QGIS 4.0
+     */
+    double longestSide() const SIP_HOLDGIL;
+
+    /**
      * Reprojects corners of this box using the given coordinate \a transform
      * and returns axis-aligned box containing reprojected corners.
      * \throws QgsCsException
@@ -162,9 +179,10 @@ class CORE_EXPORT QgsOrientedBox3D
     bool intersects( const QgsOrientedBox3D &other ) const SIP_HOLDGIL;
 
 #ifdef SIP_RUN
+// clang-format off
     SIP_PYOBJECT __repr__();
     % MethodCode
-    QString str = QStringLiteral( "<QgsOrientedBox3D([%1, %2, %3], [%4, %5, %6, %7, %8, %9, %10, %11, %12])>" )
+    QString str = u"<QgsOrientedBox3D([%1, %2, %3], [%4, %5, %6, %7, %8, %9, %10, %11, %12])>"_s
                   .arg( sipCpp->centerX() )
                   .arg( sipCpp->centerY() )
                   .arg( sipCpp->centerZ() )
@@ -179,6 +197,7 @@ class CORE_EXPORT QgsOrientedBox3D
                   .arg( sipCpp->halfAxes()[8] );
     sipRes = PyUnicode_FromString( str.toUtf8().constData() );
     % End
+// clang-format on
 #endif
 
   private:

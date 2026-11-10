@@ -16,33 +16,32 @@
 #ifndef QGSMESHEDITOR_H
 #define QGSMESHEDITOR_H
 
-#include <QObject>
-#include <QUndoCommand>
-#include <QPointer>
-
 #include "qgis.h"
-#include "qgsmeshdataset.h"
 #include "qgsmeshdataprovider.h"
-#include "qgstriangularmesh.h"
+#include "qgsmeshdataset.h"
 #include "qgstopologicalmesh.h"
+#include "qgstriangularmesh.h"
+
+#include <QObject>
+#include <QPointer>
+#include <QUndoCommand>
 
 class QgsMeshAdvancedEditing;
 
-#if defined(_MSC_VER)
+#if defined( _MSC_VER )
 template CORE_EXPORT QVector<QVector<int>> SIP_SKIP;
 #endif
 
 /**
  * \ingroup core
  *
- * \brief Class that represents an error during mesh editing
+ * \brief Represents an error which occurred during mesh editing.
  *
  * \since QGIS 3.22
  */
 class CORE_EXPORT QgsMeshEditingError
 {
   public:
-
     //! Constructor of the default error, that is NoError
     QgsMeshEditingError();
 
@@ -53,14 +52,14 @@ class CORE_EXPORT QgsMeshEditingError
 
     int elementIndex = -1;
 
-    bool operator==( const QgsMeshEditingError &other ) const {return ( other.errorType == errorType && other.elementIndex == elementIndex );}
-    bool operator!=( const QgsMeshEditingError &other ) const {return !operator==( other );}
+    bool operator==( const QgsMeshEditingError &other ) const { return ( other.errorType == errorType && other.elementIndex == elementIndex ); }
+    bool operator!=( const QgsMeshEditingError &other ) const { return !operator==( other ); }
 };
 
 /**
  * \ingroup core
  *
- * \brief Class that makes edit operation on a mesh
+ * \brief Handles edit operations on a mesh layer.
  *
  * \since QGIS 3.22
  */
@@ -68,19 +67,18 @@ class CORE_EXPORT QgsMeshEditor : public QObject
 {
     Q_OBJECT
   public:
-
     //! Constructor with a specified layer \a meshLayer
     QgsMeshEditor( QgsMeshLayer *meshLayer );
 
     //! Constructor with a specific mesh \a nativeMesh and an associated triangular mesh \a triangularMesh
-    QgsMeshEditor( QgsMesh *nativeMesh, QgsTriangularMesh *triangularMesh, QObject *parent = nullptr ); SIP_SKIP
-    ~QgsMeshEditor();
+    QgsMeshEditor( QgsMesh *nativeMesh, QgsTriangularMesh *triangularMesh, QObject *parent = nullptr ) SIP_SKIP;
+    ~QgsMeshEditor() override;
 
     /**
      * Creates and returns a scalar dataset group with value on vertex that is can be used to access the Z value of the edited mesh.
      * The caller takes ownership.
      */
-    QgsMeshDatasetGroup *createZValueDatasetGroup() SIP_TRANSFERBACK;
+    std::unique_ptr< QgsMeshDatasetGroup > createZValueDatasetGroup();
 
     //! Initializes the mesh editor and returns first error if the internal native mesh has topological errors
     QgsMeshEditingError initialize();
@@ -101,7 +99,7 @@ class CORE_EXPORT QgsMeshEditor : public QObject
     bool fixError( const QgsMeshEditingError &error );
 
     //! Resets the triangular mesh
-    void resetTriangularMesh( QgsTriangularMesh *triangularMesh ); SIP_SKIP
+    void resetTriangularMesh( QgsTriangularMesh *triangularMesh ) SIP_SKIP;
 
     /**
      * Returns TRUE if a \a face can be added to the mesh
@@ -118,7 +116,7 @@ class CORE_EXPORT QgsMeshEditor : public QObject
      *
      * \since QGIS 3.30
      */
-    bool faceCanBeAddedWithNewVertices( const QList<int> &verticesIndex, const QList<QgsMeshVertex> &newVertices ) const; SIP_SKIP
+    bool faceCanBeAddedWithNewVertices( const QList<int> &verticesIndex, const QList<QgsMeshVertex> &newVertices ) const SIP_SKIP;
 
     /**
      * Returns TRUE if the face does not intersect or contains any other elements (faces or vertices)
@@ -127,7 +125,7 @@ class CORE_EXPORT QgsMeshEditor : public QObject
     bool isFaceGeometricallyCompatible( const QgsMeshFace &face ) const;
 
     //! Adds faces \a faces to the mesh, returns topological errors if this operation fails (operation is not realized)
-    QgsMeshEditingError addFaces( const QVector<QgsMeshFace> &faces ); SIP_SKIP
+    QgsMeshEditingError addFaces( const QVector<QgsMeshFace> &faces ) SIP_SKIP;
 
     //! Adds a face \a face to the mesh with vertex indexes \a vertexIndexes, returns topological errors if this operation fails (operation is not realized)
     QgsMeshEditingError addFace( const QVector<int> &vertexIndexes );
@@ -140,7 +138,7 @@ class CORE_EXPORT QgsMeshEditor : public QObject
      *
      * \since QGIS 3.30
      */
-    QgsMeshEditingError addFaceWithNewVertices( const QList<int> &vertexIndexes, const QList<QgsMeshVertex> &newVertices ); SIP_SKIP
+    QgsMeshEditingError addFaceWithNewVertices( const QList<int> &vertexIndexes, const QList<QgsMeshVertex> &newVertices ) SIP_SKIP;
 
     //! Removes faces \a faces to the mesh, returns topological errors if this operation fails (operation is not realized)
     QgsMeshEditingError removeFaces( const QList<int> &facesToRemove );
@@ -178,7 +176,7 @@ class CORE_EXPORT QgsMeshEditor : public QObject
      * \note this operation remove including face if exists and replace it by new faces surrounding the vertex
      * if the mesh hasn't topological error before this operation, the toological operation always succeed.
      */
-    int addVertices( const QVector<QgsMeshVertex> &vertices, double tolerance ); SIP_SKIP
+    int addVertices( const QVector<QgsMeshVertex> &vertices, double tolerance ) SIP_SKIP;
 
     /**
      * Adds points as vertices in triangular mesh coordinate in the mesh. Vertex is effectivly added if the transform
@@ -222,7 +220,7 @@ class CORE_EXPORT QgsMeshEditor : public QObject
      * all the mesh are supposed to path through this transform function (but it is possible that transform function is not able to transform all vertices).
      * Moving free vertices of the mesh is also checked.
      */
-    bool canBeTransformed( const QList<int> &facesToCheck, const std::function<const QgsMeshVertex( int )> &transformFunction ) const; SIP_SKIP
+    bool canBeTransformed( const QList<int> &facesToCheck, const std::function<const QgsMeshVertex( int )> &transformFunction ) const SIP_SKIP;
 
     /**
      * Changes the (X,Y) coordinates values of the vertices with indexes in \a verticesIndexes with the values in \a newValues.
@@ -279,13 +277,13 @@ class CORE_EXPORT QgsMeshEditor : public QObject
      *  It is recommended to destruct all circulator created before calling any edit methods or stopEditing() to save memory usage.
      *  Calling initialize() allows creation of new circulator after stopEditing() is called.
      */
-    QgsMeshVertexCirculator vertexCirculator( int vertexIndex ) const; SIP_SKIP
+    QgsMeshVertexCirculator vertexCirculator( int vertexIndex ) const SIP_SKIP;
 
     //! Returns a reference to the topological mesh
-    QgsTopologicalMesh &topologicalMesh(); SIP_SKIP
+    QgsTopologicalMesh &topologicalMesh() SIP_SKIP;
 
     //! Returns a pointer to the triangular mesh
-    QgsTriangularMesh *triangularMesh(); SIP_SKIP
+    QgsTriangularMesh *triangularMesh() SIP_SKIP;
 
     //! Return TRUE if the edited mesh is consistent
     bool checkConsistency( QgsMeshEditingError &error ) const;
@@ -305,6 +303,14 @@ class CORE_EXPORT QgsMeshEditor : public QObject
     //! Returns the maximum count of vertices per face that the mesh can support
     int maximumVerticesPerFace() const;
 
+    /**
+     * Add a vertex in a face with Delaunay refinement of neighboring faces
+     * All neighboring faces sharing a vertex will be refined to satisfy the Delaunay condition
+     *
+     * \since QGIS 3.42
+     */
+    void addVertexWithDelaunayRefinement( const QgsMeshVertex &vertex, const double tolerance );
+
   signals:
     //! Emitted when the mesh is edited
     void meshEdited();
@@ -314,7 +320,6 @@ class CORE_EXPORT QgsMeshEditor : public QObject
     QgsTopologicalMesh mTopologicalMesh;
     QgsTriangularMesh *mTriangularMesh = nullptr;
     int mMaximumVerticesPerFace = 0;
-    QgsMeshDatasetGroup *mZValueDatasetGroup = nullptr;
     int mValidVerticesCount = 0;
     int mValidFacesCount = 0;
 
@@ -327,8 +332,8 @@ class CORE_EXPORT QgsMeshEditor : public QObject
 
     struct Edit
     {
-      QgsTopologicalMesh::Changes topologicalChanges;
-      QgsTriangularMesh::Changes triangularMeshChanges;
+        QgsTopologicalMesh::Changes topologicalChanges;
+        QgsTriangularMesh::Changes triangularMeshChanges;
     };
     void applyEdit( Edit &edit );
     void reverseEdit( Edit &edit );
@@ -363,6 +368,7 @@ class CORE_EXPORT QgsMeshEditor : public QObject
     friend class QgsMeshLayerUndoCommandFlipEdge;
     friend class QgsMeshLayerUndoCommandMerge;
     friend class QgsMeshLayerUndoCommandSplitFaces;
+    friend class QgsMeshLayerUndoCommandAddVertexInFaceWithDelaunayRefinement;
 
     friend class QgsMeshLayerUndoCommandAdvancedEditing;
 };
@@ -372,19 +378,17 @@ class CORE_EXPORT QgsMeshEditor : public QObject
 /**
  * \ingroup core
  *
- * \brief Base class for undo/redo command for mesh editing
+ * \brief Base class for undo/redo command for mesh editing.
  *
  * \since QGIS 3.22
  */
 class QgsMeshLayerUndoCommandMeshEdit : public QUndoCommand
 {
   public:
-
     void undo() override;
     void redo() override;
 
   protected:
-
     //! Constructor for the base class
     QgsMeshLayerUndoCommandMeshEdit( QgsMeshEditor *meshEditor );
     QPointer<QgsMeshEditor> mMeshEditor;
@@ -394,14 +398,13 @@ class QgsMeshLayerUndoCommandMeshEdit : public QUndoCommand
 /**
  * \ingroup core
  *
- * \brief  Class for undo/redo command for adding vertices in mesh
+ * \brief Mesh layer undo/redo command for adding vertices in mesh.
  *
  * \since QGIS 3.22
  */
 class QgsMeshLayerUndoCommandAddVertices : public QgsMeshLayerUndoCommandMeshEdit
 {
   public:
-
     //! Constructor with the associated \a meshEditor and \a vertices that will be added
     QgsMeshLayerUndoCommandAddVertices( QgsMeshEditor *meshEditor, const QVector<QgsMeshVertex> &vertices, double tolerance );
     void redo() override;
@@ -414,14 +417,13 @@ class QgsMeshLayerUndoCommandAddVertices : public QgsMeshLayerUndoCommandMeshEdi
 /**
  * \ingroup core
  *
- * \brief  Class for undo/redo command for removing vertices in mesh without filling holes created by removed faces
+ * \brief Mesh layer undo/redo command for removing vertices in mesh without filling holes created by removed faces.
  *
  * \since QGIS 3.22
  */
 class QgsMeshLayerUndoCommandRemoveVerticesWithoutFillHoles : public QgsMeshLayerUndoCommandMeshEdit
 {
   public:
-
     /**
      * Constructor with the associated \a meshEditor and \a vertices that will be removed
      */
@@ -435,14 +437,13 @@ class QgsMeshLayerUndoCommandRemoveVerticesWithoutFillHoles : public QgsMeshLaye
 /**
  * \ingroup core
  *
- * \brief  Class for undo/redo command for removing vertices in mesh filling holes created by removed faces
+ * \brief Mesh layer undo/redo command for removing vertices in mesh filling holes created by removed faces.
  *
  * \since QGIS 3.22
  */
 class QgsMeshLayerUndoCommandRemoveVerticesFillHoles : public QgsMeshLayerUndoCommandMeshEdit
 {
   public:
-
     /**
      * Constructor with the associated \a meshEditor and \a vertices that will be removed
      *
@@ -462,18 +463,18 @@ class QgsMeshLayerUndoCommandRemoveVerticesFillHoles : public QgsMeshLayerUndoCo
 /**
  * \ingroup core
  *
- * \brief  Class for undo/redo command for adding faces in mesh
+ * \brief Mesh layer undo/redo command for adding faces in mesh.
  *
  * \since QGIS 3.22
  */
 class QgsMeshLayerUndoCommandAddFaces : public QgsMeshLayerUndoCommandMeshEdit
 {
   public:
-
     //! Constructor with the associated \a meshEditor and \a faces that will be added
     QgsMeshLayerUndoCommandAddFaces( QgsMeshEditor *meshEditor, QgsTopologicalMesh::TopologicalFaces &faces );
 
     void redo() override;
+
   private:
     QgsTopologicalMesh::TopologicalFaces mFaces;
 };
@@ -481,18 +482,18 @@ class QgsMeshLayerUndoCommandAddFaces : public QgsMeshLayerUndoCommandMeshEdit
 /**
  * \ingroup core
  *
- * \brief  Class for undo/redo command for removing faces in mesh
+ * \brief Mesh layer undo/redo command for removing faces in mesh.
  *
  * \since QGIS 3.22
  */
 class QgsMeshLayerUndoCommandRemoveFaces : public QgsMeshLayerUndoCommandMeshEdit
 {
   public:
-
     //! Constructor with the associated \a meshEditor and indexes \a facesToRemoveIndexes of the faces that will be removed
     QgsMeshLayerUndoCommandRemoveFaces( QgsMeshEditor *meshEditor, const QList<int> &facesToRemoveIndexes );
 
     void redo() override;
+
   private:
     QList<int> mfacesToRemoveIndexes;
 };
@@ -500,14 +501,13 @@ class QgsMeshLayerUndoCommandRemoveFaces : public QgsMeshLayerUndoCommandMeshEdi
 /**
  * \ingroup core
  *
- * \brief  Class for undo/redo command for changing Z value of vertices
+ * \brief Mesh layer undo/redo command for changing Z value of vertices.
  *
  * \since QGIS 3.22
  */
 class QgsMeshLayerUndoCommandChangeZValue : public QgsMeshLayerUndoCommandMeshEdit
 {
   public:
-
     /**
      * Constructor with the associated \a meshEditor and indexes \a verticesIndexes of the vertices that will have
      * the Z value changed with \a newValues
@@ -523,14 +523,13 @@ class QgsMeshLayerUndoCommandChangeZValue : public QgsMeshLayerUndoCommandMeshEd
 /**
  * \ingroup core
  *
- * \brief  Class for undo/redo command for changing (X,Y) value of vertices
+ * \brief Mesh layer undo/redo command for changing (X,Y) value of vertices.
  *
  * \since QGIS 3.22
  */
 class QgsMeshLayerUndoCommandChangeXYValue : public QgsMeshLayerUndoCommandMeshEdit
 {
   public:
-
     /**
      * Constructor with the associated \a meshEditor and indexes \a verticesIndexes of the vertices that will have
      * the (X,Y) values changed with \a newValues
@@ -546,14 +545,13 @@ class QgsMeshLayerUndoCommandChangeXYValue : public QgsMeshLayerUndoCommandMeshE
 /**
  * \ingroup core
  *
- * \brief  Class for undo/redo command for changing coordinate (X,Y,Z) values of vertices
+ * \brief Mesh layer undo/redo command for changing coordinate (X,Y,Z) values of vertices.
  *
  * \since QGIS 3.22
  */
 class QgsMeshLayerUndoCommandChangeCoordinates : public QgsMeshLayerUndoCommandMeshEdit
 {
   public:
-
     /**
      * Constructor with the associated \a meshEditor and indexes \a verticesIndexes of the vertices that will have
      * the coordinate (X,Y,Z) values changed with \a newCoordinates
@@ -569,14 +567,13 @@ class QgsMeshLayerUndoCommandChangeCoordinates : public QgsMeshLayerUndoCommandM
 /**
  * \ingroup core
  *
- * \brief  Class for undo/redo command for flipping edge
+ * \brief Mesh layer undo/redo command for flipping edges.
  *
  * \since QGIS 3.22
  */
 class QgsMeshLayerUndoCommandFlipEdge : public QgsMeshLayerUndoCommandMeshEdit
 {
   public:
-
     /**
      * Constructor with the associated \a meshEditor and the vertex indexes of the edge (\a vertexIndex1, \a vertexIndex2)
      */
@@ -591,14 +588,13 @@ class QgsMeshLayerUndoCommandFlipEdge : public QgsMeshLayerUndoCommandMeshEdit
 /**
  * \ingroup core
  *
- * \brief  Class for undo/redo command for merging face
+ * \brief Mesh layer undo/redo command for merging faces.
  *
  * \since QGIS 3.22
  */
 class QgsMeshLayerUndoCommandMerge : public QgsMeshLayerUndoCommandMeshEdit
 {
   public:
-
     /**
      * Constructor with the associated \a meshEditor and the vertex indexes of
      * the edge (\a vertexIndex1, \a vertexIndex2) that separate the face to merge
@@ -614,14 +610,13 @@ class QgsMeshLayerUndoCommandMerge : public QgsMeshLayerUndoCommandMeshEdit
 /**
  * \ingroup core
  *
- * \brief  Class for undo/redo command for splitting faces
+ * \brief Mesh layer undo/redo command for splitting faces.
  *
  * \since QGIS 3.22
  */
 class QgsMeshLayerUndoCommandSplitFaces : public QgsMeshLayerUndoCommandMeshEdit
 {
   public:
-
     /**
      * Constructor with the associated \a meshEditor and indexes \a faceIndexes of the faces to split
      */
@@ -636,13 +631,12 @@ class QgsMeshLayerUndoCommandSplitFaces : public QgsMeshLayerUndoCommandMeshEdit
 /**
  * \ingroup core
  *
- * \brief  Class for undo/redo command for applying advanced editing
+ * \brief Mesh layer undo/redo command for applying advanced editing.
  * \since QGIS 3.22
  */
 class QgsMeshLayerUndoCommandAdvancedEditing : public QgsMeshLayerUndoCommandMeshEdit
 {
   public:
-
     //! Constructor with the associated \a meshEditor
     QgsMeshLayerUndoCommandAdvancedEditing( QgsMeshEditor *meshEditor, QgsMeshAdvancedEditing *advancdEdit );
     void redo() override;
@@ -652,7 +646,28 @@ class QgsMeshLayerUndoCommandAdvancedEditing : public QgsMeshLayerUndoCommandMes
 };
 
 
+/**
+ * \ingroup core
+ *
+ * \brief Mesh layer undo/redo command for adding vertex to face with Delaunay refinement of faces surrounding.
+ *
+ * \since QGIS 3.42
+ */
+class QgsMeshLayerUndoCommandAddVertexInFaceWithDelaunayRefinement : public QgsMeshLayerUndoCommandMeshEdit
+{
+  public:
+    //! Constructor with the associated \a meshEditor and indexes \a vertex and \a tolerance
+    QgsMeshLayerUndoCommandAddVertexInFaceWithDelaunayRefinement( QgsMeshEditor *meshEditor, const QgsMeshVertex &vertex, double tolerance );
 
+    void redo() override;
+
+  private:
+    QList<std::pair<int, int>> innerEdges( const QSet<int> &faces );
+    QSet<int> secondNeighboringTriangularFaces();
+
+    QgsMeshVertex mVertex;
+    double mTolerance;
+};
 
 #endif //SIP_RUN
 

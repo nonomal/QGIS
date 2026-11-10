@@ -14,17 +14,23 @@
  ***************************************************************************/
 
 #include "qgsmaplayerstylemanager.h"
-#include "qgsmaplayerstyle.h"
-#include "qgsmaplayer.h"
 
 #include "qgslogger.h"
+#include "qgsmaplayer.h"
+#include "qgsmaplayerstyle.h"
+#include "qgsthreadingutils.h"
 
 #include <QDomElement>
+#include <QString>
 #include <QTextStream>
 
-QgsMapLayerStyleManager::QgsMapLayerStyleManager( QgsMapLayer *layer )
-  : mLayer( layer )
+#include "moc_qgsmaplayerstylemanager.cpp"
 
+using namespace Qt::StringLiterals;
+
+QgsMapLayerStyleManager::QgsMapLayerStyleManager( QgsMapLayer *layer )
+  : QObject( layer )
+  , mLayer( layer )
 {
   reset();
 }
@@ -37,13 +43,17 @@ QString QgsMapLayerStyleManager::defaultStyleName()
 
 void QgsMapLayerStyleManager::reset()
 {
+  QGIS_PROTECT_QOBJECT_THREAD_ACCESS
+
   mStyles.insert( defaultStyleName(), QgsMapLayerStyle() ); // insert entry for the default current style
   mCurrentStyle = defaultStyleName();
 }
 
 void QgsMapLayerStyleManager::readXml( const QDomElement &mgrElement )
 {
-  mCurrentStyle = mgrElement.attribute( QStringLiteral( "current" ) );
+  QGIS_PROTECT_QOBJECT_THREAD_ACCESS
+
+  mCurrentStyle = mgrElement.attribute( u"current"_s );
   if ( mCurrentStyle.isEmpty() )
   {
     // For old project made with QGIS 2, we migrate to "default".
@@ -51,10 +61,10 @@ void QgsMapLayerStyleManager::readXml( const QDomElement &mgrElement )
   }
 
   mStyles.clear();
-  QDomElement ch = mgrElement.firstChildElement( QStringLiteral( "map-layer-style" ) );
+  QDomElement ch = mgrElement.firstChildElement( u"map-layer-style"_s );
   while ( !ch.isNull() )
   {
-    QString name = ch.attribute( QStringLiteral( "name" ) );
+    QString name = ch.attribute( u"name"_s );
     if ( name.isEmpty() )
     {
       // For old project made with QGIS 2, we migrate to "default".
@@ -64,20 +74,22 @@ void QgsMapLayerStyleManager::readXml( const QDomElement &mgrElement )
     style.readXml( ch );
     mStyles.insert( name, style );
 
-    ch = ch.nextSiblingElement( QStringLiteral( "map-layer-style" ) );
+    ch = ch.nextSiblingElement( u"map-layer-style"_s );
   }
 }
 
 void QgsMapLayerStyleManager::writeXml( QDomElement &mgrElement ) const
 {
+  QGIS_PROTECT_QOBJECT_THREAD_ACCESS
+
   QDomDocument doc = mgrElement.ownerDocument();
-  mgrElement.setAttribute( QStringLiteral( "current" ), mCurrentStyle );
+  mgrElement.setAttribute( u"current"_s, mCurrentStyle );
 
   const auto constStyles = styles();
   for ( const QString &name : constStyles )
   {
-    QDomElement ch = doc.createElement( QStringLiteral( "map-layer-style" ) );
-    ch.setAttribute( QStringLiteral( "name" ), name );
+    QDomElement ch = doc.createElement( u"map-layer-style"_s );
+    ch.setAttribute( u"name"_s, name );
     mStyles[name].writeXml( ch );
     mgrElement.appendChild( ch );
   }
@@ -85,16 +97,22 @@ void QgsMapLayerStyleManager::writeXml( QDomElement &mgrElement ) const
 
 QStringList QgsMapLayerStyleManager::styles() const
 {
+  QGIS_PROTECT_QOBJECT_THREAD_ACCESS
+
   return mStyles.keys();
 }
 
 QMap<QString, QgsMapLayerStyle> QgsMapLayerStyleManager::mapLayerStyles() const
 {
+  QGIS_PROTECT_QOBJECT_THREAD_ACCESS
+
   return mStyles;
 }
 
 QgsMapLayerStyle QgsMapLayerStyleManager::style( const QString &name ) const
 {
+  QGIS_PROTECT_QOBJECT_THREAD_ACCESS
+
   if ( name == mCurrentStyle )
   {
     // current style's entry is always kept invalid - get the style data from layer's properties
@@ -108,6 +126,8 @@ QgsMapLayerStyle QgsMapLayerStyleManager::style( const QString &name ) const
 
 bool QgsMapLayerStyleManager::addStyle( const QString &name, const QgsMapLayerStyle &style )
 {
+  QGIS_PROTECT_QOBJECT_THREAD_ACCESS
+
   if ( mStyles.contains( name ) )
     return false;
   if ( !style.isValid() )
@@ -120,6 +140,8 @@ bool QgsMapLayerStyleManager::addStyle( const QString &name, const QgsMapLayerSt
 
 bool QgsMapLayerStyleManager::addStyleFromLayer( const QString &name )
 {
+  QGIS_PROTECT_QOBJECT_THREAD_ACCESS
+
   QgsMapLayerStyle style;
   style.readFromLayer( mLayer );
   return addStyle( name, style );
@@ -127,6 +149,8 @@ bool QgsMapLayerStyleManager::addStyleFromLayer( const QString &name )
 
 bool QgsMapLayerStyleManager::removeStyle( const QString &name )
 {
+  QGIS_PROTECT_QOBJECT_THREAD_ACCESS
+
   if ( !mStyles.contains( name ) )
     return false;
   if ( mStyles.count() == 1 )
@@ -149,6 +173,8 @@ bool QgsMapLayerStyleManager::removeStyle( const QString &name )
 
 bool QgsMapLayerStyleManager::renameStyle( const QString &name, const QString &newName )
 {
+  QGIS_PROTECT_QOBJECT_THREAD_ACCESS
+
   if ( !mStyles.contains( name ) || mStyles.contains( newName ) )
     return false;
 
@@ -163,11 +189,15 @@ bool QgsMapLayerStyleManager::renameStyle( const QString &name, const QString &n
 
 QString QgsMapLayerStyleManager::currentStyle() const
 {
+  QGIS_PROTECT_QOBJECT_THREAD_ACCESS
+
   return mCurrentStyle;
 }
 
 bool QgsMapLayerStyleManager::setCurrentStyle( const QString &name )
 {
+  QGIS_PROTECT_QOBJECT_THREAD_ACCESS
+
   if ( !mStyles.contains( name ) )
     return false;
 
@@ -186,6 +216,8 @@ bool QgsMapLayerStyleManager::setCurrentStyle( const QString &name )
 
 bool QgsMapLayerStyleManager::setOverrideStyle( const QString &styleDef )
 {
+  QGIS_PROTECT_QOBJECT_THREAD_ACCESS
+
   if ( mOverriddenOriginalStyle )
     return false; // cannot override the style more than once!
 
@@ -214,6 +246,8 @@ bool QgsMapLayerStyleManager::setOverrideStyle( const QString &styleDef )
 
 bool QgsMapLayerStyleManager::restoreOverrideStyle()
 {
+  QGIS_PROTECT_QOBJECT_THREAD_ACCESS
+
   if ( !mOverriddenOriginalStyle )
     return false;
 
@@ -233,6 +267,8 @@ bool QgsMapLayerStyleManager::isDefault( const QString &styleName )
 
 void QgsMapLayerStyleManager::copyStylesFrom( QgsMapLayerStyleManager *other )
 {
+  QGIS_PROTECT_QOBJECT_THREAD_ACCESS
+
   const QStringList styleNames = other->mStyles.keys();
 
   for ( const QString &styleName : styleNames )

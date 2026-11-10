@@ -13,11 +13,17 @@
  *                                                                         *
  ***************************************************************************/
 #include "qgstextdiagram.h"
+
 #include "qgsdiagramrenderer.h"
-#include "qgsrendercontext.h"
 #include "qgsexpression.h"
+#include "qgsrendercontext.h"
 
 #include <QPainter>
+#include <QString>
+
+using namespace Qt::StringLiterals;
+
+const QString QgsTextDiagram::DIAGRAM_NAME_TEXT = u"Text"_s;
 
 QgsTextDiagram::QgsTextDiagram()
 {
@@ -68,7 +74,7 @@ double QgsTextDiagram::legendSize( double value, const QgsDiagramSettings &s, co
 
 QString QgsTextDiagram::diagramName() const
 {
-  return DIAGRAM_NAME_TEXT;
+  return QgsTextDiagram::DIAGRAM_NAME_TEXT;
 }
 
 QSizeF QgsTextDiagram::diagramSize( const QgsAttributes &attributes, const QgsRenderContext &c, const QgsDiagramSettings &s )

@@ -3,8 +3,9 @@
  *                                                                      *
  * src/core/metadata/qgslayermetadatavalidator.h                        *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/
+
 
 
 
@@ -21,18 +22,13 @@ Abstract base class for metadata validators.
 #include "qgslayermetadatavalidator.h"
 %End
   public:
-
     class ValidationResult
-{
+    {
 %Docstring(signature="appended")
 Contains the parameters describing a metadata validation failure.
 %End
 
-%TypeHeaderCode
-#include "qgslayermetadatavalidator.h"
-%End
       public:
-
         ValidationResult( const QString &section, const QString &note, const QVariant &identifier = QVariant() );
 %Docstring
 Constructor for ValidationResult.
@@ -43,18 +39,16 @@ Constructor for ValidationResult.
 
         QVariant identifier() const /PyName=_identifier/;
 %Docstring
-Returns the optional identifier for the failed metadata item.
-For instance, in list type metadata elements this
-will be set to the list index of the failed metadata
-item.
+Returns the optional identifier for the failed metadata item. For
+instance, in list type metadata elements this will be set to the list
+index of the failed metadata item.
 %End
 
         void setIdentifier( const QVariant &identifier );
 %Docstring
-Sets the optional ``identifier`` for the failed metadata item.
-For instance, in list type metadata elements this
-will be set to the list index of the failed metadata
-item.
+Sets the optional ``identifier`` for the failed metadata item. For
+instance, in list type metadata elements this will be set to the list
+index of the failed metadata item.
 %End
 
         QString note;
@@ -65,13 +59,11 @@ item.
 
     virtual bool validate( const QgsAbstractMetadataBase *metadata, QList< QgsAbstractMetadataBaseValidator::ValidationResult > &results /Out/ ) const = 0;
 %Docstring
-Validates a ``metadata`` object, and returns ``True`` if the
-metadata is considered valid.
-If validation fails, the ``results`` list will be filled with a list of
-items describing why the validation failed and what needs to be rectified
-to fix the metadata.
+Validates a ``metadata`` object, and returns ``True`` if the metadata is
+considered valid. If validation fails, the ``results`` list will be
+filled with a list of items describing why the validation failed and
+what needs to be rectified to fix the metadata.
 %End
-
 };
 
 
@@ -87,14 +79,9 @@ A validator for the native base QGIS metadata schema definition.
 #include "qgslayermetadatavalidator.h"
 %End
   public:
-
     QgsNativeMetadataBaseValidator();
-%Docstring
-Constructor for QgsNativeMetadataBaseValidator.
-%End
 
     virtual bool validate( const QgsAbstractMetadataBase *metadata, QList< QgsAbstractMetadataBaseValidator::ValidationResult > &results /Out/ ) const;
-
 
 };
 
@@ -110,14 +97,9 @@ A validator for the native QGIS layer metadata schema definition.
 #include "qgslayermetadatavalidator.h"
 %End
   public:
-
     QgsNativeMetadataValidator();
-%Docstring
-Constructor for QgsNativeMetadataValidator.
-%End
 
     virtual bool validate( const QgsAbstractMetadataBase *metadata, QList< QgsAbstractMetadataBaseValidator::ValidationResult > &results /Out/ ) const;
-
 
 };
 
@@ -134,14 +116,9 @@ A validator for the native QGIS project metadata schema definition.
 #include "qgslayermetadatavalidator.h"
 %End
   public:
-
     QgsNativeProjectMetadataValidator();
-%Docstring
-Constructor for QgsNativeProjectMetadataValidator.
-%End
 
     virtual bool validate( const QgsAbstractMetadataBase *metadata, QList< QgsAbstractMetadataBaseValidator::ValidationResult > &results /Out/ ) const;
-
 
 };
 
@@ -150,5 +127,5 @@ Constructor for QgsNativeProjectMetadataValidator.
  *                                                                      *
  * src/core/metadata/qgslayermetadatavalidator.h                        *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/

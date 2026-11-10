@@ -16,8 +16,13 @@
  ***************************************************************************/
 
 #include "qgsalgorithmfuzzifyraster.h"
+
 #include "qgsrasterfilewriter.h"
 #include "qgsstringutils.h"
+
+#include <QString>
+
+using namespace Qt::StringLiterals;
 
 ///@cond PRIVATE
 
@@ -32,34 +37,46 @@ QString QgsFuzzifyRasterAlgorithmBase::group() const
 
 QString QgsFuzzifyRasterAlgorithmBase::groupId() const
 {
-  return QStringLiteral( "rasteranalysis" );
+  return u"rasteranalysis"_s;
 }
 
 void QgsFuzzifyRasterAlgorithmBase::initAlgorithm( const QVariantMap & )
 {
-  addParameter( new QgsProcessingParameterRasterLayer( QStringLiteral( "INPUT" ), QObject::tr( "Input Raster" ) ) );
-  addParameter( new QgsProcessingParameterBand( QStringLiteral( "BAND" ), QObject::tr( "Band Number" ), 1, QStringLiteral( "INPUT" ) ) );
+  addParameter( new QgsProcessingParameterRasterLayer( u"INPUT"_s, QObject::tr( "Input Raster" ) ) );
+  addParameter( new QgsProcessingParameterBand( u"BAND"_s, QObject::tr( "Band Number" ), 1, u"INPUT"_s ) );
 
   //add specific fuzzification parameters from subclass alg
   addAlgorithmParams();
 
-  addOutput( new QgsProcessingOutputString( QStringLiteral( "EXTENT" ), QObject::tr( "Extent" ) ) );
-  addOutput( new QgsProcessingOutputString( QStringLiteral( "CRS_AUTHID" ), QObject::tr( "CRS authority identifier" ) ) );
-  addOutput( new QgsProcessingOutputNumber( QStringLiteral( "WIDTH_IN_PIXELS" ), QObject::tr( "Width in pixels" ) ) );
-  addOutput( new QgsProcessingOutputNumber( QStringLiteral( "HEIGHT_IN_PIXELS" ), QObject::tr( "Height in pixels" ) ) );
-  addOutput( new QgsProcessingOutputNumber( QStringLiteral( "TOTAL_PIXEL_COUNT" ), QObject::tr( "Total pixel count" ) ) );
+  addOutput( new QgsProcessingOutputString( u"EXTENT"_s, QObject::tr( "Extent" ) ) );
+  addOutput( new QgsProcessingOutputString( u"CRS_AUTHID"_s, QObject::tr( "CRS authority identifier" ) ) );
+  addOutput( new QgsProcessingOutputNumber( u"WIDTH_IN_PIXELS"_s, QObject::tr( "Width in pixels" ) ) );
+  addOutput( new QgsProcessingOutputNumber( u"HEIGHT_IN_PIXELS"_s, QObject::tr( "Height in pixels" ) ) );
+  addOutput( new QgsProcessingOutputNumber( u"TOTAL_PIXEL_COUNT"_s, QObject::tr( "Total pixel count" ) ) );
 
-  addParameter( new QgsProcessingParameterRasterDestination( QStringLiteral( "OUTPUT" ), QObject::tr( "Fuzzified raster" ) ) );
+  // backwards compatibility parameter
+  // TODO QGIS 5: remove parameter and related logic
+  auto createOptsParam = std::make_unique<QgsProcessingParameterString>( u"CREATE_OPTIONS"_s, QObject::tr( "Creation options" ), QVariant(), false, true );
+  createOptsParam->setMetadata( QVariantMap( { { u"widget_wrapper"_s, QVariantMap( { { u"widget_type"_s, u"rasteroptions"_s } } ) } } ) );
+  createOptsParam->setFlags( createOptsParam->flags() | Qgis::ProcessingParameterFlag::Hidden );
+  addParameter( createOptsParam.release() );
+
+  auto creationOptsParam = std::make_unique<QgsProcessingParameterString>( u"CREATION_OPTIONS"_s, QObject::tr( "Creation options" ), QVariant(), false, true );
+  creationOptsParam->setMetadata( QVariantMap( { { u"widget_wrapper"_s, QVariantMap( { { u"widget_type"_s, u"rasteroptions"_s } } ) } } ) );
+  creationOptsParam->setFlags( creationOptsParam->flags() | Qgis::ProcessingParameterFlag::Advanced );
+  addParameter( creationOptsParam.release() );
+
+  addParameter( new QgsProcessingParameterRasterDestination( u"OUTPUT"_s, QObject::tr( "Fuzzified raster" ) ) );
 }
 
 bool QgsFuzzifyRasterAlgorithmBase::prepareAlgorithm( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback )
 {
-  mInputRaster = parameterAsRasterLayer( parameters, QStringLiteral( "INPUT" ), context );
+  mInputRaster = parameterAsRasterLayer( parameters, u"INPUT"_s, context );
 
   if ( !mInputRaster )
-    throw QgsProcessingException( invalidRasterError( parameters, QStringLiteral( "INPUT" ) ) );
+    throw QgsProcessingException( invalidRasterError( parameters, u"INPUT"_s ) );
 
-  mBand = parameterAsInt( parameters, QStringLiteral( "BAND" ), context );
+  mBand = parameterAsInt( parameters, u"BAND"_s, context );
   if ( mBand < 1 || mBand > mInputRaster->bandCount() )
     throw QgsProcessingException( QObject::tr( "Invalid band number for BAND (%1): Valid values for input raster are 1 to %2" ).arg( mBand ).arg( mInputRaster->bandCount() ) );
 
@@ -77,17 +94,25 @@ bool QgsFuzzifyRasterAlgorithmBase::prepareAlgorithm( const QVariantMap &paramet
   return true;
 }
 
-
 QVariantMap QgsFuzzifyRasterAlgorithmBase::processAlgorithm( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback )
 {
-  const QString outputFile = parameterAsOutputLayer( parameters, QStringLiteral( "OUTPUT" ), context );
-  const QFileInfo fi( outputFile );
-  const QString outputFormat = QgsRasterFileWriter::driverForExtension( fi.suffix() );
+  QString creationOptions = parameterAsString( parameters, u"CREATION_OPTIONS"_s, context ).trimmed();
+  // handle backwards compatibility parameter CREATE_OPTIONS
+  const QString optionsString = parameterAsString( parameters, u"CREATE_OPTIONS"_s, context );
+  if ( !optionsString.isEmpty() )
+    creationOptions = optionsString;
 
-  std::unique_ptr< QgsRasterFileWriter > writer = std::make_unique< QgsRasterFileWriter >( outputFile );
-  writer->setOutputProviderKey( QStringLiteral( "gdal" ) );
+  const QString outputFile = parameterAsOutputLayer( parameters, u"OUTPUT"_s, context );
+  const QString outputFormat = parameterAsOutputRasterFormat( parameters, u"OUTPUT"_s, context );
+
+  auto writer = std::make_unique<QgsRasterFileWriter>( outputFile );
+  writer->setOutputProviderKey( u"gdal"_s );
+  if ( !creationOptions.isEmpty() )
+  {
+    writer->setCreationOptions( creationOptions.split( '|' ) );
+  }
   writer->setOutputFormat( outputFormat );
-  std::unique_ptr<QgsRasterDataProvider > provider( writer->createOneBandRaster( mDataType, mNbCellsXProvider, mNbCellsYProvider, mExtent, mCrs ) );
+  std::unique_ptr<QgsRasterDataProvider> provider( writer->createOneBandRaster( mDataType, mNbCellsXProvider, mNbCellsYProvider, mExtent, mCrs ) );
   if ( !provider )
     throw QgsProcessingException( QObject::tr( "Could not create raster output: %1" ).arg( outputFile ) );
   if ( !provider->isValid() )
@@ -95,19 +120,33 @@ QVariantMap QgsFuzzifyRasterAlgorithmBase::processAlgorithm( const QVariantMap &
 
   provider->setNoDataValue( 1, mNoDataValue );
   provider->setEditable( true );
-  const qgssize layerSize = static_cast< qgssize >( mLayerWidth ) * static_cast< qgssize >( mLayerHeight );
+  const qgssize layerSize = static_cast<qgssize>( mLayerWidth ) * static_cast<qgssize>( mLayerHeight );
+
+  const bool hasReportsDuringClose = provider->hasReportsDuringClose();
+  mMaxProgressDuringBlockWriting = hasReportsDuringClose ? 50.0 : 100.0;
 
   fuzzify( provider.get(), feedback );
 
   provider->setEditable( false );
 
+  if ( feedback && hasReportsDuringClose )
+  {
+    std::unique_ptr<QgsFeedback> scaledFeedback( QgsFeedback::createScaledFeedback( feedback, mMaxProgressDuringBlockWriting, 100.0 ) );
+    if ( !provider->closeWithProgress( scaledFeedback.get() ) )
+    {
+      if ( feedback->isCanceled() )
+        return {};
+      throw QgsProcessingException( QObject::tr( "Could not write raster dataset" ) );
+    }
+  }
+
   QVariantMap outputs;
-  outputs.insert( QStringLiteral( "EXTENT" ), mExtent.toString() );
-  outputs.insert( QStringLiteral( "CRS_AUTHID" ), mCrs.authid() );
-  outputs.insert( QStringLiteral( "WIDTH_IN_PIXELS" ), mLayerWidth );
-  outputs.insert( QStringLiteral( "HEIGHT_IN_PIXELS" ), mLayerHeight );
-  outputs.insert( QStringLiteral( "TOTAL_PIXEL_COUNT" ), layerSize );
-  outputs.insert( QStringLiteral( "OUTPUT" ), outputFile );
+  outputs.insert( u"EXTENT"_s, mExtent.toString() );
+  outputs.insert( u"CRS_AUTHID"_s, mCrs.authid() );
+  outputs.insert( u"WIDTH_IN_PIXELS"_s, mLayerWidth );
+  outputs.insert( u"HEIGHT_IN_PIXELS"_s, mLayerHeight );
+  outputs.insert( u"TOTAL_PIXEL_COUNT"_s, layerSize );
+  outputs.insert( u"OUTPUT"_s, outputFile );
   return outputs;
 }
 
@@ -118,7 +157,7 @@ QVariantMap QgsFuzzifyRasterAlgorithmBase::processAlgorithm( const QVariantMap &
 
 QString QgsFuzzifyRasterLinearMembershipAlgorithm::name() const
 {
-  return QStringLiteral( "fuzzifyrasterlinearmembership" );
+  return u"fuzzifyrasterlinearmembership"_s;
 }
 
 QString QgsFuzzifyRasterLinearMembershipAlgorithm::displayName() const
@@ -131,20 +170,29 @@ QStringList QgsFuzzifyRasterLinearMembershipAlgorithm::tags() const
   return QObject::tr( "fuzzy logic,fuzzify,fuzzy,logic,linear,membership" ).split( ',' );
 }
 
+QString QgsFuzzifyRasterLinearMembershipAlgorithm::shortDescription() const
+{
+  return QObject::tr(
+    "Transforms an input raster to a fuzzified raster where values range from 0 to 1 following a "
+    "linear fuzzy membership function."
+  );
+}
 
 QString QgsFuzzifyRasterLinearMembershipAlgorithm::shortHelpString() const
 {
-  return QObject::tr( "The Fuzzify raster (linear membership) algorithm transforms an input raster "
-                      "to a fuzzified raster and thereby assigns values between 0 and 1 following a "
-                      "linear fuzzy membership function. The value of 0 implies no membership with the "
-                      "defined fuzzy set, a value of 1 depicts full membership. In between, the degree "
-                      "of membership of raster values follows a linear membership function.\n\n"
-                      "The linear function is constructed using two user-defined input raster values "
-                      "which set the point of full membership (high bound, results to 1) and no membership "
-                      "(low bound, results to 0) respectively. The fuzzy set in between those values is defined as a "
-                      "linear function.\n\n"
-                      "Both increasing and decreasing fuzzy sets can be modeled by "
-                      "swapping the high and low bound parameters." );
+  return QObject::tr(
+    "This algorithm transforms an input raster "
+    "to a fuzzified raster and thereby assigns values between 0 and 1 following a "
+    "linear fuzzy membership function. The value of 0 implies no membership with the "
+    "defined fuzzy set, a value of 1 depicts full membership. In between, the degree "
+    "of membership of raster values follows a linear membership function.\n\n"
+    "The linear function is constructed using two user-defined input raster values "
+    "which set the point of full membership (high bound, results to 1) and no membership "
+    "(low bound, results to 0) respectively. The fuzzy set in between those values is defined as a "
+    "linear function.\n\n"
+    "Both increasing and decreasing fuzzy sets can be modeled by "
+    "swapping the high and low bound parameters."
+  );
 }
 
 QgsFuzzifyRasterLinearMembershipAlgorithm *QgsFuzzifyRasterLinearMembershipAlgorithm::createInstance() const
@@ -152,27 +200,23 @@ QgsFuzzifyRasterLinearMembershipAlgorithm *QgsFuzzifyRasterLinearMembershipAlgor
   return new QgsFuzzifyRasterLinearMembershipAlgorithm();
 }
 
-void QgsFuzzifyRasterLinearMembershipAlgorithm::addAlgorithmParams( )
+void QgsFuzzifyRasterLinearMembershipAlgorithm::addAlgorithmParams()
 {
-  addParameter( new QgsProcessingParameterNumber( QStringLiteral( "FUZZYLOWBOUND" ), QStringLiteral( "Low fuzzy membership bound" ), Qgis::ProcessingNumberParameterType::Double, 0 ) );
-  addParameter( new QgsProcessingParameterNumber( QStringLiteral( "FUZZYHIGHBOUND" ), QStringLiteral( "High fuzzy membership bound" ), Qgis::ProcessingNumberParameterType::Double, 1 ) );
+  addParameter( new QgsProcessingParameterNumber( u"FUZZYLOWBOUND"_s, u"Low fuzzy membership bound"_s, Qgis::ProcessingNumberParameterType::Double, 0 ) );
+  addParameter( new QgsProcessingParameterNumber( u"FUZZYHIGHBOUND"_s, u"High fuzzy membership bound"_s, Qgis::ProcessingNumberParameterType::Double, 1 ) );
 }
 
 bool QgsFuzzifyRasterLinearMembershipAlgorithm::prepareAlgorithmFuzzificationParameters( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback )
 {
   Q_UNUSED( feedback )
-  mFuzzifyHighBound = parameterAsDouble( parameters, QStringLiteral( "FUZZYHIGHBOUND" ), context );
-  mFuzzifyLowBound = parameterAsDouble( parameters, QStringLiteral( "FUZZYLOWBOUND" ), context );
+  mFuzzifyHighBound = parameterAsDouble( parameters, u"FUZZYHIGHBOUND"_s, context );
+  mFuzzifyLowBound = parameterAsDouble( parameters, u"FUZZYLOWBOUND"_s, context );
   return true;
 }
 
 void QgsFuzzifyRasterLinearMembershipAlgorithm::fuzzify( QgsRasterDataProvider *destinationProvider, QgsProcessingFeedback *feedback )
 {
-  const int maxWidth = QgsRasterIterator::DEFAULT_MAXIMUM_TILE_WIDTH;
-  const int maxHeight = QgsRasterIterator::DEFAULT_MAXIMUM_TILE_HEIGHT;
-  const int nbBlocksWidth = static_cast< int >( std::ceil( 1.0 * mLayerWidth / maxWidth ) );
-  const int nbBlocksHeight = static_cast< int >( std::ceil( 1.0 * mLayerHeight / maxHeight ) );
-  const int nbBlocks = nbBlocksWidth * nbBlocksHeight;
+  QGS_MARK_ALGORITHM_SOURCE
 
   QgsRasterIterator iter( mInterface.get() );
   iter.startRasterRead( mBand, mLayerWidth, mLayerHeight, mExtent );
@@ -181,12 +225,12 @@ void QgsFuzzifyRasterLinearMembershipAlgorithm::fuzzify( QgsRasterDataProvider *
   int iterCols = 0;
   int iterRows = 0;
   bool isNoData = false;
-  std::unique_ptr< QgsRasterBlock > rasterBlock;
+  std::unique_ptr<QgsRasterBlock> rasterBlock;
   while ( iter.readNextRasterPart( mBand, iterCols, iterRows, rasterBlock, iterLeft, iterTop ) )
   {
     if ( feedback )
-      feedback->setProgress( 100 * ( ( iterTop / maxHeight * nbBlocksWidth ) + iterLeft / maxWidth ) / nbBlocks );
-    std::unique_ptr< QgsRasterBlock > fuzzifiedBlock = std::make_unique< QgsRasterBlock >( destinationProvider->dataType( 1 ), iterCols, iterRows );
+      feedback->setProgress( 100 * iter.progress( mBand ) );
+    auto fuzzifiedBlock = std::make_unique<QgsRasterBlock>( destinationProvider->dataType( 1 ), iterCols, iterRows );
 
     for ( int row = 0; row < iterRows; row++ )
     {
@@ -230,7 +274,10 @@ void QgsFuzzifyRasterLinearMembershipAlgorithm::fuzzify( QgsRasterDataProvider *
         fuzzifiedBlock->setValue( row, column, fuzzifiedValue );
       }
     }
-    destinationProvider->writeBlock( fuzzifiedBlock.get(), mBand, iterLeft, iterTop );
+    if ( !destinationProvider->writeBlock( fuzzifiedBlock.get(), mBand, iterLeft, iterTop ) )
+    {
+      throw QgsProcessingException( QObject::tr( "Could not write raster block: %1" ).arg( destinationProvider->error().summary() ) );
+    }
   }
 }
 
@@ -241,7 +288,7 @@ void QgsFuzzifyRasterLinearMembershipAlgorithm::fuzzify( QgsRasterDataProvider *
 
 QString QgsFuzzifyRasterPowerMembershipAlgorithm::name() const
 {
-  return QStringLiteral( "fuzzifyrasterpowermembership" );
+  return u"fuzzifyrasterpowermembership"_s;
 }
 
 QString QgsFuzzifyRasterPowerMembershipAlgorithm::displayName() const
@@ -254,21 +301,30 @@ QStringList QgsFuzzifyRasterPowerMembershipAlgorithm::tags() const
   return QObject::tr( "fuzzy logic,fuzzify,fuzzy,logic,power,non-linear,membership,exponent" ).split( ',' );
 }
 
+QString QgsFuzzifyRasterPowerMembershipAlgorithm::shortDescription() const
+{
+  return QObject::tr(
+    "Transforms an input raster to a fuzzified raster where values range from 0 to 1 following a "
+    "power function."
+  );
+}
 
 QString QgsFuzzifyRasterPowerMembershipAlgorithm::shortHelpString() const
 {
-  return QObject::tr( "The Fuzzify raster (power membership) algorithm transforms an input raster "
-                      "to a fuzzified raster and thereby assigns values between 0 and 1 following a "
-                      "power function. The value of 0 implies no membership with the "
-                      "defined fuzzy set, a value of 1 depicts full membership. In between, the degree "
-                      "of membership of raster values follows a power function.\n\n"
-                      "The power function is constructed using three user-defined input raster values "
-                      "which set the point of full membership (high bound, results to 1), no membership "
-                      "(low bound, results to 0) and function exponent (only positive) respectively. "
-                      "The fuzzy set in between those the upper and lower bounds values is then defined as "
-                      "a power function.\n\n"
-                      "Both increasing and decreasing fuzzy sets can be modeled by "
-                      "swapping the high and low bound parameters." );
+  return QObject::tr(
+    "This algorithm transforms an input raster "
+    "to a fuzzified raster and thereby assigns values between 0 and 1 following a "
+    "power function. The value of 0 implies no membership with the "
+    "defined fuzzy set, a value of 1 depicts full membership. In between, the degree "
+    "of membership of raster values follows a power function.\n\n"
+    "The power function is constructed using three user-defined input raster values "
+    "which set the point of full membership (high bound, results to 1), no membership "
+    "(low bound, results to 0) and function exponent (only positive) respectively. "
+    "The fuzzy set in between those the upper and lower bounds values is then defined as "
+    "a power function.\n\n"
+    "Both increasing and decreasing fuzzy sets can be modeled by "
+    "swapping the high and low bound parameters."
+  );
 }
 
 QgsFuzzifyRasterPowerMembershipAlgorithm *QgsFuzzifyRasterPowerMembershipAlgorithm::createInstance() const
@@ -276,29 +332,25 @@ QgsFuzzifyRasterPowerMembershipAlgorithm *QgsFuzzifyRasterPowerMembershipAlgorit
   return new QgsFuzzifyRasterPowerMembershipAlgorithm();
 }
 
-void QgsFuzzifyRasterPowerMembershipAlgorithm::addAlgorithmParams( )
+void QgsFuzzifyRasterPowerMembershipAlgorithm::addAlgorithmParams()
 {
-  addParameter( new QgsProcessingParameterNumber( QStringLiteral( "FUZZYLOWBOUND" ), QStringLiteral( "Low fuzzy membership bound" ), Qgis::ProcessingNumberParameterType::Double, 0 ) );
-  addParameter( new QgsProcessingParameterNumber( QStringLiteral( "FUZZYHIGHBOUND" ), QStringLiteral( "High fuzzy membership bound" ), Qgis::ProcessingNumberParameterType::Double, 1 ) );
-  addParameter( new QgsProcessingParameterNumber( QStringLiteral( "FUZZYEXPONENT" ), QStringLiteral( "Membership function exponent" ), Qgis::ProcessingNumberParameterType::Double, 2, false, 0 ) );
+  addParameter( new QgsProcessingParameterNumber( u"FUZZYLOWBOUND"_s, u"Low fuzzy membership bound"_s, Qgis::ProcessingNumberParameterType::Double, 0 ) );
+  addParameter( new QgsProcessingParameterNumber( u"FUZZYHIGHBOUND"_s, u"High fuzzy membership bound"_s, Qgis::ProcessingNumberParameterType::Double, 1 ) );
+  addParameter( new QgsProcessingParameterNumber( u"FUZZYEXPONENT"_s, u"Membership function exponent"_s, Qgis::ProcessingNumberParameterType::Double, 2, false, 0 ) );
 }
 
 bool QgsFuzzifyRasterPowerMembershipAlgorithm::prepareAlgorithmFuzzificationParameters( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback )
 {
   Q_UNUSED( feedback )
-  mFuzzifyHighBound = parameterAsDouble( parameters, QStringLiteral( "FUZZYHIGHBOUND" ), context );
-  mFuzzifyLowBound = parameterAsDouble( parameters, QStringLiteral( "FUZZYLOWBOUND" ), context );
-  mFuzzifyExponent = parameterAsDouble( parameters, QStringLiteral( "FUZZYEXPONENT" ), context );
+  mFuzzifyHighBound = parameterAsDouble( parameters, u"FUZZYHIGHBOUND"_s, context );
+  mFuzzifyLowBound = parameterAsDouble( parameters, u"FUZZYLOWBOUND"_s, context );
+  mFuzzifyExponent = parameterAsDouble( parameters, u"FUZZYEXPONENT"_s, context );
   return true;
 }
 
 void QgsFuzzifyRasterPowerMembershipAlgorithm::fuzzify( QgsRasterDataProvider *destinationProvider, QgsProcessingFeedback *feedback )
 {
-  const int maxWidth = QgsRasterIterator::DEFAULT_MAXIMUM_TILE_WIDTH;
-  const int maxHeight = QgsRasterIterator::DEFAULT_MAXIMUM_TILE_HEIGHT;
-  const int nbBlocksWidth = static_cast< int >( std::ceil( 1.0 * mLayerWidth / maxWidth ) );
-  const int nbBlocksHeight = static_cast< int >( std::ceil( 1.0 * mLayerHeight / maxHeight ) );
-  const int nbBlocks = nbBlocksWidth * nbBlocksHeight;
+  QGS_MARK_ALGORITHM_SOURCE
 
   QgsRasterIterator iter( mInterface.get() );
   iter.startRasterRead( mBand, mLayerWidth, mLayerHeight, mExtent );
@@ -307,12 +359,12 @@ void QgsFuzzifyRasterPowerMembershipAlgorithm::fuzzify( QgsRasterDataProvider *d
   int iterCols = 0;
   int iterRows = 0;
   bool isNoData = false;
-  std::unique_ptr< QgsRasterBlock > rasterBlock;
+  std::unique_ptr<QgsRasterBlock> rasterBlock;
   while ( iter.readNextRasterPart( mBand, iterCols, iterRows, rasterBlock, iterLeft, iterTop ) )
   {
     if ( feedback )
-      feedback->setProgress( 100 * ( ( iterTop / maxHeight * nbBlocksWidth ) + iterLeft / maxWidth ) / nbBlocks );
-    std::unique_ptr< QgsRasterBlock > fuzzifiedBlock = std::make_unique< QgsRasterBlock >( destinationProvider->dataType( 1 ), iterCols, iterRows );
+      feedback->setProgress( 100 * iter.progress( mBand ) );
+    auto fuzzifiedBlock = std::make_unique<QgsRasterBlock>( destinationProvider->dataType( 1 ), iterCols, iterRows );
 
     for ( int row = 0; row < iterRows; row++ )
     {
@@ -356,7 +408,10 @@ void QgsFuzzifyRasterPowerMembershipAlgorithm::fuzzify( QgsRasterDataProvider *d
         fuzzifiedBlock->setValue( row, column, fuzzifiedValue );
       }
     }
-    destinationProvider->writeBlock( fuzzifiedBlock.get(), mBand, iterLeft, iterTop );
+    if ( !destinationProvider->writeBlock( fuzzifiedBlock.get(), mBand, iterLeft, iterTop ) )
+    {
+      throw QgsProcessingException( QObject::tr( "Could not write raster block: %1" ).arg( destinationProvider->error().summary() ) );
+    }
   }
 }
 
@@ -366,7 +421,7 @@ void QgsFuzzifyRasterPowerMembershipAlgorithm::fuzzify( QgsRasterDataProvider *d
 
 QString QgsFuzzifyRasterLargeMembershipAlgorithm::name() const
 {
-  return QStringLiteral( "fuzzifyrasterlargemembership" );
+  return u"fuzzifyrasterlargemembership"_s;
 }
 
 QString QgsFuzzifyRasterLargeMembershipAlgorithm::displayName() const
@@ -379,19 +434,28 @@ QStringList QgsFuzzifyRasterLargeMembershipAlgorithm::tags() const
   return QObject::tr( "fuzzy logic,fuzzify,fuzzy,logic,large,membership" ).split( ',' );
 }
 
+QString QgsFuzzifyRasterLargeMembershipAlgorithm::shortDescription() const
+{
+  return QObject::tr(
+    "Transforms an input raster to a fuzzified raster where values range from 0 to 1 following the "
+    "'large' fuzzy membership function."
+  );
+}
 
 QString QgsFuzzifyRasterLargeMembershipAlgorithm::shortHelpString() const
 {
-  return QObject::tr( "The Fuzzify raster (large membership) algorithm transforms an input raster "
-                      "to a fuzzified raster and thereby assigns values between 0 and 1 following the "
-                      "'large' fuzzy membership function. The value of 0 implies no membership with the "
-                      "defined fuzzy set, a value of 1 depicts full membership. In between, the degree "
-                      "of membership of raster values follows the 'large' membership function.\n\n"
-                      "The 'large' function is constructed using two user-defined input raster values "
-                      "which set the point of half membership (midpoint, results to 0.5) and a predefined "
-                      "function spread which controls the function uptake.\n\n"
-                      "This function is typically used when larger input raster values should become members "
-                      "of the fuzzy set more easily than smaller values." );
+  return QObject::tr(
+    "This algorithm transforms an input raster "
+    "to a fuzzified raster and thereby assigns values between 0 and 1 following the "
+    "'large' fuzzy membership function. The value of 0 implies no membership with the "
+    "defined fuzzy set, a value of 1 depicts full membership. In between, the degree "
+    "of membership of raster values follows the 'large' membership function.\n\n"
+    "The 'large' function is constructed using two user-defined input raster values "
+    "which set the point of half membership (midpoint, results to 0.5) and a predefined "
+    "function spread which controls the function uptake.\n\n"
+    "This function is typically used when larger input raster values should become members "
+    "of the fuzzy set more easily than smaller values."
+  );
 }
 
 QgsFuzzifyRasterLargeMembershipAlgorithm *QgsFuzzifyRasterLargeMembershipAlgorithm::createInstance() const
@@ -399,27 +463,23 @@ QgsFuzzifyRasterLargeMembershipAlgorithm *QgsFuzzifyRasterLargeMembershipAlgorit
   return new QgsFuzzifyRasterLargeMembershipAlgorithm();
 }
 
-void QgsFuzzifyRasterLargeMembershipAlgorithm::addAlgorithmParams( )
+void QgsFuzzifyRasterLargeMembershipAlgorithm::addAlgorithmParams()
 {
-  addParameter( new QgsProcessingParameterNumber( QStringLiteral( "FUZZYMIDPOINT" ), QStringLiteral( "Function midpoint" ), Qgis::ProcessingNumberParameterType::Double, 50 ) );
-  addParameter( new QgsProcessingParameterNumber( QStringLiteral( "FUZZYSPREAD" ), QStringLiteral( "Function spread" ), Qgis::ProcessingNumberParameterType::Double, 5 ) );
+  addParameter( new QgsProcessingParameterNumber( u"FUZZYMIDPOINT"_s, u"Function midpoint"_s, Qgis::ProcessingNumberParameterType::Double, 50 ) );
+  addParameter( new QgsProcessingParameterNumber( u"FUZZYSPREAD"_s, u"Function spread"_s, Qgis::ProcessingNumberParameterType::Double, 5 ) );
 }
 
 bool QgsFuzzifyRasterLargeMembershipAlgorithm::prepareAlgorithmFuzzificationParameters( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback )
 {
   Q_UNUSED( feedback )
-  mFuzzifyMidpoint = parameterAsDouble( parameters, QStringLiteral( "FUZZYMIDPOINT" ), context );
-  mFuzzifySpread = parameterAsDouble( parameters, QStringLiteral( "FUZZYSPREAD" ), context );
+  mFuzzifyMidpoint = parameterAsDouble( parameters, u"FUZZYMIDPOINT"_s, context );
+  mFuzzifySpread = parameterAsDouble( parameters, u"FUZZYSPREAD"_s, context );
   return true;
 }
 
 void QgsFuzzifyRasterLargeMembershipAlgorithm::fuzzify( QgsRasterDataProvider *destinationProvider, QgsProcessingFeedback *feedback )
 {
-  const int maxWidth = QgsRasterIterator::DEFAULT_MAXIMUM_TILE_WIDTH;
-  const int maxHeight = QgsRasterIterator::DEFAULT_MAXIMUM_TILE_HEIGHT;
-  const int nbBlocksWidth = static_cast< int >( std::ceil( 1.0 * mLayerWidth / maxWidth ) );
-  const int nbBlocksHeight = static_cast< int >( std::ceil( 1.0 * mLayerHeight / maxHeight ) );
-  const int nbBlocks = nbBlocksWidth * nbBlocksHeight;
+  QGS_MARK_ALGORITHM_SOURCE
 
   QgsRasterIterator iter( mInterface.get() );
   iter.startRasterRead( mBand, mLayerWidth, mLayerHeight, mExtent );
@@ -428,12 +488,12 @@ void QgsFuzzifyRasterLargeMembershipAlgorithm::fuzzify( QgsRasterDataProvider *d
   int iterCols = 0;
   int iterRows = 0;
   bool isNoData = false;
-  std::unique_ptr< QgsRasterBlock > rasterBlock;
+  std::unique_ptr<QgsRasterBlock> rasterBlock;
   while ( iter.readNextRasterPart( mBand, iterCols, iterRows, rasterBlock, iterLeft, iterTop ) )
   {
     if ( feedback )
-      feedback->setProgress( 100 * ( ( iterTop / maxHeight * nbBlocksWidth ) + iterLeft / maxWidth ) / nbBlocks );
-    std::unique_ptr< QgsRasterBlock > fuzzifiedBlock = std::make_unique< QgsRasterBlock >( destinationProvider->dataType( 1 ), iterCols, iterRows );
+      feedback->setProgress( 100 * iter.progress( mBand ) );
+    auto fuzzifiedBlock = std::make_unique<QgsRasterBlock>( destinationProvider->dataType( 1 ), iterCols, iterRows );
 
     for ( int row = 0; row < iterRows; row++ )
     {
@@ -459,7 +519,10 @@ void QgsFuzzifyRasterLargeMembershipAlgorithm::fuzzify( QgsRasterDataProvider *d
         fuzzifiedBlock->setValue( row, column, fuzzifiedValue );
       }
     }
-    destinationProvider->writeBlock( fuzzifiedBlock.get(), mBand, iterLeft, iterTop );
+    if ( !destinationProvider->writeBlock( fuzzifiedBlock.get(), mBand, iterLeft, iterTop ) )
+    {
+      throw QgsProcessingException( QObject::tr( "Could not write raster block: %1" ).arg( destinationProvider->error().summary() ) );
+    }
   }
 }
 
@@ -470,7 +533,7 @@ void QgsFuzzifyRasterLargeMembershipAlgorithm::fuzzify( QgsRasterDataProvider *d
 
 QString QgsFuzzifyRasterSmallMembershipAlgorithm::name() const
 {
-  return QStringLiteral( "fuzzifyrastersmallmembership" );
+  return u"fuzzifyrastersmallmembership"_s;
 }
 
 QString QgsFuzzifyRasterSmallMembershipAlgorithm::displayName() const
@@ -483,19 +546,28 @@ QStringList QgsFuzzifyRasterSmallMembershipAlgorithm::tags() const
   return QObject::tr( "fuzzy logic,fuzzify,fuzzy,logic,small,membership" ).split( ',' );
 }
 
+QString QgsFuzzifyRasterSmallMembershipAlgorithm::shortDescription() const
+{
+  return QObject::tr(
+    "Transforms an input raster to a fuzzified raster where values range from 0 to 1 following the "
+    "'small' fuzzy membership function."
+  );
+}
 
 QString QgsFuzzifyRasterSmallMembershipAlgorithm::shortHelpString() const
 {
-  return QObject::tr( "The Fuzzify raster (small membership) algorithm transforms an input raster "
-                      "to a fuzzified raster and thereby assigns values between 0 and 1 following the "
-                      "'small' fuzzy membership function. The value of 0 implies no membership with the "
-                      "defined fuzzy set, a value of 1 depicts full membership. In between, the degree "
-                      "of membership of raster values follows the 'small' membership function.\n\n"
-                      "The 'small' function is constructed using two user-defined input raster values "
-                      "which set the point of half membership (midpoint, results to 0.5) and a predefined "
-                      "function spread which controls the function uptake.\n\n"
-                      "This function is typically used when smaller input raster values should become members "
-                      "of the fuzzy set more easily than higher values." );
+  return QObject::tr(
+    "The Fuzzify raster (small membership) algorithm transforms an input raster "
+    "to a fuzzified raster and thereby assigns values between 0 and 1 following the "
+    "'small' fuzzy membership function. The value of 0 implies no membership with the "
+    "defined fuzzy set, a value of 1 depicts full membership. In between, the degree "
+    "of membership of raster values follows the 'small' membership function.\n\n"
+    "The 'small' function is constructed using two user-defined input raster values "
+    "which set the point of half membership (midpoint, results to 0.5) and a predefined "
+    "function spread which controls the function uptake.\n\n"
+    "This function is typically used when smaller input raster values should become members "
+    "of the fuzzy set more easily than higher values."
+  );
 }
 
 QgsFuzzifyRasterSmallMembershipAlgorithm *QgsFuzzifyRasterSmallMembershipAlgorithm::createInstance() const
@@ -503,27 +575,23 @@ QgsFuzzifyRasterSmallMembershipAlgorithm *QgsFuzzifyRasterSmallMembershipAlgorit
   return new QgsFuzzifyRasterSmallMembershipAlgorithm();
 }
 
-void QgsFuzzifyRasterSmallMembershipAlgorithm::addAlgorithmParams( )
+void QgsFuzzifyRasterSmallMembershipAlgorithm::addAlgorithmParams()
 {
-  addParameter( new QgsProcessingParameterNumber( QStringLiteral( "FUZZYMIDPOINT" ), QStringLiteral( "Function midpoint" ), Qgis::ProcessingNumberParameterType::Double, 50 ) );
-  addParameter( new QgsProcessingParameterNumber( QStringLiteral( "FUZZYSPREAD" ), QStringLiteral( "Function spread" ), Qgis::ProcessingNumberParameterType::Double, 5 ) );
+  addParameter( new QgsProcessingParameterNumber( u"FUZZYMIDPOINT"_s, u"Function midpoint"_s, Qgis::ProcessingNumberParameterType::Double, 50 ) );
+  addParameter( new QgsProcessingParameterNumber( u"FUZZYSPREAD"_s, u"Function spread"_s, Qgis::ProcessingNumberParameterType::Double, 5 ) );
 }
 
 bool QgsFuzzifyRasterSmallMembershipAlgorithm::prepareAlgorithmFuzzificationParameters( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback )
 {
   Q_UNUSED( feedback )
-  mFuzzifyMidpoint = parameterAsDouble( parameters, QStringLiteral( "FUZZYMIDPOINT" ), context );
-  mFuzzifySpread = parameterAsDouble( parameters, QStringLiteral( "FUZZYSPREAD" ), context );
+  mFuzzifyMidpoint = parameterAsDouble( parameters, u"FUZZYMIDPOINT"_s, context );
+  mFuzzifySpread = parameterAsDouble( parameters, u"FUZZYSPREAD"_s, context );
   return true;
 }
 
 void QgsFuzzifyRasterSmallMembershipAlgorithm::fuzzify( QgsRasterDataProvider *destinationProvider, QgsProcessingFeedback *feedback )
 {
-  const int maxWidth = QgsRasterIterator::DEFAULT_MAXIMUM_TILE_WIDTH;
-  const int maxHeight = QgsRasterIterator::DEFAULT_MAXIMUM_TILE_HEIGHT;
-  const int nbBlocksWidth = static_cast< int >( std::ceil( 1.0 * mLayerWidth / maxWidth ) );
-  const int nbBlocksHeight = static_cast< int >( std::ceil( 1.0 * mLayerHeight / maxHeight ) );
-  const int nbBlocks = nbBlocksWidth * nbBlocksHeight;
+  QGS_MARK_ALGORITHM_SOURCE
 
   QgsRasterIterator iter( mInterface.get() );
   iter.startRasterRead( mBand, mLayerWidth, mLayerHeight, mExtent );
@@ -532,12 +600,12 @@ void QgsFuzzifyRasterSmallMembershipAlgorithm::fuzzify( QgsRasterDataProvider *d
   int iterCols = 0;
   int iterRows = 0;
   bool isNoData = false;
-  std::unique_ptr< QgsRasterBlock > rasterBlock;
+  std::unique_ptr<QgsRasterBlock> rasterBlock;
   while ( iter.readNextRasterPart( mBand, iterCols, iterRows, rasterBlock, iterLeft, iterTop ) )
   {
     if ( feedback )
-      feedback->setProgress( 100 * ( ( iterTop / maxHeight * nbBlocksWidth ) + iterLeft / maxWidth ) / nbBlocks );
-    std::unique_ptr< QgsRasterBlock > fuzzifiedBlock = std::make_unique< QgsRasterBlock >( destinationProvider->dataType( 1 ), iterCols, iterRows );
+      feedback->setProgress( 100 * iter.progress( mBand ) );
+    auto fuzzifiedBlock = std::make_unique<QgsRasterBlock>( destinationProvider->dataType( 1 ), iterCols, iterRows );
 
     for ( int row = 0; row < iterRows; row++ )
     {
@@ -563,7 +631,10 @@ void QgsFuzzifyRasterSmallMembershipAlgorithm::fuzzify( QgsRasterDataProvider *d
         fuzzifiedBlock->setValue( row, column, fuzzifiedValue );
       }
     }
-    destinationProvider->writeBlock( fuzzifiedBlock.get(), mBand, iterLeft, iterTop );
+    if ( !destinationProvider->writeBlock( fuzzifiedBlock.get(), mBand, iterLeft, iterTop ) )
+    {
+      throw QgsProcessingException( QObject::tr( "Could not write raster block: %1" ).arg( destinationProvider->error().summary() ) );
+    }
   }
 }
 
@@ -574,7 +645,7 @@ void QgsFuzzifyRasterSmallMembershipAlgorithm::fuzzify( QgsRasterDataProvider *d
 
 QString QgsFuzzifyRasterGaussianMembershipAlgorithm::name() const
 {
-  return QStringLiteral( "fuzzifyrastergaussianmembership" );
+  return u"fuzzifyrastergaussianmembership"_s;
 }
 
 QString QgsFuzzifyRasterGaussianMembershipAlgorithm::displayName() const
@@ -587,19 +658,28 @@ QStringList QgsFuzzifyRasterGaussianMembershipAlgorithm::tags() const
   return QObject::tr( "fuzzy logic,fuzzify,fuzzy,logic,gaussian,membership" ).split( ',' );
 }
 
+QString QgsFuzzifyRasterGaussianMembershipAlgorithm::shortDescription() const
+{
+  return QObject::tr(
+    "Transforms an input raster to a fuzzified raster where values range from 0 to 1 following a "
+    "gaussian fuzzy membership function."
+  );
+}
 
 QString QgsFuzzifyRasterGaussianMembershipAlgorithm::shortHelpString() const
 {
-  return QObject::tr( "The Fuzzify raster (gaussian membership) algorithm transforms an input raster "
-                      "to a fuzzified raster and thereby assigns values between 0 and 1 following a "
-                      "gaussian fuzzy membership function. The value of 0 implies no membership with the "
-                      "defined fuzzy set, a value of 1 depicts full membership. In between, the degree "
-                      "of membership of raster values follows a gaussian membership function.\n\n"
-                      "The gaussian function is constructed using two user-defined input values "
-                      "which set the midpoint of the gaussian function (midpoint, results to 1) and a "
-                      "predefined function spread which controls the function spread.\n\n"
-                      "This function is typically used when a certain range of raster values around a "
-                      "predefined function midpoint should become members of the fuzzy set." );
+  return QObject::tr(
+    "This algorithm transforms an input raster "
+    "to a fuzzified raster and thereby assigns values between 0 and 1 following a "
+    "gaussian fuzzy membership function. The value of 0 implies no membership with the "
+    "defined fuzzy set, a value of 1 depicts full membership. In between, the degree "
+    "of membership of raster values follows a gaussian membership function.\n\n"
+    "The gaussian function is constructed using two user-defined input values "
+    "which set the midpoint of the gaussian function (midpoint, results to 1) and a "
+    "predefined function spread which controls the function spread.\n\n"
+    "This function is typically used when a certain range of raster values around a "
+    "predefined function midpoint should become members of the fuzzy set."
+  );
 }
 
 QgsFuzzifyRasterGaussianMembershipAlgorithm *QgsFuzzifyRasterGaussianMembershipAlgorithm::createInstance() const
@@ -607,27 +687,23 @@ QgsFuzzifyRasterGaussianMembershipAlgorithm *QgsFuzzifyRasterGaussianMembershipA
   return new QgsFuzzifyRasterGaussianMembershipAlgorithm();
 }
 
-void QgsFuzzifyRasterGaussianMembershipAlgorithm::addAlgorithmParams( )
+void QgsFuzzifyRasterGaussianMembershipAlgorithm::addAlgorithmParams()
 {
-  addParameter( new QgsProcessingParameterNumber( QStringLiteral( "FUZZYMIDPOINT" ), QStringLiteral( "Function midpoint" ), Qgis::ProcessingNumberParameterType::Double, 10 ) );
-  addParameter( new QgsProcessingParameterNumber( QStringLiteral( "FUZZYSPREAD" ), QStringLiteral( "Function spread" ), Qgis::ProcessingNumberParameterType::Double, 0.01 ) );
+  addParameter( new QgsProcessingParameterNumber( u"FUZZYMIDPOINT"_s, u"Function midpoint"_s, Qgis::ProcessingNumberParameterType::Double, 10 ) );
+  addParameter( new QgsProcessingParameterNumber( u"FUZZYSPREAD"_s, u"Function spread"_s, Qgis::ProcessingNumberParameterType::Double, 0.01 ) );
 }
 
 bool QgsFuzzifyRasterGaussianMembershipAlgorithm::prepareAlgorithmFuzzificationParameters( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback )
 {
   Q_UNUSED( feedback )
-  mFuzzifyMidpoint = parameterAsDouble( parameters, QStringLiteral( "FUZZYMIDPOINT" ), context );
-  mFuzzifySpread = parameterAsDouble( parameters, QStringLiteral( "FUZZYSPREAD" ), context );
+  mFuzzifyMidpoint = parameterAsDouble( parameters, u"FUZZYMIDPOINT"_s, context );
+  mFuzzifySpread = parameterAsDouble( parameters, u"FUZZYSPREAD"_s, context );
   return true;
 }
 
 void QgsFuzzifyRasterGaussianMembershipAlgorithm::fuzzify( QgsRasterDataProvider *destinationProvider, QgsProcessingFeedback *feedback )
 {
-  const int maxWidth = QgsRasterIterator::DEFAULT_MAXIMUM_TILE_WIDTH;
-  const int maxHeight = QgsRasterIterator::DEFAULT_MAXIMUM_TILE_HEIGHT;
-  const int nbBlocksWidth = static_cast< int >( std::ceil( 1.0 * mLayerWidth / maxWidth ) );
-  const int nbBlocksHeight = static_cast< int >( std::ceil( 1.0 * mLayerHeight / maxHeight ) );
-  const int nbBlocks = nbBlocksWidth * nbBlocksHeight;
+  QGS_MARK_ALGORITHM_SOURCE
 
   QgsRasterIterator iter( mInterface.get() );
   iter.startRasterRead( mBand, mLayerWidth, mLayerHeight, mExtent );
@@ -636,12 +712,12 @@ void QgsFuzzifyRasterGaussianMembershipAlgorithm::fuzzify( QgsRasterDataProvider
   int iterCols = 0;
   int iterRows = 0;
   bool isNoData = false;
-  std::unique_ptr< QgsRasterBlock > rasterBlock;
+  std::unique_ptr<QgsRasterBlock> rasterBlock;
   while ( iter.readNextRasterPart( mBand, iterCols, iterRows, rasterBlock, iterLeft, iterTop ) )
   {
     if ( feedback )
-      feedback->setProgress( 100 * ( ( iterTop / maxHeight * nbBlocksWidth ) + iterLeft / maxWidth ) / nbBlocks );
-    std::unique_ptr< QgsRasterBlock > fuzzifiedBlock = std::make_unique< QgsRasterBlock >( destinationProvider->dataType( 1 ), iterCols, iterRows );
+      feedback->setProgress( 100 * iter.progress( mBand ) );
+    auto fuzzifiedBlock = std::make_unique<QgsRasterBlock>( destinationProvider->dataType( 1 ), iterCols, iterRows );
 
     for ( int row = 0; row < iterRows; row++ )
     {
@@ -667,7 +743,10 @@ void QgsFuzzifyRasterGaussianMembershipAlgorithm::fuzzify( QgsRasterDataProvider
         fuzzifiedBlock->setValue( row, column, fuzzifiedValue );
       }
     }
-    destinationProvider->writeBlock( fuzzifiedBlock.get(), mBand, iterLeft, iterTop );
+    if ( !destinationProvider->writeBlock( fuzzifiedBlock.get(), mBand, iterLeft, iterTop ) )
+    {
+      throw QgsProcessingException( QObject::tr( "Could not write raster block: %1" ).arg( destinationProvider->error().summary() ) );
+    }
   }
 }
 
@@ -678,7 +757,7 @@ void QgsFuzzifyRasterGaussianMembershipAlgorithm::fuzzify( QgsRasterDataProvider
 
 QString QgsFuzzifyRasterNearMembershipAlgorithm::name() const
 {
-  return QStringLiteral( "fuzzifyrasternearmembership" );
+  return u"fuzzifyrasternearmembership"_s;
 }
 
 QString QgsFuzzifyRasterNearMembershipAlgorithm::displayName() const
@@ -691,20 +770,29 @@ QStringList QgsFuzzifyRasterNearMembershipAlgorithm::tags() const
   return QObject::tr( "fuzzy logic,fuzzify,fuzzy,logic,near,membership" ).split( ',' );
 }
 
+QString QgsFuzzifyRasterNearMembershipAlgorithm::shortDescription() const
+{
+  return QObject::tr(
+    "Transforms an input raster to a fuzzified raster where values range from 0 to 1 following the "
+    "'near' fuzzy membership function."
+  );
+}
 
 QString QgsFuzzifyRasterNearMembershipAlgorithm::shortHelpString() const
 {
-  return QObject::tr( "The Fuzzify raster (near membership) algorithm transforms an input raster "
-                      "to a fuzzified raster and thereby assigns values between 0 and 1 following the "
-                      "'near' fuzzy membership function. The value of 0 implies no membership with the "
-                      "defined fuzzy set, a value of 1 depicts full membership. In between, the degree "
-                      "of membership of raster values follows the 'near' membership function.\n\n"
-                      "The 'near' function is constructed using two user-defined input values "
-                      "which set the midpoint of the 'near' function (midpoint, results to 1) and a "
-                      "predefined function spread which controls the function spread.\n\n"
-                      "This function is typically used when a certain range of raster values near a "
-                      "predefined function midpoint should become members of the fuzzy set. The function"
-                      " generally shows a higher rate of decay than the gaussian membership function." );
+  return QObject::tr(
+    "The Fuzzify raster (near membership) algorithm transforms an input raster "
+    "to a fuzzified raster and thereby assigns values between 0 and 1 following the "
+    "'near' fuzzy membership function. The value of 0 implies no membership with the "
+    "defined fuzzy set, a value of 1 depicts full membership. In between, the degree "
+    "of membership of raster values follows the 'near' membership function.\n\n"
+    "The 'near' function is constructed using two user-defined input values "
+    "which set the midpoint of the 'near' function (midpoint, results to 1) and a "
+    "predefined function spread which controls the function spread.\n\n"
+    "This function is typically used when a certain range of raster values near a "
+    "predefined function midpoint should become members of the fuzzy set. The function"
+    " generally shows a higher rate of decay than the gaussian membership function."
+  );
 }
 
 QgsFuzzifyRasterNearMembershipAlgorithm *QgsFuzzifyRasterNearMembershipAlgorithm::createInstance() const
@@ -712,27 +800,23 @@ QgsFuzzifyRasterNearMembershipAlgorithm *QgsFuzzifyRasterNearMembershipAlgorithm
   return new QgsFuzzifyRasterNearMembershipAlgorithm();
 }
 
-void QgsFuzzifyRasterNearMembershipAlgorithm::addAlgorithmParams( )
+void QgsFuzzifyRasterNearMembershipAlgorithm::addAlgorithmParams()
 {
-  addParameter( new QgsProcessingParameterNumber( QStringLiteral( "FUZZYMIDPOINT" ), QStringLiteral( "Function midpoint" ), Qgis::ProcessingNumberParameterType::Double, 50 ) );
-  addParameter( new QgsProcessingParameterNumber( QStringLiteral( "FUZZYSPREAD" ), QStringLiteral( "Function spread" ), Qgis::ProcessingNumberParameterType::Double, 0.01 ) );
+  addParameter( new QgsProcessingParameterNumber( u"FUZZYMIDPOINT"_s, u"Function midpoint"_s, Qgis::ProcessingNumberParameterType::Double, 50 ) );
+  addParameter( new QgsProcessingParameterNumber( u"FUZZYSPREAD"_s, u"Function spread"_s, Qgis::ProcessingNumberParameterType::Double, 0.01 ) );
 }
 
 bool QgsFuzzifyRasterNearMembershipAlgorithm::prepareAlgorithmFuzzificationParameters( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback )
 {
   Q_UNUSED( feedback )
-  mFuzzifyMidpoint = parameterAsDouble( parameters, QStringLiteral( "FUZZYMIDPOINT" ), context );
-  mFuzzifySpread = parameterAsDouble( parameters, QStringLiteral( "FUZZYSPREAD" ), context );
+  mFuzzifyMidpoint = parameterAsDouble( parameters, u"FUZZYMIDPOINT"_s, context );
+  mFuzzifySpread = parameterAsDouble( parameters, u"FUZZYSPREAD"_s, context );
   return true;
 }
 
 void QgsFuzzifyRasterNearMembershipAlgorithm::fuzzify( QgsRasterDataProvider *destinationProvider, QgsProcessingFeedback *feedback )
 {
-  const int maxWidth = QgsRasterIterator::DEFAULT_MAXIMUM_TILE_WIDTH;
-  const int maxHeight = QgsRasterIterator::DEFAULT_MAXIMUM_TILE_HEIGHT;
-  const int nbBlocksWidth = static_cast< int >( std::ceil( 1.0 * mLayerWidth / maxWidth ) );
-  const int nbBlocksHeight = static_cast< int >( std::ceil( 1.0 * mLayerHeight / maxHeight ) );
-  const int nbBlocks = nbBlocksWidth * nbBlocksHeight;
+  QGS_MARK_ALGORITHM_SOURCE
 
   QgsRasterIterator iter( mInterface.get() );
   iter.startRasterRead( mBand, mLayerWidth, mLayerHeight, mExtent );
@@ -741,12 +825,12 @@ void QgsFuzzifyRasterNearMembershipAlgorithm::fuzzify( QgsRasterDataProvider *de
   int iterCols = 0;
   int iterRows = 0;
   bool isNoData = false;
-  std::unique_ptr< QgsRasterBlock > rasterBlock;
+  std::unique_ptr<QgsRasterBlock> rasterBlock;
   while ( iter.readNextRasterPart( mBand, iterCols, iterRows, rasterBlock, iterLeft, iterTop ) )
   {
     if ( feedback )
-      feedback->setProgress( 100 * ( ( iterTop / maxHeight * nbBlocksWidth ) + iterLeft / maxWidth ) / nbBlocks );
-    std::unique_ptr< QgsRasterBlock > fuzzifiedBlock = std::make_unique< QgsRasterBlock >( destinationProvider->dataType( 1 ), iterCols, iterRows );
+      feedback->setProgress( 100 * iter.progress( mBand ) );
+    auto fuzzifiedBlock = std::make_unique<QgsRasterBlock>( destinationProvider->dataType( 1 ), iterCols, iterRows );
 
     for ( int row = 0; row < iterRows; row++ )
     {
@@ -772,12 +856,12 @@ void QgsFuzzifyRasterNearMembershipAlgorithm::fuzzify( QgsRasterDataProvider *de
         fuzzifiedBlock->setValue( row, column, fuzzifiedValue );
       }
     }
-    destinationProvider->writeBlock( fuzzifiedBlock.get(), mBand, iterLeft, iterTop );
+    if ( !destinationProvider->writeBlock( fuzzifiedBlock.get(), mBand, iterLeft, iterTop ) )
+    {
+      throw QgsProcessingException( QObject::tr( "Could not write raster block: %1" ).arg( destinationProvider->error().summary() ) );
+    }
   }
 }
 
 
 ///@endcond
-
-
-

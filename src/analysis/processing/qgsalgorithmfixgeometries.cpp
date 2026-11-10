@@ -16,15 +16,19 @@
  ***************************************************************************/
 
 #include "qgsalgorithmfixgeometries.h"
+
+#include "qgsgeos.h"
 #include "qgsvectorlayer.h"
 
-#include <geos_c.h>
+#include <QString>
+
+using namespace Qt::StringLiterals;
 
 ///@cond PRIVATE
 
 QString QgsFixGeometriesAlgorithm::name() const
 {
-  return QStringLiteral( "fixgeometries" );
+  return u"fixgeometries"_s;
 }
 
 QString QgsFixGeometriesAlgorithm::displayName() const
@@ -44,7 +48,7 @@ QString QgsFixGeometriesAlgorithm::group() const
 
 QString QgsFixGeometriesAlgorithm::groupId() const
 {
-  return QStringLiteral( "vectorgeometry" );
+  return u"vectorgeometry"_s;
 }
 
 Qgis::ProcessingFeatureSourceFlags QgsFixGeometriesAlgorithm::sourceFlags() const
@@ -64,10 +68,17 @@ Qgis::WkbType QgsFixGeometriesAlgorithm::outputWkbType( Qgis::WkbType type ) con
 
 QString QgsFixGeometriesAlgorithm::shortHelpString() const
 {
-  return QObject::tr( "This algorithm attempts to create a valid representation of a given invalid geometry without "
-                      "losing any of the input vertices. Already-valid geometries are returned without further intervention. "
-                      "Always outputs multi-geometry layer.\n\n"
-                      "NOTE: M values will be dropped from the output." );
+  return QObject::tr(
+    "This algorithm attempts to create a valid representation of a given invalid geometry without "
+    "losing any of the input vertices. Already-valid geometries are returned without further intervention. "
+    "Always outputs multi-geometry layer.\n\n"
+    "NOTE: M values will be dropped from the output."
+  );
+}
+
+QString QgsFixGeometriesAlgorithm::shortDescription() const
+{
+  return QObject::tr( "Attempts to create a valid representation of a given invalid geometry without losing any of the input vertices." );
 }
 
 QgsFixGeometriesAlgorithm *QgsFixGeometriesAlgorithm::createInstance() const
@@ -77,25 +88,20 @@ QgsFixGeometriesAlgorithm *QgsFixGeometriesAlgorithm::createInstance() const
 
 bool QgsFixGeometriesAlgorithm::supportInPlaceEdit( const QgsMapLayer *l ) const
 {
-  const QgsVectorLayer *layer = qobject_cast< const QgsVectorLayer * >( l );
+  const QgsVectorLayer *layer = qobject_cast<const QgsVectorLayer *>( l );
   if ( !layer )
     return false;
 
-  if ( !layer->isSpatial() || ! QgsProcessingFeatureBasedAlgorithm::supportInPlaceEdit( layer ) )
+  if ( !layer->isSpatial() || !QgsProcessingFeatureBasedAlgorithm::supportInPlaceEdit( layer ) )
     return false;
   // The algorithm would drop M, so disable it if the layer has M
-  return ! QgsWkbTypes::hasM( layer->wkbType() );
+  return !QgsWkbTypes::hasM( layer->wkbType() );
 }
 
 void QgsFixGeometriesAlgorithm::initParameters( const QVariantMap & )
 {
-  std::unique_ptr< QgsProcessingParameterEnum> methodParameter = std::make_unique< QgsProcessingParameterEnum >(
-        QStringLiteral( "METHOD" ),
-        QObject::tr( "Repair method" ),
-        QStringList{ QObject::tr( "Linework" ), QObject::tr( "Structure" ) },
-        0,
-        false );
-#if GEOS_VERSION_MAJOR==3 && GEOS_VERSION_MINOR<10
+  auto methodParameter = std::make_unique<QgsProcessingParameterEnum>( u"METHOD"_s, QObject::tr( "Repair method" ), QStringList { QObject::tr( "Linework" ), QObject::tr( "Structure" ) }, 0, false );
+#if GEOS_VERSION_NUM < GEOS_COMPUTE_VERSION( 3, 10, 0 )
   methodParameter->setDefaultValue( 0 );
 #else
   methodParameter->setDefaultValue( 1 );
@@ -105,11 +111,11 @@ void QgsFixGeometriesAlgorithm::initParameters( const QVariantMap & )
 
 bool QgsFixGeometriesAlgorithm::prepareAlgorithm( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback * )
 {
-  mMethod = static_cast< Qgis::MakeValidMethod>( parameterAsInt( parameters, QStringLiteral( "METHOD" ), context ) );
-#if GEOS_VERSION_MAJOR==3 && GEOS_VERSION_MINOR<10
+  mMethod = static_cast<Qgis::MakeValidMethod>( parameterAsInt( parameters, u"METHOD"_s, context ) );
+#if GEOS_VERSION_NUM < GEOS_COMPUTE_VERSION( 3, 10, 0 )
   if ( mMethod == Qgis::MakeValidMethod::Structure )
   {
-    throw QgsProcessingException( "The structured method to make geometries valid requires a QGIS build based on GEOS 3.10 or later" );
+    throw QgsProcessingException( QObject::tr( "The structured method to make geometries valid requires a QGIS build based on GEOS 3.10 or later" ) );
   }
 #endif
   return true;
@@ -117,12 +123,14 @@ bool QgsFixGeometriesAlgorithm::prepareAlgorithm( const QVariantMap &parameters,
 
 QgsFeatureList QgsFixGeometriesAlgorithm::processFeature( const QgsFeature &feature, QgsProcessingContext &, QgsProcessingFeedback *feedback )
 {
+  QGS_MARK_ALGORITHM_SOURCE
+
   if ( !feature.hasGeometry() )
     return QgsFeatureList() << feature;
 
   QgsFeature outputFeature = feature;
 
-  QgsGeometry outputGeometry = outputFeature.geometry().makeValid( mMethod );
+  QgsGeometry outputGeometry = outputFeature.geometry().makeValid( mMethod, false, feedback );
   if ( outputGeometry.isNull() )
   {
     feedback->pushInfo( QObject::tr( "makeValid failed for feature %1 " ).arg( feature.id() ) );
@@ -130,12 +138,11 @@ QgsFeatureList QgsFixGeometriesAlgorithm::processFeature( const QgsFeature &feat
     return QgsFeatureList() << outputFeature;
   }
 
-  if ( outputGeometry.wkbType() == Qgis::WkbType::Unknown ||
-       QgsWkbTypes::flatType( outputGeometry.wkbType() ) == Qgis::WkbType::GeometryCollection )
+  if ( outputGeometry.wkbType() == Qgis::WkbType::Unknown || QgsWkbTypes::flatType( outputGeometry.wkbType() ) == Qgis::WkbType::GeometryCollection )
   {
     // keep only the parts of the geometry collection with correct type
-    const QVector< QgsGeometry > tmpGeometries = outputGeometry.asGeometryCollection();
-    QVector< QgsGeometry > matchingParts;
+    const QVector<QgsGeometry> tmpGeometries = outputGeometry.asGeometryCollection();
+    QVector<QgsGeometry> matchingParts;
     for ( const QgsGeometry &g : tmpGeometries )
     {
       if ( g.type() == feature.geometry().type() )

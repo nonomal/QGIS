@@ -13,19 +13,28 @@
  *                                                                         *
  ***************************************************************************/
 
-#include <QDialogButtonBox>
-#include <QDomElement>
-
 #include "qgslabelingwidget.h"
 
+#include <memory>
+
+#include "qgsapplication.h"
 #include "qgslabelengineconfigdialog.h"
+#include "qgslabelingengineruleswidget.h"
 #include "qgslabelinggui.h"
+#include "qgslabelobstaclesettingswidget.h"
+#include "qgsmapcanvas.h"
+#include "qgsproject.h"
 #include "qgsrulebasedlabelingwidget.h"
 #include "qgsvectorlayer.h"
 #include "qgsvectorlayerlabeling.h"
-#include "qgsproject.h"
-#include "qgsapplication.h"
-#include "qgslabelobstaclesettingswidget.h"
+
+#include <QDialogButtonBox>
+#include <QDomElement>
+#include <QString>
+
+#include "moc_qgslabelingwidget.cpp"
+
+using namespace Qt::StringLiterals;
 
 QgsLabelingWidget::QgsLabelingWidget( QgsVectorLayer *layer, QgsMapCanvas *canvas, QWidget *parent, QgsMessageBar *messageBar )
   : QgsMapLayerConfigWidget( layer, canvas, parent )
@@ -36,18 +45,20 @@ QgsLabelingWidget::QgsLabelingWidget( QgsVectorLayer *layer, QgsMapCanvas *canva
 {
   setupUi( this );
 
-  mLabelModeComboBox->addItem( QgsApplication::getThemeIcon( QStringLiteral( "labelingNone.svg" ) ), tr( "No Labels" ), ModeNone );
-  mLabelModeComboBox->addItem( QgsApplication::getThemeIcon( QStringLiteral( "labelingSingle.svg" ) ), tr( "Single Labels" ), ModeSingle );
-  mLabelModeComboBox->addItem( QgsApplication::getThemeIcon( QStringLiteral( "labelingRuleBased.svg" ) ), tr( "Rule-based Labeling" ), ModeRuleBased );
-  mLabelModeComboBox->addItem( QgsApplication::getThemeIcon( QStringLiteral( "labelingObstacle.svg" ) ), tr( "Blocking" ), ModeBlocking );
+  mLabelModeComboBox->addItem( QgsApplication::getThemeIcon( u"labelingNone.svg"_s ), tr( "No Labels" ), ModeNone );
+  mLabelModeComboBox->addItem( QgsApplication::getThemeIcon( u"labelingSingle.svg"_s ), tr( "Single Labels" ), ModeSingle );
+  mLabelModeComboBox->addItem( QgsApplication::getThemeIcon( u"labelingRuleBased.svg"_s ), tr( "Rule-based Labeling" ), ModeRuleBased );
+  mLabelModeComboBox->addItem( QgsApplication::getThemeIcon( u"labelingObstacle.svg"_s ), tr( "Blocking" ), ModeBlocking );
 
-  connect( mEngineSettingsButton, &QAbstractButton::clicked, this, &QgsLabelingWidget::showEngineConfigDialog );
+  connect( mLabelRulesButton, &QAbstractButton::clicked, this, &QgsLabelingWidget::showLabelingEngineRulesPrivate );
+  connect( mEngineSettingsButton, &QAbstractButton::clicked, this, &QgsLabelingWidget::showEngineConfigDialogPrivate );
 
   connect( mLabelModeComboBox, static_cast<void ( QComboBox::* )( int )>( &QComboBox::currentIndexChanged ), this, &QgsLabelingWidget::labelModeChanged );
   setLayer( layer );
 
   const int iconSize16 = QgsGuiUtils::scaleIconSize( 16 );
   mEngineSettingsButton->setIconSize( QSize( iconSize16, iconSize16 ) );
+  mLabelRulesButton->setIconSize( QSize( iconSize16, iconSize16 ) );
 }
 
 QgsLabelingGui *QgsLabelingWidget::labelingGui()
@@ -99,11 +110,11 @@ void QgsLabelingWidget::adaptToLayer()
   whileBlocking( mLabelModeComboBox )->setCurrentIndex( -1 );
 
   // pick the right mode of the layer
-  if ( mLayer->labelsEnabled() && mLayer->labeling()->type() == QLatin1String( "rule-based" ) )
+  if ( mLayer->labelsEnabled() && mLayer->labeling()->type() == "rule-based"_L1 )
   {
     mLabelModeComboBox->setCurrentIndex( mLabelModeComboBox->findData( ModeRuleBased ) );
   }
-  else if ( mLayer->labelsEnabled() && mLayer->labeling()->type() == QLatin1String( "simple" ) )
+  else if ( mLayer->labelsEnabled() && mLayer->labeling()->type() == "simple"_L1 )
   {
     const QgsPalLayerSettings lyr = mLayer->labeling()->settings();
 
@@ -122,14 +133,13 @@ void QgsLabelingWidget::adaptToLayer()
 
 void QgsLabelingWidget::writeSettingsToLayer()
 {
-  const Mode mode = static_cast< Mode >( mLabelModeComboBox->currentData().toInt() );
+  const Mode mode = static_cast<Mode>( mLabelModeComboBox->currentData().toInt() );
   switch ( mode )
   {
     case ModeRuleBased:
     {
       const QgsRuleBasedLabeling::Rule *rootRule = qobject_cast<QgsRuleBasedLabelingWidget *>( mWidget )->rootRule();
-
-      mLayer->setLabeling( new QgsRuleBasedLabeling( rootRule->clone() ) );
+      mLayer->setLabeling( new QgsRuleBasedLabeling( rootRule->clone( false ).release() ) );
       mLayer->setLabelsEnabled( true );
       break;
     }
@@ -175,7 +185,7 @@ void QgsLabelingWidget::labelModeChanged( int index )
   if ( index < 0 )
     return;
 
-  const Mode mode = static_cast< Mode >( mLabelModeComboBox->currentData().toInt() );
+  const Mode mode = static_cast<Mode>( mLabelModeComboBox->currentData().toInt() );
 
   switch ( mode )
   {
@@ -185,7 +195,7 @@ void QgsLabelingWidget::labelModeChanged( int index )
       QgsRuleBasedLabelingWidget *ruleWidget = new QgsRuleBasedLabelingWidget( mLayer, mCanvas, this );
       ruleWidget->setDockMode( dockMode() );
       connect( ruleWidget, &QgsPanelWidget::showPanel, this, &QgsPanelWidget::openPanel );
-      connect( ruleWidget, &QgsRuleBasedLabelingWidget::widgetChanged, this, &QgsLabelingWidget::widgetChanged );
+      connect( ruleWidget, &QgsRuleBasedLabelingWidget::changed, this, &QgsLabelingWidget::changed );
       mWidget = ruleWidget;
       mStackedWidget->addWidget( mWidget );
       mStackedWidget->setCurrentWidget( mWidget );
@@ -196,11 +206,11 @@ void QgsLabelingWidget::labelModeChanged( int index )
     case ModeBlocking:
     {
       mSimpleSettings.reset();
-      if ( mLayer->labeling() && mLayer->labeling()->type() == QLatin1String( "simple" ) )
+      if ( mLayer->labeling() && mLayer->labeling()->type() == "simple"_L1 )
       {
-        mSimpleSettings.reset( new QgsPalLayerSettings( mLayer->labeling()->settings() ) );
+        mSimpleSettings = std::make_unique<QgsPalLayerSettings>( mLayer->labeling()->settings() );
       }
-      else if ( mLayer->labeling() && mLayer->labeling()->type() == QLatin1String( "rule-based" ) )
+      else if ( mLayer->labeling() && mLayer->labeling()->type() == "rule-based"_L1 )
       {
         // changing from rule-based to simple labels... grab first rule, and copy settings
         const QgsRuleBasedLabeling *rl = static_cast<const QgsRuleBasedLabeling *>( mLayer->labeling() );
@@ -209,14 +219,14 @@ void QgsLabelingWidget::labelModeChanged( int index )
           if ( const QgsRuleBasedLabeling::Rule *firstChild = rootRule->children().value( 0 ) )
           {
             if ( firstChild->settings() )
-              mSimpleSettings.reset( new QgsPalLayerSettings( *firstChild->settings() ) );
+              mSimpleSettings = std::make_unique<QgsPalLayerSettings>( *firstChild->settings() );
           }
         }
       }
 
       if ( !mSimpleSettings )
       {
-        mSimpleSettings = std::make_unique< QgsPalLayerSettings >( QgsAbstractVectorLayerLabeling::defaultSettingsForLayer( mLayer ) );
+        mSimpleSettings = std::make_unique<QgsPalLayerSettings>( QgsAbstractVectorLayerLabeling::defaultSettingsForLayer( mLayer ) );
       }
 
       if ( mSimpleSettings->fieldName.isEmpty() )
@@ -234,7 +244,7 @@ void QgsLabelingWidget::labelModeChanged( int index )
           simpleWidget->setContext( context );
 
           simpleWidget->setDockMode( dockMode() );
-          connect( simpleWidget, &QgsTextFormatWidget::widgetChanged, this, &QgsLabelingWidget::widgetChanged );
+          connect( simpleWidget, &QgsTextFormatWidget::widgetChanged, this, &QgsLabelingWidget::changed );
           connect( simpleWidget, &QgsLabelingGui::auxiliaryFieldCreated, this, &QgsLabelingWidget::auxiliaryFieldCreated );
 
           simpleWidget->setLabelMode( QgsLabelingGui::Labels );
@@ -254,11 +264,10 @@ void QgsLabelingWidget::labelModeChanged( int index )
           mSimpleSettings->obstacleSettings().setIsObstacle( true );
           mSimpleSettings->drawLabels = false;
 
-          connect( obstacleWidget, &QgsLabelSettingsWidgetBase::changed, this, [ = ]
-          {
+          connect( obstacleWidget, &QgsLabelSettingsWidgetBase::changed, this, [this, obstacleWidget] {
             mSimpleSettings->setObstacleSettings( obstacleWidget->settings() );
             obstacleWidget->updateDataDefinedProperties( mSimpleSettings->dataDefinedProperties() );
-            emit widgetChanged();
+            emit changed();
           } );
           connect( obstacleWidget, &QgsLabelSettingsWidgetBase::auxiliaryFieldCreated, this, &QgsLabelingWidget::auxiliaryFieldCreated );
 
@@ -279,23 +288,75 @@ void QgsLabelingWidget::labelModeChanged( int index )
     case ModeNone:
       break;
   }
-  emit widgetChanged();
+  emit changed();
 }
 
-void QgsLabelingWidget::showEngineConfigDialog()
+
+void QgsLabelingWidget::showLabelingEngineRules( QWidget *parent, QgsMapCanvas *canvas )
 {
-  QgsPanelWidget *panel = QgsPanelWidget::findParentPanel( this );
+  QgsPanelWidget *panel = QgsPanelWidget::findParentPanel( parent );
+  const QgsLabelingEngineSettings &settings = QgsProject::instance()->labelingEngineSettings();
+  QList<QgsAbstractLabelingEngineRule *> rules;
+  for ( const QgsAbstractLabelingEngineRule *rule : settings.rules() )
+  {
+    // blame sip, it requires the widget setter to take non-const pointers?!
+    rules << const_cast<QgsAbstractLabelingEngineRule *>( rule );
+  }
   if ( panel && panel->dockMode() )
   {
-    QgsLabelEngineConfigWidget *widget = new QgsLabelEngineConfigWidget( mCanvas );
-    connect( widget, &QgsLabelEngineConfigWidget::widgetChanged, widget, &QgsLabelEngineConfigWidget::apply );
+    QgsLabelingEngineRulesWidget *widget = new QgsLabelingEngineRulesWidget();
+    widget->setRules( rules );
+    connect( widget, &QgsLabelingEngineRulesWidget::changed, widget, [widget, canvas] {
+      QgsLabelingEngineSettings settings = QgsProject::instance()->labelingEngineSettings();
+      settings.setRules( widget->rules() );
+      QgsProject::instance()->setLabelingEngineSettings( settings );
+      QgsProject::instance()->setDirty();
+      if ( canvas )
+        canvas->refreshAllLayers();
+    } );
     panel->openPanel( widget );
   }
   else
   {
-    QgsLabelEngineConfigDialog dialog( mCanvas, this );
+    QgsLabelingEngineRulesDialog dialog( parent );
+    dialog.setRules( rules );
+    if ( dialog.exec() )
+    {
+      QgsLabelingEngineSettings settings = QgsProject::instance()->labelingEngineSettings();
+      settings.setRules( dialog.rules() );
+      QgsProject::instance()->setLabelingEngineSettings( settings );
+      QgsProject::instance()->setDirty();
+      if ( canvas )
+        canvas->refreshAllLayers();
+    }
+    parent->activateWindow();
+  }
+}
+
+void QgsLabelingWidget::showLabelingEngineRulesPrivate()
+{
+  showLabelingEngineRules( this, mCanvas );
+}
+
+void QgsLabelingWidget::showEngineConfiguration( QWidget *parent, QgsMapCanvas *canvas )
+{
+  QgsPanelWidget *panel = QgsPanelWidget::findParentPanel( parent );
+  if ( panel && panel->dockMode() )
+  {
+    QgsLabelEngineConfigWidget *widget = new QgsLabelEngineConfigWidget( canvas );
+    connect( widget, &QgsLabelEngineConfigWidget::changed, widget, &QgsLabelEngineConfigWidget::apply );
+    panel->openPanel( widget );
+  }
+  else
+  {
+    QgsLabelEngineConfigDialog dialog( canvas, parent );
     dialog.exec();
     // reactivate button's window
-    activateWindow();
+    parent->activateWindow();
   }
+}
+
+void QgsLabelingWidget::showEngineConfigDialogPrivate()
+{
+  showEngineConfiguration( this, mCanvas );
 }

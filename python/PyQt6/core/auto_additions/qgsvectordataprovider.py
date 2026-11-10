@@ -1,37 +1,16 @@
 # The following has been generated automatically from src/core/vector/qgsvectordataprovider.h
-QgsVectorDataProvider.NoCapabilities = QgsVectorDataProvider.Capability.NoCapabilities
-QgsVectorDataProvider.AddFeatures = QgsVectorDataProvider.Capability.AddFeatures
-QgsVectorDataProvider.DeleteFeatures = QgsVectorDataProvider.Capability.DeleteFeatures
-QgsVectorDataProvider.ChangeAttributeValues = QgsVectorDataProvider.Capability.ChangeAttributeValues
-QgsVectorDataProvider.AddAttributes = QgsVectorDataProvider.Capability.AddAttributes
-QgsVectorDataProvider.DeleteAttributes = QgsVectorDataProvider.Capability.DeleteAttributes
-QgsVectorDataProvider.CreateSpatialIndex = QgsVectorDataProvider.Capability.CreateSpatialIndex
-QgsVectorDataProvider.SelectAtId = QgsVectorDataProvider.Capability.SelectAtId
-QgsVectorDataProvider.ChangeGeometries = QgsVectorDataProvider.Capability.ChangeGeometries
-QgsVectorDataProvider.SelectEncoding = QgsVectorDataProvider.Capability.SelectEncoding
-QgsVectorDataProvider.CreateAttributeIndex = QgsVectorDataProvider.Capability.CreateAttributeIndex
-QgsVectorDataProvider.SimplifyGeometries = QgsVectorDataProvider.Capability.SimplifyGeometries
-QgsVectorDataProvider.SimplifyGeometriesWithTopologicalValidation = QgsVectorDataProvider.Capability.SimplifyGeometriesWithTopologicalValidation
-QgsVectorDataProvider.TransactionSupport = QgsVectorDataProvider.Capability.TransactionSupport
-QgsVectorDataProvider.CircularGeometries = QgsVectorDataProvider.Capability.CircularGeometries
-QgsVectorDataProvider.ChangeFeatures = QgsVectorDataProvider.Capability.ChangeFeatures
-QgsVectorDataProvider.RenameAttributes = QgsVectorDataProvider.Capability.RenameAttributes
-QgsVectorDataProvider.FastTruncate = QgsVectorDataProvider.Capability.FastTruncate
-QgsVectorDataProvider.ReadLayerMetadata = QgsVectorDataProvider.Capability.ReadLayerMetadata
-QgsVectorDataProvider.WriteLayerMetadata = QgsVectorDataProvider.Capability.WriteLayerMetadata
-QgsVectorDataProvider.CancelSupport = QgsVectorDataProvider.Capability.CancelSupport
-QgsVectorDataProvider.CreateRenderer = QgsVectorDataProvider.Capability.CreateRenderer
-QgsVectorDataProvider.CreateLabeling = QgsVectorDataProvider.Capability.CreateLabeling
-QgsVectorDataProvider.ReloadData = QgsVectorDataProvider.Capability.ReloadData
-QgsVectorDataProvider.FeatureSymbology = QgsVectorDataProvider.Capability.FeatureSymbology
-QgsVectorDataProvider.Capabilities = lambda flags=0: QgsVectorDataProvider.Capability(flags)
-from enum import Enum
-
-
-def _force_int(v): return int(v.value) if isinstance(v, Enum) else v
-
-
-QgsVectorDataProvider.Capability.__bool__ = lambda flag: bool(_force_int(flag))
-QgsVectorDataProvider.Capability.__eq__ = lambda flag1, flag2: _force_int(flag1) == _force_int(flag2)
-QgsVectorDataProvider.Capability.__and__ = lambda flag1, flag2: _force_int(flag1) & _force_int(flag2)
-QgsVectorDataProvider.Capability.__or__ = lambda flag1, flag2: QgsVectorDataProvider.Capability(_force_int(flag1) | _force_int(flag2))
+try:
+    QgsVectorDataProvider.__attribute_docs__ = {'EditingCapabilities': "Bitmask of all provider's editing capabilities", 'raiseError': 'Signals an error in this provider\n'}
+    QgsVectorDataProvider.__annotations__ = {'EditingCapabilities': int}
+    QgsVectorDataProvider.availableEncodings = staticmethod(QgsVectorDataProvider.availableEncodings)
+    QgsVectorDataProvider.convertValue = staticmethod(QgsVectorDataProvider.convertValue)
+    QgsVectorDataProvider.__virtual_methods__ = ['storageType', 'empty', 'isSqlQuery', 'vectorLayerTypeFlags', 'uniqueStringsMatching', 'aggregate', 'enumValues', 'codedValues', 'deleteFeatures', 'truncate', 'cancelReload', 'addAttributes', 'deleteAttributes', 'renameAttributes', 'changeAttributeValues', 'changeFeatures', 'defaultValue', 'defaultValueClause', 'skipConstraintCheck', 'changeGeometryValues', 'createSpatialIndex', 'createAttributeIndex', 'capabilities', 'attributeEditCapabilities', 'setEncoding', 'attributeIndexes', 'pkAttributeIndexes', 'geometryColumnName', 'doesStrictFeatureTypeCheck', 'createRenderer', 'createLabeling', 'transaction', 'forceReload', 'dependencies', 'discoverRelations', 'translateMetadataKey', 'translateMetadataValue', 'hasMetadata', 'handlePostCloneOperations']
+    QgsVectorDataProvider.__abstract_methods__ = ['featureSource', 'getFeatures', 'wkbType', 'featureCount', 'fields']
+    QgsVectorDataProvider.__overridden_methods__ = ['getFeatures', 'wkbType', 'featureCount', 'hasFeatures', 'fields', 'sourceCrs', 'sourceExtent', 'sourceExtent3D', 'sourceName', 'dataComment', 'minimumValue', 'maximumValue', 'addFeatures', 'lastError', 'temporalCapabilities', 'elevationProperties']
+    QgsVectorDataProvider.__group__ = ['vector']
+except (NameError, AttributeError):
+    pass
+try:
+    QgsVectorDataProvider.NativeType.__group__ = ['vector']
+except (NameError, AttributeError):
+    pass

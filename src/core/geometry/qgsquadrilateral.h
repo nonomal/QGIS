@@ -20,9 +20,13 @@
 
 
 #include "qgis_core.h"
+#include "qgslinestring.h"
 #include "qgspoint.h"
 #include "qgspolygon.h"
-#include "qgslinestring.h"
+
+#include <QString>
+
+using namespace Qt::StringLiterals;
 
 /**
  * \ingroup core
@@ -36,11 +40,12 @@
 class CORE_EXPORT QgsQuadrilateral
 {
   public:
-
+    // clang-format off
     /**
      * Constructor for an empty quadrilateral geometry.
      */
     QgsQuadrilateral() SIP_HOLDGIL;
+    // clang-format on
 
     /**
      * Construct a QgsQuadrilateral from four QgsPoint.
@@ -188,12 +193,12 @@ class CORE_EXPORT QgsQuadrilateral
     /**
      * Returns the quadrilateral as a new polygon. Ownership is transferred to the caller.
      */
-    QgsPolygon *toPolygon( bool force2D = false ) const SIP_FACTORY;
+    std::unique_ptr<QgsPolygon> toPolygon( bool force2D = false ) const;
 
     /**
      * Returns the quadrilateral as a new linestring. Ownership is transferred to the caller.
      */
-    QgsLineString *toLineString( bool force2D = false ) const SIP_FACTORY;
+    std::unique_ptr<QgsLineString> toLineString( bool force2D = false ) const;
 
     /**
      * Returns a string representation of the quadrilateral.
@@ -211,11 +216,13 @@ class CORE_EXPORT QgsQuadrilateral
      */
     double perimeter() const SIP_HOLDGIL;
 #ifdef SIP_RUN
+// clang-format off
     SIP_PYOBJECT __repr__();
     % MethodCode
-    QString str = QStringLiteral( "<QgsQuadrilateral: %1>" ).arg( sipCpp->toString() );
+    QString str = u"<QgsQuadrilateral: %1>"_s.arg( sipCpp->toString() );
     sipRes = PyUnicode_FromString( str.toUtf8().constData() );
     % End
+// clang-format on
 #endif
   private:
     QgsPoint mPoint1, mPoint2, mPoint3, mPoint4;

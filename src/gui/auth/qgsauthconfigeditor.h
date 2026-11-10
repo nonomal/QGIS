@@ -17,26 +17,26 @@
 #ifndef QGSAUTHCONFIGEDITOR_H
 #define QGSAUTHCONFIGEDITOR_H
 
-#include <QSqlTableModel>
-#include "qgis_sip.h"
-#include <QWidget>
-
 #include "ui_qgsauthconfigeditor.h"
-#include "qgsauthmanager.h"
+
 #include "qgis_gui.h"
+#include "qgis_sip.h"
+#include "qgsauthmanager.h"
+
+#include <QSqlTableModel>
+#include <QWidget>
 
 class QgsMessageBar;
 
 /**
  * \ingroup gui
- * \brief Widget for editing authentication configuration database
+ * \brief Widget for editing authentication configuration database.
  */
 class GUI_EXPORT QgsAuthConfigEditor : public QWidget, private Ui::QgsAuthConfigEditor
 {
     Q_OBJECT
 
   public:
-
     /**
      * Widget for editing authentication configurations directly in database
      * \param parent Parent widget
@@ -90,7 +90,7 @@ class GUI_EXPORT QgsAuthConfigEditor : public QWidget, private Ui::QgsAuthConfig
     void eraseAuthenticationDatabase();
 
     //! Relay messages to widget's messagebar
-    void authMessageOut( const QString &message, const QString &authtag, QgsAuthManager::MessageLevel level );
+    void authMessageLog( const QString &message, const QString &authtag, Qgis::MessageLevel level );
 
     //! Pass selection change on to UI update
     void selectionChanged( const QItemSelection &selected, const QItemSelection &deselected );
@@ -124,6 +124,7 @@ class GUI_EXPORT QgsAuthConfigEditor : public QWidget, private Ui::QgsAuthConfig
     bool mDisabled = false;
     QVBoxLayout *mAuthNotifyLayout = nullptr;
     QLabel *mAuthNotify = nullptr;
+    bool mIsReadOnly = false;
 };
 
 #endif // QGSAUTHCONFIGEDITOR_H

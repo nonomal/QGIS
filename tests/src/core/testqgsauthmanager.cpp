@@ -14,27 +14,47 @@
  *                                                                         *
  ***************************************************************************/
 
+#include "qgsapplication.h"
+#include "qgsauthconfig.h"
+#include "qgsauthconfigurationstoragedb.h"
+#include "qgsauthconfigurationstorageregistry.h"
+#include "qgsauthmanager.h"
+#include "qgsauthmethodmetadata.h"
+#include "qgssettings.h"
+#include "qgssettingsentryimpl.h"
 #include "qgstest.h"
-#include <QtTest/QSignalSpy>
-#include <QObject>
+
 #include <QDesktopServices>
 #include <QDir>
 #include <QFile>
+#include <QObject>
 #include <QString>
 #include <QStringList>
 #include <QTextStream>
+#include <QtTest/QSignalSpy>
 
-#include "qgsapplication.h"
-#include "qgsauthmanager.h"
-#include "qgsauthmethodmetadata.h"
-#include "qgsauthconfig.h"
-#include "qgssettings.h"
+using namespace Qt::StringLiterals;
+
+class TestAuthStorageDb : public QgsAuthConfigurationStorageDb
+{
+    Q_OBJECT
+  public:
+    TestAuthStorageDb( const QMap<QString, QVariant> &settings )
+      : QgsAuthConfigurationStorageDb( settings )
+    {
+      Qgis::AuthConfigurationStorageCapabilities caps = Qgis::AuthConfigurationStorageCapability::ReadConfiguration;
+      setCapabilities( caps );
+      setEnabled( true );
+    }
+
+    virtual bool isReady() const override { return true; }
+};
 
 /**
  * \ingroup UnitTests
  * Unit tests for QgsAuthManager
  */
-class TestQgsAuthManager: public QgsTest
+class TestQgsAuthManager : public QgsTest
 {
     Q_OBJECT
 
@@ -54,6 +74,7 @@ class TestQgsAuthManager: public QgsTest
     void testAuthConfigs();
     void testAuthMethods();
     void testPasswordHelper();
+    void testSecondPasswordStorage();
 
   private:
     void cleanupTempDir();
@@ -65,17 +86,15 @@ class TestQgsAuthManager: public QgsTest
     QString mPkiData;
     QString mTempDir;
     const char *mPass = nullptr;
-
 };
 
 
 TestQgsAuthManager::TestQgsAuthManager()
-  : QgsTest( QStringLiteral( "QgsAuthManager Tests" ) )
+  : QgsTest( u"QgsAuthManager Tests"_s )
   , mPkiData( QStringLiteral( TEST_DATA_DIR ) + "/auth_system/certs_keys" )
   , mTempDir( QDir::tempPath() + "/auth" )
   , mPass( "pass" )
-{
-}
+{}
 
 void TestQgsAuthManager::initTestCase()
 {
@@ -89,20 +108,19 @@ void TestQgsAuthManager::initTestCase()
   // init app and auth manager
   QgsApplication::init();
   QgsApplication::initQgis();
-  QVERIFY2( !QgsApplication::authManager()->isDisabled(),
-            "Authentication system is DISABLED" );
+  QVERIFY2( !QgsApplication::authManager()->isDisabled(), "Authentication system is DISABLED" );
 
   // verify QGIS_AUTH_DB_DIR_PATH (temp auth db path) worked
+  Q_NOWARN_DEPRECATED_PUSH
   const QString db1( QFileInfo( QgsApplication::authManager()->authenticationDatabasePath() ).canonicalFilePath() );
+  Q_NOWARN_DEPRECATED_POP
   const QString db2( QFileInfo( mTempDir + "/qgis-auth.db" ).canonicalFilePath() );
-  QVERIFY2( db1 == db2, "Auth db temp path does not match db path of manager" );
+  QCOMPARE( db1, db2 );
 
   // verify master pass can be set manually
   // (this also creates a fresh password hash in the new temp database)
-  QVERIFY2( QgsApplication::authManager()->setMasterPassword( mPass, true ),
-            "Master password could not be set" );
-  QVERIFY2( QgsApplication::authManager()->masterPasswordIsSet(),
-            "Auth master password not set from passed string" );
+  QVERIFY2( QgsApplication::authManager()->setMasterPassword( mPass, true ), "Master password could not be set" );
+  QVERIFY2( QgsApplication::authManager()->masterPasswordIsSet(), "Auth master password not set from passed string" );
 
   // create QGIS_AUTH_PASSWORD_FILE file
   const QString passfilepath = mTempDir + "/passfile";
@@ -121,12 +139,10 @@ void TestQgsAuthManager::initTestCase()
   // QTest::qSleep( 3000 );
   QgsApplication::init();
   QgsApplication::initQgis();
-  QVERIFY2( !QgsApplication::authManager()->isDisabled(),
-            "Authentication system is DISABLED" );
+  QVERIFY2( !QgsApplication::authManager()->isDisabled(), "Authentication system is DISABLED" );
 
   // verify QGIS_AUTH_PASSWORD_FILE worked, when compared against hash in db
-  QVERIFY2( QgsApplication::authManager()->masterPasswordIsSet(),
-            "Auth master password not set from QGIS_AUTH_PASSWORD_FILE" );
+  QVERIFY2( QgsApplication::authManager()->masterPasswordIsSet(), "Auth master password not set from QGIS_AUTH_PASSWORD_FILE" );
 
   // all tests should now have a valid qgis-auth.db and stored/set master password
 }
@@ -134,8 +150,7 @@ void TestQgsAuthManager::initTestCase()
 void TestQgsAuthManager::cleanup()
 {
   // Restore password_helper_insecure_fallback value
-  QgsSettings settings;
-  settings.setValue( QStringLiteral( "password_helper_insecure_fallback" ), false, QgsSettings::Section::Auth );
+  QgsAuthManager::settingsPasswordHelperInsecureFallback->setValue( false );
 }
 
 void TestQgsAuthManager::cleanupTempDir()
@@ -188,7 +203,7 @@ void TestQgsAuthManager::testMasterPassword()
   QVERIFY( authm->setMasterPassword( true ) );
   QCOMPARE( spy.count(), 1 );
   spyargs = spy.takeFirst();
-  QVERIFY( spyargs.at( 0 ).type() == QVariant::Bool );
+  QVERIFY( spyargs.at( 0 ).userType() == QMetaType::Type::Bool );
   QVERIFY( spyargs.at( 0 ).toBool() );
 
   authm->clearMasterPassword();
@@ -197,7 +212,7 @@ void TestQgsAuthManager::testMasterPassword()
   QVERIFY( !authm->masterPasswordIsSet() );
   QCOMPARE( spy.count(), 1 );
   spyargs = spy.takeFirst();
-  QVERIFY( spyargs.at( 0 ).type() == QVariant::Bool );
+  QVERIFY( spyargs.at( 0 ).userType() == QMetaType::Type::Bool );
   QVERIFY( !spyargs.at( 0 ).toBool() );
 
   authm->clearMasterPassword();
@@ -206,7 +221,7 @@ void TestQgsAuthManager::testMasterPassword()
   QVERIFY( authm->masterPasswordIsSet() );
   QCOMPARE( spy.count(), 1 );
   spyargs = spy.takeFirst();
-  QVERIFY( spyargs.at( 0 ).type() == QVariant::Bool );
+  QVERIFY( spyargs.at( 0 ).userType() == QMetaType::Type::Bool );
   QVERIFY( spyargs.at( 0 ).toBool() );
 }
 
@@ -308,16 +323,16 @@ void TestQgsAuthManager::testAuthConfigs()
   QCOMPARE( authm->availableAuthMethodConfigs().size(), 3 );
 
   // Password-less export / import
-  QVERIFY( authm->exportAuthenticationConfigsToXml( mTempDir + QStringLiteral( "/configs.xml" ), idcfgmap.keys() ) );
+  QVERIFY( authm->exportAuthenticationConfigsToXml( mTempDir + u"/configs.xml"_s, idcfgmap.keys() ) );
   QVERIFY( authm->removeAllAuthenticationConfigs() );
-  QVERIFY( authm->importAuthenticationConfigsFromXml( mTempDir + QStringLiteral( "/configs.xml" ) ) );
+  QVERIFY( authm->importAuthenticationConfigsFromXml( mTempDir + u"/configs.xml"_s ) );
 
   QCOMPARE( authm->availableAuthMethodConfigs().size(), 3 );
 
   // Password-protected export / import
-  QVERIFY( authm->exportAuthenticationConfigsToXml( mTempDir + QStringLiteral( "/configs.xml" ), idcfgmap.keys(), QStringLiteral( "1234" ) ) );
+  QVERIFY( authm->exportAuthenticationConfigsToXml( mTempDir + u"/configs.xml"_s, idcfgmap.keys(), u"1234"_s ) );
   QVERIFY( authm->removeAllAuthenticationConfigs() );
-  QVERIFY( authm->importAuthenticationConfigsFromXml( mTempDir + QStringLiteral( "/configs.xml" ), QStringLiteral( "1234" ) ) );
+  QVERIFY( authm->importAuthenticationConfigsFromXml( mTempDir + u"/configs.xml"_s, u"1234"_s ) );
 
   QgsAuthMethodConfigsMap authmap( authm->availableAuthMethodConfigs() );
   QCOMPARE( authmap.size(), 3 );
@@ -371,12 +386,12 @@ QList<QgsAuthMethodConfig> TestQgsAuthManager::registerAuthConfigs()
 
   // Basic
   QgsAuthMethodConfig b_config;
-  b_config.setName( QStringLiteral( "Basic" ) );
-  b_config.setMethod( QStringLiteral( "Basic" ) );
-  b_config.setUri( QStringLiteral( "http://example.com" ) );
-  b_config.setConfig( QStringLiteral( "username" ), QStringLiteral( "username" ) );
-  b_config.setConfig( QStringLiteral( "password" ), QStringLiteral( "password" ) );
-  b_config.setConfig( QStringLiteral( "realm" ), QStringLiteral( "Realm" ) );
+  b_config.setName( u"Basic"_s );
+  b_config.setMethod( u"Basic"_s );
+  b_config.setUri( u"http://example.com"_s );
+  b_config.setConfig( u"username"_s, u"username"_s );
+  b_config.setConfig( u"password"_s, u"password"_s );
+  b_config.setConfig( u"realm"_s, u"Realm"_s );
   if ( !b_config.isValid() )
   {
     return configs;
@@ -384,11 +399,11 @@ QList<QgsAuthMethodConfig> TestQgsAuthManager::registerAuthConfigs()
 
   // PKI-Paths
   QgsAuthMethodConfig p_config;
-  p_config.setName( QStringLiteral( "PKI-Paths" ) );
-  p_config.setMethod( QStringLiteral( "PKI-Paths" ) );
-  p_config.setUri( QStringLiteral( "http://example.com" ) );
-  p_config.setConfig( QStringLiteral( "certpath" ), mPkiData + "/gerardus_cert.pem" );
-  p_config.setConfig( QStringLiteral( "keypath" ), mPkiData + "gerardus_key_w-pass.pem" );
+  p_config.setName( u"PKI-Paths"_s );
+  p_config.setMethod( u"PKI-Paths"_s );
+  p_config.setUri( u"http://example.com"_s );
+  p_config.setConfig( u"certpath"_s, mPkiData + "/gerardus_cert.pem" );
+  p_config.setConfig( u"keypath"_s, mPkiData + "gerardus_key_w-pass.pem" );
   if ( !p_config.isValid() )
   {
     return configs;
@@ -396,11 +411,11 @@ QList<QgsAuthMethodConfig> TestQgsAuthManager::registerAuthConfigs()
 
   // PKI-PKCS#12
   QgsAuthMethodConfig k_config;
-  k_config.setName( QStringLiteral( "PKI-PKCS#12" ) );
-  k_config.setMethod( QStringLiteral( "PKI-PKCS#12" ) );
-  k_config.setUri( QStringLiteral( "http://example.com" ) );
-  k_config.setConfig( QStringLiteral( "bundlepath" ), mPkiData + "/gerardus.p12" );
-  k_config.setConfig( QStringLiteral( "bundlepass" ), QStringLiteral( "password" ) );
+  k_config.setName( u"PKI-PKCS#12"_s );
+  k_config.setMethod( u"PKI-PKCS#12"_s );
+  k_config.setUri( u"http://example.com"_s );
+  k_config.setConfig( u"bundlepath"_s, mPkiData + "/gerardus.p12" );
+  k_config.setConfig( u"bundlepass"_s, u"password"_s );
   if ( !k_config.isValid() )
   {
     return configs;
@@ -420,7 +435,6 @@ void TestQgsAuthManager::doSync()
 
 void TestQgsAuthManager::testPasswordHelper()
 {
-
   if ( QgsTest::isCIRun() )
   {
     {
@@ -430,24 +444,21 @@ void TestQgsAuthManager::testPasswordHelper()
   QgsAuthManager *authm = QgsApplication::authManager();
   authm->clearMasterPassword();
 
-  QgsSettings settings;
-  settings.setValue( QStringLiteral( "password_helper_insecure_fallback" ), true, QgsSettings::Section::Auth );
+  QgsAuthManager::settingsPasswordHelperInsecureFallback->setValue( true );
 
   // Test enable/disable
   // It should be enabled by default
   QVERIFY( authm->passwordHelperEnabled() );
   authm->setPasswordHelperEnabled( false );
-  QVERIFY( ! authm->passwordHelperEnabled() );
+  QVERIFY( !authm->passwordHelperEnabled() );
   authm->setPasswordHelperEnabled( true );
   QVERIFY( authm->passwordHelperEnabled() );
 
   // Sync with wallet
   QVERIFY( authm->setMasterPassword( mPass, true ) );
   QVERIFY( authm->masterPasswordIsSet() );
-  QObject::connect( authm, &QgsAuthManager::passwordHelperSuccess,
-                    QApplication::instance(), &QCoreApplication::quit );
-  QObject::connect( authm, &QgsAuthManager::passwordHelperFailure,
-                    QApplication::instance(), &QCoreApplication::quit );
+  QObject::connect( authm, &QgsAuthManager::passwordHelperSuccess, QApplication::instance(), &QCoreApplication::quit );
+  QObject::connect( authm, &QgsAuthManager::passwordHelperFailure, QApplication::instance(), &QCoreApplication::quit );
   QMetaObject::invokeMethod( this, "doSync", Qt::QueuedConnection );
   qApp->exec();
   authm->clearMasterPassword();
@@ -457,8 +468,8 @@ void TestQgsAuthManager::testPasswordHelper()
   // Delete from wallet
   authm->clearMasterPassword();
   QVERIFY( authm->passwordHelperDelete() );
-  QVERIFY( ! authm->setMasterPassword() );
-  QVERIFY( ! authm->masterPasswordIsSet() );
+  QVERIFY( !authm->setMasterPassword() );
+  QVERIFY( !authm->masterPasswordIsSet() );
 
   // Re-sync
   QVERIFY( authm->setMasterPassword( mPass, true ) );
@@ -467,7 +478,30 @@ void TestQgsAuthManager::testPasswordHelper()
   authm->clearMasterPassword();
   QVERIFY( authm->setMasterPassword() );
   QVERIFY( authm->masterPasswordIsSet() );
+}
 
+void TestQgsAuthManager::testSecondPasswordStorage()
+{
+  QString dbPath = mTestDataDir.absoluteFilePath( u"second-auth.db"_s );
+  QMap<QString, QVariant> settings;
+  settings.insert( u"database"_s, dbPath );
+  settings.insert( u"driver"_s, u"QSQLITE"_s );
+  settings.insert( u"masterPassword"_s, u"the_secret_password"_s );
+  settings.insert( u"masterPasswordCiv"_s, u"f104b14e7b5f2d196748fa9d37463146e50e6a6920b1b12ac10072d2358dd32b"_s );
+  TestAuthStorageDb *storage = new TestAuthStorageDb( settings );
+
+  bool addStorageOk = QgsApplication::authManager()->authConfigurationStorageRegistry()->addStorage( storage );
+  QCOMPARE( addStorageOk, true );
+
+  //load password
+  QString authId( u"c5hqrwg"_s );
+  QgsAuthMethodConfig authConfig;
+  bool success = QgsApplication::authManager()->loadAuthenticationConfig( authId, authConfig, true );
+  QCOMPARE( success, true );
+
+  QgsStringMap configMap = authConfig.configMap();
+  QCOMPARE( configMap.contains( u"password"_s ), true );
+  QCOMPARE( configMap.value( u"password"_s ), u"admin"_s );
 }
 
 QGSTEST_MAIN( TestQgsAuthManager )

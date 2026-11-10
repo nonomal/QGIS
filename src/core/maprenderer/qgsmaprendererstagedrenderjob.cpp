@@ -15,19 +15,26 @@
 
 #include "qgsmaprendererstagedrenderjob.h"
 
+#include <memory>
+
 #include "qgsfeedback.h"
 #include "qgslabelingengine.h"
 #include "qgslogger.h"
-#include "qgsproject.h"
-#include "qgsmaplayerrenderer.h"
 #include "qgsmaplayerlistutils_p.h"
+#include "qgsmaplayerrenderer.h"
+#include "qgsproject.h"
 #include "qgsrendereditemresults.h"
+
+#include <QString>
+
+#include "moc_qgsmaprendererstagedrenderjob.cpp"
+
+using namespace Qt::StringLiterals;
 
 QgsMapRendererStagedRenderJob::QgsMapRendererStagedRenderJob( const QgsMapSettings &settings, Flags flags )
   : QgsMapRendererAbstractCustomPainterJob( settings )
   , mFlags( flags )
-{
-}
+{}
 
 QgsMapRendererStagedRenderJob::~QgsMapRendererStagedRenderJob()
 {
@@ -42,7 +49,7 @@ void QgsMapRendererStagedRenderJob::startPrivate()
   mRenderingStart.start();
   mErrors.clear();
 
-  QgsDebugMsgLevel( QStringLiteral( "Preparing list of layer jobs for rendering" ), 5 );
+  QgsDebugMsgLevel( u"Preparing list of layer jobs for rendering"_s, 5 );
   QElapsedTimer prepareTime;
   prepareTime.start();
 
@@ -51,10 +58,9 @@ void QgsMapRendererStagedRenderJob::startPrivate()
   if ( mSettings.testFlag( Qgis::MapSettingsFlag::DrawLabeling ) )
   {
     if ( mFlags & RenderLabelsByMapLayer )
-      mLabelingEngineV2.reset( new QgsStagedRenderLabelingEngine() );
+      mLabelingEngineV2 = std::make_unique<QgsStagedRenderLabelingEngine>( mSettings );
     else
-      mLabelingEngineV2.reset( new QgsDefaultLabelingEngine() );
-    mLabelingEngineV2->setMapSettings( mSettings );
+      mLabelingEngineV2 = std::make_unique<QgsDefaultLabelingEngine>( mSettings );
   }
 
   mLayerJobs = prepareJobs( nullptr, mLabelingEngineV2.get(), true );
@@ -64,16 +70,13 @@ void QgsMapRendererStagedRenderJob::startPrivate()
 }
 
 void QgsMapRendererStagedRenderJob::cancel()
-{
-}
+{}
 
 void QgsMapRendererStagedRenderJob::cancelWithoutBlocking()
-{
-}
+{}
 
 void QgsMapRendererStagedRenderJob::waitForFinished()
-{
-}
+{}
 
 bool QgsMapRendererStagedRenderJob::isActive() const
 {
@@ -106,7 +109,7 @@ bool QgsMapRendererStagedRenderJob::renderCurrentPart( QPainter *painter )
     emit layerRenderingStarted( job.layerId );
     job.renderer->renderContext()->setPainter( painter );
 
-    if ( job.context()->useAdvancedEffects() )
+    if ( job.context()->rasterizedRenderingPolicy() != Qgis::RasterizedRenderingPolicy::ForceVector )
     {
       // Set the QPainter composition mode so that this layer is rendered using
       // the desired blending mode
@@ -119,19 +122,19 @@ bool QgsMapRendererStagedRenderJob::renderCurrentPart( QPainter *painter )
       job.previewRenderImageInitialized = true;
     }
 
-    if ( job.img )
+    if ( job.destinationImage )
     {
-      job.img->fill( 0 );
+      job.destinationImage->fill( 0 );
       job.imageInitialized = true;
     }
 
     job.completed = job.renderer->render();
 
-    if ( job.img )
+    if ( job.destinationImage )
     {
       // If we flattened this layer for alternate blend modes, composite it now
       painter->setOpacity( job.opacity );
-      painter->drawImage( 0, 0, *job.img );
+      painter->drawImage( 0, 0, *job.destinationImage );
       painter->setOpacity( 1.0 );
     }
     job.context()->setPainter( nullptr );
@@ -163,7 +166,7 @@ bool QgsMapRendererStagedRenderJob::renderCurrentPart( QPainter *painter )
       mLabelJob.context.setPainter( painter );
       drawLabeling( mLabelJob.context, mLabelingEngineV2.get(), painter );
       mLabelJob.complete = true;
-      mLabelJob.participatingLayers = _qgis_listRawToQPointer( mLabelingEngineV2->participatingLayers() );
+      mLabelJob.participatingLayers = participatingLabelLayers( mLabelingEngineV2.get() );
       mLabelJob.context.setPainter( nullptr );
     }
   }

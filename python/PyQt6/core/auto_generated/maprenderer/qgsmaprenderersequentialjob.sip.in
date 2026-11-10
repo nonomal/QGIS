@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/maprenderer/qgsmaprenderersequentialjob.h                   *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/
 
 
@@ -14,8 +14,9 @@ class QgsMapRendererSequentialJob : QgsMapRendererQImageJob
 %Docstring(signature="appended")
 Job implementation that renders everything sequentially in one thread.
 
-The resulting map image can be retrieved with :py:func:`~renderedImage` function.
-It is safe to call that function while rendering is active to see preview of the map.
+The resulting map image can be retrieved with :py:func:`~renderedImage`
+function. It is safe to call that function while rendering is active to
+see preview of the map.
 %End
 
 %TypeHeaderCode
@@ -25,22 +26,15 @@ It is safe to call that function while rendering is active to see preview of the
     QgsMapRendererSequentialJob( const QgsMapSettings &settings );
     ~QgsMapRendererSequentialJob();
 
-    virtual void cancel();
+    void cancel() final;
+    void cancelWithoutBlocking() final;
+    void waitForFinished() final;
+    bool isActive() const final;
 
-    virtual void cancelWithoutBlocking();
+    bool usedCachedLabels() const final;
+    QgsLabelingResults *takeLabelingResults() final /Transfer/;
 
-    virtual void waitForFinished();
-
-    virtual bool isActive() const;
-
-
-    virtual bool usedCachedLabels() const;
-
-    virtual QgsLabelingResults *takeLabelingResults() /Transfer/;
-
-
-    virtual QImage renderedImage();
-
+    QImage renderedImage() final;
 
   public slots:
 
@@ -54,5 +48,5 @@ It is safe to call that function while rendering is active to see preview of the
  *                                                                      *
  * src/core/maprenderer/qgsmaprenderersequentialjob.h                   *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/

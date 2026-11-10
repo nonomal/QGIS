@@ -19,6 +19,7 @@ email                : nyall dot dawson at gmail dot com
 
 #include "qgis_core.h"
 #include "qgslayoutitem.h"
+
 #include <QFile>
 #include <QImage>
 #include <QSvgRenderer>
@@ -31,38 +32,27 @@ class QgsLayoutNorthArrowHandler;
  * \ingroup core
  * \brief A layout item subclass that displays SVG files or raster format images (jpg, png, ...).
  */
-class CORE_EXPORT QgsLayoutItemPicture: public QgsLayoutItem
+class CORE_EXPORT QgsLayoutItemPicture : public QgsLayoutItem
 {
     Q_OBJECT
   public:
-
     /**
      * Controls how pictures are scaled within the item's frame
      */
     enum ResizeMode
     {
-      Zoom, //!< Enlarges image to fit frame while maintaining aspect ratio of picture
-      Stretch, //!< Stretches image to fit frame, ignores aspect ratio
-      Clip, //!< Draws image at original size and clips any portion which falls outside frame
+      Zoom,            //!< Enlarges image to fit frame while maintaining aspect ratio of picture
+      Stretch,         //!< Stretches image to fit frame, ignores aspect ratio
+      Clip,            //!< Draws image at original size and clips any portion which falls outside frame
       ZoomResizeFrame, //!< Enlarges image to fit frame, then resizes frame to fit resultant image
       FrameToImageSize //!< Sets size of frame to match original size of image without scaling
-    };
-
-    /**
-     * Format of source image
-     */
-    enum Format
-    {
-      FormatSVG, //!< SVG image
-      FormatRaster, //!< Raster image
-      FormatUnknown, //!< Invalid or unknown image type
     };
 
     //! Method for syncing rotation to a map's North direction
     enum NorthMode
     {
       GridNorth = 0, //!< Align to grid north
-      TrueNorth, //!< Align to true north
+      TrueNorth,     //!< Align to true north
     };
 
     /**
@@ -90,7 +80,7 @@ class CORE_EXPORT QgsLayoutItemPicture: public QgsLayoutItem
      *
      * \see picturePath()
      */
-    void setPicturePath( const QString &path, Format format = FormatUnknown );
+    void setPicturePath( const QString &path, Qgis::PictureFormat format = Qgis::PictureFormat::Unknown );
 
     /**
      * Returns the path of the source image. Data defined picture source may override
@@ -230,24 +220,26 @@ class CORE_EXPORT QgsLayoutItemPicture: public QgsLayoutItem
     /**
      * Returns the current picture mode (image format), FormatUnknown if given
      * picture format is unknown
-     * \see setMode() originalMode()
+     * \see setMode()
+     * \see originalMode()
      */
-    Format mode() const { return mMode; }
+    Qgis::PictureFormat mode() const { return mMode; }
 
     /**
      * Returns the original set picture mode (image format).
      * It could differ from mode() if given picture format is unknown
-     * \see setMode() mode()
+     * \see setMode()
+     * \see mode()
      * \since QGIS 3.22
      */
-    Format originalMode() const { return mOriginalMode; }
+    Qgis::PictureFormat originalMode() const { return mOriginalMode; }
 
     /**
      * Sets the current picture \a mode (image format).
      * \see mode()
      * \since QGIS 3.14
      */
-    void setMode( Format mode );
+    void setMode( Qgis::PictureFormat mode );
 
     void finalizeRestoreFromXml() override;
 
@@ -297,6 +289,44 @@ class CORE_EXPORT QgsLayoutItemPicture: public QgsLayoutItem
     void setResizeMode( QgsLayoutItemPicture::ResizeMode mode );
 
     /**
+     * Returns TRUE if the picture item should by clipped to the associated item.
+     *
+     * \see setClipToItem
+     * \see clippingItem
+     * \since QGIS 4.2
+     */
+    bool clipToItem() const;
+
+    /**
+     * Sets whether the picture item should by clipped to the associated item.
+     *
+     * \see clipToItem
+     * \see setClippingItem
+     * \since QGIS 4.2
+     */
+    void setClipToItem( bool clipToItem );
+
+    /**
+     * Returns the item that will will provide the clipping path for the picture, or
+     * NULLPTR if no item is set.
+     *
+     * \see setClippingItem
+     * \see clipToItem
+     * \since QGIS 4.2
+     */
+    QgsLayoutItem *clippingItem() const;
+
+    /**
+     * Sets the \a item that will will provide the clipping path for the picture.
+     *
+     * \note The specified item must return the QgsLayoutItem::FlagProvidesClipPath flag.
+     * \see clippingItem
+     * \see setClipToItem
+     * \since QGIS 4.2
+     */
+    void setClippingItem( QgsLayoutItem *item );
+
+    /**
      * Recalculates the source image (if using an expression for picture's source)
      * and reloads and redraws the picture.
      * \param context expression context for evaluating data defined picture sources
@@ -315,20 +345,14 @@ class CORE_EXPORT QgsLayoutItemPicture: public QgsLayoutItem
     void pictureRotationChanged( double newRotation );
 
   protected:
-
     void draw( QgsLayoutItemRenderContext &context ) override;
+    QPainterPath framePath() const override;
     QSizeF applyItemSizeConstraint( QSizeF targetSize ) override;
     bool writePropertiesToElement( QDomElement &element, QDomDocument &document, const QgsReadWriteContext &context ) const override;
     bool readPropertiesFromElement( const QDomElement &element, const QDomDocument &document, const QgsReadWriteContext &context ) override;
 
   private:
-
     QgsLayoutItemPicture() = delete;
-
-    //! Calculates bounding rect for svg file (mSourcefile) such that aspect ratio is correct
-    QRectF boundedSVGRect( double deviceWidth, double deviceHeight );
-    //! Calculates bounding rect for image such that aspect ratio is correct
-    QRectF boundedImageRect( double deviceWidth, double deviceHeight );
 
     //! Returns size of current raster or svg picture
     QSizeF pictureSize();
@@ -337,8 +361,8 @@ class CORE_EXPORT QgsLayoutItemPicture: public QgsLayoutItem
     QSvgRenderer mSVG;
     //! Absolute path to the image (may be also HTTP URL)
     QString mSourcePath;
-    Format mMode = FormatUnknown;
-    Format mOriginalMode = FormatUnknown;
+    Qgis::PictureFormat mMode = Qgis::PictureFormat::Unknown;
+    Qgis::PictureFormat mOriginalMode = Qgis::PictureFormat::Unknown;
 
     QSize mDefaultSvgSize;
 
@@ -367,6 +391,10 @@ class CORE_EXPORT QgsLayoutItemPicture: public QgsLayoutItem
 
     QgsLayoutNorthArrowHandler *mNorthArrowHandler = nullptr;
 
+    bool mClipToItem = false;
+    QPointer< QgsLayoutItem > mClippingItem;
+    QString mClippingItemUuid;
+
     //! Loads an image file into the picture item and redraws the item
     void loadPicture( const QVariant &data );
 
@@ -388,6 +416,8 @@ class CORE_EXPORT QgsLayoutItemPicture: public QgsLayoutItem
 
     void loadPictureUsingCache( const QString &path );
 
+    QPainterPath customFramePath() const;
+
     QgsLayoutItemPicture( const QgsLayoutItemPicture & ) = delete;
     QgsLayoutItemPicture &operator=( const QgsLayoutItemPicture & ) = delete;
 
@@ -399,7 +429,6 @@ class CORE_EXPORT QgsLayoutItemPicture: public QgsLayoutItem
 
     friend class QgsCompositionConverter;
     friend class TestQgsCompositionConverter;
-
 };
 
 #endif // QGSLAYOUTITEMPICTURE_H

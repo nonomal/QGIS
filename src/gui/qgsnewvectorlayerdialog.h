@@ -18,34 +18,35 @@
 #define qgsnewvectorlayerdialog_H
 
 #include "ui_qgsnewvectorlayerdialogbase.h"
-#include "qgsguiutils.h"
-#include "qgshelp.h"
 
-#include "qgswkbtypes.h"
 #include "qgis_gui.h"
 #include "qgis_sip.h"
+#include "qgsguiutils.h"
+#include "qgshelp.h"
+#include "qgswkbtypes.h"
 
 /**
  * \ingroup gui
  * \class QgsNewVectorLayerDialog
+ * \brief A dialog for configuring the properties of a new vector layer.
  */
-class GUI_EXPORT QgsNewVectorLayerDialog: public QDialog, private Ui::QgsNewVectorLayerDialogBase
+class GUI_EXPORT QgsNewVectorLayerDialog : public QDialog, private Ui::QgsNewVectorLayerDialogBase
 {
     Q_OBJECT
 
   public:
-
     /**
      * Runs the dialog and creates a layer matching the dialog parameters.
      *
      * If the \a initialPath argument is specified, then the dialog will default to the specified filename.
      *
-     * \returns fileName on success, empty string use aborted, QString() if creation failed
+     * \returns fileName on success, empty string if aborted or creation failed
      *
-     * \deprecated since QGIS 3.4.5 - use execAndCreateLayer() instead.
+     * \deprecated QGIS 3.4.5. Use execAndCreateLayer() instead.
      */
-    Q_DECL_DEPRECATED static QString runAndCreateLayer( QWidget *parent = nullptr, QString *enc = nullptr, const QgsCoordinateReferenceSystem &crs = QgsCoordinateReferenceSystem(),
-        const QString &initialPath = QString() ) SIP_DEPRECATED;
+    Q_DECL_DEPRECATED static QString runAndCreateLayer(
+      QWidget *parent = nullptr, QString *enc = nullptr, const QgsCoordinateReferenceSystem &crs = QgsCoordinateReferenceSystem(), const QString &initialPath = QString()
+    ) SIP_DEPRECATED;
 
     /**
      * Runs the dialog and creates a layer matching the dialog parameters.
@@ -68,7 +69,13 @@ class GUI_EXPORT QgsNewVectorLayerDialog: public QDialog, private Ui::QgsNewVect
      *
      * \since QGIS 3.4.5
      */
-    static QString execAndCreateLayer( QString &errorMessage SIP_OUT, QWidget *parent = nullptr, const QString &initialPath = QString(), QString *encoding SIP_OUT = nullptr, const QgsCoordinateReferenceSystem &crs = QgsCoordinateReferenceSystem() );
+    static QString execAndCreateLayer(
+      QString &errorMessage SIP_OUT,
+      QWidget *parent = nullptr,
+      const QString &initialPath = QString(),
+      QString *encoding SIP_OUT = nullptr,
+      const QgsCoordinateReferenceSystem &crs = QgsCoordinateReferenceSystem()
+    );
 
     /**
      * New dialog constructor.
@@ -77,7 +84,7 @@ class GUI_EXPORT QgsNewVectorLayerDialog: public QDialog, private Ui::QgsNewVect
     //! Returns the selected geometry type
     Qgis::WkbType selectedType() const;
     //! Appends the chosen attribute names and types to at
-    void attributes( QList< QPair<QString, QString> > &at ) const;
+    void attributes( QList<QPair<QString, QString>> &at ) const;
     //! Returns the file format for storage
     QString selectedFileFormat() const;
     //! Returns the file format for storage
@@ -125,6 +132,8 @@ class GUI_EXPORT QgsNewVectorLayerDialog: public QDialog, private Ui::QgsNewVect
     void showHelp();
     void nameChanged( const QString & );
     void selectionChanged();
+    void moveFieldsUp();
+    void moveFieldsDown();
 
   private:
     QPushButton *mOkButton = nullptr;

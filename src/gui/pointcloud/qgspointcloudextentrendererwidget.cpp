@@ -16,11 +16,14 @@
  ***************************************************************************/
 
 #include "qgspointcloudextentrendererwidget.h"
+
 #include "qgscontrastenhancement.h"
-#include "qgspointcloudlayer.h"
-#include "qgspointcloudextentrenderer.h"
 #include "qgsdoublevalidator.h"
 #include "qgsfillsymbol.h"
+#include "qgspointcloudextentrenderer.h"
+#include "qgspointcloudlayer.h"
+
+#include "moc_qgspointcloudextentrendererwidget.cpp"
 
 ///@cond PRIVATE
 
@@ -37,7 +40,7 @@ QgsPointCloudExtentRendererWidget::QgsPointCloudExtentRendererWidget( QgsPointCl
   }
   else
   {
-    mSymbolButton->setSymbol( QgsPointCloudExtentRenderer::defaultFillSymbol() );
+    mSymbolButton->setSymbol( QgsPointCloudExtentRenderer::defaultFillSymbol().release() );
   }
 
   connect( mSymbolButton, &QgsSymbolButton::changed, this, &QgsPointCloudExtentRendererWidget::emitWidgetChanged );
@@ -55,15 +58,15 @@ QgsPointCloudRenderer *QgsPointCloudExtentRendererWidget::renderer()
     return nullptr;
   }
 
-  std::unique_ptr< QgsPointCloudExtentRenderer > renderer = std::make_unique< QgsPointCloudExtentRenderer >();
-  renderer->setFillSymbol( mSymbolButton->clonedSymbol< QgsFillSymbol >() );
+  auto renderer = std::make_unique<QgsPointCloudExtentRenderer>();
+  renderer->setFillSymbol( mSymbolButton->clonedSymbol<QgsFillSymbol>() );
   return renderer.release();
 }
 
 void QgsPointCloudExtentRendererWidget::emitWidgetChanged()
 {
   if ( !mBlockChangedSignal )
-    emit widgetChanged();
+    emit changed();
 }
 
 void QgsPointCloudExtentRendererWidget::setFromRenderer( const QgsPointCloudRenderer *r )
@@ -75,7 +78,7 @@ void QgsPointCloudExtentRendererWidget::setFromRenderer( const QgsPointCloudRend
   }
   else
   {
-    mSymbolButton->setSymbol( QgsPointCloudExtentRenderer::defaultFillSymbol() );
+    mSymbolButton->setSymbol( QgsPointCloudExtentRenderer::defaultFillSymbol().release() );
   }
   mBlockChangedSignal = false;
 }

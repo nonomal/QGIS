@@ -15,9 +15,10 @@
 #ifndef QGSATTRIBUTELISTVIEWDELEGATE_H
 #define QGSATTRIBUTELISTVIEWDELEGATE_H
 
+#include "qgis_gui.h"
+
 #include <QItemDelegate>
 #include <QItemSelectionModel>
-#include "qgis_gui.h"
 
 class QgsVectorLayer;
 class QgsFeatureListModel;
@@ -27,6 +28,7 @@ class QPosition;
 /**
  * \ingroup gui
  * \class QgsFeatureListViewDelegate
+ * \brief Custom item delegate for feature list views.
  */
 class GUI_EXPORT QgsFeatureListViewDelegate : public QItemDelegate
 {
@@ -52,6 +54,10 @@ class GUI_EXPORT QgsFeatureListViewDelegate : public QItemDelegate
     void setCurrentFeatureEdited( bool state );
 
   signals:
+
+    /**
+     * Emitted when the edit button is clicked for the feature with matching \a index.
+     */
     void editButtonClicked( QModelIndex &index );
 
   protected:
@@ -63,7 +69,7 @@ class GUI_EXPORT QgsFeatureListViewDelegate : public QItemDelegate
     QItemSelectionModel *mEditSelectionModel = nullptr;
     QgsFeatureListModel *mListModel = nullptr;
     //! Sets to TRUE if the current edit selection has been edited
-    bool mCurrentFeatureEdited;
+    bool mCurrentFeatureEdited = false;
 };
 
 #endif // QGSATTRIBUTELISTVIEWDELEGATE_H

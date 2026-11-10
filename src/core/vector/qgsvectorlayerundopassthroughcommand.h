@@ -16,23 +16,21 @@
 #ifndef QGSVECTORLAYERUNDOPASSTHROUGHCOMMAND_H
 #define QGSVECTORLAYERUNDOPASSTHROUGHCOMMAND_H
 
-#include "qgsvectorlayerundocommand.h"
-
 #include "qgsvectorlayereditbuffer.h"
+#include "qgsvectorlayerundocommand.h"
 
 class QgsTransaction;
 
 /**
  * \ingroup core
  * \class QgsVectorLayerUndoPassthroughCommand
- * \brief Undo command for vector layer in transaction group mode.
+ * \brief Undo command for vector layer in a transaction group mode.
  */
 
 
 class CORE_EXPORT QgsVectorLayerUndoPassthroughCommand : public QgsVectorLayerUndoCommand
 {
   public:
-
     /**
      * Constructor for QgsVectorLayerUndoPassthroughCommand
      * \param buffer associated edit buffer
@@ -47,7 +45,6 @@ class CORE_EXPORT QgsVectorLayerUndoPassthroughCommand : public QgsVectorLayerUn
     bool hasError() const { return mHasError; }
 
   protected:
-
     /**
      * Rollback command, release savepoint or set error status
      * save point must be set prior to call
@@ -90,13 +87,12 @@ class CORE_EXPORT QgsVectorLayerUndoPassthroughCommand : public QgsVectorLayerUn
 /**
  * \ingroup core
  * \class QgsVectorLayerUndoPassthroughCommandAddFeatures
- * \brief Undo command for adding a feature to a vector layer in transaction group mode.
+ * \brief Undo command for adding a feature to a vector layer in a transaction group mode.
  */
 
 class CORE_EXPORT QgsVectorLayerUndoPassthroughCommandAddFeatures : public QgsVectorLayerUndoPassthroughCommand
 {
   public:
-
     /**
      * Constructor for QgsVectorLayerUndoPassthroughCommandAddFeatures
      * \param buffer associated edit buffer
@@ -121,13 +117,12 @@ class CORE_EXPORT QgsVectorLayerUndoPassthroughCommandAddFeatures : public QgsVe
 /**
  * \ingroup core
  * \class QgsVectorLayerUndoPassthroughCommandDeleteFeatures
- * \brief Undo command for deleting features from a vector layer in transaction group.
+ * \brief Undo command for deleting features from a vector layer in a transaction group.
  */
 
 class CORE_EXPORT QgsVectorLayerUndoPassthroughCommandDeleteFeatures : public QgsVectorLayerUndoPassthroughCommand
 {
   public:
-
     /**
      * Constructor for QgsVectorLayerUndoPassthroughCommandDeleteFeatures
      * \param buffer associated edit buffer
@@ -147,13 +142,12 @@ class CORE_EXPORT QgsVectorLayerUndoPassthroughCommandDeleteFeatures : public Qg
 /**
  * \ingroup core
  * \class QgsVectorLayerUndoPassthroughCommandChangeGeometry
- * \brief Undo command for changing feature geometry from a vector layer in transaction group.
+ * \brief Undo command for changing feature geometry from a vector layer in a transaction group.
  */
 
 class CORE_EXPORT QgsVectorLayerUndoPassthroughCommandChangeGeometry : public QgsVectorLayerUndoPassthroughCommand
 {
   public:
-
     /**
      * Constructor for QgsVectorLayerUndoPassthroughCommandChangeGeometry
      * \param buffer associated edit buffer
@@ -166,7 +160,7 @@ class CORE_EXPORT QgsVectorLayerUndoPassthroughCommandChangeGeometry : public Qg
     void redo() override;
 
     int id() const override { return 1; }
-    bool mergeWith( const QUndoCommand  *other ) override;
+    bool mergeWith( const QUndoCommand *other ) override;
 
   private:
     QgsFeatureId mFid;
@@ -178,13 +172,12 @@ class CORE_EXPORT QgsVectorLayerUndoPassthroughCommandChangeGeometry : public Qg
 /**
  * \ingroup core
  * \class QgsVectorLayerUndoPassthroughCommandChangeAttribute
- * \brief Undo command for changing attr value from a vector layer in transaction group.
+ * \brief Undo command for changing attr value from a vector layer in a transaction group.
  */
 
-class CORE_EXPORT QgsVectorLayerUndoPassthroughCommandChangeAttribute: public QgsVectorLayerUndoPassthroughCommand
+class CORE_EXPORT QgsVectorLayerUndoPassthroughCommandChangeAttribute : public QgsVectorLayerUndoPassthroughCommand
 {
   public:
-
     /**
      * Constructor for QgsVectorLayerUndoPassthroughCommandChangeAttribute
      * \param buffer associated edit buffer
@@ -202,19 +195,18 @@ class CORE_EXPORT QgsVectorLayerUndoPassthroughCommandChangeAttribute: public Qg
     const int mFieldIndex;
     const QVariant mNewValue;
     QVariant mOldValue;
-    bool mFirstChange;
+    bool mFirstChange = true;
 };
 
 /**
  * \ingroup core
  * \class QgsVectorLayerUndoPassthroughCommandChangeAttributes
- * \brief Undo command for changing attributes' values from a vector layer in transaction group.
+ * \brief Undo command for changing attributes' values from a vector layer in a transaction group.
  */
 
-class CORE_EXPORT QgsVectorLayerUndoPassthroughCommandChangeAttributes: public QgsVectorLayerUndoPassthroughCommand
+class CORE_EXPORT QgsVectorLayerUndoPassthroughCommandChangeAttributes : public QgsVectorLayerUndoPassthroughCommand
 {
   public:
-
     /**
      * Constructor for QgsVectorLayerUndoPassthroughCommandChangeAttributes
      * \param buffer associated edit buffer
@@ -222,7 +214,9 @@ class CORE_EXPORT QgsVectorLayerUndoPassthroughCommandChangeAttributes: public Q
      * \param newValues New values for attributes
      * \param oldValues Old values for attributes
      */
-    QgsVectorLayerUndoPassthroughCommandChangeAttributes( QgsVectorLayerEditBuffer *buffer SIP_TRANSFER, QgsFeatureId fid, const QgsAttributeMap &newValues, const QgsAttributeMap &oldValues = QgsAttributeMap() );
+    QgsVectorLayerUndoPassthroughCommandChangeAttributes(
+      QgsVectorLayerEditBuffer *buffer SIP_TRANSFER, QgsFeatureId fid, const QgsAttributeMap &newValues, const QgsAttributeMap &oldValues = QgsAttributeMap()
+    );
 
     void undo() override;
     void redo() override;
@@ -243,7 +237,6 @@ class CORE_EXPORT QgsVectorLayerUndoPassthroughCommandChangeAttributes: public Q
 class CORE_EXPORT QgsVectorLayerUndoPassthroughCommandAddAttribute : public QgsVectorLayerUndoPassthroughCommand
 {
   public:
-
     /**
      * Constructor for QgsVectorLayerUndoPassthroughCommandAddAttribute
      * \param buffer associated edit buffer
@@ -261,13 +254,12 @@ class CORE_EXPORT QgsVectorLayerUndoPassthroughCommandAddAttribute : public QgsV
 /**
  * \ingroup core
  * \class QgsVectorLayerUndoPassthroughCommandDeleteAttribute
- * \brief Undo command for deleting attri of a vector layer in transaction group.
+ * \brief Undo command for deleting attributes of a vector layer in a transaction group.
  */
 
 class CORE_EXPORT QgsVectorLayerUndoPassthroughCommandDeleteAttribute : public QgsVectorLayerUndoPassthroughCommand
 {
   public:
-
     /**
      * Constructor for QgsVectorLayerUndoCommandDeleteAttribute
      * \param buffer associated edit buffer
@@ -286,13 +278,12 @@ class CORE_EXPORT QgsVectorLayerUndoPassthroughCommandDeleteAttribute : public Q
 /**
  * \ingroup core
  * \class QgsVectorLayerUndoPassthroughCommandRenameAttribute
- * \brief Undo command for deleting attri of a vector layer in transaction group.
+ * \brief Undo command for deleting attributes of a vector layer in a transaction group.
  */
 
 class CORE_EXPORT QgsVectorLayerUndoPassthroughCommandRenameAttribute : public QgsVectorLayerUndoPassthroughCommand
 {
   public:
-
     /**
      * Constructor for QgsVectorLayerUndoCommandRenameAttribute
      * \param buffer associated edit buffer
@@ -313,13 +304,12 @@ class CORE_EXPORT QgsVectorLayerUndoPassthroughCommandRenameAttribute : public Q
 /**
  * \ingroup core
  * \class QgsVectorLayerUndoPassthroughCommandUpdate
- * \brief Undo command for running a specific sql query in transaction group.
+ * \brief Undo command for running a specific sql query in a transaction group.
  */
 
 class CORE_EXPORT QgsVectorLayerUndoPassthroughCommandUpdate : public QgsVectorLayerUndoPassthroughCommand
 {
   public:
-
     /**
      * Constructor for QgsVectorLayerUndoCommandUpdate
      * \param buffer associated edit buffer

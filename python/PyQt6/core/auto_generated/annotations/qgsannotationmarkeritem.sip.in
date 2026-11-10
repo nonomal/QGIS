@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/annotations/qgsannotationmarkeritem.h                       *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/
 
 
@@ -21,7 +21,6 @@ An annotation item which renders a marker symbol at a point location.
 #include "qgsannotationmarkeritem.h"
 %End
   public:
-
     QgsAnnotationMarkerItem( const QgsPoint &point );
 %Docstring
 Constructor for QgsAnnotationMarkerItem, at the specified ``point``.
@@ -36,14 +35,14 @@ Constructor for QgsAnnotationMarkerItem, at the specified ``point``.
 
     virtual Qgis::AnnotationItemFlags flags() const;
 
-    virtual QList< QgsAnnotationItemNode > nodes() const;
+    virtual QList< QgsAnnotationItemNode > nodesV2( const QgsAnnotationItemEditContext &context ) const;
 
-    virtual Qgis::AnnotationItemEditOperationResult applyEdit( QgsAbstractAnnotationItemEditOperation *operation );
+    virtual Qgis::AnnotationItemEditOperationResult applyEditV2( QgsAbstractAnnotationItemEditOperation *operation, const QgsAnnotationItemEditContext &context );
 
-    virtual QgsAnnotationItemEditOperationTransientResults *transientEditResults( QgsAbstractAnnotationItemEditOperation *operation ) /Factory/;
+    virtual QgsAnnotationItemEditOperationTransientResults *transientEditResultsV2( QgsAbstractAnnotationItemEditOperation *operation, const QgsAnnotationItemEditContext &context ) /Factory/;
 
 
-    static QgsAnnotationMarkerItem *create() /Factory/;
+    static std::unique_ptr<QgsAnnotationMarkerItem> create();
 %Docstring
 Creates a new marker annotation item.
 %End
@@ -61,7 +60,8 @@ Creates a new marker annotation item.
 %Docstring
 Returns the point geometry of the marker.
 
-The coordinate reference system for the point will be the parent layer's :py:func:`QgsAnnotationLayer.crs()`.
+The coordinate reference system for the point will be the parent layer's
+:py:func:`QgsAnnotationLayer.crs()`.
 
 .. seealso:: :py:func:`setGeometry`
 %End
@@ -70,7 +70,8 @@ The coordinate reference system for the point will be the parent layer's :py:fun
 %Docstring
 Sets the point ``geometry`` location of the marker.
 
-The coordinate reference system for the point will be the parent layer's :py:func:`QgsAnnotationLayer.crs()`.
+The coordinate reference system for the point will be the parent layer's
+:py:func:`QgsAnnotationLayer.crs()`.
 
 .. seealso:: :py:func:`geometry`
 %End
@@ -100,5 +101,5 @@ The item takes ownership of the symbol.
  *                                                                      *
  * src/core/annotations/qgsannotationmarkeritem.h                       *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/

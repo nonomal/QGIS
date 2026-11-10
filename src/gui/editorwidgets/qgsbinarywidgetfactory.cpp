@@ -17,14 +17,13 @@
 
 #include "qgsbinarywidgetwrapper.h"
 #include "qgsdummyconfigdlg.h"
-#include "qgsvectorlayer.h"
 #include "qgsvectordataprovider.h"
+#include "qgsvectorlayer.h"
 
-QgsBinaryWidgetFactory::QgsBinaryWidgetFactory( const QString &name, QgsMessageBar *messageBar )
-  :  QgsEditorWidgetFactory( name )
+QgsBinaryWidgetFactory::QgsBinaryWidgetFactory( const QString &name, QgsMessageBar *messageBar, const QIcon &icon )
+  : QgsEditorWidgetFactory( name, icon )
   , mMessageBar( messageBar )
-{
-}
+{}
 
 QgsEditorWidgetWrapper *QgsBinaryWidgetFactory::create( QgsVectorLayer *vl, int fieldIdx, QWidget *editor, QWidget *parent ) const
 {
@@ -39,7 +38,7 @@ QgsEditorConfigWidget *QgsBinaryWidgetFactory::configWidget( QgsVectorLayer *vl,
 unsigned int QgsBinaryWidgetFactory::fieldScore( const QgsVectorLayer *vl, int fieldIdx ) const
 {
   const QgsField field = vl->fields().field( fieldIdx );
-  const QVariant::Type type = field.type();
+  const QMetaType::Type type = field.type();
   // ByteArray fields only
-  return type == QVariant::ByteArray ? 20 : 0;
+  return type == QMetaType::Type::QByteArray ? 20 : 0;
 }

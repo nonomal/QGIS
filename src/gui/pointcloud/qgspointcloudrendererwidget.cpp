@@ -14,11 +14,12 @@
  ***************************************************************************/
 #include "qgspointcloudrendererwidget.h"
 
+#include "moc_qgspointcloudrendererwidget.cpp"
+
 QgsPointCloudRendererWidget::QgsPointCloudRendererWidget( QgsPointCloudLayer *layer, QgsStyle *style )
   : mLayer( layer )
   , mStyle( style )
-{
-}
+{}
 
 void QgsPointCloudRendererWidget::setContext( const QgsSymbolWidgetContext &context )
 {
@@ -29,4 +30,3 @@ QgsSymbolWidgetContext QgsPointCloudRendererWidget::context() const
 {
   return mContext;
 }
-

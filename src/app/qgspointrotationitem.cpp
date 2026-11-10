@@ -14,10 +14,18 @@
  ***************************************************************************/
 
 #include "qgspointrotationitem.h"
-#include <QPainter>
-#include <QLocale>
+
 #include <cmath>
+
 #include "qgsguiutils.h"
+#include "qgspainting.h"
+#include "qgsrendercontext.h"
+
+#include <QLocale>
+#include <QPainter>
+#include <QString>
+
+using namespace Qt::StringLiterals;
 
 QgsPointRotationItem::QgsPointRotationItem( QgsMapCanvas *canvas )
   : QgsMapCanvasItem( canvas )
@@ -38,7 +46,7 @@ void QgsPointRotationItem::paint( QPainter *painter )
     return;
   }
   painter->setRenderHint( QPainter::Antialiasing, true );
-  painter->save();
+  QgsScopedQPainterState painterState( painter );
 
   //do a bit of trigonometry to find out how to transform a rotated item such that the center point is at the point feature
   double x = 0;
@@ -47,7 +55,7 @@ void QgsPointRotationItem::paint( QPainter *painter )
   if ( mPixmap.width() > 0 && mPixmap.height() > 0 )
   {
     h = std::sqrt( ( double ) mPixmap.width() * mPixmap.width() + mPixmap.height() * mPixmap.height() ) / 2; //the half of the item diagonal
-    dAngel = std::acos( mPixmap.width() / ( h * 2 ) ) * 180 / M_PI; //the diagonal angel of the original rect
+    dAngel = std::acos( mPixmap.width() / ( h * 2 ) ) * 180 / M_PI;                                          //the diagonal angel of the original rect
     x = h * std::cos( ( painterRotation( mRotation ) - dAngel ) * M_PI / 180 );
     y = h * std::sin( ( painterRotation( mRotation ) - dAngel ) * M_PI / 180 );
   }
@@ -66,30 +74,24 @@ void QgsPointRotationItem::paint( QPainter *painter )
   pen.setColor( QColor( Qt::red ) );
   painter->setPen( pen );
   painter->drawPath( mArrowPath );
-  painter->restore();
+  painterState.restore();
 
   //draw numeric value beside the symbol
-  painter->save();
+  painterState.save();
 
   QPen bufferPen;
   bufferPen.setColor( Qt::white );
   bufferPen.setWidthF( QgsGuiUtils::scaleIconSize( 4 ) );
   const QFontMetricsF fm( mFont );
   QPainterPath label;
-  const double rotationText = mRotation * QgsUnitTypes::fromUnitToUnitFactor( Qgis::AngleUnit::Degrees,
-                              mRotationUnit );
-  label.addText( mPixmap.width(),
-                 mPixmap.height() / 2.0 + fm.height() / 2.0,
-                 mFont,
-                 QgsUnitTypes::formatAngle( rotationText, -1, mRotationUnit ) );
+  const double rotationText = mRotation * QgsUnitTypes::fromUnitToUnitFactor( Qgis::AngleUnit::Degrees, mRotationUnit );
+  label.addText( mPixmap.width(), mPixmap.height() / 2.0 + fm.height() / 2.0, mFont, QgsUnitTypes::formatAngle( rotationText, -1, mRotationUnit ) );
   painter->setPen( bufferPen );
   painter->setBrush( Qt::NoBrush );
   painter->drawPath( label );
   painter->setPen( Qt::NoPen );
   painter->setBrush( QBrush( Qt::black ) );
   painter->drawPath( label );
-
-  painter->restore();
 }
 
 void QgsPointRotationItem::setPointLocation( const QgsPointXY &p )
@@ -109,7 +111,7 @@ void QgsPointRotationItem::setSymbol( const QImage &symbolImage )
   const QFontMetricsF fm( mFont );
 
   //set item size: 6283 millirad arcseconds = 360°
-  mItemSize.setWidth( mPixmap.width() + fm.horizontalAdvance( QStringLiteral( "6283 millirad" ) ) );
+  mItemSize.setWidth( mPixmap.width() + fm.horizontalAdvance( u"6283 millirad"_s ) );
   const double pixmapHeight = mPixmap.height();
   const double fontHeight = fm.height();
   if ( pixmapHeight >= fontHeight )
@@ -139,4 +141,3 @@ int QgsPointRotationItem::painterRotation( int rotation ) const
 
   return 360 - ( rotation % 360 );
 }
-

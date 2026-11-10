@@ -18,13 +18,15 @@
 #define QGSLAYOUTSCALEBARWIDGET_H
 
 // We don't want to expose this in the public API
-#define SIP_NO_FILE
+
+#include "ui_qgslayoutscalebarwidgetbase.h"
 
 #include "qgis_gui.h"
-#include "ui_qgslayoutscalebarwidgetbase.h"
 #include "qgslayoutitemwidget.h"
 
 #include <QButtonGroup>
+
+#define SIP_NO_FILE
 
 class QgsLayoutItemScaleBar;
 
@@ -35,7 +37,7 @@ class QgsLayoutItemScaleBar;
  * \note This class is not a part of public API
  * \since QGIS 3.12
  */
-class GUI_EXPORT QgsLayoutScaleBarWidget: public QgsLayoutItemBaseWidget, public QgsExpressionContextGenerator, private Ui::QgsLayoutScaleBarWidgetBase
+class GUI_EXPORT QgsLayoutScaleBarWidget : public QgsLayoutItemBaseWidget, public QgsExpressionContextGenerator, private Ui::QgsLayoutScaleBarWidgetBase
 {
     Q_OBJECT
 
@@ -66,12 +68,12 @@ class GUI_EXPORT QgsLayoutScaleBarWidget: public QgsLayoutItemBaseWidget, public
     void mStyleComboBox_currentIndexChanged( const QString &text );
     void mLabelBarSpaceSpinBox_valueChanged( double d );
     void mBoxSizeSpinBox_valueChanged( double d );
-    void mLabelVerticalPlacementComboBox_currentIndexChanged( int index );
-    void mLabelHorizontalPlacementComboBox_currentIndexChanged( int index );
+    void mDistanceLabelPlacementComboBox_currentIndexChanged( int index );
     void alignmentChanged();
     void mUnitsComboBox_currentIndexChanged( int index );
     void mMinWidthSpinBox_valueChanged( double d );
     void mMaxWidthSpinBox_valueChanged( double d );
+    void labelUnitPlacementChanged();
 
   private slots:
     void setGuiElements();
@@ -81,7 +83,16 @@ class GUI_EXPORT QgsLayoutScaleBarWidget: public QgsLayoutItemBaseWidget, public
     void changeNumberFormat();
 
   private:
-    QPointer< QgsLayoutItemScaleBar > mScalebar;
+    enum class DistanceLabelPlacement : int
+    {
+      CenteredAboveSegmentEdges,
+      CenteredAboveSegmentCenters,
+      CenteredBelowSegmentEdges,
+      CenteredBelowSegmentCenters,
+    };
+    static DistanceLabelPlacement distanceLabelPlacement( Qgis::ScaleBarDistanceLabelHorizontalPlacement horizontalPlacement, Qgis::ScaleBarDistanceLabelVerticalPlacement verticalPlacement );
+
+    QPointer<QgsLayoutItemScaleBar> mScalebar;
     QgsLayoutItemPropertiesWidget *mItemPropertiesWidget = nullptr;
 
     QButtonGroup mSegmentSizeRadioGroup;
@@ -96,6 +107,7 @@ class GUI_EXPORT QgsLayoutScaleBarWidget: public QgsLayoutItemBaseWidget, public
     void disconnectUpdateSignal();
     void populateDataDefinedButtons();
 
+    static QString linkedMapUnitsString( QgsLayoutItemScaleBar *scalebar );
 };
 
 #endif //QGSLAYOUTSCALEBARWIDGET_H

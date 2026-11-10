@@ -14,18 +14,19 @@
  ***************************************************************************/
 
 #include "qgsfillsymbol.h"
+
 #include "qgsfillsymbollayer.h"
 #include "qgspainteffect.h"
 
-QgsFillSymbol *QgsFillSymbol::createSimple( const QVariantMap &properties )
+std::unique_ptr< QgsFillSymbol > QgsFillSymbol::createSimple( const QVariantMap &properties )
 {
-  QgsSymbolLayer *sl = QgsSimpleFillSymbolLayer::create( properties );
+  std::unique_ptr<QgsSymbolLayer> sl = QgsSimpleFillSymbolLayer::create( properties );
   if ( !sl )
     return nullptr;
 
   QgsSymbolLayerList layers;
-  layers.append( sl );
-  return new QgsFillSymbol( layers );
+  layers.append( sl.release() );
+  return std::make_unique< QgsFillSymbol >( layers );
 }
 
 
@@ -39,9 +40,9 @@ QgsFillSymbol::QgsFillSymbol( const QgsSymbolLayerList &layers )
 void QgsFillSymbol::renderPolygon( const QPolygonF &points, const QVector<QPolygonF> *rings, const QgsFeature *f, QgsRenderContext &context, int layerIdx, bool selected )
 {
   const double opacity = dataDefinedProperties().hasActiveProperties() ? dataDefinedProperties().valueAsDouble( QgsSymbol::Property::Opacity, context.expressionContext(), mOpacity * 100 ) * 0.01
-                         : mOpacity;
+                                                                       : mOpacity;
 
-  QgsSymbolRenderContext symbolContext( context, Qgis::RenderUnit::Unknown, opacity, selected, mRenderHints, f );
+  QgsSymbolRenderContext symbolContext( context, Qgis::RenderUnit::Unknown, opacity, selected, renderHints(), f );
   symbolContext.setOriginalGeometryType( Qgis::GeometryType::Polygon );
   symbolContext.setGeometryPartCount( symbolRenderContext()->geometryPartCount() );
   symbolContext.setGeometryPartNum( symbolRenderContext()->geometryPartNum() );
@@ -144,15 +145,7 @@ QVector<QPolygonF> *QgsFillSymbol::translateRings( const QVector<QPolygonF> *rin
 QgsFillSymbol *QgsFillSymbol::clone() const
 {
   QgsFillSymbol *cloneSymbol = new QgsFillSymbol( cloneLayers() );
-  cloneSymbol->setOpacity( mOpacity );
-  Q_NOWARN_DEPRECATED_PUSH
-  cloneSymbol->setLayer( mLayer );
-  Q_NOWARN_DEPRECATED_POP
-  cloneSymbol->setClipFeaturesToExtent( mClipFeaturesToExtent );
-  cloneSymbol->setForceRHR( mForceRHR );
-  cloneSymbol->setDataDefinedProperties( dataDefinedProperties() );
-  cloneSymbol->setFlags( mSymbolFlags );
-  cloneSymbol->setAnimationSettings( mAnimationSettings );
+  cloneSymbol->copyCommonProperties( this );
   return cloneSymbol;
 }
 
@@ -170,5 +163,3 @@ void QgsFillSymbol::setAngle( double angle ) const
       fillLayer->setAngle( angle );
   }
 }
-
-

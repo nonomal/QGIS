@@ -18,7 +18,7 @@
 
 #include "qgis.h"
 #include "qgis_gui.h"
-#include "qgsprocessingalgorithmdialogbase.h"
+#include "qgsprocessingalgorithmwidgetbase.h"
 
 #include <QElapsedTimer>
 
@@ -34,16 +34,15 @@ class QgsProxyProgressTask;
  * \note This is not considered stable API and may change in future QGIS versions.
  * \since QGIS 3.26
  */
-class GUI_EXPORT QgsProcessingBatchAlgorithmDialogBase : public QgsProcessingAlgorithmDialogBase
+class GUI_EXPORT QgsProcessingBatchAlgorithmDialogBase : public QgsProcessingAlgorithmWidgetBase
 {
     Q_OBJECT
 
   public:
-
     /**
      * Constructor for QgsProcessingBatchAlgorithmDialogBase.
      */
-    QgsProcessingBatchAlgorithmDialogBase( QWidget *parent SIP_TRANSFERTHIS = nullptr, Qt::WindowFlags flags = Qt::WindowFlags() );
+    QgsProcessingBatchAlgorithmDialogBase( QMainWindow *parentWindow SIP_TRANSFERTHIS );
     ~QgsProcessingBatchAlgorithmDialogBase() override;
 
     void resetAdditionalGui() override;
@@ -61,14 +60,13 @@ class GUI_EXPORT QgsProcessingBatchAlgorithmDialogBase : public QgsProcessingAlg
     void algExecuted( bool successful, const QVariantMap &results ) override;
 
   protected:
-
     bool isFinalized() override;
 
     /**
      * Starts the batch execution, where the \a parameters list dictates the parameters for each component
      * step of the batch.
      */
-    void execute( const QList< QVariantMap > &parameters );
+    void execute( const QList<QVariantMap> &parameters );
 
     /**
      * Creates a new Processing context.
@@ -78,11 +76,6 @@ class GUI_EXPORT QgsProcessingBatchAlgorithmDialogBase : public QgsProcessingAlg
     virtual QgsProcessingContext *createContext( QgsProcessingFeedback *feedback ) = 0 SIP_FACTORY;
 
     /**
-     * Called when the dialog should handle the results of an algorithm, e.g. by loading layers into the current project.
-     */
-    virtual void handleAlgorithmResults( QgsProcessingAlgorithm *algorithm, QgsProcessingContext &context, QgsProcessingFeedback *feedback, const QVariantMap &parameters ) = 0;
-
-    /**
      * Populates the HTML results dialog as a result of a successful algorithm execution.
      */
     virtual void loadHtmlResults( const QVariantMap &results, int index ) = 0;
@@ -90,7 +83,7 @@ class GUI_EXPORT QgsProcessingBatchAlgorithmDialogBase : public QgsProcessingAlg
     /**
      * Creates a summary table of the results of a batch execution.
      */
-    virtual void createSummaryTable( const QList< QVariantMap > &results, const QList< QVariantMap > &errors ) = 0;
+    virtual void createSummaryTable( const QList<QVariantMap> &results, const QList<QVariantMap> &errors ) = 0;
 
   private slots:
 
@@ -98,7 +91,6 @@ class GUI_EXPORT QgsProcessingBatchAlgorithmDialogBase : public QgsProcessingAlg
     void taskTriggered( QgsTask *task );
 
   private:
-
     void executeNext();
     void allTasksComplete( bool canceled );
 
@@ -106,14 +98,14 @@ class GUI_EXPORT QgsProcessingBatchAlgorithmDialogBase : public QgsProcessingAlg
 
     int mCurrentStep = 0;
     int mTotalSteps = 0;
-    QList< QVariantMap > mQueuedParameters;
+    QList<QVariantMap> mQueuedParameters;
     QVariantMap mCurrentParameters;
-    QPointer< QgsProxyProgressTask > mProxyTask;
-    std::unique_ptr< QgsProcessingFeedback > mFeedback;
-    std::unique_ptr< QgsProcessingBatchFeedback > mBatchFeedback;
-    std::unique_ptr< QgsProcessingContext > mTaskContext;
-    QList< QVariantMap > mResults;
-    QList< QVariantMap > mErrors;
+    QPointer<QgsProxyProgressTask> mProxyTask;
+    std::unique_ptr<QgsProcessingFeedback> mFeedback;
+    std::unique_ptr<QgsProcessingBatchFeedback> mBatchFeedback;
+    std::unique_ptr<QgsProcessingContext> mTaskContext;
+    QList<QVariantMap> mResults;
+    QList<QVariantMap> mErrors;
     QElapsedTimer mTotalTimer;
     QElapsedTimer mCurrentStepTimer;
 };

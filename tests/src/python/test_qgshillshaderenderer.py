@@ -10,15 +10,14 @@ the Free Software Foundation; either version 2 of the License, or
 """
 
 import os
+import unittest
 
-from qgis.PyQt.QtCore import QFileInfo
 from qgis.core import (
     QgsHillshadeRenderer,
     QgsRasterLayer,
 )
-import unittest
-from qgis.testing import start_app, QgisTestCase
-
+from qgis.PyQt.QtCore import QFileInfo
+from qgis.testing import QgisTestCase, start_app
 from utilities import unitTestDataPath
 
 # Convenience instances in case you may need them
@@ -27,17 +26,14 @@ start_app()
 
 
 class TestQgsHillshadeRenderer(QgisTestCase):
-
     def test_renderer(self):
-        path = os.path.join(unitTestDataPath(),
-                            'landsat.tif')
+        path = os.path.join(unitTestDataPath(), "landsat.tif")
         info = QFileInfo(path)
         base_name = info.baseName()
         layer = QgsRasterLayer(path, base_name)
-        self.assertTrue(layer.isValid(), f'Raster not loaded: {path}')
+        self.assertTrue(layer.isValid(), f"Raster not loaded: {path}")
 
-        renderer = QgsHillshadeRenderer(layer.dataProvider(),
-                                        1, 90, 45)
+        renderer = QgsHillshadeRenderer(layer.dataProvider(), 1, 90, 45)
 
         self.assertEqual(renderer.azimuth(), 90)
         self.assertEqual(renderer.altitude(), 45)
@@ -54,8 +50,7 @@ class TestQgsHillshadeRenderer(QgisTestCase):
         """
         Test hillshade raster render band with a broken layer path
         """
-        renderer = QgsHillshadeRenderer(None,
-                                        1, 90, 45)
+        renderer = QgsHillshadeRenderer(None, 1, 90, 45)
 
         self.assertEqual(renderer.azimuth(), 90)
         self.assertEqual(renderer.altitude(), 45)
@@ -66,5 +61,5 @@ class TestQgsHillshadeRenderer(QgisTestCase):
         self.assertEqual(renderer.inputBand(), 10)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

@@ -21,15 +21,18 @@
 
 #include "qgis_core.h"
 #include "qgis_sip.h"
-#include "qgswkbtypes.h"
 #include "qgshttpheaders.h"
+#include "qgswkbtypes.h"
 
 #include <QMap>
 #include <QSet>
+#include <QString>
+
+using namespace Qt::StringLiterals;
 
 /**
  * \ingroup core
- * \brief Class for storing the component parts of a RDBMS data source URI (e.g. a Postgres data source).
+ * \brief Stores the component parts of a data source URI (e.g. a Postgres data source).
  *
  * This structure stores the database connection information, including host, database,
  * user name, password, schema, password, and SQL where clause.
@@ -38,7 +41,6 @@ class CORE_EXPORT QgsDataSourceUri
 {
     Q_GADGET
   public:
-
     /**
      * Available SSL connection modes.
      */
@@ -135,23 +137,14 @@ class CORE_EXPORT QgsDataSourceUri
     /**
      * Sets all connection related members at once.
      */
-    void setConnection( const QString &aHost,
-                        const QString &aPort,
-                        const QString &aDatabase,
-                        const QString &aUsername,
-                        const QString &aPassword,
-                        SslMode sslmode = SslPrefer,
-                        const QString &authConfigId = QString() );
+    void setConnection(
+      const QString &aHost, const QString &aPort, const QString &aDatabase, const QString &aUsername, const QString &aPassword, SslMode sslmode = SslPrefer, const QString &authConfigId = QString()
+    );
 
     /**
      * Sets all connection related members at once (for a service case).
      */
-    void setConnection( const QString &aService,
-                        const QString &aDatabase,
-                        const QString &aUsername,
-                        const QString &aPassword,
-                        SslMode sslmode = SslPrefer,
-                        const QString &authConfigId = QString() );
+    void setConnection( const QString &aService, const QString &aDatabase, const QString &aUsername, const QString &aPassword, SslMode sslmode = SslPrefer, const QString &authConfigId = QString() );
 
     /**
      * Sets the URI database name.
@@ -164,11 +157,7 @@ class CORE_EXPORT QgsDataSourceUri
      * The \a aSql argument represents a subset filter string to be applied to the source, and should take the
      * form of a SQL "where" clause (e.g. "VALUE > 5", "CAT IN (1,2,3)").
      */
-    void setDataSource( const QString &aSchema,
-                        const QString &aTable,
-                        const QString &aGeometryColumn,
-                        const QString &aSql = QString(),
-                        const QString &aKeyColumn = QString() );
+    void setDataSource( const QString &aSchema, const QString &aTable, const QString &aGeometryColumn, const QString &aSql = QString(), const QString &aKeyColumn = QString() );
 
     /**
      * Sets the authentication configuration ID for the URI.
@@ -252,11 +241,37 @@ class CORE_EXPORT QgsDataSourceUri
      */
     void setSql( const QString &sql );
 
-    //! Returns the host name stored in the URI.
+    /**
+     * Sets the \a host name stored in the URI.
+     *
+     * \see host()
+     * \since QGIS 3.42
+     */
+    void setHost( const QString &host );
+
+    /**
+     * Returns the host name stored in the URI.
+     *
+     * \see setHost()
+     */
     QString host() const;
+
     //! Returns the database name stored in the URI.
     QString database() const;
-    //! Returns the port stored in the URI.
+
+    /**
+     * Sets the \a port stored in the URI.
+     *
+     * \see port()
+     * \since QGIS 3.42
+     */
+    void setPort( const QString &port );
+
+    /**
+     * Returns the port stored in the URI.
+     *
+     * \see setPort()
+     */
     QString port() const;
 
     /**
@@ -272,10 +287,34 @@ class CORE_EXPORT QgsDataSourceUri
     //! Returns the password stored in the URI.
     QString password() const;
 
-    //! Returns the SSL mode associated with the URI.
+    /**
+     * Sets the SSL \a mode associated with the URI.
+     *
+     * \see sslMode()
+     * \since QGIS 3.42
+     */
+    void setSslMode( SslMode mode );
+
+    /**
+     * Returns the SSL mode associated with the URI.
+     *
+     * \see setSslMode()
+     */
     SslMode sslMode() const;
 
-    //! Returns the service name associated with the URI.
+    /**
+     * Sets the \a service name associated with the URI.
+     *
+     * \see service()
+     * \since QGIS 3.42
+     */
+    void setService( const QString &service );
+
+    /**
+     * Returns the service name associated with the URI.
+     *
+     * \see setService()
+     */
     QString service() const;
 
     //! Returns the name of the (primary) key column for the referenced table.
@@ -352,12 +391,17 @@ class CORE_EXPORT QgsDataSourceUri
     void setHttpHeaders( const QgsHttpHeaders &headers ) { mHttpHeaders = headers; }
 
 #ifdef SIP_RUN
+    // clang-format off
     SIP_PYOBJECT __repr__();
     % MethodCode
-    QString str = QStringLiteral( "<QgsDataSourceUri: %1>" ).arg( sipCpp->uri( false ) );
+    QString str = u"<QgsDataSourceUri: %1>"_s.arg( sipCpp->uri( false ) );
     sipRes = PyUnicode_FromString( str.toUtf8().constData() );
     % End
+// clang-format on
 #endif
+
+      bool operator==( const QgsDataSourceUri &other ) const;
+    bool operator!=( const QgsDataSourceUri &other ) const;
 
   private:
     void skipBlanks( const QString &uri, int &i );

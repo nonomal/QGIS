@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/annotations/qgshtmlannotation.h                             *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/
 
 
@@ -11,8 +11,7 @@
 
 
 
-
-class QgsHtmlAnnotation: QgsAnnotation
+class QgsHtmlAnnotation : QgsAnnotation
 {
 %Docstring(signature="appended")
 An annotation item that embeds HTML content.
@@ -22,7 +21,6 @@ An annotation item that embeds HTML content.
 #include "qgshtmlannotation.h"
 %End
   public:
-
     QgsHtmlAnnotation( QObject *parent /TransferThis/ = 0 );
 %Docstring
 Constructor for QgsHtmlAnnotation.
@@ -52,7 +50,7 @@ Returns the file path for the source HTML file.
 %Docstring
 Sets the html source directly (not coming from a file)
 
-:param htmlSource:
+:param htmlSource: 
 %End
 
     QString htmlSource() const;
@@ -74,7 +72,6 @@ Returns a new QgsHtmlAnnotation object.
 %End
 
   protected:
-
     virtual void renderAnnotation( QgsRenderContext &context, QSizeF size ) const;
 
 
@@ -85,5 +82,5 @@ Returns a new QgsHtmlAnnotation object.
  *                                                                      *
  * src/core/annotations/qgshtmlannotation.h                             *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/

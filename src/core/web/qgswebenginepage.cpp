@@ -15,11 +15,14 @@
  *                                                                         *
  ***************************************************************************/
 
-#include "qgswebenginepage.h"
 #include "qgsconfig.h"
-#include <QWebEnginePage>
+#include "qgswebenginepage.h"
+
 #include <QEventLoop>
 #include <QSizeF>
+#include <QWebEnginePage>
+
+#include "moc_qgswebenginepage.cpp"
 
 #ifdef HAVE_PDF4QT
 #include "qgspdfrenderer.h"
@@ -30,7 +33,7 @@
 
 QgsWebEnginePage::QgsWebEnginePage( QObject *parent )
   : QObject( parent )
-  , mPage{ std::make_unique< QWebEnginePage >() }
+  , mPage { std::make_unique< QWebEnginePage >() }
 {
   // proxy some signals from the page
   connect( mPage.get(), &QWebEnginePage::loadStarted, this, &QgsWebEnginePage::loadStarted );
@@ -53,8 +56,7 @@ bool QgsWebEnginePage::setContent( const QByteArray &data, const QString &mimeTy
     QEventLoop loop;
     bool finished = false;
     bool result = true;
-    connect( mPage.get(), &QWebEnginePage::loadFinished, &loop, [&loop, &finished, &result]( bool ok )
-    {
+    connect( mPage.get(), &QWebEnginePage::loadFinished, &loop, [&loop, &finished, &result]( bool ok ) {
       finished = true;
       result = ok;
       loop.exit();
@@ -83,8 +85,7 @@ bool QgsWebEnginePage::setHtml( const QString &html, const QUrl &baseUrl, bool b
     QEventLoop loop;
     bool finished = false;
     bool result = true;
-    connect( mPage.get(), &QWebEnginePage::loadFinished, &loop, [&loop, &finished, &result]( bool ok )
-    {
+    connect( mPage.get(), &QWebEnginePage::loadFinished, &loop, [&loop, &finished, &result]( bool ok ) {
       finished = true;
       result = ok;
       loop.exit();
@@ -114,8 +115,7 @@ bool QgsWebEnginePage::setUrl( const QUrl &url, bool blocking )
     QEventLoop loop;
     bool finished = false;
     bool result = true;
-    connect( mPage.get(), &QWebEnginePage::loadFinished, &loop, [&loop, &finished, &result]( bool ok )
-    {
+    connect( mPage.get(), &QWebEnginePage::loadFinished, &loop, [&loop, &finished, &result]( bool ok ) {
       finished = true;
       result = ok;
       loop.exit();
@@ -146,8 +146,7 @@ QSize QgsWebEnginePage::documentSize() const
   int width = -1;
   int height = -1;
   bool finished = false;
-  mPage->runJavaScript( "[document.documentElement.scrollWidth, document.documentElement.scrollHeight];", [&width, &height, &loop, &finished]( QVariant result )
-  {
+  mPage->runJavaScript( "[document.documentElement.scrollWidth, document.documentElement.scrollHeight];", [&width, &height, &loop, &finished]( QVariant result ) {
     width = result.toList().value( 0 ).toInt();
     height = result.toList().value( 1 ).toInt();
     finished = true;
@@ -171,8 +170,7 @@ void QgsWebEnginePage::handlePostBlockingLoadOperations()
   int width = 0;
   int height = 0;
   bool finished = false;
-  mPage->runJavaScript( "[document.documentElement.scrollWidth, document.documentElement.scrollHeight];", [&width, &height, &loop, &finished]( QVariant result )
-  {
+  mPage->runJavaScript( "[document.documentElement.scrollWidth, document.documentElement.scrollHeight];", [&width, &height, &loop, &finished]( QVariant result ) {
     width = result.toList().value( 0 ).toInt();
     height = result.toList().value( 1 ).toInt();
     finished = true;
@@ -199,8 +197,7 @@ bool QgsWebEnginePage::render( QPainter *painter, const QRectF &painterRect )
   bool finished = false;
   bool printOk = false;
   QString renderedPdfPath;
-  connect( mPage.get(), &QWebEnginePage::pdfPrintingFinished, &loop, [&loop, &finished, &printOk, &renderedPdfPath]( const QString & pdfPath, bool success )
-  {
+  connect( mPage.get(), &QWebEnginePage::pdfPrintingFinished, &loop, [&loop, &finished, &printOk, &renderedPdfPath]( const QString &pdfPath, bool success ) {
     finished = true;
     renderedPdfPath = pdfPath;
     printOk = success;
@@ -209,12 +206,12 @@ bool QgsWebEnginePage::render( QPainter *painter, const QRectF &painterRect )
 
   // generate file name for temporary intermediate PDF file
   QTemporaryFile f;
-  f.open();
+  if ( !f.open() )
+    return false;
+
   f.close();
 
-  const QPageLayout layout = QPageLayout( QPageSize( pageSize, QPageSize::Inch ),
-                                          QPageLayout::Portrait, QMarginsF( 0, 0, 0, 0 ),
-                                          QPageLayout::Inch, QMarginsF( 0, 0, 0, 0 ) );
+  const QPageLayout layout = QPageLayout( QPageSize( pageSize, QPageSize::Inch ), QPageLayout::Portrait, QMarginsF( 0, 0, 0, 0 ), QPageLayout::Inch, QMarginsF( 0, 0, 0, 0 ) );
   mPage->printToPdf( f.fileName(), layout );
 
   if ( !finished )

@@ -18,12 +18,13 @@
 #ifndef QGSALGORITHMDETECTDATASETCHANGES_H
 #define QGSALGORITHMDETECTDATASETCHANGES_H
 
-#define SIP_NO_FILE
 
 #include "qgis_sip.h"
-#include "qgsprocessingalgorithm.h"
 #include "qgsapplication.h"
+#include "qgsprocessingalgorithm.h"
 #include "qgsvectorlayerfeatureiterator.h"
+
+#define SIP_NO_FILE
 
 ///@cond PRIVATE
 
@@ -32,9 +33,7 @@
  */
 class QgsDetectVectorChangesAlgorithm : public QgsProcessingAlgorithm
 {
-
   public:
-
     QgsDetectVectorChangesAlgorithm() = default;
     void initAlgorithm( const QVariantMap &configuration = QVariantMap() ) override;
     QString name() const override;
@@ -47,32 +46,25 @@ class QgsDetectVectorChangesAlgorithm : public QgsProcessingAlgorithm
     QgsDetectVectorChangesAlgorithm *createInstance() const override SIP_FACTORY;
 
   protected:
-
     bool prepareAlgorithm( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
-    QVariantMap processAlgorithm( const QVariantMap &parameters,
-                                  QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
+    QVariantMap processAlgorithm( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
 
   private:
-
     enum GeometryMatchType
     {
       Exact,
       Topological
     };
 
-    std::unique_ptr< QgsProcessingFeatureSource > mOriginal;
-    std::unique_ptr< QgsProcessingFeatureSource > mRevised;
+    std::unique_ptr<QgsProcessingFeatureSource> mOriginal;
+    std::unique_ptr<QgsProcessingFeatureSource> mRevised;
     QStringList mFieldsToCompare;
-    QList< int > mOriginalFieldsToCompareIndices;
-    QList< int > mRevisedFieldsToCompareIndices;
+    QList<int> mOriginalFieldsToCompareIndices;
+    QList<int> mRevisedFieldsToCompareIndices;
 
     GeometryMatchType mMatchType = Topological;
-
-
 };
 
 ///@endcond PRIVATE
 
 #endif // QGSALGORITHMDETECTDATASETCHANGES_H
-
-

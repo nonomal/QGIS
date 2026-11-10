@@ -12,39 +12,47 @@
  *   (at your option) any later version.                                   *
  *                                                                         *
  ***************************************************************************/
-#include <algorithm>
-
 #include "qgscategorizedsymbolrenderer.h"
 
-#include "qgsdatadefinedsizelegend.h"
-#include "qgssymbol.h"
-#include "qgssymbollayerutils.h"
+#include <algorithm>
+#include <memory>
+
+#include "qgsapplication.h"
+#include "qgscategorizedsymbolutils.h"
 #include "qgscolorramp.h"
 #include "qgscolorrampimpl.h"
-#include "qgsgraduatedsymbolrenderer.h"
-#include "qgspointdisplacementrenderer.h"
-#include "qgsinvertedpolygonrenderer.h"
-#include "qgspainteffect.h"
-#include "qgssymbollayer.h"
+#include "qgsdatadefinedsizelegend.h"
+#include "qgsembeddedsymbolrenderer.h"
+#include "qgsexpressioncontextutils.h"
+#include "qgsexpressionnodeimpl.h"
 #include "qgsfeature.h"
-#include "qgsvectorlayer.h"
-#include "qgslogger.h"
-#include "qgsproperty.h"
-#include "qgsstyle.h"
 #include "qgsfieldformatter.h"
 #include "qgsfieldformatterregistry.h"
-#include "qgsapplication.h"
-#include "qgsexpressioncontextutils.h"
-#include "qgsstyleentityvisitor.h"
-#include "qgsembeddedsymbolrenderer.h"
+#include "qgsgraduatedsymbolrenderer.h"
+#include "qgsinvertedpolygonrenderer.h"
+#include "qgslogger.h"
 #include "qgsmarkersymbol.h"
-#include "qgsexpressionnodeimpl.h"
+#include "qgspainteffect.h"
+#include "qgspointdisplacementrenderer.h"
+#include "qgsproperty.h"
+#include "qgsrulebasedrenderer.h"
+#include "qgssldexportcontext.h"
+#include "qgsstyle.h"
+#include "qgsstyleentityvisitor.h"
+#include "qgssymbol.h"
+#include "qgssymbollayer.h"
+#include "qgssymbollayerutils.h"
+#include "qgsvariantutils.h"
+#include "qgsvectorlayer.h"
 
 #include <QDomDocument>
 #include <QDomElement>
-#include <QSettings> // for legend
 #include <QRegularExpression>
+#include <QSettings>
+#include <QString>
 #include <QUuid>
+
+using namespace Qt::StringLiterals;
 
 QgsRendererCategory::QgsRendererCategory( const QVariant &value, QgsSymbol *symbol, const QString &label, bool render, const QString &uuid )
   : mValue( value )
@@ -61,25 +69,22 @@ QgsRendererCategory::QgsRendererCategory( const QgsRendererCategory &cat )
   , mLabel( cat.mLabel )
   , mRender( cat.mRender )
   , mUuid( cat.mUuid )
-{
-}
+{}
 
-// copy+swap idion, the copy is done through the 'pass by value'
 QgsRendererCategory &QgsRendererCategory::operator=( QgsRendererCategory cat )
 {
-  swap( cat );
+  if ( &cat == this )
+    return *this;
+
+  mValue = cat.mValue;
+  mSymbol.reset( cat.mSymbol ? cat.mSymbol->clone() : nullptr );
+  mLabel = cat.mLabel;
+  mRender = cat.mRender;
+  mUuid = cat.mUuid;
   return *this;
 }
 
 QgsRendererCategory::~QgsRendererCategory() = default;
-
-void QgsRendererCategory::swap( QgsRendererCategory &cat )
-{
-  std::swap( mValue, cat.mValue );
-  std::swap( mSymbol, cat.mSymbol );
-  std::swap( mLabel, cat.mLabel );
-  std::swap( mUuid, cat.mUuid );
-}
 
 QString QgsRendererCategory::uuid() const
 {
@@ -113,7 +118,8 @@ void QgsRendererCategory::setValue( const QVariant &value )
 
 void QgsRendererCategory::setSymbol( QgsSymbol *s )
 {
-  if ( mSymbol.get() != s ) mSymbol.reset( s );
+  if ( mSymbol.get() != s )
+    mSymbol.reset( s );
 }
 
 void QgsRendererCategory::setLabel( const QString &label )
@@ -128,15 +134,27 @@ void QgsRendererCategory::setRenderState( bool render )
 
 QString QgsRendererCategory::dump() const
 {
-  return QStringLiteral( "%1::%2::%3:%4\n" ).arg( mValue.toString(), mLabel, mSymbol->dump() ).arg( mRender );
+  return u"%1::%2::%3:%4\n"_s.arg( mValue.toString(), mLabel, mSymbol->dump() ).arg( mRender );
 }
 
 void QgsRendererCategory::toSld( QDomDocument &doc, QDomElement &element, QVariantMap props ) const
 {
-  if ( !mSymbol.get() || props.value( QStringLiteral( "attribute" ), QString() ).toString().isEmpty() )
+  if ( !mSymbol.get() || props.value( u"attribute"_s, QString() ).toString().isEmpty() )
     return;
 
-  QString attrName = props[ QStringLiteral( "attribute" )].toString();
+  QString attrName = props[u"attribute"_s].toString();
+
+  QgsSldExportContext context;
+  context.setExtraProperties( props );
+  toSld( doc, element, attrName, context );
+}
+
+bool QgsRendererCategory::toSld( QDomDocument &doc, QDomElement &element, const QString &classAttribute, QgsSldExportContext &context ) const
+{
+  if ( !mSymbol.get() || classAttribute.isEmpty() )
+    return false;
+
+  QString attrName = classAttribute;
 
   // try to determine if attribute name is actually a field reference or expression.
   // If it's a field reference, we need to quote it.
@@ -149,33 +167,30 @@ void QgsRendererCategory::toSld( QDomDocument &doc, QDomElement &element, QVaria
   }
   else if ( attrExpression.isField() )
   {
-    attrName = QgsExpression::quotedColumnRef(
-                 qgis::down_cast<const QgsExpressionNodeColumnRef *>( attrExpression.rootNode() )->name()
-               );
+    attrName = QgsExpression::quotedColumnRef( qgis::down_cast<const QgsExpressionNodeColumnRef *>( attrExpression.rootNode() )->name() );
   }
 
-  QDomElement ruleElem = doc.createElement( QStringLiteral( "se:Rule" ) );
-  element.appendChild( ruleElem );
+  QDomElement ruleElem = doc.createElement( u"se:Rule"_s );
 
-  QDomElement nameElem = doc.createElement( QStringLiteral( "se:Name" ) );
+  QDomElement nameElem = doc.createElement( u"se:Name"_s );
   nameElem.appendChild( doc.createTextNode( mLabel ) );
   ruleElem.appendChild( nameElem );
 
-  QDomElement descrElem = doc.createElement( QStringLiteral( "se:Description" ) );
-  QDomElement titleElem = doc.createElement( QStringLiteral( "se:Title" ) );
-  QString descrStr = QStringLiteral( "%1 is '%2'" ).arg( attrName, mValue.toString() );
+  QDomElement descrElem = doc.createElement( u"se:Description"_s );
+  QDomElement titleElem = doc.createElement( u"se:Title"_s );
+  QString descrStr = u"%1 is '%2'"_s.arg( attrName, mValue.toString() );
   titleElem.appendChild( doc.createTextNode( !mLabel.isEmpty() ? mLabel : descrStr ) );
   descrElem.appendChild( titleElem );
   ruleElem.appendChild( descrElem );
 
   // create the ogc:Filter for the range
   QString filterFunc;
-  if ( mValue.type() == QVariant::List )
+  if ( mValue.userType() == QMetaType::Type::QVariantList )
   {
     const QVariantList list = mValue.toList();
     if ( list.size() == 1 )
     {
-      filterFunc = QStringLiteral( "%1 = %2" ).arg( attrName, QgsExpression::quotedValue( list.at( 0 ) ) );
+      filterFunc = u"%1 = %2"_s.arg( attrName, QgsExpression::quotedValue( list.at( 0 ) ) );
     }
     else
     {
@@ -185,31 +200,42 @@ void QgsRendererCategory::toSld( QDomDocument &doc, QDomElement &element, QVaria
       {
         valuesList << QgsExpression::quotedValue( v );
       }
-      filterFunc = QStringLiteral( "%1 IN (%2)" ).arg( attrName,
-                   valuesList.join( ',' ) );
+      filterFunc = u"%1 IN (%2)"_s.arg( attrName, valuesList.join( ',' ) );
     }
   }
   else if ( QgsVariantUtils::isNull( mValue ) || mValue.toString().isEmpty() )
   {
-    filterFunc = QStringLiteral( "ELSE" );
+    filterFunc = u"ELSE"_s;
   }
   else
   {
-    filterFunc = QStringLiteral( "%1 = %2" ).arg( attrName, QgsExpression::quotedValue( mValue ) );
+    filterFunc = u"%1 = %2"_s.arg( attrName, QgsExpression::quotedValue( mValue ) );
   }
 
-  QgsSymbolLayerUtils::createFunctionElement( doc, ruleElem, filterFunc );
+  QgsSymbolLayerUtils::createFunctionElement( doc, ruleElem, filterFunc, context );
 
   // add the mix/max scale denoms if we got any from the callers
+  const QVariantMap oldProps = context.extraProperties();
+  QVariantMap props = oldProps;
   QgsSymbolLayerUtils::applyScaleDependency( doc, ruleElem, props );
+  context.setExtraProperties( props );
+  mSymbol->toSld( doc, ruleElem, context );
+  context.setExtraProperties( oldProps );
+  if ( !QgsSymbolLayerUtils::hasSldSymbolizer( ruleElem ) )
+  {
+    // symbol could not be converted to SLD, or is an "empty" symbol. In this case we do not generate a rule, as
+    // SLD spec requires a Symbolizer element to be present
+    return false;
+  }
 
-  mSymbol->toSld( doc, ruleElem, props );
+  element.appendChild( ruleElem );
+  return true;
 }
 
 ///////////////////
 
 QgsCategorizedSymbolRenderer::QgsCategorizedSymbolRenderer( const QString &attrName, const QgsCategoryList &categories )
-  : QgsFeatureRenderer( QStringLiteral( "categorizedSymbol" ) )
+  : QgsFeatureRenderer( u"categorizedSymbol"_s )
   , mAttrName( attrName )
 {
   //important - we need a deep copy of the categories list, not a shared copy. This is required because
@@ -219,10 +245,26 @@ QgsCategorizedSymbolRenderer::QgsCategorizedSymbolRenderer( const QString &attrN
   {
     if ( !cat.symbol() )
     {
-      QgsDebugError( QStringLiteral( "invalid symbol in a category! ignoring..." ) );
+      QgsDebugError( u"invalid symbol in a category! ignoring..."_s );
     }
     mCategories << cat;
   }
+}
+
+Qgis::FeatureRendererFlags QgsCategorizedSymbolRenderer::flags() const
+{
+  Qgis::FeatureRendererFlags res;
+  QgsCategoryList::const_iterator catIt = mCategories.constBegin();
+  for ( ; catIt != mCategories.constEnd(); ++catIt )
+  {
+    if ( QgsSymbol *catSymbol = catIt->symbol() )
+    {
+      if ( catSymbol->flags().testFlag( Qgis::SymbolFlag::AffectsLabeling ) )
+        res.setFlag( Qgis::FeatureRendererFlag::AffectsLabeling );
+    }
+  }
+
+  return res;
 }
 
 QgsCategorizedSymbolRenderer::~QgsCategorizedSymbolRenderer() = default;
@@ -234,7 +276,7 @@ void QgsCategorizedSymbolRenderer::rebuildHash()
   for ( const QgsRendererCategory &cat : std::as_const( mCategories ) )
   {
     const QVariant val = cat.value();
-    if ( val.type() == QVariant::List )
+    if ( val.userType() == QMetaType::Type::QVariantList )
     {
       const QVariantList list = val.toList();
       for ( const QVariant &v : list )
@@ -270,7 +312,7 @@ QgsSymbol *QgsCategorizedSymbolRenderer::symbolForValue( const QVariant &value, 
   {
     if ( mSymbolHash.isEmpty() )
     {
-      QgsDebugError( QStringLiteral( "there are no hashed symbols!!!" ) );
+      QgsDebugError( u"there are no hashed symbols!!!"_s );
     }
     else
     {
@@ -387,7 +429,7 @@ void QgsCategorizedSymbolRenderer::addCategory( const QgsRendererCategory &cat )
 {
   if ( !cat.symbol() )
   {
-    QgsDebugError( QStringLiteral( "invalid symbol in a category! ignoring..." ) );
+    QgsDebugError( u"invalid symbol in a category! ignoring..."_s );
     return;
   }
 
@@ -410,7 +452,8 @@ void QgsCategorizedSymbolRenderer::deleteAllCategories()
 
 void QgsCategorizedSymbolRenderer::moveCategory( int from, int to )
 {
-  if ( from < 0 || from >= mCategories.size() || to < 0 || to >= mCategories.size() ) return;
+  if ( from < 0 || from >= mCategories.size() || to < 0 || to >= mCategories.size() )
+    return;
   mCategories.move( from, to );
 }
 
@@ -442,7 +485,7 @@ bool labelLessThan( const QgsRendererCategory &c1, const QgsRendererCategory &c2
 
 bool labelGreaterThan( const QgsRendererCategory &c1, const QgsRendererCategory &c2 )
 {
-  return !labelLessThan( c1, c2 );
+  return QString::localeAwareCompare( c1.label(), c2.label() ) > 0;
 }
 
 void QgsCategorizedSymbolRenderer::sortByLabel( Qt::SortOrder order )
@@ -470,9 +513,11 @@ void QgsCategorizedSymbolRenderer::startRender( QgsRenderContext &context, const
   mAttrNum = fields.lookupField( mAttrName );
   if ( mAttrNum == -1 )
   {
-    mExpression.reset( new QgsExpression( mAttrName ) );
+    mExpression = std::make_unique<QgsExpression>( mAttrName );
     mExpression->prepare( &context.expressionContext() );
   }
+
+  mAttrIsNumeric = mAttrNum != -1 && fields.at( mAttrNum ).isNumeric();
 
   for ( const QgsRendererCategory &cat : std::as_const( mCategories ) )
   {
@@ -532,7 +577,7 @@ bool QgsCategorizedSymbolRenderer::filterNeedsGeometry() const
 
 QString QgsCategorizedSymbolRenderer::dump() const
 {
-  QString s = QStringLiteral( "CATEGORIZED: idx %1\n" ).arg( mAttrName );
+  QString s = u"CATEGORIZED: idx %1\n"_s.arg( mAttrName );
   for ( int i = 0; i < mCategories.count(); i++ )
     s += mCategories[i].dump();
   return s;
@@ -555,113 +600,32 @@ QgsCategorizedSymbolRenderer *QgsCategorizedSymbolRenderer::clone() const
 
 void QgsCategorizedSymbolRenderer::toSld( QDomDocument &doc, QDomElement &element, const QVariantMap &props ) const
 {
-  QVariantMap newProps = props;
-  newProps[ QStringLiteral( "attribute" )] = mAttrName;
+  QgsSldExportContext context;
+  context.setExtraProperties( props );
+  toSld( doc, element, context );
+}
+
+bool QgsCategorizedSymbolRenderer::toSld( QDomDocument &doc, QDomElement &element, QgsSldExportContext &context ) const
+{
+  const QVariantMap oldProps = context.extraProperties();
+  QVariantMap newProps = oldProps;
+  newProps[u"attribute"_s] = mAttrName;
+  context.setExtraProperties( newProps );
 
   // create a Rule for each range
+  bool result = true;
   for ( QgsCategoryList::const_iterator it = mCategories.constBegin(); it != mCategories.constEnd(); ++it )
   {
-    it->toSld( doc, element, newProps );
+    if ( !it->toSld( doc, element, mAttrName, context ) )
+      result = false;
   }
+  context.setExtraProperties( oldProps );
+  return result;
 }
 
 QString QgsCategorizedSymbolRenderer::filter( const QgsFields &fields )
 {
-  int attrNum = fields.lookupField( mAttrName );
-  bool isExpression = ( attrNum == -1 );
-
-  bool hasDefault = false;
-  bool defaultActive = false;
-  bool allActive = true;
-  bool noneActive = true;
-
-  //we need to build lists of both inactive and active values, as either list may be required
-  //depending on whether the default category is active or not
-  QString activeValues;
-  QString inactiveValues;
-
-  for ( const QgsRendererCategory &cat : std::as_const( mCategories ) )
-  {
-    if ( cat.value() == "" || QgsVariantUtils::isNull( cat.value() ) )
-    {
-      hasDefault = true;
-      defaultActive = cat.renderState();
-    }
-
-    noneActive = noneActive && !cat.renderState();
-    allActive = allActive && cat.renderState();
-
-    const bool isList = cat.value().type() == QVariant::List;
-    QString value = QgsExpression::quotedValue( cat.value(), cat.value().type() );
-
-    if ( !cat.renderState() )
-    {
-      if ( value != "" )
-      {
-        if ( isList )
-        {
-          const QVariantList list = cat.value().toList();
-          for ( const QVariant &v : list )
-          {
-            if ( !inactiveValues.isEmpty() )
-              inactiveValues.append( ',' );
-
-            inactiveValues.append( QgsExpression::quotedValue( v, isExpression ? v.type() : fields.at( attrNum ).type() ) );
-          }
-        }
-        else
-        {
-          if ( !inactiveValues.isEmpty() )
-            inactiveValues.append( ',' );
-
-          inactiveValues.append( value );
-        }
-      }
-    }
-    else
-    {
-      if ( value != "" )
-      {
-        if ( isList )
-        {
-          const QVariantList list = cat.value().toList();
-          for ( const QVariant &v : list )
-          {
-            if ( !activeValues.isEmpty() )
-              activeValues.append( ',' );
-
-            activeValues.append( QgsExpression::quotedValue( v, isExpression ? v.type() : fields.at( attrNum ).type() ) );
-          }
-        }
-        else
-        {
-          if ( !activeValues.isEmpty() )
-            activeValues.append( ',' );
-
-          activeValues.append( value );
-        }
-      }
-    }
-  }
-
-  QString attr = isExpression ? mAttrName : QStringLiteral( "\"%1\"" ).arg( mAttrName );
-
-  if ( allActive && hasDefault )
-  {
-    return QString();
-  }
-  else if ( noneActive )
-  {
-    return QStringLiteral( "FALSE" );
-  }
-  else if ( defaultActive )
-  {
-    return QStringLiteral( "(%1) NOT IN (%2) OR (%1) IS NULL" ).arg( attr, inactiveValues );
-  }
-  else
-  {
-    return QStringLiteral( "(%1) IN (%2)" ).arg( attr, activeValues );
-  }
+  return QgsCategorizedSymbolUtils<QgsCategorizedSymbolRenderer>::buildCategorizedFilter( mAttrName, fields, mCategories );
 }
 
 QgsSymbolList QgsCategorizedSymbolRenderer::symbols( QgsRenderContext &context ) const
@@ -695,13 +659,13 @@ bool QgsCategorizedSymbolRenderer::accept( QgsStyleEntityVisitorInterface *visit
   return true;
 }
 
-QgsFeatureRenderer *QgsCategorizedSymbolRenderer::create( QDomElement &element, const QgsReadWriteContext &context )
+std::unique_ptr<QgsFeatureRenderer> QgsCategorizedSymbolRenderer::create( QDomElement &element, const QgsReadWriteContext &context )
 {
-  QDomElement symbolsElem = element.firstChildElement( QStringLiteral( "symbols" ) );
+  QDomElement symbolsElem = element.firstChildElement( u"symbols"_s );
   if ( symbolsElem.isNull() )
     return nullptr;
 
-  QDomElement catsElem = element.firstChildElement( QStringLiteral( "categories" ) );
+  QDomElement catsElem = element.firstChildElement( u"categories"_s );
   if ( catsElem.isNull() )
     return nullptr;
 
@@ -709,9 +673,8 @@ QgsFeatureRenderer *QgsCategorizedSymbolRenderer::create( QDomElement &element, 
   QgsCategoryList cats;
 
   // Value from string (long, ulong, double and string)
-  const auto valueFromString = []( const QString & value, const QString & valueType ) -> QVariant
-  {
-    if ( valueType == QLatin1String( "double" ) )
+  const auto valueFromString = []( const QString &value, const QString &valueType ) -> QVariant {
+    if ( valueType == "double"_L1 )
     {
       bool ok;
       const auto val { value.toDouble( &ok ) };
@@ -720,7 +683,7 @@ QgsFeatureRenderer *QgsCategorizedSymbolRenderer::create( QDomElement &element, 
         return val;
       }
     }
-    else if ( valueType == QLatin1String( "ulong" ) )
+    else if ( valueType == "ulong"_L1 )
     {
       bool ok;
       const auto val { value.toULongLong( &ok ) };
@@ -729,7 +692,7 @@ QgsFeatureRenderer *QgsCategorizedSymbolRenderer::create( QDomElement &element, 
         return val;
       }
     }
-    else if ( valueType == QLatin1String( "long" ) )
+    else if ( valueType == "long"_L1 )
     {
       bool ok;
       const auto val { value.toLongLong( &ok ) };
@@ -738,14 +701,14 @@ QgsFeatureRenderer *QgsCategorizedSymbolRenderer::create( QDomElement &element, 
         return val;
       }
     }
-    else if ( valueType == QLatin1String( "bool" ) )
+    else if ( valueType == "bool"_L1 )
     {
-      if ( value.toLower() == QLatin1String( "false" ) )
+      if ( value.toLower() == "false"_L1 )
         return false;
-      if ( value.toLower() == QLatin1String( "true" ) )
+      if ( value.toLower() == "true"_L1 )
         return true;
     }
-    else if ( valueType == QLatin1String( "NULL" ) )
+    else if ( valueType == "NULL"_L1 )
     {
       // This is the default ("fallback") category
       return QVariant();
@@ -755,14 +718,15 @@ QgsFeatureRenderer *QgsCategorizedSymbolRenderer::create( QDomElement &element, 
 
   QDomElement catElem = catsElem.firstChildElement();
   int i = 0;
+  QSet<QString> usedUuids;
   while ( !catElem.isNull() )
   {
-    if ( catElem.tagName() == QLatin1String( "category" ) )
+    if ( catElem.tagName() == "category"_L1 )
     {
       QVariant value;
-      if ( catElem.hasAttribute( QStringLiteral( "value" ) ) )
+      if ( catElem.hasAttribute( u"value"_s ) )
       {
-        value = valueFromString( catElem.attribute( QStringLiteral( "value" ) ), catElem.attribute( QStringLiteral( "type" ), QString() ) ) ;
+        value = valueFromString( catElem.attribute( u"value"_s ), catElem.attribute( u"type"_s, QString() ) );
       }
       else
       {
@@ -770,85 +734,90 @@ QgsFeatureRenderer *QgsCategorizedSymbolRenderer::create( QDomElement &element, 
         QDomElement valElem = catElem.firstChildElement();
         while ( !valElem.isNull() )
         {
-          if ( valElem.tagName() == QLatin1String( "val" ) )
+          if ( valElem.tagName() == "val"_L1 )
           {
-            values << valueFromString( valElem.attribute( QStringLiteral( "value" ) ), valElem.attribute( QStringLiteral( "type" ), QString() ) );
+            values << valueFromString( valElem.attribute( u"value"_s ), valElem.attribute( u"type"_s, QString() ) );
           }
           valElem = valElem.nextSiblingElement();
         }
         if ( !values.isEmpty() )
           value = values;
       }
-      QString symbolName = catElem.attribute( QStringLiteral( "symbol" ) );
-      QString label = catElem.attribute( QStringLiteral( "label" ) );
-      bool render = catElem.attribute( QStringLiteral( "render" ) ) != QLatin1String( "false" );
-      QString uuid = catElem.attribute( QStringLiteral( "uuid" ), QString::number( i++ ) );
+
+      QString symbolName = catElem.attribute( u"symbol"_s );
+      QString label = context.projectTranslator()->translate( u"project:layers:%1:legendsymbollabels"_s.arg( context.currentLayerId() ), catElem.attribute( u"label"_s ) );
+      QgsDebugMsgLevel( "context" + u"project:layers:%1:legendsymbollabels"_s.arg( context.currentLayerId() ) + " source " + catElem.attribute( u"label"_s ), 3 );
+
+      bool render = catElem.attribute( u"render"_s ) != "false"_L1;
+      QString uuid = catElem.attribute( u"uuid"_s, QString::number( i++ ) );
+
+      while ( usedUuids.contains( uuid ) )
+      {
+        uuid = QUuid::createUuid().toString();
+      }
       if ( symbolMap.contains( symbolName ) )
       {
         QgsSymbol *symbol = symbolMap.take( symbolName );
         cats.append( QgsRendererCategory( value, symbol, label, render, uuid ) );
+        usedUuids << uuid;
       }
     }
     catElem = catElem.nextSiblingElement();
   }
 
-  QString attrName = element.attribute( QStringLiteral( "attr" ) );
+  QString attrName = element.attribute( u"attr"_s );
 
-  QgsCategorizedSymbolRenderer *r = new QgsCategorizedSymbolRenderer( attrName, cats );
+  auto r = std::make_unique<QgsCategorizedSymbolRenderer>( attrName, cats );
 
   // delete symbols if there are any more
   QgsSymbolLayerUtils::clearSymbolMap( symbolMap );
 
   // try to load source symbol (optional)
-  QDomElement sourceSymbolElem = element.firstChildElement( QStringLiteral( "source-symbol" ) );
+  QDomElement sourceSymbolElem = element.firstChildElement( u"source-symbol"_s );
   if ( !sourceSymbolElem.isNull() )
   {
     QgsSymbolMap sourceSymbolMap = QgsSymbolLayerUtils::loadSymbols( sourceSymbolElem, context );
-    if ( sourceSymbolMap.contains( QStringLiteral( "0" ) ) )
+    if ( sourceSymbolMap.contains( u"0"_s ) )
     {
-      r->setSourceSymbol( sourceSymbolMap.take( QStringLiteral( "0" ) ) );
+      r->setSourceSymbol( sourceSymbolMap.take( u"0"_s ) );
     }
     QgsSymbolLayerUtils::clearSymbolMap( sourceSymbolMap );
   }
 
   // try to load color ramp (optional)
-  QDomElement sourceColorRampElem = element.firstChildElement( QStringLiteral( "colorramp" ) );
-  if ( !sourceColorRampElem.isNull() && sourceColorRampElem.attribute( QStringLiteral( "name" ) ) == QLatin1String( "[source]" ) )
+  QDomElement sourceColorRampElem = element.firstChildElement( u"colorramp"_s );
+  if ( !sourceColorRampElem.isNull() && sourceColorRampElem.attribute( u"name"_s ) == "[source]"_L1 )
   {
-    r->setSourceColorRamp( QgsSymbolLayerUtils::loadColorRamp( sourceColorRampElem ) );
+    r->setSourceColorRamp( QgsSymbolLayerUtils::loadColorRamp( sourceColorRampElem ).release() );
   }
 
-  QDomElement rotationElem = element.firstChildElement( QStringLiteral( "rotation" ) );
-  if ( !rotationElem.isNull() && !rotationElem.attribute( QStringLiteral( "field" ) ).isEmpty() )
+  QDomElement rotationElem = element.firstChildElement( u"rotation"_s );
+  if ( !rotationElem.isNull() && !rotationElem.attribute( u"field"_s ).isEmpty() )
   {
     for ( const QgsRendererCategory &cat : r->mCategories )
     {
-      convertSymbolRotation( cat.symbol(), rotationElem.attribute( QStringLiteral( "field" ) ) );
+      convertSymbolRotation( cat.symbol(), rotationElem.attribute( u"field"_s ) );
     }
     if ( r->mSourceSymbol )
     {
-      convertSymbolRotation( r->mSourceSymbol.get(), rotationElem.attribute( QStringLiteral( "field" ) ) );
+      convertSymbolRotation( r->mSourceSymbol.get(), rotationElem.attribute( u"field"_s ) );
     }
   }
 
-  QDomElement sizeScaleElem = element.firstChildElement( QStringLiteral( "sizescale" ) );
-  if ( !sizeScaleElem.isNull() && !sizeScaleElem.attribute( QStringLiteral( "field" ) ).isEmpty() )
+  QDomElement sizeScaleElem = element.firstChildElement( u"sizescale"_s );
+  if ( !sizeScaleElem.isNull() && !sizeScaleElem.attribute( u"field"_s ).isEmpty() )
   {
     for ( const QgsRendererCategory &cat : r->mCategories )
     {
-      convertSymbolSizeScale( cat.symbol(),
-                              QgsSymbolLayerUtils::decodeScaleMethod( sizeScaleElem.attribute( QStringLiteral( "scalemethod" ) ) ),
-                              sizeScaleElem.attribute( QStringLiteral( "field" ) ) );
+      convertSymbolSizeScale( cat.symbol(), QgsSymbolLayerUtils::decodeScaleMethod( sizeScaleElem.attribute( u"scalemethod"_s ) ), sizeScaleElem.attribute( u"field"_s ) );
     }
     if ( r->mSourceSymbol && r->mSourceSymbol->type() == Qgis::SymbolType::Marker )
     {
-      convertSymbolSizeScale( r->mSourceSymbol.get(),
-                              QgsSymbolLayerUtils::decodeScaleMethod( sizeScaleElem.attribute( QStringLiteral( "scalemethod" ) ) ),
-                              sizeScaleElem.attribute( QStringLiteral( "field" ) ) );
+      convertSymbolSizeScale( r->mSourceSymbol.get(), QgsSymbolLayerUtils::decodeScaleMethod( sizeScaleElem.attribute( u"scalemethod"_s ) ), sizeScaleElem.attribute( u"field"_s ) );
     }
   }
 
-  QDomElement ddsLegendSizeElem = element.firstChildElement( QStringLiteral( "data-defined-size-legend" ) );
+  QDomElement ddsLegendSizeElem = element.firstChildElement( u"data-defined-size-legend"_s );
   if ( !ddsLegendSizeElem.isNull() )
   {
     r->mDataDefinedSizeLegend.reset( QgsDataDefinedSizeLegend::readXml( ddsLegendSizeElem, context ) );
@@ -862,32 +831,31 @@ QDomElement QgsCategorizedSymbolRenderer::save( QDomDocument &doc, const QgsRead
 {
   // clazy:skip
   QDomElement rendererElem = doc.createElement( RENDERER_TAG_NAME );
-  rendererElem.setAttribute( QStringLiteral( "type" ), QStringLiteral( "categorizedSymbol" ) );
-  rendererElem.setAttribute( QStringLiteral( "attr" ), mAttrName );
+  rendererElem.setAttribute( u"type"_s, u"categorizedSymbol"_s );
+  rendererElem.setAttribute( u"attr"_s, mAttrName );
 
   // String for type
   // We just need string, bool, and three numeric types: double, ulong and long for unsigned, signed and float/double
-  const auto stringForType = []( const QVariant::Type type ) -> QString
-  {
-    if ( type == QVariant::Char || type == QVariant::Int || type == QVariant::LongLong )
+  const auto stringForType = []( const QMetaType::Type type ) -> QString {
+    if ( type == QMetaType::Type::QChar || type == QMetaType::Type::Int || type == QMetaType::Type::LongLong )
     {
-      return QStringLiteral( "long" );
+      return u"long"_s;
     }
-    else if ( type == QVariant::UInt || type == QVariant::ULongLong )
+    else if ( type == QMetaType::Type::UInt || type == QMetaType::Type::ULongLong )
     {
-      return QStringLiteral( "ulong" );
+      return u"ulong"_s;
     }
-    else if ( type == QVariant::Double )
+    else if ( type == QMetaType::Type::Double )
     {
-      return QStringLiteral( "double" ) ;
+      return u"double"_s;
     }
-    else if ( type == QVariant::Bool )
+    else if ( type == QMetaType::Type::Bool )
     {
-      return QStringLiteral( "bool" );
+      return u"bool"_s;
     }
     else // Default: string
     {
-      return QStringLiteral( "string" );
+      return u"string"_s;
     }
   };
 
@@ -896,7 +864,7 @@ QDomElement QgsCategorizedSymbolRenderer::save( QDomDocument &doc, const QgsRead
   {
     int i = 0;
     QgsSymbolMap symbols;
-    QDomElement catsElem = doc.createElement( QStringLiteral( "categories" ) );
+    QDomElement catsElem = doc.createElement( u"categories"_s );
     QgsCategoryList::const_iterator it = mCategories.constBegin();
     for ( ; it != mCategories.constEnd(); ++it )
     {
@@ -904,15 +872,15 @@ QDomElement QgsCategorizedSymbolRenderer::save( QDomDocument &doc, const QgsRead
       QString symbolName = QString::number( i );
       symbols.insert( symbolName, cat.symbol() );
 
-      QDomElement catElem = doc.createElement( QStringLiteral( "category" ) );
-      if ( cat.value().type() == QVariant::List )
+      QDomElement catElem = doc.createElement( u"category"_s );
+      if ( cat.value().userType() == QMetaType::Type::QVariantList )
       {
         const QVariantList list = cat.value().toList();
         for ( const QVariant &v : list )
         {
-          QDomElement valueElem = doc.createElement( QStringLiteral( "val" ) );
-          valueElem.setAttribute( QStringLiteral( "value" ), v.toString() );
-          valueElem.setAttribute( QStringLiteral( "type" ), stringForType( v.type() ) );
+          QDomElement valueElem = doc.createElement( u"val"_s );
+          valueElem.setAttribute( u"value"_s, v.toString() );
+          valueElem.setAttribute( u"type"_s, stringForType( static_cast<QMetaType::Type>( v.userType() ) ) );
           catElem.appendChild( valueElem );
         }
       }
@@ -921,26 +889,26 @@ QDomElement QgsCategorizedSymbolRenderer::save( QDomDocument &doc, const QgsRead
         if ( QgsVariantUtils::isNull( cat.value() ) )
         {
           // We need to save NULL value as specific kind, it is the default ("fallback") category
-          catElem.setAttribute( QStringLiteral( "value" ), "NULL" );
-          catElem.setAttribute( QStringLiteral( "type" ), "NULL" );
+          catElem.setAttribute( u"value"_s, "NULL" );
+          catElem.setAttribute( u"type"_s, "NULL" );
         }
         else
         {
-          catElem.setAttribute( QStringLiteral( "value" ), cat.value().toString() );
-          catElem.setAttribute( QStringLiteral( "type" ), stringForType( cat.value().type() ) );
+          catElem.setAttribute( u"value"_s, cat.value().toString() );
+          catElem.setAttribute( u"type"_s, stringForType( static_cast<QMetaType::Type>( cat.value().userType() ) ) );
         }
       }
-      catElem.setAttribute( QStringLiteral( "symbol" ), symbolName );
-      catElem.setAttribute( QStringLiteral( "label" ), cat.label() );
-      catElem.setAttribute( QStringLiteral( "render" ), cat.renderState() ? "true" : "false" );
-      catElem.setAttribute( QStringLiteral( "uuid" ), cat.uuid() );
+      catElem.setAttribute( u"symbol"_s, symbolName );
+      catElem.setAttribute( u"label"_s, cat.label() );
+      catElem.setAttribute( u"render"_s, cat.renderState() ? "true" : "false" );
+      catElem.setAttribute( u"uuid"_s, cat.uuid() );
       catsElem.appendChild( catElem );
       i++;
     }
     rendererElem.appendChild( catsElem );
 
     // save symbols
-    QDomElement symbolsElem = QgsSymbolLayerUtils::saveSymbols( symbols, QStringLiteral( "symbols" ), doc, context );
+    QDomElement symbolsElem = QgsSymbolLayerUtils::saveSymbols( symbols, u"symbols"_s, doc, context );
     rendererElem.appendChild( symbolsElem );
   }
 
@@ -948,27 +916,27 @@ QDomElement QgsCategorizedSymbolRenderer::save( QDomDocument &doc, const QgsRead
   if ( mSourceSymbol )
   {
     QgsSymbolMap sourceSymbols;
-    sourceSymbols.insert( QStringLiteral( "0" ), mSourceSymbol.get() );
-    QDomElement sourceSymbolElem = QgsSymbolLayerUtils::saveSymbols( sourceSymbols, QStringLiteral( "source-symbol" ), doc, context );
+    sourceSymbols.insert( u"0"_s, mSourceSymbol.get() );
+    QDomElement sourceSymbolElem = QgsSymbolLayerUtils::saveSymbols( sourceSymbols, u"source-symbol"_s, doc, context );
     rendererElem.appendChild( sourceSymbolElem );
   }
 
   // save source color ramp
   if ( mSourceColorRamp )
   {
-    QDomElement colorRampElem = QgsSymbolLayerUtils::saveColorRamp( QStringLiteral( "[source]" ), mSourceColorRamp.get(), doc );
+    QDomElement colorRampElem = QgsSymbolLayerUtils::saveColorRamp( u"[source]"_s, mSourceColorRamp.get(), doc );
     rendererElem.appendChild( colorRampElem );
   }
 
-  QDomElement rotationElem = doc.createElement( QStringLiteral( "rotation" ) );
+  QDomElement rotationElem = doc.createElement( u"rotation"_s );
   rendererElem.appendChild( rotationElem );
 
-  QDomElement sizeScaleElem = doc.createElement( QStringLiteral( "sizescale" ) );
+  QDomElement sizeScaleElem = doc.createElement( u"sizescale"_s );
   rendererElem.appendChild( sizeScaleElem );
 
   if ( mDataDefinedSizeLegend )
   {
-    QDomElement ddsLegendElem = doc.createElement( QStringLiteral( "data-defined-size-legend" ) );
+    QDomElement ddsLegendElem = doc.createElement( u"data-defined-size-legend"_s );
     mDataDefinedSizeLegend->writeXml( ddsLegendElem, context );
     rendererElem.appendChild( ddsLegendElem );
   }
@@ -991,122 +959,7 @@ QgsLegendSymbolList QgsCategorizedSymbolRenderer::baseLegendSymbolItems() const
 
 QString QgsCategorizedSymbolRenderer::displayString( const QVariant &v, int precision )
 {
-
-  auto _displayString = [ ]( const QVariant & v, int precision ) -> QString
-  {
-
-    if ( QgsVariantUtils::isNull( v ) )
-    {
-      return QgsApplication::nullRepresentation();
-    }
-
-    const bool isNumeric {v.type() == QVariant::Double || v.type() == QVariant::Int || v.type() == QVariant::UInt || v.type() == QVariant::LongLong || v.type() == QVariant::ULongLong};
-
-    // Special treatment for numeric types if group separator is set or decimalPoint is not a dot
-    if ( v.type() == QVariant::Double )
-    {
-      // if value doesn't contain a double (a default value expression for instance),
-      // apply no transformation
-      bool ok;
-      v.toDouble( &ok );
-      if ( !ok )
-        return v.toString();
-
-      // Locales with decimal point != '.' or that require group separator: use QLocale
-      if ( QLocale().decimalPoint() != '.' ||
-           !( QLocale().numberOptions() & QLocale::NumberOption::OmitGroupSeparator ) )
-      {
-        if ( precision > 0 )
-        {
-          if ( -1 < v.toDouble() && v.toDouble() < 1 )
-          {
-            return QLocale().toString( v.toDouble(), 'g', precision );
-          }
-          else
-          {
-            return QLocale().toString( v.toDouble(), 'f', precision );
-          }
-        }
-        else
-        {
-          // Precision is not set, let's guess it from the
-          // standard conversion to string
-          const QString s( v.toString() );
-          const int dotPosition( s.indexOf( '.' ) );
-          int precision;
-          if ( dotPosition < 0 && s.indexOf( 'e' ) < 0 )
-          {
-            precision = 0;
-            return QLocale().toString( v.toDouble(), 'f', precision );
-          }
-          else
-          {
-            if ( dotPosition < 0 ) precision = 0;
-            else precision = s.length() - dotPosition - 1;
-
-            if ( -1 < v.toDouble() && v.toDouble() < 1 )
-            {
-              return QLocale().toString( v.toDouble(), 'g', precision );
-            }
-            else
-            {
-              return QLocale().toString( v.toDouble(), 'f', precision );
-            }
-          }
-        }
-      }
-      // Default for doubles with precision
-      else if ( precision > 0 )
-      {
-        if ( -1 < v.toDouble() && v.toDouble() < 1 )
-        {
-          return QString::number( v.toDouble(), 'g', precision );
-        }
-        else
-        {
-          return QString::number( v.toDouble(), 'f', precision );
-        }
-      }
-    }
-    // Other numeric types than doubles
-    else if ( isNumeric &&
-              !( QLocale().numberOptions() & QLocale::NumberOption::OmitGroupSeparator ) )
-    {
-      bool ok;
-      const qlonglong converted( v.toLongLong( &ok ) );
-      if ( ok )
-        return QLocale().toString( converted );
-    }
-    else if ( v.type() == QVariant::ByteArray )
-    {
-      return QObject::tr( "BLOB" );
-    }
-
-    // Fallback if special rules do not apply
-    return v.toString();
-  };
-
-  if ( v.type() == QVariant::StringList || v.type() == QVariant::List )
-  {
-    // Note that this code is never hit because the joining of lists (merged categories) happens
-    // in data(); I'm leaving this here anyway because it is tested and it may be useful for
-    // other purposes in the future.
-    QString result;
-    const QVariantList list = v.toList();
-    for ( const QVariant &var : list )
-    {
-      if ( !result.isEmpty() )
-      {
-        result.append( ';' );
-      }
-      result.append( _displayString( var, precision ) );
-    }
-    return result;
-  }
-  else
-  {
-    return _displayString( v, precision );
-  }
+  return QgsVariantUtils::displayString( v, precision );
 }
 
 QgsLegendSymbolList QgsCategorizedSymbolRenderer::legendSymbolItems() const
@@ -1153,10 +1006,19 @@ QSet<QString> QgsCategorizedSymbolRenderer::legendKeysForFeature( const QgsFeatu
 {
   const QVariant value = valueForFeature( feature, context );
 
+  // "all other values" category value (AKA "else" rule) is represented with an invalid QVariant
+  QString elseRuleUUID;
+
   for ( const QgsRendererCategory &cat : mCategories )
   {
     bool match = false;
-    if ( cat.value().type() == QVariant::List )
+
+    if ( QgsVariantUtils::isNull( cat.value() ) || ( mAttrIsNumeric && cat.value().toString().isEmpty() ) )
+    {
+      elseRuleUUID = cat.uuid();
+    }
+
+    if ( cat.value().userType() == QMetaType::Type::QVariantList )
     {
       const QVariantList list = cat.value().toList();
       for ( const QVariant &v : list )
@@ -1170,12 +1032,11 @@ QSet<QString> QgsCategorizedSymbolRenderer::legendKeysForFeature( const QgsFeatu
     }
     else
     {
-      // Numeric NULL cat value is stored as an empty string
-      if ( QgsVariantUtils::isNull( value ) && ( value.type() == QVariant::Double || value.type() == QVariant::Int ||
-           value.type() == QVariant::UInt || value.type() == QVariant::LongLong ||
-           value.type() == QVariant::ULongLong || value.type() == QVariant::Bool ) )
+      // NULL cat value may be stored as an empty string or an invalid variant, depending on how
+      // the renderer was constructed and which QGIS version was used
+      if ( QgsVariantUtils::isNull( value ) )
       {
-        match = cat.value().toString().isEmpty();
+        match = cat.value().toString().isEmpty() || QgsVariantUtils::isNull( cat.value() );
       }
       else
       {
@@ -1190,6 +1051,12 @@ QSet<QString> QgsCategorizedSymbolRenderer::legendKeysForFeature( const QgsFeatu
       else
         return QSet< QString >();
     }
+  }
+
+  // if there is an "else" rule category, then the feature will be rendered with that category symbol
+  if ( !elseRuleUUID.isEmpty() )
+  {
+    return QSet< QString >() << elseRuleUUID;
   }
 
   return QSet< QString >();
@@ -1216,12 +1083,12 @@ QString QgsCategorizedSymbolRenderer::legendKeyToExpression( const QString &key,
 
   const int fieldIndex = layer ? layer->fields().lookupField( mAttrName ) : -1;
   const bool isNumeric = layer && fieldIndex >= 0 ? layer->fields().at( fieldIndex ).isNumeric() : false;
-  const QVariant::Type fieldType = layer && fieldIndex >= 0 ? layer->fields().at( fieldIndex ).type() : QVariant::Invalid;
+  const QMetaType::Type fieldType = layer && fieldIndex >= 0 ? layer->fields().at( fieldIndex ).type() : QMetaType::Type::UnknownType;
   const QString attributeComponent = QgsExpression::quoteFieldExpression( mAttrName, layer );
 
   ok = true;
   const QgsRendererCategory &cat = mCategories[i];
-  if ( cat.value().type() == QVariant::List )
+  if ( cat.value().userType() == QMetaType::Type::QVariantList )
   {
     const QVariantList list = cat.value().toList();
     QStringList parts;
@@ -1231,7 +1098,7 @@ QString QgsCategorizedSymbolRenderer::legendKeyToExpression( const QString &key,
       parts.append( QgsExpression::quotedValue( v ) );
     }
 
-    return QStringLiteral( "%1 IN (%2)" ).arg( attributeComponent, parts.join( QLatin1String( ", " ) ) );
+    return u"%1 IN (%2)"_s.arg( attributeComponent, parts.join( ", "_L1 ) );
   }
   else
   {
@@ -1243,11 +1110,11 @@ QString QgsCategorizedSymbolRenderer::legendKeyToExpression( const QString &key,
     }
 
     if ( QgsVariantUtils::isNull( value ) )
-      return QStringLiteral( "%1 IS NULL" ).arg( attributeComponent );
-    else if ( fieldType == QVariant::Type::Invalid )
-      return QStringLiteral( "%1 = %2" ).arg( attributeComponent, QgsExpression::quotedValue( value ) );
+      return u"%1 IS NULL"_s.arg( attributeComponent );
+    else if ( fieldType == QMetaType::Type::UnknownType )
+      return u"%1 = %2"_s.arg( attributeComponent, QgsExpression::quotedValue( value ) );
     else
-      return QStringLiteral( "%1 = %2" ).arg( attributeComponent, QgsExpression::quotedValue( value, fieldType ) );
+      return u"%1 = %2"_s.arg( attributeComponent, QgsExpression::quotedValue( value, fieldType ) );
   }
 }
 
@@ -1353,6 +1220,18 @@ void QgsCategorizedSymbolRenderer::setLegendSymbolItem( const QString &key, QgsS
     delete symbol;
 }
 
+void QgsCategorizedSymbolRenderer::setLegendSymbolItemLabel( const QString &key, const QString &label )
+{
+  for ( int i = 0; i < mCategories.size(); i++ )
+  {
+    if ( mCategories[i].uuid() == key )
+    {
+      updateCategoryLabel( i, label );
+      break;
+    }
+  }
+}
+
 void QgsCategorizedSymbolRenderer::checkLegendSymbolItem( const QString &key, bool state )
 {
   for ( int i = 0; i < mCategories.size(); i++ )
@@ -1365,19 +1244,19 @@ void QgsCategorizedSymbolRenderer::checkLegendSymbolItem( const QString &key, bo
   }
 }
 
-QgsCategorizedSymbolRenderer *QgsCategorizedSymbolRenderer::convertFromRenderer( const QgsFeatureRenderer *renderer, QgsVectorLayer *layer )
+std::unique_ptr<QgsCategorizedSymbolRenderer> QgsCategorizedSymbolRenderer::convertFromRenderer( const QgsFeatureRenderer *renderer, QgsVectorLayer *layer )
 {
   std::unique_ptr< QgsCategorizedSymbolRenderer > r;
-  if ( renderer->type() == QLatin1String( "categorizedSymbol" ) )
+  if ( renderer->type() == "categorizedSymbol"_L1 )
   {
     r.reset( static_cast<QgsCategorizedSymbolRenderer *>( renderer->clone() ) );
   }
-  else if ( renderer->type() == QLatin1String( "graduatedSymbol" ) )
+  else if ( renderer->type() == "graduatedSymbol"_L1 )
   {
     const QgsGraduatedSymbolRenderer *graduatedSymbolRenderer = dynamic_cast<const QgsGraduatedSymbolRenderer *>( renderer );
     if ( graduatedSymbolRenderer )
     {
-      r.reset( new QgsCategorizedSymbolRenderer( QString(), QgsCategoryList() ) );
+      r = std::make_unique<QgsCategorizedSymbolRenderer>( QString(), QgsCategoryList() );
       if ( graduatedSymbolRenderer->sourceSymbol() )
         r->setSourceSymbol( graduatedSymbolRenderer->sourceSymbol()->clone() );
       if ( graduatedSymbolRenderer->sourceColorRamp() )
@@ -1387,19 +1266,105 @@ QgsCategorizedSymbolRenderer *QgsCategorizedSymbolRenderer::convertFromRenderer(
       r->setClassAttribute( graduatedSymbolRenderer->classAttribute() );
     }
   }
-  else if ( renderer->type() == QLatin1String( "pointDisplacement" ) || renderer->type() == QLatin1String( "pointCluster" ) )
+  else if ( renderer->type() == "RuleRenderer"_L1 )
+  {
+    const QgsRuleBasedRenderer *ruleBasedSymbolRenderer = dynamic_cast<const QgsRuleBasedRenderer *>( renderer );
+    if ( ruleBasedSymbolRenderer )
+    {
+      r = std::make_unique<QgsCategorizedSymbolRenderer>( QString(), QgsCategoryList() );
+
+      const QList< QgsRuleBasedRenderer::Rule * > rules = const_cast< QgsRuleBasedRenderer * >( ruleBasedSymbolRenderer )->rootRule()->children();
+      bool canConvert = true;
+
+      bool isFirst = true;
+      QString attribute;
+      QVariant value;
+      QgsCategoryList categories;
+
+      for ( QgsRuleBasedRenderer::Rule *rule : rules )
+      {
+        if ( rule->isElse() || rule->minimumScale() != 0 || rule->maximumScale() != 0 || !rule->symbol() || !rule->children().isEmpty() )
+        {
+          canConvert = false;
+          break;
+        }
+
+        QgsExpression e( rule->filterExpression() );
+
+        if ( !e.rootNode() )
+        {
+          canConvert = false;
+          break;
+        }
+
+        if ( const QgsExpressionNodeBinaryOperator *binOp = dynamic_cast<const QgsExpressionNodeBinaryOperator *>( e.rootNode() ) )
+        {
+          if ( binOp->op() == QgsExpressionNodeBinaryOperator::boEQ )
+          {
+            const QString left = binOp->opLeft()->dump();
+            if ( !isFirst && left != attribute )
+            {
+              canConvert = false;
+              break;
+            }
+            else if ( isFirst )
+            {
+              attribute = left;
+            }
+
+            const QgsExpressionNodeLiteral *literal = dynamic_cast<const QgsExpressionNodeLiteral *>( binOp->opRight() );
+            if ( literal )
+            {
+              QgsRendererCategory cat;
+              cat.setValue( literal->value() );
+              cat.setSymbol( rule->symbol()->clone() );
+              cat.setLabel( rule->label().isEmpty() ? literal->value().toString() : rule->label() );
+              cat.setRenderState( rule->active() );
+              categories.append( cat );
+            }
+            else
+            {
+              canConvert = false;
+              break;
+            }
+          }
+          else
+          {
+            canConvert = false;
+          }
+        }
+        else
+        {
+          canConvert = false;
+          break;
+        }
+
+        isFirst = false;
+      }
+
+      if ( canConvert )
+      {
+        r = std::make_unique< QgsCategorizedSymbolRenderer >( attribute, categories );
+      }
+      else
+      {
+        r.reset();
+      }
+    }
+  }
+  else if ( renderer->type() == "pointDisplacement"_L1 || renderer->type() == "pointCluster"_L1 )
   {
     const QgsPointDistanceRenderer *pointDistanceRenderer = dynamic_cast<const QgsPointDistanceRenderer *>( renderer );
     if ( pointDistanceRenderer )
-      r.reset( convertFromRenderer( pointDistanceRenderer->embeddedRenderer() ) );
+      r = convertFromRenderer( pointDistanceRenderer->embeddedRenderer() );
   }
-  else if ( renderer->type() == QLatin1String( "invertedPolygonRenderer" ) )
+  else if ( renderer->type() == "invertedPolygonRenderer"_L1 )
   {
     const QgsInvertedPolygonRenderer *invertedPolygonRenderer = dynamic_cast<const QgsInvertedPolygonRenderer *>( renderer );
     if ( invertedPolygonRenderer )
-      r.reset( convertFromRenderer( invertedPolygonRenderer->embeddedRenderer() ) );
+      r = convertFromRenderer( invertedPolygonRenderer->embeddedRenderer() );
   }
-  else if ( renderer->type() == QLatin1String( "embeddedSymbol" ) && layer )
+  else if ( renderer->type() == "embeddedSymbol"_L1 && layer )
   {
     const QgsEmbeddedSymbolRenderer *embeddedRenderer = dynamic_cast<const QgsEmbeddedSymbolRenderer *>( renderer );
     QgsCategoryList categories;
@@ -1414,7 +1379,7 @@ QgsCategorizedSymbolRenderer *QgsCategorizedSymbolRenderer::convertFromRenderer(
         categories.append( QgsRendererCategory( feature.id(), feature.embeddedSymbol()->clone(), QString::number( feature.id() ) ) );
     }
     categories.append( QgsRendererCategory( QVariant(), embeddedRenderer->defaultSymbol()->clone(), QString() ) );
-    r.reset( new QgsCategorizedSymbolRenderer( QStringLiteral( "$id" ), categories ) );
+    r = std::make_unique<QgsCategorizedSymbolRenderer>( u"$id"_s, categories );
   }
 
   // If not one of the specifically handled renderers, then just grab the symbol from the renderer
@@ -1427,13 +1392,16 @@ QgsCategorizedSymbolRenderer *QgsCategorizedSymbolRenderer::convertFromRenderer(
     QgsSymbolList symbols = const_cast<QgsFeatureRenderer *>( renderer )->symbols( context );
     if ( !symbols.isEmpty() )
     {
-      r->setSourceSymbol( symbols.at( 0 )->clone() );
+      QgsSymbol *newSymbol = symbols.at( 0 )->clone();
+      QgsSymbolLayerUtils::resetSymbolLayerIds( newSymbol );
+      QgsSymbolLayerUtils::clearSymbolLayerMasks( newSymbol );
+      r->setSourceSymbol( newSymbol );
     }
   }
 
   renderer->copyRendererData( r.get() );
 
-  return r.release();
+  return r;
 }
 
 void QgsCategorizedSymbolRenderer::setDataDefinedSizeLegend( QgsDataDefinedSizeLegend *settings )
@@ -1446,7 +1414,9 @@ QgsDataDefinedSizeLegend *QgsCategorizedSymbolRenderer::dataDefinedSizeLegend() 
   return mDataDefinedSizeLegend.get();
 }
 
-int QgsCategorizedSymbolRenderer::matchToSymbols( QgsStyle *style, Qgis::SymbolType type, QVariantList &unmatchedCategories, QStringList &unmatchedSymbols, const bool caseSensitive, const bool useTolerantMatch )
+int QgsCategorizedSymbolRenderer::matchToSymbols(
+  QgsStyle *style, Qgis::SymbolType type, QVariantList &unmatchedCategories, QStringList &unmatchedSymbols, const bool caseSensitive, const bool useTolerantMatch
+)
 {
   if ( !style )
     return 0;
@@ -1455,7 +1425,7 @@ int QgsCategorizedSymbolRenderer::matchToSymbols( QgsStyle *style, Qgis::SymbolT
   unmatchedSymbols = style->symbolNames();
   const QSet< QString > allSymbolNames( unmatchedSymbols.begin(), unmatchedSymbols.end() );
 
-  const thread_local QRegularExpression tolerantMatchRe( QStringLiteral( "[^\\w\\d ]" ), QRegularExpression::UseUnicodePropertiesOption );
+  const thread_local QRegularExpression tolerantMatchRe( u"[^\\w\\d ]"_s, QRegularExpression::UseUnicodePropertiesOption );
 
   for ( int catIdx = 0; catIdx < mCategories.count(); ++catIdx )
   {
@@ -1521,10 +1491,11 @@ QgsCategoryList QgsCategorizedSymbolRenderer::createCategories( const QList<QVar
     for ( const QVariant &value : vals )
     {
       QgsSymbol *newSymbol = symbol->clone();
+      QgsSymbolLayerUtils::resetSymbolLayerIds( newSymbol );
       if ( !QgsVariantUtils::isNull( value ) )
       {
         const int fieldIdx = fields.lookupField( attributeName );
-        QString categoryName = displayString( value );
+        QString categoryName = QgsVariantUtils::displayString( value );
         if ( fieldIdx != -1 )
         {
           const QgsField field = fields.at( fieldIdx );
@@ -1532,13 +1503,14 @@ QgsCategoryList QgsCategorizedSymbolRenderer::createCategories( const QList<QVar
           const QgsFieldFormatter *formatter = QgsApplication::fieldFormatterRegistry()->fieldFormatter( setup.type() );
           categoryName = formatter->representValue( layer, fieldIdx, setup.config(), QVariant(), value );
         }
-        cats.append( QgsRendererCategory( value, newSymbol,  categoryName, true ) );
+        cats.append( QgsRendererCategory( value, newSymbol, categoryName, true ) );
       }
     }
   }
 
   // add null (default) value
   QgsSymbol *newSymbol = symbol->clone();
+  QgsSymbolLayerUtils::resetSymbolLayerIds( newSymbol );
   cats.append( QgsRendererCategory( QVariant(), newSymbol, QString(), true ) );
 
   return cats;

@@ -16,22 +16,25 @@
  ***************************************************************************/
 
 #include "qgsgeometryrubberband.h"
+
 #include "qgsabstractgeometry.h"
 #include "qgsmapcanvas.h"
-#include "qgsrendercontext.h"
+#include "qgspainting.h"
 #include "qgspoint.h"
+#include "qgsrendercontext.h"
+
 #include <QPainter>
 
-QgsGeometryRubberBand::QgsGeometryRubberBand( QgsMapCanvas *mapCanvas, Qgis::GeometryType geomType ): QgsMapCanvasItem( mapCanvas ),
-  mIconSize( 5 ), mIconType( ICON_BOX ), mGeometryType( geomType )
+QgsGeometryRubberBand::QgsGeometryRubberBand( QgsMapCanvas *mapCanvas, Qgis::GeometryType geomType )
+  : QgsMapCanvasItem( mapCanvas )
+  , mGeometryType( geomType )
 {
   mPen = QPen( QColor( 255, 0, 0 ) );
   mBrush = QBrush( QColor( 255, 0, 0 ) );
 }
 
 QgsGeometryRubberBand::~QgsGeometryRubberBand()
-{
-}
+{}
 
 void QgsGeometryRubberBand::paint( QPainter *painter )
 {
@@ -54,7 +57,7 @@ void QgsGeometryRubberBand::paint( QPainter *painter )
   painter->setPen( mPen );
 
 
-  std::unique_ptr< QgsAbstractGeometry > paintGeom( mGeometry->clone() );
+  std::unique_ptr<QgsAbstractGeometry> paintGeom( mGeometry->clone() );
 
   paintGeom->transform( mMapCanvas->getCoordinateTransform()->transform() );
   paintGeom->draw( *painter );
@@ -176,13 +179,14 @@ QgsRectangle QgsGeometryRubberBand::rubberBandRectangle() const
 
   qreal w = ( ( mIconSize - 1 ) / 2 + mPen.width() ); // in canvas units
 
-  QgsRectangle r;  // in canvas units
-  QgsRectangle rectMap = mGeometry->boundingBox();  // in map units
+  QgsRectangle r;                                  // in canvas units
+  QgsRectangle rectMap = mGeometry->boundingBox(); // in map units
   QList<QgsPointXY> pl;
-  pl << QgsPointXY( rectMap.xMinimum(), rectMap.yMinimum() )
-     << QgsPointXY( rectMap.xMinimum(), rectMap.yMaximum() )
-     << QgsPointXY( rectMap.xMaximum(), rectMap.yMaximum() )
-     << QgsPointXY( rectMap.xMaximum(), rectMap.yMinimum() );
+  pl
+    << QgsPointXY( rectMap.xMinimum(), rectMap.yMinimum() )
+    << QgsPointXY( rectMap.xMinimum(), rectMap.yMaximum() )
+    << QgsPointXY( rectMap.xMaximum(), rectMap.yMaximum() )
+    << QgsPointXY( rectMap.xMaximum(), rectMap.yMinimum() );
 
   for ( QgsPointXY &p : pl )
   {
@@ -196,7 +200,7 @@ QgsRectangle QgsGeometryRubberBand::rubberBandRectangle() const
   // expects (encoding of position and size of the item)
   qreal res = m2p.mapUnitsPerPixel();
   QgsPointXY topLeft = m2p.toMapCoordinates( r.xMinimum(), r.yMinimum() );
-  QgsRectangle rect( topLeft.x(), topLeft.y(), topLeft.x() + r.width()*res, topLeft.y() - r.height()*res );
+  QgsRectangle rect( topLeft.x(), topLeft.y(), topLeft.x() + r.width() * res, topLeft.y() - r.height() * res );
 
   return rect;
 }

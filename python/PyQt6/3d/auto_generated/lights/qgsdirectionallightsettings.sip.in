@@ -3,7 +3,7 @@
  *                                                                      *
  * src/3d/lights/qgsdirectionallightsettings.h                          *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/
 
 
@@ -12,7 +12,7 @@
 class QgsDirectionalLightSettings : QgsLightSource
 {
 %Docstring(signature="appended")
-Definition of a directional light in a 3D map scene
+Definition of a directional light in a 3D map scene.
 
 .. versionadded:: 3.16
 %End
@@ -53,16 +53,16 @@ Returns color of the light
 Sets color of the light
 %End
 
-    float intensity() const;
+    double intensity() const;
 %Docstring
 Returns intensity of the light
 %End
-    void setIntensity( float intensity );
+    void setIntensity( double intensity );
 %Docstring
 Sets intensity of the light
 %End
 
-    bool operator==( const QgsDirectionalLightSettings &other );
+    bool operator==( const QgsDirectionalLightSettings &other ) const;
 
 };
 
@@ -71,5 +71,5 @@ Sets intensity of the light
  *                                                                      *
  * src/3d/lights/qgsdirectionallightsettings.h                          *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/

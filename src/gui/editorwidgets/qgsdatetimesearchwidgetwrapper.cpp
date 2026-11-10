@@ -15,21 +15,25 @@
 
 #include "qgsdatetimesearchwidgetwrapper.h"
 
-#include "qgsfields.h"
-#include "qgsdatetimeeditfactory.h"
-#include "qgsvectorlayer.h"
 #include "qgsdatetimeedit.h"
-#include "qcalendarwidget.h"
 #include "qgsdatetimeeditconfig.h"
+#include "qgsdatetimeeditfactory.h"
 #include "qgsdatetimefieldformatter.h"
+#include "qgsfields.h"
+#include "qgsvectorlayer.h"
 
 #include <QSettings>
+#include <QString>
+#include <qcalendarwidget.h>
+
+#include "moc_qgsdatetimesearchwidgetwrapper.cpp"
+
+using namespace Qt::StringLiterals;
 
 QgsDateTimeSearchWidgetWrapper::QgsDateTimeSearchWidgetWrapper( QgsVectorLayer *vl, int fieldIdx, QWidget *parent )
   : QgsSearchWidgetWrapper( vl, fieldIdx, parent )
 
-{
-}
+{}
 
 bool QgsDateTimeSearchWidgetWrapper::applyDirectly()
 {
@@ -43,11 +47,30 @@ QString QgsDateTimeSearchWidgetWrapper::expression() const
 
 QVariant QgsDateTimeSearchWidgetWrapper::value() const
 {
-  if ( ! mDateTimeEdit )
+  if ( !mDateTimeEdit )
     return QDateTime();
 
-  const bool fieldIsoFormat = config( QStringLiteral( "field_iso_format" ), false ).toBool();
-  const QString fieldFormat = config( QStringLiteral( "field_format" ), QgsDateTimeFieldFormatter::defaultFormat( layer()->fields().at( mFieldIdx ).type() ) ).toString();
+  QMetaType::Type fieldType = QMetaType::QString;
+  if ( QgsVectorLayer *vl = layer() )
+  {
+    fieldType = vl->fields().at( mFieldIdx ).type();
+  }
+
+  switch ( fieldType )
+  {
+    case QMetaType::Type::QDateTime:
+      return mDateTimeEdit->dateTime();
+    case QMetaType::Type::QDate:
+      return mDateTimeEdit->date();
+    case QMetaType::Type::QTime:
+      return mDateTimeEdit->time();
+    default:
+      break;
+  }
+
+  // if not an explicit date/time field, treat as string values
+  const bool fieldIsoFormat = config( u"field_iso_format"_s, false ).toBool();
+  const QString fieldFormat = config( u"field_format"_s, QgsDateTimeFieldFormatter::defaultFormat( layer()->fields().at( mFieldIdx ).type() ) ).toString();
   if ( fieldIsoFormat )
   {
     return mDateTimeEdit->dateTime().toString( Qt::ISODate );
@@ -71,6 +94,7 @@ QgsSearchWidgetWrapper::FilterFlags QgsDateTimeSearchWidgetWrapper::defaultFlags
 QString QgsDateTimeSearchWidgetWrapper::createExpression( QgsSearchWidgetWrapper::FilterFlags flags ) const
 {
   const QString fieldName = createFieldIdentifier();
+  const QMetaType::Type fieldType = layer()->fields().at( mFieldIdx ).type();
 
   //clear any unsupported flags
   flags &= supportedFlags();
@@ -83,18 +107,35 @@ QString QgsDateTimeSearchWidgetWrapper::createExpression( QgsSearchWidgetWrapper
   if ( !v.isValid() )
     return QString();
 
+  QString valuePart;
+  switch ( fieldType )
+  {
+    case QMetaType::Type::QDateTime:
+      valuePart = u"to_datetime('%1')"_s.arg( v.toDateTime().toString( Qt::ISODate ) );
+      break;
+    case QMetaType::Type::QDate:
+      valuePart = u"to_date('%1')"_s.arg( v.toDate().toString( Qt::ISODate ) );
+      break;
+    case QMetaType::Type::QTime:
+      valuePart = u"to_time('%1')"_s.arg( v.toTime().toString( Qt::ISODate ) );
+      break;
+    default:
+      valuePart = QgsExpression::quotedString( v.toString() );
+      break;
+  }
+
   if ( flags & EqualTo )
-    return fieldName + "='" + v.toString() + '\'';
+    return fieldName + "=" + valuePart;
   else if ( flags & NotEqualTo )
-    return fieldName + "<>'" + v.toString() + '\'';
+    return fieldName + "<>" + valuePart;
   else if ( flags & GreaterThan )
-    return fieldName + ">'" + v.toString() + '\'';
+    return fieldName + ">" + valuePart;
   else if ( flags & LessThan )
-    return fieldName + "<'" + v.toString() + '\'';
+    return fieldName + "<" + valuePart;
   else if ( flags & GreaterThanOrEqualTo )
-    return fieldName + ">='" + v.toString() + '\'';
+    return fieldName + ">=" + valuePart;
   else if ( flags & LessThanOrEqualTo )
-    return fieldName + "<='" + v.toString() + '\'';
+    return fieldName + "<=" + valuePart;
 
   return QString();
 }
@@ -122,22 +163,49 @@ bool QgsDateTimeSearchWidgetWrapper::valid() const
 
 void QgsDateTimeSearchWidgetWrapper::setExpression( const QString &expression )
 {
-  QString exp = expression;
-  const QString fieldName = layer()->fields().at( mFieldIdx ).name();
-
-  const QString str = QStringLiteral( "%1 = '%3'" )
-                      .arg( QgsExpression::quotedColumnRef( fieldName ),
-                            exp.replace( '\'', QLatin1String( "''" ) )
-                          );
-  mExpression = str;
+  const QgsField field = layer()->fields().at( mFieldIdx );
+  const QMetaType::Type fieldType = field.type();
+  const QString fieldName = field.name();
+  switch ( fieldType )
+  {
+    case QMetaType::Type::QDateTime:
+      mExpression = u"%1 = to_datetime('%2')"_s.arg( QgsExpression::quotedColumnRef( fieldName ), expression );
+      break;
+    case QMetaType::Type::QDate:
+      mExpression = u"%1 = to_date('%2')"_s.arg( QgsExpression::quotedColumnRef( fieldName ), expression );
+      break;
+    case QMetaType::Type::QTime:
+      mExpression = u"%1 = to_time('%2')"_s.arg( QgsExpression::quotedColumnRef( fieldName ), expression );
+      break;
+    default:
+      mExpression = QgsExpression::createFieldEqualityExpression( fieldName, expression );
+      break;
+  }
 }
 
 void QgsDateTimeSearchWidgetWrapper::dateTimeChanged( const QDateTime &dt )
 {
   if ( mDateTimeEdit )
   {
-    const QString exp = value().toString();
-    setExpression( exp );
+    const QVariant v = value();
+    QString valueAsString;
+    switch ( v.userType() )
+    {
+      case QMetaType::Type::QDateTime:
+        valueAsString = v.toDateTime().toString( Qt::ISODate );
+        break;
+      case QMetaType::Type::QDate:
+        valueAsString = v.toDate().toString( Qt::ISODate );
+        break;
+      case QMetaType::Type::QTime:
+        valueAsString = v.toTime().toString( Qt::ISODate );
+        break;
+      default:
+        valueAsString = v.toString();
+        break;
+    }
+
+    setExpression( valueAsString );
     if ( dt.isValid() && !dt.isNull() )
       emit valueChanged();
     else
@@ -161,10 +229,10 @@ void QgsDateTimeSearchWidgetWrapper::initWidget( QWidget *editor )
   {
     mDateTimeEdit->setAllowNull( false );
 
-    const QString displayFormat = config( QStringLiteral( "display_format" ), QgsDateTimeFieldFormatter::defaultFormat( layer()->fields().at( mFieldIdx ).type() ) ).toString();
+    const QString displayFormat = config( u"display_format"_s, QgsDateTimeFieldFormatter::defaultFormat( layer()->fields().at( mFieldIdx ).type() ) ).toString();
     mDateTimeEdit->setDisplayFormat( displayFormat );
 
-    const bool calendar = config( QStringLiteral( "calendar_popup" ), false ).toBool();
+    const bool calendar = config( u"calendar_popup"_s, false ).toBool();
     mDateTimeEdit->setCalendarPopup( calendar );
     if ( calendar && mDateTimeEdit->calendarWidget() )
     {
@@ -179,5 +247,3 @@ void QgsDateTimeSearchWidgetWrapper::initWidget( QWidget *editor )
     connect( mDateTimeEdit, &QDateTimeEdit::dateTimeChanged, this, &QgsDateTimeSearchWidgetWrapper::dateTimeChanged );
   }
 }
-
-

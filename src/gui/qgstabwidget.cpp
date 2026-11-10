@@ -17,6 +17,12 @@
 
 #include "qgslogger.h"
 
+#include <QString>
+
+#include "moc_qgstabwidget.cpp"
+
+using namespace Qt::StringLiterals;
+
 QgsTabWidget::QgsTabWidget( QWidget *parent )
   : QTabWidget( parent )
 {
@@ -29,8 +35,8 @@ QgsTabWidget::QgsTabWidget( QWidget *parent )
 
 void QgsTabWidget::hideTab( QWidget *tab )
 {
-  QgsDebugMsgLevel( QStringLiteral( "Hide" ), 3 );
-  TabInformation &info = mTabs[ realTabIndex( tab )];
+  QgsDebugMsgLevel( u"Hide"_s, 3 );
+  TabInformation &info = mTabs[realTabIndex( tab )];
   if ( info.visible )
   {
     mSetTabVisibleFlag = true;
@@ -42,9 +48,9 @@ void QgsTabWidget::hideTab( QWidget *tab )
 
 void QgsTabWidget::showTab( QWidget *tab )
 {
-  QgsDebugMsgLevel( QStringLiteral( "Show" ), 3 );
-  TabInformation &info = mTabs[ realTabIndex( tab )];
-  if ( ! info.visible )
+  QgsDebugMsgLevel( u"Show"_s, 3 );
+  TabInformation &info = mTabs[realTabIndex( tab )];
+  if ( !info.visible )
   {
     mSetTabVisibleFlag = true;
     insertTab( info.sourceIndex + 1, info.widget, info.label );
@@ -135,7 +141,7 @@ void QgsTabWidget::tabRemoved( int index )
 
 void QgsTabWidget::synchronizeIndexes()
 {
-  QgsDebugMsgLevel( QStringLiteral( "---------" ), 3 );
+  QgsDebugMsgLevel( u"---------"_s, 3 );
   int i = -1;
   QWidget *nextWidget = widget( 0 );
 
@@ -149,7 +155,7 @@ void QgsTabWidget::synchronizeIndexes()
       nextWidget = widget( i + 1 );
     }
     it->sourceIndex = i;
-    QgsDebugMsgLevel( QStringLiteral( "Tab %1 (%2): %3" ).arg( it->sourceIndex ).arg( it->label ).arg( i ), 3 );
+    QgsDebugMsgLevel( u"Tab %1 (%2): %3"_s.arg( it->sourceIndex ).arg( it->label ).arg( i ), 3 );
   }
 }
 
@@ -164,12 +170,12 @@ QgsTabWidget::TabInformation QgsTabWidget::tabInfo( QWidget *widget )
   return TabInformation();
 }
 
-bool QgsTabWidget::TabInformation::operator ==( const QgsTabWidget::TabInformation &other ) const
+bool QgsTabWidget::TabInformation::operator==( const QgsTabWidget::TabInformation &other ) const
 {
   return other.widget == widget && other.sourceIndex == sourceIndex;
 }
 
-bool QgsTabWidget::TabInformation::operator !=( const TabInformation &other ) const
+bool QgsTabWidget::TabInformation::operator!=( const TabInformation &other ) const
 {
   return !( *this == other );
 }

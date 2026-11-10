@@ -17,19 +17,22 @@
 #ifndef TRIANGULATION_H
 #define TRIANGULATION_H
 
-#include <QList>
-#include "qgis_sip.h"
-#include <QPainter>
 #include "TriangleInterpolator.h"
+#include "qgis.h"
 #include "qgis_analysis.h"
+#include "qgis_sip.h"
 #include "qgsinterpolator.h"
 #include "qgsmeshdataprovider.h"
+
+#include <QList>
+#include <QPainter>
+
+#define SIP_NO_FILE
 
 class QgsFeatureSink;
 class QgsFields;
 class QgsFeedback;
 
-#define SIP_NO_FILE
 
 /**
  * \ingroup analysis
@@ -42,7 +45,7 @@ class ANALYSIS_EXPORT QgsTriangulation
 {
   public:
     //! Enumeration describing the behavior, if two forced lines cross.
-    enum ForcedCrossBehavior
+    enum class ForcedCrossBehavior SIP_MONKEYPATCH_SCOPEENUM_UNNEST( QgsTriangulation, ForcedCrossBehavior ) : int
     {
       SnappingTypeVertex, //!< The second inserted forced line is snapped to the closest vertice of the first inserted forced line.
       DeleteFirst,        //!< The status of the first inserted forced line is reset to that of a normal edge (so that the second inserted forced line remain and the first not)
@@ -54,7 +57,7 @@ class ANALYSIS_EXPORT QgsTriangulation
      * Adds a line (e.g. a break-, structure- or an isoline) to the triangulation, by specifying
      * a list of source \a points.
      */
-    virtual void addLine( const QgsPointSequence &points, QgsInterpolator::SourceType lineType ) = 0;
+    virtual void addLine( const QgsPointSequence &points, Qgis::InterpolationSourceType lineType ) = 0;
 
     /**
      * Adds a \a point to the triangulation.

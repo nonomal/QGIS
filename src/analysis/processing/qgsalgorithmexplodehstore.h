@@ -18,10 +18,11 @@
 #ifndef QGSALGORITHMEXPLODEHSTORE_H
 #define QGSALGORITHMEXPLODEHSTORE_H
 
-#define SIP_NO_FILE
 
 #include "qgis_sip.h"
 #include "qgsprocessingalgorithm.h"
+
+#define SIP_NO_FILE
 
 ///@cond PRIVATE
 
@@ -30,7 +31,6 @@
  */
 class QgsExplodeHstoreAlgorithm : public QgsProcessingAlgorithm
 {
-
   public:
     QgsExplodeHstoreAlgorithm() = default;
     QString name() const override;
@@ -39,16 +39,14 @@ class QgsExplodeHstoreAlgorithm : public QgsProcessingAlgorithm
     QString groupId() const override;
     QStringList tags() const override;
     QString shortHelpString() const override;
+    QString shortDescription() const override;
 
   protected:
     QgsProcessingAlgorithm *createInstance() const override;
     void initAlgorithm( const QVariantMap &configuration = QVariantMap() ) override;
     QVariantMap processAlgorithm( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
-
 };
 
 ///@endcond PRIVATE
 
 #endif // QGSALGORITHMEXPLODEHSTORE_H
-
-

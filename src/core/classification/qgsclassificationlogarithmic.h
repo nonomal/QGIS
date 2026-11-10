@@ -21,14 +21,13 @@
 
 /**
  * \ingroup core
- * \brief Implementation of a logarithmic scale method
+ * \brief Implementation of a logarithmic scale method for classification.
  *
  * \since QGIS 3.10
  */
 class CORE_EXPORT QgsClassificationLogarithmic : public QgsClassificationMethod
 {
   public:
-
     /**
        * Handling of negative and 0 values in the method
        * \since QGIS 3.12
@@ -41,7 +40,7 @@ class CORE_EXPORT QgsClassificationLogarithmic : public QgsClassificationMethod
     };
 
     QgsClassificationLogarithmic();
-    QgsClassificationMethod *clone() const override;
+    std::unique_ptr< QgsClassificationMethod > clone() const override;
     QString name() const override;
     QString id() const override;
     QIcon icon() const override;
@@ -49,10 +48,8 @@ class CORE_EXPORT QgsClassificationLogarithmic : public QgsClassificationMethod
     bool valuesRequired() const override;
 
   private:
-    QList<double> calculateBreaks( double &minimum, double &maximum, const QList<double> &values, int nclasses ) override;
+    QList<double> calculateBreaks( double &minimum, double &maximum, const QList<double> &values, int nclasses, QString &error ) override;
     QString valueToLabel( double value ) const override;
-
-
 };
 
 #endif // QGSCLASSIFICATIONLOGARITHMIC_H

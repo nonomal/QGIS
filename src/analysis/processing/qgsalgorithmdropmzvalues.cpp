@@ -17,11 +17,15 @@
 
 #include "qgsalgorithmdropmzvalues.h"
 
+#include <QString>
+
+using namespace Qt::StringLiterals;
+
 ///@cond PRIVATE
 
 QString QgsDropMZValuesAlgorithm::name() const
 {
-  return QStringLiteral( "dropmzvalues" );
+  return u"dropmzvalues"_s;
 }
 
 QString QgsDropMZValuesAlgorithm::displayName() const
@@ -41,7 +45,7 @@ QString QgsDropMZValuesAlgorithm::group() const
 
 QString QgsDropMZValuesAlgorithm::groupId() const
 {
-  return QStringLiteral( "vectorgeometry" );
+  return u"vectorgeometry"_s;
 }
 
 QString QgsDropMZValuesAlgorithm::outputName() const
@@ -52,6 +56,11 @@ QString QgsDropMZValuesAlgorithm::outputName() const
 QString QgsDropMZValuesAlgorithm::shortHelpString() const
 {
   return QObject::tr( "This algorithm can remove any measure (M) or Z values from input geometries." );
+}
+
+QString QgsDropMZValuesAlgorithm::shortDescription() const
+{
+  return QObject::tr( "Removes any measure (M) or Z values from input geometries." );
 }
 
 QgsDropMZValuesAlgorithm *QgsDropMZValuesAlgorithm::createInstance() const
@@ -67,8 +76,8 @@ bool QgsDropMZValuesAlgorithm::supportInPlaceEdit( const QgsMapLayer *layer ) co
 
 void QgsDropMZValuesAlgorithm::initParameters( const QVariantMap & )
 {
-  addParameter( new QgsProcessingParameterBoolean( QStringLiteral( "DROP_M_VALUES" ), QObject::tr( "Drop M Values" ), false ) );
-  addParameter( new QgsProcessingParameterBoolean( QStringLiteral( "DROP_Z_VALUES" ), QObject::tr( "Drop Z Values" ), false ) );
+  addParameter( new QgsProcessingParameterBoolean( u"DROP_M_VALUES"_s, QObject::tr( "Drop M Values" ), false ) );
+  addParameter( new QgsProcessingParameterBoolean( u"DROP_Z_VALUES"_s, QObject::tr( "Drop Z Values" ), false ) );
 }
 
 Qgis::WkbType QgsDropMZValuesAlgorithm::outputWkbType( Qgis::WkbType inputWkbType ) const
@@ -88,17 +97,19 @@ Qgis::ProcessingFeatureSourceFlags QgsDropMZValuesAlgorithm::sourceFlags() const
 
 bool QgsDropMZValuesAlgorithm::prepareAlgorithm( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback * )
 {
-  mDropM = parameterAsBoolean( parameters, QStringLiteral( "DROP_M_VALUES" ), context );
-  mDropZ = parameterAsBoolean( parameters, QStringLiteral( "DROP_Z_VALUES" ), context );
+  mDropM = parameterAsBoolean( parameters, u"DROP_M_VALUES"_s, context );
+  mDropZ = parameterAsBoolean( parameters, u"DROP_Z_VALUES"_s, context );
   return true;
 }
 
 QgsFeatureList QgsDropMZValuesAlgorithm::processFeature( const QgsFeature &feature, QgsProcessingContext &, QgsProcessingFeedback * )
 {
+  QGS_MARK_ALGORITHM_SOURCE
+
   QgsFeature f = feature;
   if ( f.hasGeometry() )
   {
-    std::unique_ptr< QgsAbstractGeometry > newGeom( f.geometry().constGet()->clone() );
+    std::unique_ptr<QgsAbstractGeometry> newGeom( f.geometry().constGet()->clone() );
     if ( mDropM )
       newGeom->dropMValue();
     if ( mDropZ )
@@ -110,4 +121,3 @@ QgsFeatureList QgsDropMZValuesAlgorithm::processFeature( const QgsFeature &featu
 }
 
 ///@endcond
-

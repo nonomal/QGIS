@@ -16,17 +16,23 @@
 #ifndef QGSTEXTFRAGMENT_H
 #define QGSTEXTFRAGMENT_H
 
-#include "qgis_sip.h"
-#include "qgis_core.h"
-#include "qgstextcharacterformat.h"
 #include "qgis.h"
+#include "qgis_core.h"
+#include "qgis_sip.h"
+#include "qgstextcharacterformat.h"
 
 class QTextFragment;
 
 /**
  * \class QgsTextFragment
   * \ingroup core
-  * \brief Stores a fragment of text along with formatting overrides to be used when rendering the fragment.
+  * \brief Stores a fragment of document along with formatting overrides to be used when rendering the fragment.
+  *
+  * Text fragments consist of either a block of text or another atomic component of a document (such as an image).
+  *
+  * Each fragment has an associated characterFormat(), which specifies the text formatting overrides
+  * to use when rendering the fragment. Additionally, the characterFormat() may contain properties
+  * for other fragment types, such as image paths and sizes for image fragments.
   *
   * \warning This API is not considered stable and may change in future QGIS versions.
   *
@@ -35,7 +41,6 @@ class QTextFragment;
 class CORE_EXPORT QgsTextFragment
 {
   public:
-
     /**
      * Constructor for QgsTextFragment, with the specified \a text and optional character \a format.
      */
@@ -61,6 +66,21 @@ class CORE_EXPORT QgsTextFragment
     void setText( const QString &text );
 
     /**
+     * Returns TRUE if the fragment consists of just a tab character.
+     *
+     * \since QGIS 3.38
+     */
+    bool isTab() const { return mText == '\t'; }
+
+    /**
+     * Returns TRUE if the fragment consists of just whitespace characters, and does not
+     * contain any content to render.
+     *
+     * \since QGIS 3.38
+     */
+    bool isWhitespace() const { return isTab() || mText.trimmed().isEmpty(); }
+
+    /**
      * Returns the character formatting for the fragment.
      *
      * \see setCharacterFormat()
@@ -75,6 +95,13 @@ class CORE_EXPORT QgsTextFragment
     void setCharacterFormat( const QgsTextCharacterFormat &format );
 
     /**
+     * Returns TRUE if the fragment represents an image.
+     *
+     * \since QGIS 3.40
+     */
+    bool isImage() const;
+
+    /**
      * Returns the horizontal advance associated with this fragment, when rendered using
      * the specified base \a font within the specified render \a context.
      *
@@ -82,7 +109,7 @@ class CORE_EXPORT QgsTextFragment
      * format for this fragment.
      *
      * The optional \a scaleFactor parameter can specify a font size scaling factor. It is recommended to set this to
-     * QgsTextRenderer::FONT_WORKAROUND_SCALE and then manually calculations
+     * QgsTextRenderer::calculateScaleFactorForFormat() and then manually calculations
      * based on the resultant font metrics. Failure to do so will result in poor quality text rendering
      * at small font sizes.
      */
@@ -96,8 +123,8 @@ class CORE_EXPORT QgsTextFragment
     void applyCapitalization( Qgis::Capitalization capitalization );
 
   private:
-
     QString mText;
+    bool mIsImage = false;
     QgsTextCharacterFormat mCharFormat;
 };
 

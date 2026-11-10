@@ -17,18 +17,22 @@
 #ifndef QGSELEVATIONPROFILEWIDGET_H
 #define QGSELEVATIONPROFILEWIDGET_H
 
-#include "qmenu.h"
-#include "qgsdockwidget.h"
-#include "qgis_app.h"
-#include "qgsgeometry.h"
-#include "qobjectuniqueptr.h"
-#include "qgselevationprofilelayertreeview.h"
 #include "ui_qgselevationprofileaddlayersdialogbase.h"
 
-#include <QWidgetAction>
-#include <QElapsedTimer>
-#include <QTimer>
+#include "qgis_app.h"
+#include "qgsdockwidget.h"
+#include "qgselevationprofilelayertreeview.h"
+#include "qgsgeometry.h"
+#include "qgsprofilepoint.h"
+#include "qobjectuniqueptr.h"
 
+#include <QElapsedTimer>
+#include <QPointer>
+#include <QTimer>
+#include <QWidgetAction>
+#include <qmenu.h>
+
+class QgsElevationProfile;
 class QgsDockableWidgetHelper;
 class QgsMapCanvas;
 class QProgressBar;
@@ -42,32 +46,32 @@ class QgsPlotToolPan;
 class QgsPlotToolZoom;
 class QgsPlotToolXAxisZoom;
 class QgsDoubleSpinBox;
-class QgsElevationProfileWidgetSettingsAction;
+class QgsElevationProfileToleranceWidgetSettingsAction;
+class QgsElevationProfileScaleRatioWidgetSettingsAction;
 class QgsLayerTree;
 class QgsLayerTreeRegistryBridge;
 class QgsElevationProfileToolIdentify;
 class QgsElevationProfileToolMeasure;
 class QLabel;
-class QgsProfilePoint;
 class QgsSettingsEntryDouble;
 class QgsSettingsEntryBool;
 class QgsSettingsEntryString;
 class QgsSettingsEntryColor;
 class QgsMapLayerProxyModel;
+class QgsLineSymbol;
+class QgsScaleComboBox;
 
 class QgsAppElevationProfileLayerTreeView : public QgsElevationProfileLayerTreeView
 {
     Q_OBJECT
   public:
-
     explicit QgsAppElevationProfileLayerTreeView( QgsLayerTree *rootNode, QWidget *parent = nullptr );
 
   protected:
-
     void contextMenuEvent( QContextMenuEvent *event ) override;
 };
 
-class QgsElevationProfileLayersDialog: public QDialog, private Ui::QgsElevationProfileAddLayersDialogBase
+class QgsElevationProfileLayersDialog : public QDialog, private Ui::QgsElevationProfileAddLayersDialogBase
 {
     Q_OBJECT
 
@@ -75,38 +79,41 @@ class QgsElevationProfileLayersDialog: public QDialog, private Ui::QgsElevationP
     QgsElevationProfileLayersDialog( QWidget *parent = nullptr );
     void setVisibleLayers( const QList<QgsMapLayer *> &layers );
     void setHiddenLayers( const QList<QgsMapLayer *> &layers );
-    QList< QgsMapLayer * > selectedLayers() const;
+    QList<QgsMapLayer *> selectedLayers() const;
 
   private slots:
 
     void filterVisible( bool enabled );
 
   private:
-
     QgsMapLayerProxyModel *mModel = nullptr;
-    QList< QgsMapLayer * > mVisibleLayers;
+    QList<QgsMapLayer *> mVisibleLayers;
 };
 
-class QgsElevationProfileWidget : public QWidget
+class APP_EXPORT QgsElevationProfileWidget : public QWidget
 {
     Q_OBJECT
   public:
-
     static const QgsSettingsEntryDouble *settingTolerance;
     static const QgsSettingsEntryBool *settingShowLayerTree;
     static const QgsSettingsEntryBool *settingLockAxis;
     static const QgsSettingsEntryString *settingLastExportDir;
     static const QgsSettingsEntryColor *settingBackgroundColor;
+    static const QgsSettingsEntryBool *settingShowSubsections;
+    static const QgsSettingsEntryBool *settingShowScaleRatioInToolbar;
+    static const QgsSettingsEntryBool *settingShowCurveIn3D;
 
-    QgsElevationProfileWidget( const QString &name );
-    ~QgsElevationProfileWidget();
+    QgsElevationProfileWidget( QgsElevationProfile *profile, QgsMapCanvas *canvas );
+    ~QgsElevationProfileWidget() override;
+
+    /**
+     * Modifies an elevation \a profile to apply default QGIS app settings to it.
+     */
+    static void applyDefaultSettingsToProfile( QgsElevationProfile *profile );
+
+    QgsElevationProfile *profile();
 
     QgsDockableWidgetHelper *dockableWidgetHelper() { return mDockableWidgetHelper; }
-
-    void setCanvasName( const QString &name );
-    QString canvasName() const { return mCanvasName; }
-
-    void setMainCanvas( QgsMapCanvas *canvas );
 
     QgsElevationProfileCanvas *profileCanvas() { return mCanvas; }
 
@@ -117,13 +124,19 @@ class QgsElevationProfileWidget : public QWidget
 
   signals:
     void toggleDockModeRequested( bool docked );
+    void profileDataChanged( QgsElevationProfile *profile, double zMin, double zMax );
+    void profileDataRemoved( QgsElevationProfile *profile );
+    void profileCursorMoved( QgsElevationProfile *profile, const QgsPointXY &mapPoint, const QgsProfilePoint &profilePoint );
+
+  public slots:
+    void updateCurveIn3D();
 
   private slots:
     void addLayers();
     void addLayersInternal( const QList<QgsMapLayer *> &layers );
-    void updateCanvasLayers();
+    void updateCanvasSources();
     void onTotalPendingJobsCountChanged( int count );
-    void setProfileCurve( const QgsGeometry &curve, bool resetView );
+    void setProfileCurve( const QgsGeometry &curve, bool resetView, bool storeCurve = true );
     void onCanvasPointHovered( const QgsPointXY &point, const QgsProfilePoint &profilePoint );
     void updatePlot();
     void scheduleUpdate();
@@ -135,12 +148,32 @@ class QgsElevationProfileWidget : public QWidget
     void nudgeRight();
     void nudgeCurve( Qgis::BufferSide side );
     void axisScaleLockToggled( bool active );
+    void renameProfileTriggered();
     void onProjectElevationPropertiesChanged();
+    void showSubsectionsTriggered();
+    void editSubsectionsSymbology();
+    void syncProjectToggled( bool active );
 
   private:
-    QgsElevationProfileCanvas *mCanvas = nullptr;
+    void setMainCanvas( QgsMapCanvas *canvas );
+    void setupLayerTreeView( bool resetTree = true );
+    static void copyProjectTree( QgsLayerTree *destination );
 
-    QString mCanvasName;
+    /**
+     * Decides if a custom node needs to be added to the layer tree for a registered profile source,
+     * depending on the whether the Synchronize Layers to Project is off or not.
+     *
+     * If the node is added to the layer tree, it will be accessible via the source id.
+     * If the source already has a corresponding node in the layer tree, a second node will never be created.
+     *
+     * \param sourceId    Unique identifier of the registered profile source.
+     * \param sourceName  Name of the registered profile source.
+     */
+    void handleNodeForNewlyRegisteredSource( const QString &sourceId, const QString &sourceName );
+
+    QgsElevationProfileCanvas *mCanvas = nullptr;
+    QPointer< QgsElevationProfile > mProfile;
+
     QgsMapCanvas *mMainCanvas = nullptr;
 
     QProgressBar *mProgressPendingJobs = nullptr;
@@ -155,13 +188,19 @@ class QgsElevationProfileWidget : public QWidget
     QAction *mCaptureCurveFromFeatureAction = nullptr;
     QAction *mNudgeLeftAction = nullptr;
     QAction *mNudgeRightAction = nullptr;
+    QAction *mRenameProfileAction = nullptr;
     QAction *mLockRatioAction = nullptr;
+    QAction *mShowSubsectionsAction = nullptr;
+    QAction *mShowCurveIn3DAction = nullptr;
+    QAction *mSubsectionsSymbologyAction = nullptr;
+    QAction *mSyncLayerTreeAction = nullptr;
+    QAction *mActionAddGroup = nullptr;
     QMenu *mDistanceUnitMenu = nullptr;
 
     QgsDockableWidgetHelper *mDockableWidgetHelper = nullptr;
-    std::unique_ptr< QgsMapToolProfileCurve > mCaptureCurveMapTool;
-    std::unique_ptr< QgsMapToolProfileCurveFromFeature > mCaptureCurveFromFeatureMapTool;
-    std::unique_ptr< QgsElevationProfileToolMeasure > mMeasureTool;
+    std::unique_ptr<QgsMapToolProfileCurve> mCaptureCurveMapTool;
+    std::unique_ptr<QgsMapToolProfileCurveFromFeature> mCaptureCurveFromFeatureMapTool;
+    std::unique_ptr<QgsElevationProfileToolMeasure> mMeasureTool;
     QgsGeometry mProfileCurve;
 
     QObjectUniquePtr<QgsRubberBand> mMapPointRubberBand;
@@ -177,26 +216,47 @@ class QgsElevationProfileWidget : public QWidget
     QgsPlotToolZoom *mZoomTool = nullptr;
     QgsElevationProfileToolIdentify *mIdentifyTool = nullptr;
 
-    QgsElevationProfileWidgetSettingsAction *mSettingsAction = nullptr;
+    QgsElevationProfileToleranceWidgetSettingsAction *mToleranceSettingsAction = nullptr;
+    int mBlockScaleRatioChanges = 0;
+    QgsElevationProfileScaleRatioWidgetSettingsAction *mScaleRatioSettingsAction = nullptr;
 
-    std::unique_ptr< QgsLayerTree > mLayerTree;
     QgsLayerTreeRegistryBridge *mLayerTreeBridge = nullptr;
     QgsElevationProfileLayerTreeView *mLayerTreeView = nullptr;
+
+    std::unique_ptr<QgsLineSymbol> mSubsectionsSymbol;
+
+    QPointer< QgsLayerTree > mLayerTree;
+
+    friend class TestQgsAppElevationProfileWidget;
 };
 
 
-class QgsElevationProfileWidgetSettingsAction: public QWidgetAction
+class QgsElevationProfileToleranceWidgetSettingsAction : public QWidgetAction
 {
     Q_OBJECT
 
   public:
-
-    QgsElevationProfileWidgetSettingsAction( QWidget *parent = nullptr );
+    QgsElevationProfileToleranceWidgetSettingsAction( QWidget *parent = nullptr );
 
     QgsDoubleSpinBox *toleranceSpinBox() { return mToleranceWidget; }
 
   private:
     QgsDoubleSpinBox *mToleranceWidget = nullptr;
 };
+
+class QgsElevationProfileScaleRatioWidgetSettingsAction : public QWidgetAction
+{
+    Q_OBJECT
+
+  public:
+    QgsElevationProfileScaleRatioWidgetSettingsAction( QWidget *parent = nullptr );
+    QWidget *newWidget();
+
+    QgsScaleComboBox *scaleRatioWidget() { return mScaleRatioWidget; }
+
+  private:
+    QgsScaleComboBox *mScaleRatioWidget = nullptr;
+};
+
 
 #endif // QGSELEVATIONPROFILEWIDGET_H

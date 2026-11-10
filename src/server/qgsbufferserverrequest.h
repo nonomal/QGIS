@@ -25,12 +25,11 @@
 /**
  * \ingroup server
  * \class QgsBufferServerRequest
- * \brief Class defining request with data
+ * \brief Defines a request with data.
  */
 class SERVER_EXPORT QgsBufferServerRequest : public QgsServerRequest
 {
   public:
-
     /**
     * Constructor
     *
@@ -39,7 +38,9 @@ class SERVER_EXPORT QgsBufferServerRequest : public QgsServerRequest
     * \param headers optional dictionary of header name-values
     * \param data optional POST data
     */
-    QgsBufferServerRequest( const QString &url, QgsServerRequest::Method method = QgsServerRequest::GetMethod, const QgsServerRequest::Headers &headers = QgsServerRequest::Headers(), QByteArray *data = nullptr );
+    QgsBufferServerRequest(
+      const QString &url, QgsServerRequest::Method method = QgsServerRequest::GetMethod, const QgsServerRequest::Headers &headers = QgsServerRequest::Headers(), QByteArray *data = nullptr
+    );
 
     /**
      * Constructor
@@ -49,7 +50,9 @@ class SERVER_EXPORT QgsBufferServerRequest : public QgsServerRequest
      * \param headers optional dictionary of header name-values
      * \param data optional POST data
      */
-    QgsBufferServerRequest( const QUrl &url, QgsServerRequest::Method method = QgsServerRequest::GetMethod, const QgsServerRequest::Headers &headers = QgsServerRequest::Headers(), QByteArray *data = nullptr );
+    QgsBufferServerRequest(
+      const QUrl &url, QgsServerRequest::Method method = QgsServerRequest::GetMethod, const QgsServerRequest::Headers &headers = QgsServerRequest::Headers(), QByteArray *data = nullptr
+    );
 
     QByteArray data() const override { return mData; }
 

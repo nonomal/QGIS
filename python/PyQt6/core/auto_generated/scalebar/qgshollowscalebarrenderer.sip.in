@@ -3,16 +3,19 @@
  *                                                                      *
  * src/core/scalebar/qgshollowscalebarrenderer.h                        *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/
 
 
 
-class QgsHollowScaleBarRenderer: QgsScaleBarRenderer
+
+class QgsHollowScaleBarRenderer : QgsScaleBarRenderer
 {
 %Docstring(signature="appended")
-Scalebar style that draws a single box with alternating color for the segments, with horizontal lines through
-alternating segments. AKA "South African" style.
+Scalebar style that draws a single box with alternating color for the
+segments, with horizontal lines through alternating segments.
+
+AKA "South African" style.
 
 .. versionadded:: 3.14
 %End
@@ -21,11 +24,7 @@ alternating segments. AKA "South African" style.
 #include "qgshollowscalebarrenderer.h"
 %End
   public:
-
     QgsHollowScaleBarRenderer();
-%Docstring
-Constructor for QgsHollowScaleBarRenderer.
-%End
 
     virtual QString id() const;
 
@@ -38,11 +37,9 @@ Constructor for QgsHollowScaleBarRenderer.
     virtual QgsHollowScaleBarRenderer *clone() const /Factory/;
 
 
-     virtual void draw( QgsRenderContext &context,
-               const QgsScaleBarSettings &settings,
-               const QgsScaleBarRenderer::ScaleBarContext &scaleContext ) const;
-    virtual bool applyDefaultSettings( QgsScaleBarSettings &settings ) const;
+    virtual void draw( QgsRenderContext &context, const QgsScaleBarSettings &settings, const QgsScaleBarRenderer::ScaleBarContext &scaleContext ) const;
 
+    virtual bool applyDefaultSettings( QgsScaleBarSettings &settings ) const;
 
 };
 
@@ -51,5 +48,5 @@ Constructor for QgsHollowScaleBarRenderer.
  *                                                                      *
  * src/core/scalebar/qgshollowscalebarrenderer.h                        *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/

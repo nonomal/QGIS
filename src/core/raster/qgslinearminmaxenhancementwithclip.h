@@ -1,4 +1,4 @@
-/* **************************************************************************
+/***************************************************************************
               qgslinearminmaxenhancementwithclip.h -  description
                        -------------------
 begin                : Fri Nov 16 2007
@@ -7,7 +7,7 @@ email                : ersts@amnh.org
 
 ****************************************************************************/
 
-/* **************************************************************************
+/***************************************************************************
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
  *   it under the terms of the GNU General Public License as published by  *
@@ -29,7 +29,6 @@ email                : ersts@amnh.org
  */
 class CORE_EXPORT QgsLinearMinMaxEnhancementWithClip : public QgsContrastEnhancementFunction
 {
-
   public:
     QgsLinearMinMaxEnhancementWithClip( Qgis::DataType, double, double );
 

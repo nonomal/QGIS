@@ -18,9 +18,9 @@
 #define QGSGPXSOURCESELECT_H
 
 #include "ui_qgsgpxsourceselectbase.h"
-#include "qgsabstractdatasourcewidget.h"
-#include "qgis_gui.h"
 
+#include "qgis_gui.h"
+#include "qgsabstractdatasourcewidget.h"
 
 /**
  * \class QgsGpxSourceSelect
@@ -32,7 +32,7 @@ class QgsGpxSourceSelect : public QgsAbstractDataSourceWidget, private Ui::QgsGp
 
   public:
     //! Constructor
-    QgsGpxSourceSelect( QWidget *parent = nullptr, Qt::WindowFlags fl = QgsGuiUtils::ModalDialogFlags, QgsProviderRegistry::WidgetMode widgetMode = QgsProviderRegistry::WidgetMode::None );
+    QgsGpxSourceSelect( QWidget *parent = nullptr, Qt::WindowFlags fl = QgsGuiUtils::ModalDialogFlags, QgsProviderRegistry::WidgetMode widgetMode = QgsProviderRegistry::WidgetMode::Standalone );
 
   public slots:
     //! Determines the tables the user selected and closes the dialog
@@ -45,7 +45,6 @@ class QgsGpxSourceSelect : public QgsAbstractDataSourceWidget, private Ui::QgsGp
 
   private:
     QString mGpxPath;
-
 };
 
 #endif // QGSGPXSOURCESELECT_H

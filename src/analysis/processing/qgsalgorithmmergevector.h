@@ -18,11 +18,16 @@
 #ifndef QGSALGORITHMMERGEVECTOR_H
 #define QGSALGORITHMMERGEVECTOR_H
 
-#define SIP_NO_FILE
 
 #include "qgis_sip.h"
-#include "qgsprocessingalgorithm.h"
 #include "qgsapplication.h"
+#include "qgsprocessingalgorithm.h"
+
+#include <QString>
+
+#define SIP_NO_FILE
+
+using namespace Qt::StringLiterals;
 
 ///@cond PRIVATE
 
@@ -31,13 +36,11 @@
  */
 class QgsMergeVectorAlgorithm : public QgsProcessingAlgorithm
 {
-
   public:
-
     QgsMergeVectorAlgorithm() = default;
     void initAlgorithm( const QVariantMap &configuration = QVariantMap() ) override;
-    QIcon icon() const override { return QgsApplication::getThemeIcon( QStringLiteral( "/algorithms/mAlgorithmMergeLayers.svg" ) ); }
-    QString svgIconPath() const override { return QgsApplication::iconPath( QStringLiteral( "/algorithms/mAlgorithmMergeLayers.svg" ) ); }
+    QIcon icon() const override { return QgsApplication::getThemeIcon( u"/algorithms/mAlgorithmMergeLayers.svg"_s ); }
+    QString svgIconPath() const override { return QgsApplication::iconPath( u"/algorithms/mAlgorithmMergeLayers.svg"_s ); }
     QString name() const override;
     QString displayName() const override;
     QStringList tags() const override;
@@ -45,17 +48,13 @@ class QgsMergeVectorAlgorithm : public QgsProcessingAlgorithm
     QString groupId() const override;
     QString shortDescription() const override;
     QString shortHelpString() const override;
+    Qgis::ProcessingAlgorithmDocumentationFlags documentationFlags() const override;
     QgsMergeVectorAlgorithm *createInstance() const override SIP_FACTORY;
 
   protected:
-
-    QVariantMap processAlgorithm( const QVariantMap &parameters,
-                                  QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
-
+    QVariantMap processAlgorithm( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
 };
 
 ///@endcond PRIVATE
 
 #endif // QGSALGORITHMMERGEVECTOR_H
-
-

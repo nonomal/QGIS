@@ -19,23 +19,22 @@
 #define QGSSERVERLOGGER_H
 
 
+#include "qgis_server.h"
 #include "qgsmessagelog.h"
 
 #include <QFile>
 #include <QObject>
 #include <QString>
 #include <QTextStream>
-#include "qgis_server.h"
 
 /**
  * \ingroup server
- * \brief Writes message log into server logfile
+ * \brief Writes message log into server log files.
  */
 class SERVER_EXPORT QgsServerLogger : public QgsMessageLogConsole
 {
     Q_OBJECT
   public:
-
     /**
      * Gets the singleton instance
      */
@@ -66,14 +65,8 @@ class SERVER_EXPORT QgsServerLogger : public QgsMessageLogConsole
 
   public slots:
 
-    /**
-     * Log a message from the server context
-     *
-     * \param message the message
-     * \param tag tag of the message
-     * \param level log level of the message
-     */
     void logMessage( const QString &message, const QString &tag, Qgis::MessageLevel level ) override;
+    void logMessage( const QString &message, const QString &tag, Qgis::MessageLevel level, Qgis::StringFormat format ) override;
 
   protected:
     QgsServerLogger();

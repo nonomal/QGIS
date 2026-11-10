@@ -13,7 +13,7 @@
   <property name="windowTitle">
    <string>Point Text Annotation</string>
   </property>
-  <layout class="QGridLayout" name="gridLayout">
+  <layout class="QGridLayout" name="gridLayout" columnstretch="0,1">
    <property name="leftMargin">
     <number>0</number>
    </property>
@@ -26,7 +26,27 @@
    <property name="bottomMargin">
     <number>0</number>
    </property>
-   <item row="1" column="0">
+   <item row="2" column="0">
+    <widget class="QLabel" name="label_3">
+     <property name="text">
+      <string>Text format</string>
+     </property>
+    </widget>
+   </item>
+   <item row="2" column="1">
+    <widget class="QgsFontButton" name="mTextFormatButton">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="text">
+      <string>Text format</string>
+     </property>
+    </widget>
+   </item>
+   <item row="1" column="0" colspan="2">
     <widget class="QToolButton" name="mInsertExpressionButton">
      <property name="sizePolicy">
       <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
@@ -38,18 +58,18 @@
       <string>Insert/Edit Expression…</string>
      </property>
      <property name="popupMode">
-      <enum>QToolButton::MenuButtonPopup</enum>
+      <enum>QToolButton::ToolButtonPopupMode::MenuButtonPopup</enum>
      </property>
      <property name="toolButtonStyle">
-      <enum>Qt::ToolButtonTextOnly</enum>
+      <enum>Qt::ToolButtonStyle::ToolButtonTextOnly</enum>
      </property>
      <property name="arrowType">
-      <enum>Qt::DownArrow</enum>
+      <enum>Qt::ArrowType::DownArrow</enum>
      </property>
     </widget>
    </item>
-   <item row="0" column="0">
-    <widget class="QPlainTextEdit" name="mTextEdit">
+   <item row="0" column="0" colspan="2">
+    <widget class="QgsRichTextEditor" name="mTextEdit" native="true">
      <property name="minimumSize">
       <size>
        <width>0</width>
@@ -58,13 +78,20 @@
      </property>
     </widget>
    </item>
-   <item row="3" column="0">
+   <item row="3" column="0" colspan="2">
     <widget class="QGroupBox" name="groupBox">
      <property name="title">
       <string>Properties</string>
      </property>
      <layout class="QGridLayout" name="gridLayout_2" columnstretch="1,2">
-      <item row="0" column="1">
+      <item row="1" column="0">
+       <widget class="QLabel" name="label_4">
+        <property name="text">
+         <string>Offset from line</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
        <layout class="QHBoxLayout" name="horizontalLayout_3">
         <item>
          <widget class="QgsDoubleSpinBox" name="mSpinOffset">
@@ -100,31 +127,41 @@
            </size>
           </property>
           <property name="focusPolicy">
-           <enum>Qt::StrongFocus</enum>
+           <enum>Qt::FocusPolicy::StrongFocus</enum>
           </property>
          </widget>
         </item>
        </layout>
       </item>
       <item row="0" column="0">
-       <widget class="QLabel" name="label_4">
+       <widget class="QLabel" name="label">
         <property name="text">
-         <string>Offset from line</string>
+         <string>Alignment</string>
         </property>
        </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="QComboBox" name="mAlignmentCombo"/>
       </item>
      </layout>
     </widget>
    </item>
-   <item row="4" column="0">
+   <item row="4" column="0" colspan="2">
     <widget class="QgsAnnotationItemCommonPropertiesWidget" name="mPropertiesWidget" native="true"/>
-   </item>
-   <item row="2" column="0">
-    <widget class="QWidget" name="mTextFormatWidgetContainer" native="true"/>
    </item>
   </layout>
  </widget>
  <customwidgets>
+  <customwidget>
+   <class>QgsDoubleSpinBox</class>
+   <extends>QDoubleSpinBox</extends>
+   <header>qgsdoublespinbox.h</header>
+  </customwidget>
+  <customwidget>
+   <class>QgsFontButton</class>
+   <extends>QToolButton</extends>
+   <header>qgsfontbutton.h</header>
+  </customwidget>
   <customwidget>
    <class>QgsAnnotationItemCommonPropertiesWidget</class>
    <extends>QWidget</extends>
@@ -132,9 +169,10 @@
    <container>1</container>
   </customwidget>
   <customwidget>
-   <class>QgsDoubleSpinBox</class>
-   <extends>QDoubleSpinBox</extends>
-   <header>qgsdoublespinbox.h</header>
+   <class>QgsRichTextEditor</class>
+   <extends>QWidget</extends>
+   <header>qgsrichtexteditor.h</header>
+   <container>1</container>
   </customwidget>
   <customwidget>
    <class>QgsUnitSelectionWidget</class>
@@ -143,6 +181,13 @@
    <container>1</container>
   </customwidget>
  </customwidgets>
+ <tabstops>
+  <tabstop>mInsertExpressionButton</tabstop>
+  <tabstop>mTextFormatButton</tabstop>
+  <tabstop>mAlignmentCombo</tabstop>
+  <tabstop>mOffsetUnitWidget</tabstop>
+  <tabstop>mSpinOffset</tabstop>
+ </tabstops>
  <resources/>
  <connections/>
 </ui>

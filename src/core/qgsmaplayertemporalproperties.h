@@ -21,9 +21,9 @@
 
 #include "qgis_core.h"
 #include "qgis_sip.h"
-#include "qgstemporalproperty.h"
-#include "qgsreadwritecontext.h"
 #include "qgsrange.h"
+#include "qgsreadwritecontext.h"
+#include "qgstemporalproperty.h"
 
 #include <QDomElement>
 
@@ -42,11 +42,9 @@ class QgsDataProviderTemporalCapabilities;
  */
 class CORE_EXPORT QgsMapLayerTemporalProperties : public QgsTemporalProperty
 {
-#ifdef SIP_RUN
-#include "qgsrasterlayertemporalproperties.h"
-#include "qgsmeshlayertemporalproperties.h"
-#include "qgsvectorlayertemporalproperties.h"
-#endif
+    //SIP_TYPEHEADER_INCLUDE( "qgsrasterlayertemporalproperties.h" );
+    //SIP_TYPEHEADER_INCLUDE( "qgsmeshlayertemporalproperties.h" );
+    //SIP_TYPEHEADER_INCLUDE( "qgsvectorlayertemporalproperties.h" );
 
     Q_OBJECT
 
@@ -68,7 +66,7 @@ class CORE_EXPORT QgsMapLayerTemporalProperties : public QgsTemporalProperty
     {
       sipType = 0;
     }
-    SIP_END
+  SIP_END
 #endif
 
   public:
@@ -106,7 +104,7 @@ class CORE_EXPORT QgsMapLayerTemporalProperties : public QgsTemporalProperty
     virtual void setDefaultsFromDataProviderTemporalCapabilities( const QgsDataProviderTemporalCapabilities *capabilities ) = 0;
 
 #ifndef SIP_RUN
-// sip gets confused with this, refuses to compile
+    // sip gets confused with this, refuses to compile
 
     /**
      * Attempts to calculate the overall temporal extent for the specified \a layer, using
@@ -128,7 +126,6 @@ class CORE_EXPORT QgsMapLayerTemporalProperties : public QgsTemporalProperty
      * \since QGIS 3.20
      */
     virtual QList< QgsDateTimeRange > allTemporalRanges( QgsMapLayer *layer ) const;
-
 };
 
 #endif // QGSMAPLAYERTEMPORALPROPERTIES_H

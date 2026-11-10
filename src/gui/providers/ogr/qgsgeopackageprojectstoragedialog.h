@@ -15,13 +15,15 @@
 #ifndef QGSGEOPACKAGEPROJECTSTORAGEDIALOG_H
 #define QGSGEOPACKAGEPROJECTSTORAGEDIALOG_H
 
-#include <QDialog>
-
 #include "ui_qgsgeopackageprojectstoragedialog.h"
+
 #include "qgis_sip.h"
 
-///@cond PRIVATE
+#include <QDialog>
+
 #define SIP_NO_FILE
+
+///@cond PRIVATE
 
 class QgsGeoPackageProjectStorageDialog : public QDialog, private Ui::QgsGeoPackageProjectStorageDialog
 {
@@ -33,7 +35,7 @@ class QgsGeoPackageProjectStorageDialog : public QDialog, private Ui::QgsGeoPack
     QString schemaName() const;
     QString projectName() const;
 
-    QString currentProjectUri( );
+    QString currentProjectUri();
 
   signals:
 
@@ -44,8 +46,7 @@ class QgsGeoPackageProjectStorageDialog : public QDialog, private Ui::QgsGeoPack
     void removeProject();
 
   private:
-
-    bool mSaving = false;  //!< Whether using this dialog for loading or saving a project
+    bool mSaving = false; //!< Whether using this dialog for loading or saving a project
     QAction *mActionRemoveProject = nullptr;
 };
 

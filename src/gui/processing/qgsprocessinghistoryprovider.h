@@ -18,7 +18,6 @@
 
 #include "qgis_gui.h"
 #include "qgis_sip.h"
-
 #include "qgshistoryprovider.h"
 
 /**
@@ -32,7 +31,6 @@ class GUI_EXPORT QgsProcessingHistoryProvider : public QgsAbstractHistoryProvide
     Q_OBJECT
 
   public:
-
     QgsProcessingHistoryProvider();
 
     QString id() const override;
@@ -45,6 +43,7 @@ class GUI_EXPORT QgsProcessingHistoryProvider : public QgsAbstractHistoryProvide
     void portOldLog();
 
     QgsHistoryEntryNode *createNodeForEntry( const QgsHistoryEntry &entry, const QgsHistoryWidgetContext &context ) override SIP_FACTORY;
+    void updateNodeForEntry( QgsHistoryEntryNode *node, const QgsHistoryEntry &entry, const QgsHistoryWidgetContext &context ) override;
 
   signals:
 
@@ -62,21 +61,27 @@ class GUI_EXPORT QgsProcessingHistoryProvider : public QgsAbstractHistoryProvide
      */
     void createTest( const QString &command );
 
-  private:
+    /**
+     * Emitted when the provider needs to display a \a message.
+     *
+     * \since QGIS 4.0
+     */
+    void showMessage( const QString &message );
 
+  private:
     //! Executes some python commands
     void emitExecute( const QString &commands );
 
+    //! Creates a test for a python commands
     void emitCreateTest( const QString &command );
+
+    //! Shows a message to user
+    void emitShowMessage( const QString &message );
 
     //! Returns the path to the old log file
     QString oldLogPath() const;
 
-    friend class ProcessingHistoryNode;
-
+    friend class ProcessingHistoryBaseNode;
 };
 
 #endif //QGSHISTORYPROVIDER_H
-
-
-

@@ -16,13 +16,18 @@
  ***************************************************************************/
 
 #include "qgsalgorithmboundary.h"
+
 #include "qgsvectorlayer.h"
+
+#include <QString>
+
+using namespace Qt::StringLiterals;
 
 ///@cond PRIVATE
 
 QString QgsBoundaryAlgorithm::name() const
 {
-  return QStringLiteral( "boundary" );
+  return u"boundary"_s;
 }
 
 QString QgsBoundaryAlgorithm::displayName() const
@@ -42,7 +47,7 @@ QString QgsBoundaryAlgorithm::group() const
 
 QString QgsBoundaryAlgorithm::groupId() const
 {
-  return  QStringLiteral( "vectorgeometry" );
+  return u"vectorgeometry"_s;
 }
 
 QString QgsBoundaryAlgorithm::outputName() const
@@ -52,15 +57,22 @@ QString QgsBoundaryAlgorithm::outputName() const
 
 QString QgsBoundaryAlgorithm::shortHelpString() const
 {
-  return QObject::tr( "Returns the closure of the combinatorial boundary of the input geometries (ie the "
-                      "topological boundary of the geometry). For instance, a polygon geometry will have a "
-                      "boundary consisting of the linestrings for each ring in the polygon. Only valid for "
-                      "polygon or line layers." );
+  return QObject::tr(
+    "This algorithm returns the closure of the combinatorial boundary of the input geometries (ie the "
+    "topological boundary of the geometry). For instance, a polygon geometry will have a "
+    "boundary consisting of the linestrings for each ring in the polygon. Only valid for "
+    "polygon or line layers."
+  );
+}
+
+QString QgsBoundaryAlgorithm::shortDescription() const
+{
+  return QObject::tr( "Returns the topological boundary of the input geometries." );
 }
 
 QList<int> QgsBoundaryAlgorithm::inputLayerTypes() const
 {
-  return QList<int>() << static_cast< int >( Qgis::ProcessingSourceType::VectorLine ) << static_cast< int >( Qgis::ProcessingSourceType::VectorPolygon );
+  return QList<int>() << static_cast<int>( Qgis::ProcessingSourceType::VectorLine ) << static_cast<int>( Qgis::ProcessingSourceType::VectorPolygon );
 }
 
 bool QgsBoundaryAlgorithm::supportInPlaceEdit( const QgsMapLayer * ) const
@@ -108,6 +120,8 @@ Qgis::WkbType QgsBoundaryAlgorithm::outputWkbType( Qgis::WkbType inputWkbType ) 
 
 QgsFeatureList QgsBoundaryAlgorithm::processFeature( const QgsFeature &feature, QgsProcessingContext &, QgsProcessingFeedback *feedback )
 {
+  QGS_MARK_ALGORITHM_SOURCE
+
   QgsFeature outFeature = feature;
 
   if ( feature.hasGeometry() )

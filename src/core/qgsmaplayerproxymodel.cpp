@@ -14,15 +14,22 @@
 ***************************************************************************/
 
 #include "qgsmaplayerproxymodel.h"
-#include "qgsmaplayermodel.h"
+
 #include "qgsmaplayer.h"
+#include "qgsmaplayermodel.h"
 #include "qgsproject.h"
 #include "qgsvectorlayer.h"
 
+#include "moc_qgsmaplayerproxymodel.cpp"
+
 QgsMapLayerProxyModel::QgsMapLayerProxyModel( QObject *parent )
+  : QgsMapLayerProxyModel( QgsProject::instance(), parent ) // skip-keyword-check
+{}
+
+QgsMapLayerProxyModel::QgsMapLayerProxyModel( QgsProject *project, QObject *parent )
   : QSortFilterProxyModel( parent )
   , mFilters( Qgis::LayerFilter::All )
-  , mModel( new QgsMapLayerModel( parent ) )
+  , mModel( new QgsMapLayerModel( project, parent ) )
 {
   setSourceModel( mModel );
   setDynamicSortFilter( true );
@@ -40,26 +47,28 @@ QgsMapLayerProxyModel *QgsMapLayerProxyModel::setFilters( Qgis::LayerFilters fil
 
 bool QgsMapLayerProxyModel::layerMatchesFilters( const QgsMapLayer *layer, const Qgis::LayerFilters &filters )
 {
+  if ( filters.testFlag( Qgis::LayerFilter::WritableLayer ) && layer->readOnly() )
+    return false;
+
   if ( filters.testFlag( Qgis::LayerFilter::All ) )
     return true;
 
   // layer type
-  if ( ( filters.testFlag( Qgis::LayerFilter::RasterLayer ) && layer->type() == Qgis::LayerType::Raster ) ||
-       ( filters.testFlag( Qgis::LayerFilter::VectorLayer ) && layer->type() == Qgis::LayerType::Vector ) ||
-       ( filters.testFlag( Qgis::LayerFilter::MeshLayer ) && layer->type() == Qgis::LayerType::Mesh ) ||
-       ( filters.testFlag( Qgis::LayerFilter::VectorTileLayer ) && layer->type() == Qgis::LayerType::VectorTile ) ||
-       ( filters.testFlag( Qgis::LayerFilter::PointCloudLayer ) && layer->type() == Qgis::LayerType::PointCloud ) ||
-       ( filters.testFlag( Qgis::LayerFilter::AnnotationLayer ) && layer->type() == Qgis::LayerType::Annotation ) ||
-       ( filters.testFlag( Qgis::LayerFilter::TiledSceneLayer ) && layer->type() == Qgis::LayerType::TiledScene ) ||
-       ( filters.testFlag( Qgis::LayerFilter::PluginLayer ) && layer->type() == Qgis::LayerType::Plugin ) )
+  if ( ( filters.testFlag( Qgis::LayerFilter::RasterLayer ) && layer->type() == Qgis::LayerType::Raster )
+       || ( filters.testFlag( Qgis::LayerFilter::VectorLayer ) && layer->type() == Qgis::LayerType::Vector )
+       || ( filters.testFlag( Qgis::LayerFilter::MeshLayer ) && layer->type() == Qgis::LayerType::Mesh )
+       || ( filters.testFlag( Qgis::LayerFilter::VectorTileLayer ) && layer->type() == Qgis::LayerType::VectorTile )
+       || ( filters.testFlag( Qgis::LayerFilter::PointCloudLayer ) && layer->type() == Qgis::LayerType::PointCloud )
+       || ( filters.testFlag( Qgis::LayerFilter::AnnotationLayer ) && layer->type() == Qgis::LayerType::Annotation )
+       || ( filters.testFlag( Qgis::LayerFilter::TiledSceneLayer ) && layer->type() == Qgis::LayerType::TiledScene )
+       || ( filters.testFlag( Qgis::LayerFilter::PluginLayer ) && layer->type() == Qgis::LayerType::Plugin ) )
     return true;
 
   // geometry type
-  const bool detectGeometry = filters.testFlag( Qgis::LayerFilter::NoGeometry ) ||
-                              filters.testFlag( Qgis::LayerFilter::PointLayer ) ||
-                              filters.testFlag( Qgis::LayerFilter::LineLayer ) ||
-                              filters.testFlag( Qgis::LayerFilter::PolygonLayer ) ||
-                              filters.testFlag( Qgis::LayerFilter::HasGeometry );
+  const bool detectGeometry = filters.testFlag( Qgis::LayerFilter::NoGeometry )
+                              || filters.testFlag( Qgis::LayerFilter::PointLayer )
+                              || filters.testFlag( Qgis::LayerFilter::LineLayer )
+                              || filters.testFlag( Qgis::LayerFilter::PolygonLayer );
   if ( detectGeometry && layer->type() == Qgis::LayerType::Vector )
   {
     if ( const QgsVectorLayer *vl = qobject_cast<const QgsVectorLayer *>( layer ) )
@@ -103,7 +112,7 @@ void QgsMapLayerProxyModel::setExceptedLayerList( const QList<QgsMapLayer *> &ex
   invalidateFilter();
 }
 
-void  QgsMapLayerProxyModel::setProject( QgsProject *project )
+void QgsMapLayerProxyModel::setProject( QgsProject *project )
 {
   mModel->setProject( project );
 }
@@ -115,7 +124,7 @@ void QgsMapLayerProxyModel::setExceptedLayerIds( const QStringList &ids )
   const auto constIds = ids;
   for ( const QString &id : constIds )
   {
-    QgsMapLayer *l = QgsProject::instance()->mapLayer( id );
+    QgsMapLayer *l = mModel->project()->mapLayer( id );
     if ( l )
       mExceptList << l;
   }
@@ -151,9 +160,6 @@ bool QgsMapLayerProxyModel::acceptsLayer( QgsMapLayer *layer ) const
     return false;
 
   if ( layer->dataProvider() && mExcludedProviders.contains( layer->providerType() ) )
-    return false;
-
-  if ( mFilters.testFlag( Qgis::LayerFilter::WritableLayer ) && layer->readOnly() )
     return false;
 
   if ( !layer->name().contains( mFilterString, Qt::CaseInsensitive ) )

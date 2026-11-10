@@ -14,15 +14,20 @@
  ***************************************************************************/
 
 #include "qgscalloutsregistry.h"
+
+#include "qgsapplication.h"
 #include "qgscallout.h"
 #include "qgsxmlutils.h"
-#include "qgsapplication.h"
+
+#include <QString>
+
+using namespace Qt::StringLiterals;
 
 //
 // QgsCalloutAbstractMetadata
 //
 
-QgsCalloutWidget *QgsCalloutAbstractMetadata::createCalloutWidget( QgsVectorLayer * )
+QgsCalloutWidget *QgsCalloutAbstractMetadata::createCalloutWidget( QgsMapLayer * )
 {
   return nullptr;
 }
@@ -33,10 +38,10 @@ QgsCalloutWidget *QgsCalloutAbstractMetadata::createCalloutWidget( QgsVectorLaye
 
 QgsCallout *QgsCalloutMetadata::createCallout( const QVariantMap &properties, const QgsReadWriteContext &context )
 {
-  return mCreateFunc ? mCreateFunc( properties, context ) : nullptr;
+  return mCreateFunc ? mCreateFunc( properties, context ).release() : nullptr;
 }
 
-QgsCalloutWidget *QgsCalloutMetadata::createCalloutWidget( QgsVectorLayer *vl )
+QgsCalloutWidget *QgsCalloutMetadata::createCalloutWidget( QgsMapLayer *vl )
 {
   return mWidgetFunc ? mWidgetFunc( vl ) : nullptr;
 }
@@ -49,10 +54,10 @@ QgsCalloutWidget *QgsCalloutMetadata::createCalloutWidget( QgsVectorLayer *vl )
 QgsCalloutRegistry::QgsCalloutRegistry()
 {
   // init registry with known callouts
-  addCalloutType( new QgsCalloutMetadata( QStringLiteral( "simple" ), QObject::tr( "Simple lines" ), QgsApplication::getThemeIcon( QStringLiteral( "labelingCalloutSimple.svg" ) ), QgsSimpleLineCallout::create ) );
-  addCalloutType( new QgsCalloutMetadata( QStringLiteral( "manhattan" ), QObject::tr( "Manhattan lines" ), QgsApplication::getThemeIcon( QStringLiteral( "labelingCalloutManhattan.svg" ) ), QgsManhattanLineCallout::create ) );
-  addCalloutType( new QgsCalloutMetadata( QStringLiteral( "curved" ), QObject::tr( "Curved lines" ), QgsApplication::getThemeIcon( QStringLiteral( "labelingCalloutCurved.svg" ) ), QgsCurvedLineCallout::create ) );
-  addCalloutType( new QgsCalloutMetadata( QStringLiteral( "balloon" ), QObject::tr( "Balloons" ), QgsApplication::getThemeIcon( QStringLiteral( "labelingCalloutManhattan.svg" ) ), QgsBalloonCallout::create ) );
+  addCalloutType( new QgsCalloutMetadata( u"simple"_s, QObject::tr( "Simple lines" ), QgsApplication::getThemeIcon( u"labelingCalloutSimple.svg"_s ), QgsSimpleLineCallout::create ) );
+  addCalloutType( new QgsCalloutMetadata( u"manhattan"_s, QObject::tr( "Manhattan lines" ), QgsApplication::getThemeIcon( u"labelingCalloutManhattan.svg"_s ), QgsManhattanLineCallout::create ) );
+  addCalloutType( new QgsCalloutMetadata( u"curved"_s, QObject::tr( "Curved lines" ), QgsApplication::getThemeIcon( u"labelingCalloutCurved.svg"_s ), QgsCurvedLineCallout::create ) );
+  addCalloutType( new QgsCalloutMetadata( u"balloon"_s, QObject::tr( "Balloons" ), QgsApplication::getThemeIcon( u"labelingCalloutManhattan.svg"_s ), QgsBalloonCallout::create ) );
 }
 
 QgsCalloutRegistry::~QgsCalloutRegistry()
@@ -69,7 +74,7 @@ bool QgsCalloutRegistry::addCalloutType( QgsCalloutAbstractMetadata *metadata )
   return true;
 }
 
-QgsCallout *QgsCalloutRegistry::createCallout( const QString &name, const QDomElement &element, const QgsReadWriteContext &context ) const
+std::unique_ptr<QgsCallout> QgsCalloutRegistry::createCallout( const QString &name, const QDomElement &element, const QgsReadWriteContext &context ) const
 {
   const QVariantMap props = QgsXmlUtils::readVariant( element.firstChildElement() ).toMap();
   return createCallout( name, props, context );
@@ -85,15 +90,15 @@ QgsCalloutAbstractMetadata *QgsCalloutRegistry::calloutMetadata( const QString &
   return mMetadata.value( name );
 }
 
-QgsCallout *QgsCalloutRegistry::defaultCallout()
+std::unique_ptr<QgsCallout> QgsCalloutRegistry::defaultCallout()
 {
-  return new QgsSimpleLineCallout();
+  return std::make_unique<QgsSimpleLineCallout>();
 }
 
-QgsCallout *QgsCalloutRegistry::createCallout( const QString &name, const QVariantMap &properties, const QgsReadWriteContext &context ) const
+std::unique_ptr<QgsCallout> QgsCalloutRegistry::createCallout( const QString &name, const QVariantMap &properties, const QgsReadWriteContext &context ) const
 {
   if ( !mMetadata.contains( name ) )
     return nullptr;
 
-  return mMetadata[name]->createCallout( properties, context );
+  return std::unique_ptr<QgsCallout>( mMetadata[name]->createCallout( properties, context ) );
 }

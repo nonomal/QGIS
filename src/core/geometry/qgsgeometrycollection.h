@@ -16,14 +16,13 @@ email                : marco.hugentobler at sourcepole dot com
 #ifndef QGSGEOMETRYCOLLECTION_H
 #define QGSGEOMETRYCOLLECTION_H
 
-#include <QVector>
-
-
 #include "qgis_core.h"
 #include "qgis_sip.h"
 #include "qgsabstractgeometry.h"
-#include "qgsrectangle.h"
 #include "qgsbox3d.h"
+#include "qgsrectangle.h"
+
+#include <QVector>
 
 class QgsPoint;
 
@@ -31,17 +30,17 @@ class QgsPoint;
 /**
  * \ingroup core
  * \class QgsGeometryCollection
- * \brief Geometry collection
+ * \brief Geometry collection.
  */
-class CORE_EXPORT QgsGeometryCollection: public QgsAbstractGeometry
+class CORE_EXPORT QgsGeometryCollection : public QgsAbstractGeometry
 {
   public:
-
-
+    // clang-format off
     /**
      * Constructor for an empty geometry collection.
      */
     QgsGeometryCollection() SIP_HOLDGIL;
+    // clang-format on
 
     QgsGeometryCollection( const QgsGeometryCollection &c );
     QgsGeometryCollection &operator=( const QgsGeometryCollection &c );
@@ -123,6 +122,7 @@ class CORE_EXPORT QgsGeometryCollection: public QgsAbstractGeometry
     }
 
 #ifdef SIP_RUN
+// clang-format off
 
     /**
      * Returns the number of geometries within the collection.
@@ -137,6 +137,7 @@ class CORE_EXPORT QgsGeometryCollection: public QgsAbstractGeometry
     % MethodCode
     sipRes = true;
     % End
+// clang-format on
 #endif
 
 
@@ -158,6 +159,7 @@ class CORE_EXPORT QgsGeometryCollection: public QgsAbstractGeometry
      */
     QgsAbstractGeometry *geometryN( int n ) SIP_HOLDGIL;
 #else
+// clang-format off
 
     /**
      * Returns a geometry from within the collection.
@@ -176,6 +178,7 @@ class CORE_EXPORT QgsGeometryCollection: public QgsAbstractGeometry
       return sipConvertFromType( sipCpp->geometryN( a0 ), sipType_QgsAbstractGeometry, NULL );
     }
     % End
+// clang-format on
 #endif
 
 
@@ -184,11 +187,13 @@ class CORE_EXPORT QgsGeometryCollection: public QgsAbstractGeometry
     int dimension() const override SIP_HOLDGIL;
     QString geometryType() const override SIP_HOLDGIL;
     void clear() override;
-    QgsGeometryCollection *snappedToGrid( double hSpacing, double vSpacing, double dSpacing = 0, double mSpacing = 0 ) const override SIP_FACTORY;
+    QgsGeometryCollection *snappedToGrid( double hSpacing, double vSpacing, double dSpacing = 0, double mSpacing = 0, bool removeRedundantPoints = false ) const override SIP_FACTORY;
     bool removeDuplicateNodes( double epsilon = 4 * std::numeric_limits<double>::epsilon(), bool useZValues = false ) override;
     QgsAbstractGeometry *boundary() const override SIP_FACTORY;
     void adjacentVertices( QgsVertexId vertex, QgsVertexId &previousVertex SIP_OUT, QgsVertexId &nextVertex SIP_OUT ) const override;
     int vertexNumberFromVertexId( QgsVertexId id ) const override;
+
+    using QgsAbstractGeometry::boundingBoxIntersects;
     bool boundingBoxIntersects( const QgsBox3D &box3d ) const override SIP_HOLDGIL;
 
     /**
@@ -203,6 +208,15 @@ class CORE_EXPORT QgsGeometryCollection: public QgsAbstractGeometry
 
     //! Adds a geometry and takes ownership. Returns TRUE in case of success.
     virtual bool addGeometry( QgsAbstractGeometry *g SIP_TRANSFER );
+
+    /**
+     * Adds a list of geometries to the collection, transferring ownership to the collection.
+     *
+     * Returns TRUE in case of success.
+     *
+     * \since QGIS 3.38
+     */
+    virtual bool addGeometries( const QVector< QgsAbstractGeometry * > &geometries SIP_TRANSFER );
 
     /**
      * Inserts a geometry before a specified index and takes ownership. Returns TRUE in case of success.
@@ -220,6 +234,7 @@ class CORE_EXPORT QgsGeometryCollection: public QgsAbstractGeometry
      */
     virtual bool removeGeometry( int nr );
 #else
+// clang-format off
 
     /**
      * Removes a geometry from the collection by index.
@@ -240,7 +255,16 @@ class CORE_EXPORT QgsGeometryCollection: public QgsAbstractGeometry
       return PyBool_FromLong( sipCpp->removeGeometry( a0 ) );
     }
     % End
+// clang-format on
 #endif
+
+    /**
+     * Removes all geometries from the collection, returning them and their ownership
+     * to the caller.
+     *
+     * \since QGIS 3.38
+     */
+    QVector< QgsAbstractGeometry * > takeGeometries() SIP_TRANSFER;
 
     void normalize() final SIP_HOLDGIL;
     void transform( const QgsCoordinateTransform &ct, Qgis::TransformDirection d = Qgis::TransformDirection::Forward, bool transformZ = false ) override SIP_THROW( QgsCsException );
@@ -257,7 +281,7 @@ class CORE_EXPORT QgsGeometryCollection: public QgsAbstractGeometry
     QString asWkt( int precision = 17 ) const override;
     QDomElement asGml2( QDomDocument &doc, int precision = 17, const QString &ns = "gml", QgsAbstractGeometry::AxisOrder axisOrder = QgsAbstractGeometry::AxisOrder::XY ) const override;
     QDomElement asGml3( QDomDocument &doc, int precision = 17, const QString &ns = "gml", QgsAbstractGeometry::AxisOrder axisOrder = QgsAbstractGeometry::AxisOrder::XY ) const override;
-    json asJsonObject( int precision = 17 ) const override SIP_SKIP;
+    json asJsonObject( int precision = 17, Qgis::GeoJsonProfile profile = Qgis::GeoJsonProfile::Legacy ) const override SIP_SKIP;
     QString asKml( int precision = 17 ) const override;
 
     QgsBox3D boundingBox3D() const override;
@@ -271,10 +295,12 @@ class CORE_EXPORT QgsGeometryCollection: public QgsAbstractGeometry
     //low-level editing
     bool insertVertex( QgsVertexId position, const QgsPoint &vertex ) override;
     bool moveVertex( QgsVertexId position, const QgsPoint &newPos ) override;
-    bool deleteVertex( QgsVertexId position ) override;
+    bool deleteVertices( const QSet<QgsVertexId> &positions ) override;
+    bool hasVertex( QgsVertexId position ) const override;
 
     double length() const override SIP_HOLDGIL;
     double area() const override SIP_HOLDGIL;
+    double area3D() const override SIP_HOLDGIL;
     double perimeter() const override SIP_HOLDGIL;
 
     bool hasCurvedSegments() const override SIP_HOLDGIL;
@@ -301,6 +327,7 @@ class CORE_EXPORT QgsGeometryCollection: public QgsAbstractGeometry
     void swapXy() override;
     QgsGeometryCollection *toCurveType() const override SIP_FACTORY;
     const QgsAbstractGeometry *simplifiedTypeRef() const override SIP_HOLDGIL;
+    QgsGeometryCollection *simplifyByDistance( double tolerance ) const override SIP_FACTORY;
 
     bool transform( QgsAbstractGeometryTransformer *transformer, QgsFeedback *feedback = nullptr ) override;
 
@@ -312,7 +339,9 @@ class CORE_EXPORT QgsGeometryCollection: public QgsAbstractGeometry
      * Cast the \a geom to a QgsGeometryCollection.
      * Should be used by qgsgeometry_cast<QgsGeometryCollection *>( geometry ).
      *
-     * \note Not available in Python. Objects will be automatically be converted to the appropriate target type.
+     * Objects will be automatically converted to the appropriate target type.
+     *
+     * \note Not available in Python.
      */
     inline static const QgsGeometryCollection *cast( const QgsAbstractGeometry *geom )
     {
@@ -320,10 +349,26 @@ class CORE_EXPORT QgsGeometryCollection: public QgsAbstractGeometry
         return static_cast<const QgsGeometryCollection *>( geom );
       return nullptr;
     }
+
+    /**
+     * Cast the \a geom to a QgsGeometryCollection.
+     * Should be used by qgsgeometry_cast<QgsGeometryCollection *>( geometry ).
+     *
+     * Objects will be automatically converted to the appropriate target type.
+     *
+     * \note Not available in Python.
+     */
+    inline static QgsGeometryCollection *cast( QgsAbstractGeometry *geom )
+    {
+      if ( geom && QgsWkbTypes::isMultiType( geom->wkbType() ) )
+        return static_cast<QgsGeometryCollection *>( geom );
+      return nullptr;
+    }
 #endif
 
 
 #ifdef SIP_RUN
+// clang-format off
 
     /**
     * Returns the geometry at the specified ``index``.
@@ -386,6 +431,7 @@ class CORE_EXPORT QgsGeometryCollection: public QgsAbstractGeometry
     % MethodCode
     sipRes = sipConvertFromNewType( new QgsGeometryPartIterator( sipCpp ), sipType_QgsGeometryPartIterator, Py_None );
     % End
+// clang-format on
 #endif
 
     /**
@@ -401,7 +447,7 @@ class CORE_EXPORT QgsGeometryCollection: public QgsAbstractGeometry
      *
      * \since QGIS 3.36
     */
-    QgsGeometryCollection *extractPartsByType( Qgis::WkbType type, bool useFlatType = true ) const SIP_FACTORY;
+    std::unique_ptr<QgsGeometryCollection> extractPartsByType( Qgis::WkbType type, bool useFlatType = true ) const;
 
     QgsGeometryCollection *createEmptyWithSameType() const override SIP_FACTORY;
 
@@ -421,7 +467,7 @@ class CORE_EXPORT QgsGeometryCollection: public QgsAbstractGeometry
     /**
      * Reads a collection from a WKT string.
      */
-    bool fromCollectionWkt( const QString &wkt, const QVector<QgsAbstractGeometry *> &subtypes, const QString &defaultChildWkbType = QString() );
+    SIP_SKIP bool fromCollectionWkt( const QString &wkt, const QVector<Qgis::WkbType> &subtypes, const QString &defaultChildWkbType = QString() );
 
     QgsBox3D calculateBoundingBox3D() const override;
     void clearCache() const override;

@@ -15,25 +15,25 @@
 #ifndef QGSHEATMAPRENDERER_H
 #define QGSHEATMAPRENDERER_H
 
+#include "qgis.h"
 #include "qgis_core.h"
 #include "qgis_sip.h"
-#include "qgsrenderer.h"
+#include "qgscolorramplegendnodesettings.h"
 #include "qgsexpression.h"
 #include "qgsgeometry.h"
 #include "qgsmapunitscale.h"
-#include "qgis.h"
+#include "qgsrenderer.h"
 
 class QgsColorRamp;
 
 /**
  * \ingroup core
  * \class QgsHeatmapRenderer
- * \brief A renderer which draws points as a live heatmap
+ * \brief A renderer which draws points as a live heatmap.
  */
 class CORE_EXPORT QgsHeatmapRenderer : public QgsFeatureRenderer
 {
   public:
-
     QgsHeatmapRenderer();
     ~QgsHeatmapRenderer() override;
 
@@ -47,17 +47,16 @@ class CORE_EXPORT QgsHeatmapRenderer : public QgsFeatureRenderer
     void startRender( QgsRenderContext &context, const QgsFields &fields ) override;
     bool renderFeature( const QgsFeature &feature, QgsRenderContext &context, int layer = -1, bool selected = false, bool drawVertexMarker = false ) override SIP_THROW( QgsCsException );
     void stopRender( QgsRenderContext &context ) override;
-    //! \note symbolForFeature2 in Python bindings
     QgsSymbol *symbolForFeature( const QgsFeature &feature, QgsRenderContext &context ) const override;
-    //! \note symbol2 in Python bindings
     QgsSymbolList symbols( QgsRenderContext &context ) const override;
     QString dump() const override;
     QSet<QString> usedAttributes( const QgsRenderContext &context ) const override;
     //! Creates a new heatmap renderer instance from XML
-    static QgsFeatureRenderer *create( QDomElement &element, const QgsReadWriteContext &context ) SIP_FACTORY;
+    static std::unique_ptr<QgsFeatureRenderer> create( QDomElement &element, const QgsReadWriteContext &context );
     QDomElement save( QDomDocument &doc, const QgsReadWriteContext &context ) override;
-    static QgsHeatmapRenderer *convertFromRenderer( const QgsFeatureRenderer *renderer ) SIP_FACTORY;
+    static std::unique_ptr<QgsHeatmapRenderer> convertFromRenderer( const QgsFeatureRenderer *renderer );
     bool accept( QgsStyleEntityVisitorInterface *visitor ) const override;
+    QList<QgsLayerTreeModelLegendNode *> createLegendNodes( QgsLayerTreeLayer *nodeLayer ) const override SIP_FACTORY;
 
     //reimplemented to extent the request so that points up to heatmap's radius distance outside
     //visible area are included
@@ -70,7 +69,7 @@ class CORE_EXPORT QgsHeatmapRenderer : public QgsFeatureRenderer
      * \returns color ramp for heatmap
      * \see setColorRamp
      */
-    QgsColorRamp *colorRamp() const { return mGradientRamp; }
+    QgsColorRamp *colorRamp() const { return mGradientRamp.get(); }
 
     /**
      * Sets the color ramp to use for shading the heatmap.
@@ -78,6 +77,22 @@ class CORE_EXPORT QgsHeatmapRenderer : public QgsFeatureRenderer
      * \see colorRamp
      */
     void setColorRamp( QgsColorRamp *ramp SIP_TRANSFER );
+
+    /**
+     * Returns the color ramp legend settings.
+     *
+     * \see setLegendSettings()
+     * \since QGIS 3.38
+     */
+    const QgsColorRampLegendNodeSettings &legendSettings() const { return mLegendSettings; }
+
+    /**
+     * Sets the color ramp legend \a settings.
+     *
+     * \see legendSettings()
+     * \since QGIS 3.38
+     */
+    void setLegendSettings( const QgsColorRampLegendNodeSettings &settings );
 
     /**
      * Returns the radius for the heatmap
@@ -180,7 +195,6 @@ class CORE_EXPORT QgsHeatmapRenderer : public QgsFeatureRenderer
     void setWeightExpression( const QString &expression ) { mWeightExpressionString = expression; }
 
   private:
-
     QVector<double> mValues;
 
     double mCalculatedMaxValue = 0;
@@ -195,12 +209,14 @@ class CORE_EXPORT QgsHeatmapRenderer : public QgsFeatureRenderer
     int mWeightAttrNum = -1;
     std::unique_ptr<QgsExpression> mWeightExpression;
 
-    QgsColorRamp *mGradientRamp = nullptr;
+    std::unique_ptr<QgsColorRamp> mGradientRamp;
 
     double mExplicitMax = 0.0;
     int mRenderQuality = 3;
 
     int mFeaturesRendered = 0;
+
+    QgsColorRampLegendNodeSettings mLegendSettings;
 
     double uniformKernel( double distance, int bandwidth ) const;
     double quarticKernel( double distance, int bandwidth ) const;

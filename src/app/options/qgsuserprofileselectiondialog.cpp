@@ -13,19 +13,25 @@
  *                                                                         *
  ***************************************************************************/
 
+#include "qgsuserprofileselectiondialog.h"
+
+#include "qgsapplication.h"
+#include "qgsnewnamedialog.h"
+#include "qgsuserprofilemanager.h"
+
 #include <QListWidgetItem>
 #include <QMessageBox>
 #include <QPushButton>
 #include <QSettings>
+#include <QString>
 
-#include "qgsapplication.h"
-#include "qgsuserprofilemanager.h"
-#include "qgsnewnamedialog.h"
+#include "moc_qgsuserprofileselectiondialog.cpp"
 
-#include "qgsuserprofileselectiondialog.h"
+using namespace Qt::StringLiterals;
 
 QgsUserProfileSelectionDialog::QgsUserProfileSelectionDialog( QgsUserProfileManager *manager, QWidget *parent )
-  : QDialog( parent ), mManager( manager )
+  : QDialog( parent )
+  , mManager( manager )
 
 {
   setupUi( this );
@@ -37,11 +43,11 @@ QgsUserProfileSelectionDialog::QgsUserProfileSelectionDialog( QgsUserProfileMana
   // Add a new profile on button click
   connect( mAddProfileButton, &QPushButton::clicked, this, &QgsUserProfileSelectionDialog::onAddProfile );
 
-  const int iconSize = mManager->settings()->value( QStringLiteral( "/selector/iconSize" ), 24 ).toInt();
+  const int iconSize = mManager->settings()->value( u"/selector/iconSize"_s, 24 ).toInt();
   mProfileListWidget->setIconSize( QSize( iconSize, iconSize ) );
 
   // Fill the list of profiles
-  mProfileListWidget->clear();  // Clear bogus profiles in the Ui form
+  mProfileListWidget->clear(); // Clear bogus profiles in the Ui form
   for ( auto profile : mManager->allProfiles() )
   {
     auto item = new QListWidgetItem( mManager->profileForName( profile )->icon(), profile );
@@ -64,7 +70,7 @@ QString QgsUserProfileSelectionDialog::selectedProfileName() const
 void QgsUserProfileSelectionDialog::accept()
 {
   // Accept only if an item is selected
-  if ( mProfileListWidget->currentItem() != nullptr && mProfileListWidget->currentItem()->isSelected() )
+  if ( mProfileListWidget->currentItem() && mProfileListWidget->currentItem()->isSelected() )
   {
     QDialog::accept();
   }
@@ -74,7 +80,7 @@ void QgsUserProfileSelectionDialog::onAddProfile()
 {
   // Ask for a new profile name
   QgsNewNameDialog dlg( QString(), QString(), QStringList(), mManager->allProfiles(), Qt::CaseInsensitive, this );
-  dlg.setConflictingNameWarning( tr( "A profile with this name already exists" ) );
+  dlg.setConflictingNameWarning( tr( "A user profile with this name already exists." ) );
   dlg.setOverwriteEnabled( false );
   dlg.setHintString( tr( "New profile name" ) );
   dlg.setWindowTitle( tr( "New Profile Name" ) );
@@ -104,4 +110,5 @@ void QgsUserProfileSelectionDialog::onAddProfile()
   }
 }
 
-QgsUserProfileSelectionDialog::~QgsUserProfileSelectionDialog() {}
+QgsUserProfileSelectionDialog::~QgsUserProfileSelectionDialog()
+{}

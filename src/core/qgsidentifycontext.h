@@ -17,7 +17,6 @@
 
 #include "qgis_core.h"
 #include "qgis_sip.h"
-
 #include "qgsrange.h"
 
 /**
@@ -31,8 +30,6 @@
 class CORE_EXPORT QgsIdentifyContext
 {
   public:
-
-    //! Constructor for QgsIdentifyContext
     QgsIdentifyContext() = default;
 
     /**
@@ -76,10 +73,8 @@ class CORE_EXPORT QgsIdentifyContext
     void setZRange( const QgsDoubleRange &range );
 
   private:
-
     QgsDateTimeRange mTemporalRange;
     QgsDoubleRange mZRange;
-
 };
 
 #endif // QGSEXPRESSIONCONTEXT_H

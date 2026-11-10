@@ -81,6 +81,7 @@ namespace MDAL
       int faceVerticesMaximumCount() const override {return 4;}
 
       bool canReadMesh( const std::string &uri ) override;
+      using Driver::load;
       std::unique_ptr< Mesh > load( const std::string &meshFile, const std::string &meshName = "" ) override;
       void save( const std::string &fileName, const std::string &, Mesh *mesh ) override;
 
@@ -88,6 +89,10 @@ namespace MDAL
 
     private:
       std::string mMeshFile;
+      std::string mCrs;
+      std::string mDataType;
+      std::string mDataUnit;
+      size_t mVertexCount = 0;
       // regex for header line in form of - integer string
       const std::regex mRegexHeader2011 = std::regex( "(\\d+)\\s+(.+)(\\s+)?" );
       // regex for header line in form of - integer integer integer string
@@ -96,8 +101,7 @@ namespace MDAL
       const std::regex mRegexElementHeader = std::regex( "(\\d+)\\s+(\\d)\\s+(\\d{2})(\\s+)?" );
 
       bool canReadHeader( const std::string &line );
-      size_t getVertexCount( const std::string &line );
-      std::string getCrs( const std::string &line );
+      void parseHeader( const std::string &line );
   };
 
 } // namespace MDAL

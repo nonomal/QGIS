@@ -16,8 +16,8 @@
 #ifndef QGSLINESYMBOL_H
 #define QGSLINESYMBOL_H
 
-#include "qgis_core.h"
 #include "qgis.h"
+#include "qgis_core.h"
 #include "qgssymbol.h"
 
 /**
@@ -29,12 +29,11 @@
 class CORE_EXPORT QgsLineSymbol : public QgsSymbol
 {
   public:
-
     /**
      * Create a line symbol with one symbol layer: SimpleLine with specified properties.
      * This is a convenience method for easier creation of line symbols.
      */
-    static QgsLineSymbol *createSimple( const QVariantMap &properties ) SIP_FACTORY;
+    static std::unique_ptr< QgsLineSymbol > createSimple( const QVariantMap &properties );
 
     /**
      * Constructor for QgsLineSymbol, with the specified list of initial symbol \a layers.
@@ -114,11 +113,8 @@ class CORE_EXPORT QgsLineSymbol : public QgsSymbol
     QgsLineSymbol *clone() const override SIP_FACTORY;
 
   private:
-
     void renderPolylineUsingLayer( QgsLineSymbolLayer *layer, const QPolygonF &points, QgsSymbolRenderContext &context );
-
 };
 
 
 #endif // QGSLINESYMBOL_H
-

@@ -25,17 +25,26 @@ class QgsProject;
 /**
  * \ingroup core
  * \class QgsRelationContext
- * \brief Context for relations. Used to resolve layers from projects.
+ * \brief Context for relations.
+ *
+ * Used to resolve layers from projects.
  * \since QGIS 3.11
  */
 class CORE_EXPORT QgsRelationContext
 {
   public:
+    // TODO QGIS 5.0 -- Remove the deprecated constructor
+    /**
+     * Constructor for QgsRelationContext.
+     *
+     * \note Will be removed in QGIS 5.0. Use QgsRelationContext( QgsProject *project ) with explicit project instead.
+     */
+    QgsRelationContext() SIP_DEPRECATED;
 
     /**
      * Constructor for QgsRelationContext.
      */
-    QgsRelationContext( QgsProject *project = nullptr );
+    QgsRelationContext( QgsProject *project );
 
     /**
      * Gets the associated project
@@ -47,20 +56,8 @@ class CORE_EXPORT QgsRelationContext
 
     ~QgsRelationContext();
 
-    /**
-     * Copy constructor
-     */
-    QgsRelationContext( const QgsRelationContext &other );
-
-    /**
-     * Assignment operator
-     */
-    QgsRelationContext &operator=( const QgsRelationContext &other );
-
   private:
     QgsProject *mProject = nullptr;
-
 };
 
 #endif // QGSRELATIONCONTEXT_H
-

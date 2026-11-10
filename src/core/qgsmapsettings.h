@@ -18,24 +18,26 @@
 
 #include "qgis_core.h"
 #include "qgis_sip.h"
+#include "qgscoordinatereferencesystem.h"
+#include "qgselevationshadingrenderer.h"
+#include "qgsexpressioncontext.h"
+#include "qgsgeometry.h"
+#include "qgslabelingenginesettings.h"
+#include "qgsmapclippingregion.h"
+#include "qgsmaplayer.h"
+#include "qgsmaptopixel.h"
+#include "qgsmaskrendersettings.h"
+#include "qgsrectangle.h"
+#include "qgsscalecalculator.h"
+#include "qgsselectivemaskingsourceset.h"
+#include "qgstemporalrangeobject.h"
+#include "qgsvectorsimplifymethod.h"
+
 #include <QColor>
 #include <QImage>
 #include <QPointer>
 #include <QSize>
 #include <QStringList>
-
-#include "qgscoordinatereferencesystem.h"
-#include "qgslabelingenginesettings.h"
-#include "qgsmaptopixel.h"
-#include "qgsrectangle.h"
-#include "qgsscalecalculator.h"
-#include "qgsexpressioncontext.h"
-#include "qgsmaplayer.h"
-#include "qgsgeometry.h"
-#include "qgstemporalrangeobject.h"
-#include "qgsmapclippingregion.h"
-#include "qgsvectorsimplifymethod.h"
-#include "qgselevationshadingrenderer.h"
 
 class QPainter;
 
@@ -43,6 +45,7 @@ class QgsCoordinateTransform;
 class QgsScaleCalculator;
 class QgsMapRendererJob;
 class QgsRenderedFeatureHandlerInterface;
+class QgsSelectiveMaskingSourceSet;
 
 /**
  * \class QgsLabelBlockingRegion
@@ -55,7 +58,6 @@ class QgsRenderedFeatureHandlerInterface;
 class CORE_EXPORT QgsLabelBlockingRegion
 {
   public:
-
     /**
      * Constructor for a label blocking region
      */
@@ -65,13 +67,13 @@ class CORE_EXPORT QgsLabelBlockingRegion
 
     //! Geometry of region to avoid placing labels within (in destination map coordinates and CRS)
     QgsGeometry geometry;
-
 };
 
 
 /**
  * \ingroup core
- * \brief The QgsMapSettings class contains configuration for rendering of the map.
+ * \brief Contains configuration for rendering maps.
+ *
  * The rendering itself is done by QgsMapRendererJob subclasses.
  *
  * In order to set up QgsMapSettings instance, it is necessary to set at least
@@ -261,6 +263,17 @@ class CORE_EXPORT QgsMapSettings : public QgsTemporalRangeObject
      */
     QList<QgsMapLayer *> layers( bool expandGroupLayers = false ) const;
 
+
+#ifndef SIP_RUN
+    /**
+     * Returns a list of registered map layers with a specified layer type.
+     *
+     * \note not available in Python bindings
+     * \since QGIS 3.40
+     */
+    template<typename T> QVector<T> layers() const;
+#endif
+
     /**
      * Sets the list of \a layers to render in the map.
      *
@@ -291,7 +304,7 @@ class CORE_EXPORT QgsMapSettings : public QgsTemporalRangeObject
      * Returns custom rendering flags. Layers might honour these to alter their rendering.
      * \returns custom flags strings, separated by ';'
      * \see setCustomRenderFlags()
-     * \deprecated use \see customRenderingFlags().
+     * \deprecated QGIS 3.40. Use \see customRenderingFlags().
      */
     Q_DECL_DEPRECATED QString customRenderFlags() const { return mCustomRenderFlags; }
 
@@ -299,7 +312,7 @@ class CORE_EXPORT QgsMapSettings : public QgsTemporalRangeObject
      * Sets the custom rendering flags. Layers might honour these to alter their rendering.
      * \param customRenderFlags custom flags strings, separated by ';'
      * \see customRenderFlags()
-     * \deprecated use \see setCustomRenderingFlag() instead.
+     * \deprecated QGIS 3.40. Use \see setCustomRenderingFlag() instead.
      */
     Q_DECL_DEPRECATED void setCustomRenderFlags( const QString &customRenderFlags ) { mCustomRenderFlags = customRenderFlags; }
 
@@ -346,6 +359,22 @@ class CORE_EXPORT QgsMapSettings : public QgsTemporalRangeObject
      * Returns the units of the map's geographical coordinates - used for scale calculation.
      */
     Qgis::DistanceUnit mapUnits() const;
+
+    /**
+     * Returns the method to use for scale calculations for the map.
+     *
+     * \see setScaleMethod()
+     * \since QGIS 3.44
+     */
+    Qgis::ScaleCalculationMethod scaleMethod() const;
+
+    /**
+     * Sets the \a method to use for scale calculations for the map.
+     *
+     * \see scaleMethod()
+     * \since QGIS 3.44
+     */
+    void setScaleMethod( Qgis::ScaleCalculationMethod method );
 
     /**
      * Sets the \a ellipsoid by its acronym. Known ellipsoid acronyms can be
@@ -406,10 +435,7 @@ class CORE_EXPORT QgsMapSettings : public QgsTemporalRangeObject
      * \see setTextRenderFormat()
      * \since QGIS 3.4.3
      */
-    Qgis::TextRenderFormat textRenderFormat() const
-    {
-      return mTextRenderFormat;
-    }
+    Qgis::TextRenderFormat textRenderFormat() const { return mTextRenderFormat; }
 
     /**
      * Sets the text render \a format, which dictates how text is rendered (e.g. as paths or real text objects).
@@ -510,7 +536,7 @@ class CORE_EXPORT QgsMapSettings : public QgsTemporalRangeObject
     const QgsMapToPixel &mapToPixel() const { return mMapToPixel; }
 
     /**
-     * Computes an *estimated* conversion factor between layer and map units: layerUnits * layerToMapUnits = mapUnits
+     * Computes an *estimated* conversion factor between layer and map units, where ``layerUnits × layerToMapUnits = mapUnits``
      * \param layer The layer
      * \param referenceExtent A reference extent based on which to perform the computation. If not specified, the layer extent is used
      */
@@ -601,10 +627,18 @@ class CORE_EXPORT QgsMapSettings : public QgsTemporalRangeObject
     //! returns current extent of layer set
     QgsRectangle fullExtent() const;
 
-    /* serialization */
-
+    /**
+     * Restore the map settings from a XML \a node.
+     *
+     * \see writeXml()
+     */
     void readXml( QDomNode &node );
 
+    /**
+     * Writes the map settings to an XML \a node.
+     *
+     * \see readXml()
+     */
     void writeXml( QDomNode &node, QDomDocument &doc );
 
     /**
@@ -752,6 +786,33 @@ class CORE_EXPORT QgsMapSettings : public QgsTemporalRangeObject
     const QgsVectorSimplifyMethod &simplifyMethod() const { return mSimplifyMethod; }
 
     /**
+     * Returns a reference to the mask render settings, which control how masks
+     * are drawn and behave during the map render.
+     *
+     * \see setMaskSettings()
+     * \since QGIS 3.38
+     */
+    const QgsMaskRenderSettings &maskSettings() const SIP_SKIP { return mMaskRenderSettings; }
+
+    /**
+     * Returns a reference to the mask render settings, which control how masks
+     * are drawn and behave during the map render.
+     *
+     * \see setMaskSettings()
+     * \since QGIS 3.38
+     */
+    QgsMaskRenderSettings &maskSettings() { return mMaskRenderSettings; }
+
+    /**
+     * Sets the mask render \a settings, which control how masks
+     * are drawn and behave during the map render.
+     *
+     * \see maskSettings()
+     * \since QGIS 3.38
+     */
+    void setMaskSettings( const QgsMaskRenderSettings &settings );
+
+    /**
      * Adds a rendered feature \a handler to use while rendering the map settings.
      *
      * Ownership of \a handler is NOT transferred, and it is the caller's responsibility to ensure
@@ -860,8 +921,41 @@ class CORE_EXPORT QgsMapSettings : public QgsTemporalRangeObject
      */
     void setElevationShadingRenderer( const QgsElevationShadingRenderer &renderer );
 
-  protected:
+    /**
+     * Returns the policy controlling when rasterisation of content during renders is permitted.
+     *
+     * \see setRasterizedRenderingPolicy()
+     * \since QGIS 3.44
+     */
+    Qgis::RasterizedRenderingPolicy rasterizedRenderingPolicy() const;
 
+    /**
+     * Sets the \a policy controlling when rasterisation of content during renders is permitted.
+     *
+     * \see rasterizedRenderingPolicy()
+     * \since QGIS 3.44
+     */
+    void setRasterizedRenderingPolicy( Qgis::RasterizedRenderingPolicy policy );
+
+    /**
+     * Returns a hash of all selective masking source sets defined for the map.
+     *
+     * The hash keys are the set IDs.
+     *
+     * \see setSelectiveMaskingSourceSets()
+     * \since QGIS 4.0
+     */
+    QHash< QString, QgsSelectiveMaskingSourceSet > selectiveMaskingSourceSets() const;
+
+    /**
+     * Sets a list of all selective masking source sets defined for the map.
+     *
+     * \see selectiveMaskingSourceSets()
+     * \since QGIS 4.0
+     */
+    void setSelectiveMaskingSourceSets( const QVector< QgsSelectiveMaskingSourceSet > &sets );
+
+  protected:
     double mDpi = 96.0;
     double mDpiTarget = -1;
 
@@ -876,6 +970,9 @@ class CORE_EXPORT QgsMapSettings : public QgsTemporalRangeObject
 
     //! list of layers to be rendered (stored as weak pointers)
     QgsWeakMapLayerPointerList mLayers;
+    QStringList mLayerIds;
+    bool mHasGroupLayers = false;
+
     QMap<QString, QString> mLayerStyleOverrides;
     QString mCustomRenderFlags;
     QVariantMap mCustomRenderingFlags;
@@ -889,7 +986,7 @@ class CORE_EXPORT QgsMapSettings : public QgsTemporalRangeObject
     QColor mSelectionColor;
 
     Qgis::MapSettingsFlags mFlags;
-
+    Qgis::RasterizedRenderingPolicy mRasterizedRenderingPolicy = Qgis::RasterizedRenderingPolicy::Default;
     QImage::Format mImageFormat = QImage::Format_ARGB32_Premultiplied;
 
     double mSegmentationTolerance;
@@ -926,6 +1023,10 @@ class CORE_EXPORT QgsMapSettings : public QgsTemporalRangeObject
     double mFrameRate = -1;
     long long mCurrentFrame = -1;
 
+    QgsMaskRenderSettings mMaskRenderSettings;
+
+    QHash< QString, QgsSelectiveMaskingSourceSet > mSelectiveMaskingSourceSets;
+
 #ifdef QGISDEBUG
     bool mHasTransformContext = false;
 #endif
@@ -933,13 +1034,13 @@ class CORE_EXPORT QgsMapSettings : public QgsTemporalRangeObject
     void updateDerived();
 
   private:
+    void matchRasterizedRenderingPolicyToFlags();
 
     QList< QgsLabelBlockingRegion > mLabelBlockingRegions;
     QList< QgsMapClippingRegion > mClippingRegions;
     QList< QgsRenderedFeatureHandlerInterface * > mRenderedFeatureHandlers;
 
     QgsDoubleRange mZRange;
-
 };
 
 #endif // QGSMAPSETTINGS_H

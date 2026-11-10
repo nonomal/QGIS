@@ -3,9 +3,8 @@
  *                                                                      *
  * src/core/qgsmaplayerstyle.h                                          *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/
-
 
 
 
@@ -14,7 +13,8 @@
 class QgsMapLayerStyle
 {
 %Docstring(signature="appended")
-Stores style information (renderer, opacity, labeling, diagrams etc.) applicable to a map layer.
+Stores style information (renderer, opacity, labeling, diagrams etc.)
+applicable to a map layer.
 
 Stored data are considered as opaque:
 
@@ -84,19 +84,18 @@ Restore overridden layer style on destruction.
 #include "qgsmaplayerstyle.h"
 %End
   public:
-
     QgsMapLayerStyleOverride( QgsMapLayer *layer );
 %Docstring
-Construct a style override object associated with a map layer.
-The overridden style will be restored upon object destruction.
+Construct a style override object associated with a map layer. The
+overridden style will be restored upon object destruction.
 %End
 
     ~QgsMapLayerStyleOverride();
 
     void setOverrideStyle( const QString &style );
 %Docstring
-Temporarily apply a different style to the layer. The argument
-can be either a style name or a full QML style definition.
+Temporarily apply a different style to the layer. The argument can be
+either a style name or a full QML style definition.
 %End
 
 };
@@ -105,5 +104,5 @@ can be either a style name or a full QML style definition.
  *                                                                      *
  * src/core/qgsmaplayerstyle.h                                          *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/

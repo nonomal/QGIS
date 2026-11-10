@@ -10,15 +10,14 @@ the Free Software Foundation; either version 2 of the License, or
 """
 
 import os
-
-from qgis.PyQt.QtCore import QFileInfo
-from qgis.core import (
-    QgsSingleBandColorDataRenderer,
-    QgsRasterLayer,
-)
 import unittest
-from qgis.testing import start_app, QgisTestCase
 
+from qgis.core import (
+    QgsRasterLayer,
+    QgsSingleBandColorDataRenderer,
+)
+from qgis.PyQt.QtCore import QFileInfo
+from qgis.testing import QgisTestCase, start_app
 from utilities import unitTestDataPath
 
 # Convenience instances in case you may need them
@@ -27,14 +26,12 @@ start_app()
 
 
 class TestQgsSingleBandColorDataRenderer(QgisTestCase):
-
     def test_renderer(self):
-        path = os.path.join(unitTestDataPath(),
-                            'landsat.tif')
+        path = os.path.join(unitTestDataPath(), "landsat.tif")
         info = QFileInfo(path)
         base_name = info.baseName()
         layer = QgsRasterLayer(path, base_name)
-        self.assertTrue(layer.isValid(), f'Raster not loaded: {path}')
+        self.assertTrue(layer.isValid(), f"Raster not loaded: {path}")
 
         renderer = QgsSingleBandColorDataRenderer(layer.dataProvider(), 1)
 
@@ -60,5 +57,5 @@ class TestQgsSingleBandColorDataRenderer(QgisTestCase):
         self.assertEqual(renderer.inputBand(), 10)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

@@ -14,8 +14,14 @@
  ***************************************************************************/
 
 #include "qgspostgresexpressioncompiler.h"
-#include "qgssqlexpressioncompiler.h"
+
 #include "qgsexpressionnodeimpl.h"
+#include "qgsexpressionutils.h"
+#include "qgssqlexpressioncompiler.h"
+
+#include <QString>
+
+using namespace Qt::StringLiterals;
 
 QgsPostgresExpressionCompiler::QgsPostgresExpressionCompiler( QgsPostgresFeatureSource *source, bool ignoreStaticNodes )
   : QgsSqlExpressionCompiler( source->mFields, QgsSqlExpressionCompiler::IntegerDivisionResultsInInteger, ignoreStaticNodes )
@@ -25,8 +31,7 @@ QgsPostgresExpressionCompiler::QgsPostgresExpressionCompiler( QgsPostgresFeature
   , mRequestedGeomType( source->mRequestedGeomType )
   , mRequestedSrid( source->mRequestedSrid )
   , mDetectedSrid( source->mDetectedSrid )
-{
-}
+{}
 
 QString QgsPostgresExpressionCompiler::quotedIdentifier( const QString &identifier )
 {
@@ -37,30 +42,37 @@ QString QgsPostgresExpressionCompiler::quotedValue( const QVariant &value, bool 
 {
   ok = true;
 
+  // custom handling for QgsInterval type
+  if ( value.userType() == qMetaTypeId<QgsInterval>() )
+  {
+    const QgsInterval interval = value.value<QgsInterval>();
+    if ( !interval.isValid() )
+    {
+      ok = false;
+      return QString();
+    }
+    return u"'%1 seconds'::interval"_s.arg( qgsDoubleToString( interval.seconds() ) );
+  }
+
   // don't use the default QgsPostgresConn::quotedValue handling for double values -- for
   // various reasons it returns them as string values!
-  switch ( value.type() )
+  switch ( value.userType() )
   {
-    case QVariant::Double:
+    case QMetaType::Type::Double:
       return value.toString();
 
-    case QVariant::UserType:
-      if ( value.userType() == QMetaType::type( "QgsGeometry" ) )
-      {
-        const QgsGeometry geom = value.value<QgsGeometry>();
-        return QString( "ST_GeomFromText('%1',%2)" ).arg( geom.asWkt() ).arg( mRequestedSrid.isEmpty() ? mDetectedSrid : mRequestedSrid );
-      }
-      break;
-
     default:
-      break;
+
+      QgsGeometry geom = QgsExpressionUtils::getGeometry( value, nullptr );
+      if ( geom.isNull() )
+        break;
+      return QString( "ST_GeomFromText('%1',%2)" ).arg( geom.asWkt() ).arg( mRequestedSrid.isEmpty() ? mDetectedSrid : mRequestedSrid );
   }
 
   return QgsPostgresConn::quotedValue( value );
 }
 
-static const QMap<QString, QString> FUNCTION_NAMES_SQL_FUNCTIONS_MAP
-{
+static const QMap<QString, QString> FUNCTION_NAMES_SQL_FUNCTIONS_MAP {
   { "sqrt", "sqrt" },
   { "radians", "radians" },
   { "degrees", "degrees" },
@@ -137,25 +149,25 @@ QString QgsPostgresExpressionCompiler::sqlFunctionFromFunctionName( const QStrin
 QStringList QgsPostgresExpressionCompiler::sqlArgumentsFromFunctionName( const QString &fnName, const QStringList &fnArgs ) const
 {
   QStringList args( fnArgs );
-  if ( fnName == QLatin1String( "geom_from_wkt" ) )
+  if ( fnName == "geom_from_wkt"_L1 )
   {
     args << ( mRequestedSrid.isEmpty() ? mDetectedSrid : mRequestedSrid );
   }
-  else if ( fnName == QLatin1String( "geom_from_gml" ) )
+  else if ( fnName == "geom_from_gml"_L1 )
   {
     args << ( mRequestedSrid.isEmpty() ? mDetectedSrid : mRequestedSrid );
   }
-  else if ( fnName == QLatin1String( "x" ) || fnName == QLatin1String( "y" ) )
+  else if ( fnName == "x"_L1 || fnName == "y"_L1 )
   {
-    args = QStringList( QStringLiteral( "ST_Centroid(%1)" ).arg( args[0] ) );
+    args = QStringList( u"ST_Centroid(%1)"_s.arg( args[0] ) );
   }
-  else if ( fnName == QLatin1String( "buffer" ) && args.length() == 2 )
+  else if ( fnName == "buffer"_L1 && args.length() == 2 )
   {
-    args << QStringLiteral( "8" );
+    args << u"8"_s;
   }
-  else if ( fnName == QLatin1String( "round" ) )
+  else if ( fnName == "round"_L1 )
   {
-    args[0] = QStringLiteral( "(%1)::numeric" ).arg( args[0] );
+    args[0] = u"(%1)::numeric"_s.arg( args[0] );
   }
   // x and y functions have to be adapted
   return args;
@@ -163,17 +175,17 @@ QStringList QgsPostgresExpressionCompiler::sqlArgumentsFromFunctionName( const Q
 
 QString QgsPostgresExpressionCompiler::castToReal( const QString &value ) const
 {
-  return QStringLiteral( "((%1)::real)" ).arg( value );
+  return u"((%1)::real)"_s.arg( value );
 }
 
 QString QgsPostgresExpressionCompiler::castToInt( const QString &value ) const
 {
-  return QStringLiteral( "((%1)::int)" ).arg( value );
+  return u"((%1)::int)"_s.arg( value );
 }
 
 QString QgsPostgresExpressionCompiler::castToText( const QString &value ) const
 {
-  return QStringLiteral( "((%1)::text)" ).arg( value );
+  return u"((%1)::text)"_s.arg( value );
 }
 
 QgsSqlExpressionCompiler::Result QgsPostgresExpressionCompiler::compileNode( const QgsExpressionNode *node, QString &result )
@@ -187,9 +199,8 @@ QgsSqlExpressionCompiler::Result QgsPostgresExpressionCompiler::compileNode( con
     case QgsExpressionNode::ntFunction:
     {
       const QgsExpressionNodeFunction *n = static_cast<const QgsExpressionNodeFunction *>( node );
-
-      QgsExpressionFunction *fd = QgsExpression::Functions()[n->fnIndex()];
-      if ( fd->name() == QLatin1String( "$geometry" ) )
+      const QgsExpression::SharedFunctionPtr fd = n->function();
+      if ( fd->name() == "$geometry"_L1 )
       {
         result = quotedIdentifier( mGeometryColumn );
         return Complete;
@@ -203,27 +214,27 @@ QgsSqlExpressionCompiler::Result QgsPostgresExpressionCompiler::compileNode( con
        */
       else if ( fd->name() == "$area" )
       {
-        result = QStringLiteral( "ST_Area(%1)" ).arg( quotedIdentifier( mGeometryColumn ) );
+        result = u"ST_Area(%1)"_s.arg( quotedIdentifier( mGeometryColumn ) );
         return Complete;
       }
       else if ( fd->name() == "$length" )
       {
-        result = QStringLiteral( "ST_Length(%1)" ).arg( quotedIdentifier( mGeometryColumn ) );
+        result = u"ST_Length(%1)"_s.arg( quotedIdentifier( mGeometryColumn ) );
         return Complete;
       }
       else if ( fd->name() == "$perimeter" )
       {
-        result = QStringLiteral( "ST_Perimeter(%1)" ).arg( quotedIdentifier( mGeometryColumn ) );
+        result = u"ST_Perimeter(%1)"_s.arg( quotedIdentifier( mGeometryColumn ) );
         return Complete;
       }
       else if ( fd->name() == "$x" )
       {
-        result = QStringLiteral( "ST_X(%1)" ).arg( quotedIdentifier( mGeometryColumn ) );
+        result = u"ST_X(%1)"_s.arg( quotedIdentifier( mGeometryColumn ) );
         return Complete;
       }
       else if ( fd->name() == "$y" )
       {
-        result = QStringLiteral( "ST_Y(%1)" ).arg( quotedIdentifier( mGeometryColumn ) );
+        result = u"ST_Y(%1)"_s.arg( quotedIdentifier( mGeometryColumn ) );
         return Complete;
       }
 #endif

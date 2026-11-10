@@ -14,24 +14,29 @@
  *                                                                         *
  ***************************************************************************/
 
-#include <QDialogButtonBox>
-#include <QLabel>
-#include <QToolButton>
-#include <QPushButton>
-#include <QComboBox>
-#include <QLineEdit>
-#include <QHBoxLayout>
-#include <QVBoxLayout>
-
 #include "qgsrelationadddlg.h"
-#include "qgsvectorlayer.h"
-#include "qgsmaplayercombobox.h"
+
 #include "qgsfieldcombobox.h"
-#include "qgsmaplayerproxymodel.h"
 #include "qgshelp.h"
+#include "qgsmaplayercombobox.h"
+#include "qgsmaplayerproxymodel.h"
 #include "qgsproject.h"
 #include "qgsrelationmanager.h"
+#include "qgsvectorlayer.h"
 
+#include <QComboBox>
+#include <QDialogButtonBox>
+#include <QHBoxLayout>
+#include <QLabel>
+#include <QLineEdit>
+#include <QPushButton>
+#include <QString>
+#include <QToolButton>
+#include <QVBoxLayout>
+
+#include "moc_qgsrelationadddlg.cpp"
+
+using namespace Qt::StringLiterals;
 
 QgsCreateRelationDialog::QgsCreateRelationDialog( QWidget *parent )
   : QDialog( parent )
@@ -47,19 +52,18 @@ QgsCreateRelationDialog::QgsCreateRelationDialog( QWidget *parent )
   mReferencingLayerCombobox->setFilters( Qgis::LayerFilter::VectorLayer );
   mFieldsMappingTable->setCellWidget( 0, 1, mReferencingLayerCombobox );
 
-  mRelationStrengthComboBox->addItem( tr( "Association" ), static_cast< int >( Qgis::RelationshipStrength::Association ) );
-  mRelationStrengthComboBox->addItem( tr( "Composition" ), static_cast< int >( Qgis::RelationshipStrength::Composition ) );
-  mRelationStrengthComboBox->setToolTip( tr( "When composition is selected the child features will be duplicated too.\n"
-                                         "Duplications are made by the feature duplication action.\n"
-                                         "The default actions are activated in the Action section of the layer properties." ) );
+  mRelationStrengthComboBox->addItem( tr( "Association" ), static_cast<int>( Qgis::RelationshipStrength::Association ) );
+  mRelationStrengthComboBox->addItem( tr( "Composition" ), static_cast<int>( Qgis::RelationshipStrength::Composition ) );
+  mRelationStrengthComboBox->setToolTip( tr(
+    "When composition is selected the child features will be duplicated too.\n"
+    "Duplications are made by the feature duplication action.\n"
+    "The default actions are activated in the Action section of the layer properties."
+  ) );
 
   mButtonBox->setStandardButtons( QDialogButtonBox::Cancel | QDialogButtonBox::Help | QDialogButtonBox::Ok );
   connect( mButtonBox, &QDialogButtonBox::accepted, this, &QgsCreateRelationDialog::accept );
   connect( mButtonBox, &QDialogButtonBox::rejected, this, &QgsCreateRelationDialog::reject );
-  connect( mButtonBox, &QDialogButtonBox::helpRequested, this, [ = ]
-  {
-    QgsHelp::openHelp( QStringLiteral( "working_with_vector/attribute_table.html#defining-1-n-relations" ) );
-  } );
+  connect( mButtonBox, &QDialogButtonBox::helpRequested, this, [] { QgsHelp::openHelp( u"working_with_vector/joins_relations.html#one-to-many-relation"_s ); } );
 
   addFieldsRow();
   updateDialogButtons();
@@ -131,7 +135,7 @@ void QgsCreateRelationDialog::updateFieldsMappingButtons()
 void QgsCreateRelationDialog::updateFieldsMappingHeaders()
 {
   const int rowsCount = mFieldsMappingTable->rowCount();
-  QStringList verticalHeaderLabels( {tr( "Layer" )} );
+  QStringList verticalHeaderLabels( { tr( "Layer" ) } );
 
   for ( int i = 0; i < rowsCount; i++ )
     verticalHeaderLabels << tr( "Field %1" ).arg( i + 1 );
@@ -149,9 +153,9 @@ QString QgsCreateRelationDialog::referencedLayerId() const
   return mReferencedLayerCombobox->currentLayer()->id();
 }
 
-QList< QPair< QString, QString > > QgsCreateRelationDialog::references() const
+QList<QPair<QString, QString>> QgsCreateRelationDialog::references() const
 {
-  QList< QPair< QString, QString > > references;
+  QList<QPair<QString, QString>> references;
   for ( int i = 0, l = mFieldsMappingTable->rowCount(); i < l; i++ )
   {
     // ignore the layers row
@@ -178,7 +182,7 @@ QString QgsCreateRelationDialog::relationName() const
 
 Qgis::RelationshipStrength QgsCreateRelationDialog::relationStrength() const
 {
-  return static_cast< Qgis::RelationshipStrength >( mRelationStrengthComboBox->currentData().toInt() );
+  return static_cast<Qgis::RelationshipStrength>( mRelationStrengthComboBox->currentData().toInt() );
 }
 
 void QgsCreateRelationDialog::updateDialogButtons()

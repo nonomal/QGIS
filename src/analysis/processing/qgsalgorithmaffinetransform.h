@@ -18,10 +18,11 @@
 #ifndef QGSALGORITHMAFFINETRANSFORM_H
 #define QGSALGORITHMAFFINETRANSFORM_H
 
-#define SIP_NO_FILE
 
 #include "qgis_sip.h"
 #include "qgsprocessingalgorithm.h"
+
+#define SIP_NO_FILE
 
 ///@cond PRIVATE
 
@@ -30,9 +31,7 @@
  */
 class QgsAffineTransformationAlgorithm : public QgsProcessingFeatureBasedAlgorithm
 {
-
   public:
-
     QgsAffineTransformationAlgorithm() = default;
     QString name() const override;
     QString displayName() const override;
@@ -48,11 +47,10 @@ class QgsAffineTransformationAlgorithm : public QgsProcessingFeatureBasedAlgorit
   protected:
     QString outputName() const override;
     bool prepareAlgorithm( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
-    QgsFeatureList processFeature( const QgsFeature &feature,  QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
+    QgsFeatureList processFeature( const QgsFeature &feature, QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
     Qgis::WkbType outputWkbType( Qgis::WkbType inputWkbType ) const override;
 
   private:
-
     double mDeltaX = 0.0;
     bool mDynamicDeltaX = false;
     QgsProperty mDeltaXProperty;
@@ -88,12 +86,9 @@ class QgsAffineTransformationAlgorithm : public QgsProcessingFeatureBasedAlgorit
     double mRotationZ = 0.0;
     bool mDynamicRotationZ = false;
     QgsProperty mRotationZProperty;
-
 };
 
 
 ///@endcond PRIVATE
 
 #endif // QGSALGORITHMAFFINETRANSFORM_H
-
-

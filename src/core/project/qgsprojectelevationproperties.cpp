@@ -15,17 +15,21 @@
  *                                                                         *
  ***************************************************************************/
 #include "qgsprojectelevationproperties.h"
+
 #include "qgis.h"
 #include "qgsterrainprovider.h"
 
 #include <QDomElement>
+#include <QString>
+
+#include "moc_qgsprojectelevationproperties.cpp"
+
+using namespace Qt::StringLiterals;
 
 QgsProjectElevationProperties::QgsProjectElevationProperties( QObject *parent )
   : QObject( parent )
   , mTerrainProvider( std::make_unique< QgsFlatTerrainProvider >() )
-{
-
-}
+{}
 
 QgsProjectElevationProperties::~QgsProjectElevationProperties() = default;
 
@@ -45,15 +49,15 @@ void QgsProjectElevationProperties::resolveReferences( const QgsProject *project
 
 bool QgsProjectElevationProperties::readXml( const QDomElement &element, const QgsReadWriteContext &context )
 {
-  const QDomElement providerElement = element.firstChildElement( QStringLiteral( "terrainProvider" ) );
+  const QDomElement providerElement = element.firstChildElement( u"terrainProvider"_s );
   if ( !providerElement.isNull() )
   {
-    const QString type = providerElement.attribute( QStringLiteral( "type" ) );
-    if ( type.compare( QLatin1String( "flat" ) ) == 0 )
+    const QString type = providerElement.attribute( u"type"_s );
+    if ( type.compare( "flat"_L1 ) == 0 )
       mTerrainProvider = std::make_unique< QgsFlatTerrainProvider >();
-    else if ( type.compare( QLatin1String( "raster" ) ) == 0 )
+    else if ( type.compare( "raster"_L1 ) == 0 )
       mTerrainProvider = std::make_unique< QgsRasterDemTerrainProvider >();
-    else if ( type.compare( QLatin1String( "mesh" ) ) == 0 )
+    else if ( type.compare( "mesh"_L1 ) == 0 )
       mTerrainProvider = std::make_unique< QgsMeshTerrainProvider >();
     else
       mTerrainProvider = std::make_unique< QgsFlatTerrainProvider >();
@@ -67,14 +71,20 @@ bool QgsProjectElevationProperties::readXml( const QDomElement &element, const Q
 
   bool ok = false;
   double rangeLower = std::numeric_limits< double >::lowest();
-  const double storedRangeLower = element.attribute( QStringLiteral( "RangeLower" ) ).toDouble( &ok );
+  const double storedRangeLower = element.attribute( u"RangeLower"_s ).toDouble( &ok );
   if ( ok )
     rangeLower = storedRangeLower;
   double rangeUpper = std::numeric_limits< double >::max();
-  const double storedRangeUpper = element.attribute( QStringLiteral( "RangeUpper" ) ).toDouble( &ok );
+  const double storedRangeUpper = element.attribute( u"RangeUpper"_s ).toDouble( &ok );
   if ( ok )
     rangeUpper = storedRangeUpper;
   mElevationRange = QgsDoubleRange( rangeLower, rangeUpper );
+
+  mElevationFilterRangeSize = element.attribute( u"FilterRangeSize"_s ).toDouble( &ok );
+  if ( !ok )
+    mElevationFilterRangeSize = -1;
+
+  mInvertElevationFilter = element.attribute( u"FilterInvertSlider"_s, u"0"_s ).toInt();
 
   emit changed();
   emit elevationRangeChanged( mElevationRange );
@@ -83,20 +93,26 @@ bool QgsProjectElevationProperties::readXml( const QDomElement &element, const Q
 
 QDomElement QgsProjectElevationProperties::writeXml( QDomDocument &document, const QgsReadWriteContext &context ) const
 {
-  QDomElement element = document.createElement( QStringLiteral( "ElevationProperties" ) );
+  QDomElement element = document.createElement( u"ElevationProperties"_s );
 
   if ( mTerrainProvider )
   {
-    QDomElement providerElement = document.createElement( QStringLiteral( "terrainProvider" ) );
-    providerElement.setAttribute( QStringLiteral( "type" ), mTerrainProvider->type() );
+    QDomElement providerElement = document.createElement( u"terrainProvider"_s );
+    providerElement.setAttribute( u"type"_s, mTerrainProvider->type() );
     providerElement.appendChild( mTerrainProvider->writeXml( document, context ) );
     element.appendChild( providerElement );
   }
 
   if ( mElevationRange.lower() != std::numeric_limits< double >::lowest() )
-    element.setAttribute( QStringLiteral( "RangeLower" ), qgsDoubleToString( mElevationRange.lower() ) );
+    element.setAttribute( u"RangeLower"_s, qgsDoubleToString( mElevationRange.lower() ) );
   if ( mElevationRange.upper() != std::numeric_limits< double >::max() )
-    element.setAttribute( QStringLiteral( "RangeUpper" ), qgsDoubleToString( mElevationRange.upper() ) );
+    element.setAttribute( u"RangeUpper"_s, qgsDoubleToString( mElevationRange.upper() ) );
+
+  if ( mElevationFilterRangeSize >= 0 )
+  {
+    element.setAttribute( u"FilterRangeSize"_s, mElevationFilterRangeSize );
+  }
+  element.setAttribute( u"FilterInvertSlider"_s, mInvertElevationFilter ? "1" : "0" );
 
   return element;
 }
@@ -116,6 +132,24 @@ void QgsProjectElevationProperties::setTerrainProvider( QgsAbstractTerrainProvid
   mTerrainProvider.reset( provider );
   if ( hasChanged )
     emit changed();
+}
+
+void QgsProjectElevationProperties::setElevationFilterRangeSize( double size )
+{
+  if ( mElevationFilterRangeSize == size )
+    return;
+
+  mElevationFilterRangeSize = size;
+  emit changed();
+}
+
+void QgsProjectElevationProperties::setInvertElevationFilter( bool invert )
+{
+  if ( mInvertElevationFilter == invert )
+    return;
+
+  mInvertElevationFilter = invert;
+  emit changed();
 }
 
 void QgsProjectElevationProperties::setElevationRange( const QgsDoubleRange &range )

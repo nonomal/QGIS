@@ -3,3 +3,8 @@ QgsHueSaturationFilter.GrayscaleOff = QgsHueSaturationFilter.GrayscaleMode.Grays
 QgsHueSaturationFilter.GrayscaleLightness = QgsHueSaturationFilter.GrayscaleMode.GrayscaleLightness
 QgsHueSaturationFilter.GrayscaleLuminosity = QgsHueSaturationFilter.GrayscaleMode.GrayscaleLuminosity
 QgsHueSaturationFilter.GrayscaleAverage = QgsHueSaturationFilter.GrayscaleMode.GrayscaleAverage
+try:
+    QgsHueSaturationFilter.__overridden_methods__ = ['clone', 'bandCount', 'dataType', 'setInput', 'block', 'writeXml', 'readXml']
+    QgsHueSaturationFilter.__group__ = ['raster']
+except (NameError, AttributeError):
+    pass

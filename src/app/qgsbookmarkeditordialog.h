@@ -33,22 +33,21 @@ class QgsMapCanvas;
  * \brief a dialog for editing bookmarks.
  * \since QGIS 3.10
 */
-class APP_EXPORT QgsBookmarkEditorDialog: public QDialog, private Ui::QgsBookmarkEditorDialog
+class APP_EXPORT QgsBookmarkEditorDialog : public QDialog, private Ui::QgsBookmarkEditorDialog
 {
     Q_OBJECT
 
   public:
-
     enum SaveLocation
     {
-      ApplicationManager = 1, // Bookmark saved in the application bookmark manager
-      ProjectManager          // Bookmark saved in the project bookmark manager
+      ApplicationManager = 1, //!< Bookmark saved in the application bookmark manager
+      ProjectManager          //!< Bookmark saved in the project bookmark manager
     };
 
     /**
      * Constructor for QgsBookmarkEditorDialog
      */
-    QgsBookmarkEditorDialog( QgsBookmark bookmark, bool inProject = false, QWidget *parent = nullptr, QgsMapCanvas *mapCanvas = nullptr );
+    QgsBookmarkEditorDialog( const QgsBookmark &bookmark, bool inProject = false, QWidget *parent = nullptr, QgsMapCanvas *mapCanvas = nullptr );
 
   private slots:
 
@@ -57,12 +56,10 @@ class APP_EXPORT QgsBookmarkEditorDialog: public QDialog, private Ui::QgsBookmar
     void showHelp();
 
   private:
-
     QgsBookmark mBookmark;
     bool mInProject = false;
 
     QgsMapCanvas *mMapCanvas = nullptr;
-
 };
 
 #endif // QGSBOOKMARKEDITORDIALOG_H

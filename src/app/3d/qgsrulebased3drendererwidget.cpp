@@ -15,19 +15,30 @@
 
 #include "qgsrulebased3drendererwidget.h"
 
-#include "qgs3dutils.h"
-#include "qgsexpressionbuilderdialog.h"
-#include "qgslogger.h"
-#include "qgsrulebased3drenderer.h"
-#include "qgsvectorlayer.h"
-#include "qgssymbol3dwidget.h"
-#include "qgsapplication.h"
+#include "qgisapp.h"
 #include "qgs3dsymbolregistry.h"
+#include "qgs3dsymbolutils.h"
+#include "qgs3dutils.h"
+#include "qgsapplication.h"
+#include "qgsexpressionbuilderdialog.h"
+#include "qgsexpressioncontextutils.h"
+#include "qgslogger.h"
+#include "qgsmapcanvas.h"
+#include "qgsrulebased3drenderer.h"
+#include "qgsrulebasedrenderer.h"
+#include "qgssymbol3dwidget.h"
+#include "qgsvectorlayer.h"
 
 #include <QAction>
 #include <QClipboard>
+#include <QMenu>
 #include <QMessageBox>
 #include <QMimeData>
+#include <QString>
+
+#include "moc_qgsrulebased3drendererwidget.cpp"
+
+using namespace Qt::StringLiterals;
 
 QgsRuleBased3DRendererWidget::QgsRuleBased3DRendererWidget( QWidget *parent )
   : QgsPanelWidget( parent )
@@ -58,11 +69,11 @@ QgsRuleBased3DRendererWidget::QgsRuleBased3DRendererWidget( QWidget *parent )
   connect( mPasteAction, &QAction::triggered, this, &QgsRuleBased3DRendererWidget::paste );
   connect( mDeleteAction, &QAction::triggered, this, &QgsRuleBased3DRendererWidget::removeRule );
 
-}
-
-QgsRuleBased3DRendererWidget::~QgsRuleBased3DRendererWidget()
-{
-  delete mRootRule;
+  // Advanced menu
+  QMenu *advancedMenu = new QMenu( this );
+  advancedMenu->setToolTipsVisible( true );
+  mRulesFrom2DAction = advancedMenu->addAction( tr( "Update Rules from 2D Rule-based Renderer" ), this, &QgsRuleBased3DRendererWidget::updateRulesFrom2D );
+  mBtnAdvanced->setMenu( advancedMenu );
 }
 
 void QgsRuleBased3DRendererWidget::setLayer( QgsVectorLayer *layer )
@@ -70,23 +81,40 @@ void QgsRuleBased3DRendererWidget::setLayer( QgsVectorLayer *layer )
   mLayer = layer;
 
   QgsAbstract3DRenderer *r = layer->renderer3D();
-  if ( r && r->type() == QLatin1String( "rulebased" ) )
+  if ( r && r->type() == "rulebased"_L1 )
   {
     QgsRuleBased3DRenderer *ruleRenderer = static_cast<QgsRuleBased3DRenderer *>( r );
-    mRootRule = ruleRenderer->rootRule()->clone();
+    mRootRule.reset( ruleRenderer->rootRule()->clone() );
   }
-  else
+  else if ( QgsAbstractVectorLayer3DRenderer *vectorRenderer = dynamic_cast< QgsAbstractVectorLayer3DRenderer * >( r ) )
   {
-    // TODO: handle the special case when switching from single symbol renderer
-    mRootRule = new QgsRuleBased3DRenderer::Rule( nullptr );
+    std::unique_ptr< QgsRuleBased3DRenderer > newRenderer = QgsRuleBased3DRenderer::convertFromRenderer( vectorRenderer );
+    if ( newRenderer )
+    {
+      mRootRule.reset( newRenderer->rootRule()->clone() );
+    }
+  }
+  if ( !mRootRule )
+  {
+    mRootRule = std::make_unique<QgsRuleBased3DRenderer::Rule>( nullptr );
   }
 
-  mModel = new QgsRuleBased3DRendererModel( mRootRule );
+  mModel = make_qobject_unique<QgsRuleBased3DRendererModel>( mRootRule.get() );
   viewRules->setModel( mModel );
 
-  connect( mModel, &QAbstractItemModel::dataChanged, this, &QgsRuleBased3DRendererWidget::widgetChanged );
-  connect( mModel, &QAbstractItemModel::rowsInserted, this, &QgsRuleBased3DRendererWidget::widgetChanged );
-  connect( mModel, &QAbstractItemModel::rowsRemoved, this, &QgsRuleBased3DRendererWidget::widgetChanged );
+  connect( mModel, &QAbstractItemModel::dataChanged, this, &QgsRuleBased3DRendererWidget::changed );
+  connect( mModel, &QAbstractItemModel::rowsInserted, this, &QgsRuleBased3DRendererWidget::changed );
+  connect( mModel, &QAbstractItemModel::rowsRemoved, this, &QgsRuleBased3DRendererWidget::changed );
+
+  if ( mLayer )
+  {
+    QgsFeatureRenderer *renderer2D = mLayer->renderer();
+    const bool hasRuleBasedSymbol2D = renderer2D && renderer2D->type() == "RuleRenderer"_L1;
+
+    mRulesFrom2DAction->setEnabled( hasRuleBasedSymbol2D );
+    const QString toolTip = hasRuleBasedSymbol2D ? QString() : tr( "Requires a rule-based 2D symbology on the layer" );
+    mRulesFrom2DAction->setToolTip( toolTip );
+  }
 }
 
 void QgsRuleBased3DRendererWidget::setDockMode( bool dockMode )
@@ -104,10 +132,92 @@ void QgsRuleBased3DRendererWidget::setDockMode( bool dockMode )
   QgsPanelWidget::setDockMode( dockMode );
 }
 
+void QgsRuleBased3DRendererWidget::updateRulesFrom2D()
+{
+  QgsFeatureRenderer *renderer2D = mLayer->renderer();
+  if ( !renderer2D || renderer2D->type() != "RuleRenderer"_L1 )
+  {
+    return;
+  }
+  const QgsRuleBasedRenderer *ruleRenderer2D = qgis::down_cast<const QgsRuleBasedRenderer *>( renderer2D );
+  syncChildrenRulesFrom2D( ruleRenderer2D->rootRule(), mRootRule.get(), QModelIndex() );
+}
+
+void QgsRuleBased3DRendererWidget::syncChildrenRulesFrom2D( const QgsRuleBasedRenderer::Rule *rule2D, QgsRuleBased3DRenderer::Rule *rule3D, const QModelIndex &rule3DIndex )
+{
+  if ( !rule2D || !rule3D )
+  {
+    return;
+  }
+
+  const auto ruleKey = []( const auto *rule ) { return ( rule->isElse() ? u"ELSE|"_s : u"RULE|"_s ) + rule->filterExpression(); };
+
+  // Store existing 3D rules
+  QHash<QString, QList<QgsRuleBased3DRenderer::Rule *>> existingRules3D;
+  for ( QgsRuleBased3DRenderer::Rule *child3D : rule3D->children() )
+  {
+    existingRules3D[ruleKey( child3D )].append( child3D );
+  }
+
+  // Detect 2D rules which have a 3D match
+  const QgsRuleBasedRenderer::RuleList children2D = rule2D->children();
+  QList<QgsRuleBased3DRenderer::Rule *> rules3DWith2DMatch;
+  rules3DWith2DMatch.reserve( children2D.size() );
+  for ( const QgsRuleBasedRenderer::Rule *child2D : children2D )
+  {
+    QList<QgsRuleBased3DRenderer::Rule *> &rules3D = existingRules3D[ruleKey( child2D )];
+    rules3DWith2DMatch.append( rules3D.isEmpty() ? nullptr : rules3D.takeFirst() );
+  }
+
+  // Remove the 3D rules which do not have a 2D counterpart
+  QList<int> rowsToRemove;
+  for ( auto it = existingRules3D.cbegin(); it != existingRules3D.cend(); ++it )
+  {
+    for ( QgsRuleBased3DRenderer::Rule *unmatchedRule3D : it.value() )
+    {
+      rowsToRemove.append( static_cast<int>( rule3D->children().indexOf( unmatchedRule3D ) ) );
+    }
+  }
+  std::sort( rowsToRemove.begin(), rowsToRemove.end(), std::greater<int>() );
+  for ( int row : rowsToRemove )
+  {
+    mModel->removeRows( row, 1, rule3DIndex );
+  }
+
+  // Sync matched rules recursively and insert missing ones
+  int insertRow = 0;
+  for ( int i = 0; i < children2D.size(); ++i )
+  {
+    if ( QgsRuleBased3DRenderer::Rule *rule3DMatched = rules3DWith2DMatch[i] )
+    {
+      const int row = static_cast<int>( rule3D->children().indexOf( rule3DMatched ) );
+      syncChildrenRulesFrom2D( children2D.at( i ), rule3DMatched, mModel->index( row, 0, rule3DIndex ) );
+      insertRow = row + 1;
+    }
+    else
+    {
+      std::unique_ptr<QgsRuleBased3DRenderer::Rule> newRule3D = create3DRuleFrom2D( mLayer, children2D.at( i ) );
+      mModel->insertRule( rule3DIndex, insertRow, newRule3D.release() );
+      ++insertRow;
+    }
+  }
+}
+
+std::unique_ptr<QgsRuleBased3DRenderer::Rule> QgsRuleBased3DRendererWidget::create3DRuleFrom2D( QgsVectorLayer *vLayer, const QgsRuleBasedRenderer::Rule *rule2D )
+{
+  std::unique_ptr<QgsAbstract3DSymbol> symbol3D = Qgs3DSymbolUtils::create3DSymbolFrom2D( vLayer, rule2D->symbol() );
+  auto rule3D = std::make_unique<QgsRuleBased3DRenderer::Rule>( symbol3D.release(), rule2D->filterExpression(), rule2D->label(), rule2D->isElse() );
+  rule3D->setActive( rule2D->active() );
+  for ( const QgsRuleBasedRenderer::Rule *child2D : rule2D->children() )
+  {
+    rule3D->appendChild( create3DRuleFrom2D( vLayer, child2D ).release() );
+  }
+  return rule3D;
+}
 
 void QgsRuleBased3DRendererWidget::addRule()
 {
-  std::unique_ptr< QgsAbstract3DSymbol > newSymbol( QgsApplication::symbol3DRegistry()->defaultSymbolForGeometryType( mLayer->geometryType() ) );
+  std::unique_ptr<QgsAbstract3DSymbol> newSymbol( QgsApplication::symbol3DRegistry()->defaultSymbolForGeometryType( mLayer->geometryType() ) );
   newSymbol->setDefaultPropertiesFromLayer( mLayer );
   QgsRuleBased3DRenderer::Rule *newrule = new QgsRuleBased3DRenderer::Rule( newSymbol.release() );
 
@@ -161,7 +271,7 @@ void QgsRuleBased3DRendererWidget::editRule( const QModelIndex &index )
   Qgs3DRendererRulePropsWidget *widget = new Qgs3DRendererRulePropsWidget( rule, mLayer, this );
   widget->setPanelTitle( tr( "Edit Rule" ) );
   connect( widget, &QgsPanelWidget::panelAccepted, this, &QgsRuleBased3DRendererWidget::ruleWidgetPanelAccepted );
-  connect( widget, &Qgs3DRendererRulePropsWidget::widgetChanged, this, &QgsRuleBased3DRendererWidget::liveUpdateRuleFromPanel );
+  connect( widget, &Qgs3DRendererRulePropsWidget::changed, this, &QgsRuleBased3DRendererWidget::liveUpdateRuleFromPanel );
   openPanel( widget );
 }
 
@@ -192,6 +302,9 @@ void QgsRuleBased3DRendererWidget::copy()
 void QgsRuleBased3DRendererWidget::paste()
 {
   const QMimeData *mime = QApplication::clipboard()->mimeData();
+  if ( !mime )
+    return;
+
   QModelIndexList indexlist = viewRules->selectionModel()->selectedRows();
   QModelIndex index;
   if ( indexlist.isEmpty() )
@@ -216,8 +329,7 @@ QgsRuleBased3DRenderer::Rule *QgsRuleBased3DRendererWidget::currentRule()
 QgsRuleBased3DRendererModel::QgsRuleBased3DRendererModel( QgsRuleBased3DRenderer::Rule *rootRule, QObject *parent )
   : QAbstractItemModel( parent )
   , mRootRule( rootRule )
-{
-}
+{}
 
 Qt::ItemFlags QgsRuleBased3DRendererModel::flags( const QModelIndex &index ) const
 {
@@ -229,9 +341,7 @@ Qt::ItemFlags QgsRuleBased3DRendererModel::flags( const QModelIndex &index ) con
 
   const Qt::ItemFlag checkable = ( index.column() == 0 ? Qt::ItemIsUserCheckable : Qt::NoItemFlags );
 
-  return Qt::ItemIsEnabled | Qt::ItemIsSelectable |
-         Qt::ItemIsEditable | checkable |
-         Qt::ItemIsDragEnabled | drop;
+  return Qt::ItemIsEnabled | Qt::ItemIsSelectable | Qt::ItemIsEditable | checkable | Qt::ItemIsDragEnabled | drop;
 }
 
 QVariant QgsRuleBased3DRendererModel::data( const QModelIndex &index, int role ) const
@@ -397,7 +507,7 @@ Qt::DropActions QgsRuleBased3DRendererModel::supportedDropActions() const
 QStringList QgsRuleBased3DRendererModel::mimeTypes() const
 {
   QStringList types;
-  types << QStringLiteral( "application/vnd.text.list" );
+  types << u"application/vnd.text.list"_s;
   return types;
 }
 
@@ -405,15 +515,15 @@ QStringList QgsRuleBased3DRendererModel::mimeTypes() const
 void _renderer2renderer3DRules( QDomElement &ruleElem )
 {
   // labeling rules recognize only "description"
-  if ( ruleElem.hasAttribute( QStringLiteral( "label" ) ) )
-    ruleElem.setAttribute( QStringLiteral( "description" ), ruleElem.attribute( QStringLiteral( "label" ) ) );
+  if ( ruleElem.hasAttribute( u"label"_s ) )
+    ruleElem.setAttribute( u"description"_s, ruleElem.attribute( u"label"_s ) );
 
   // run recursively
-  QDomElement childRuleElem = ruleElem.firstChildElement( QStringLiteral( "rule" ) );
+  QDomElement childRuleElem = ruleElem.firstChildElement( u"rule"_s );
   while ( !childRuleElem.isNull() )
   {
     _renderer2renderer3DRules( childRuleElem );
-    childRuleElem = childRuleElem.nextSiblingElement( QStringLiteral( "rule" ) );
+    childRuleElem = childRuleElem.nextSiblingElement( u"rule"_s );
   }
 }
 
@@ -436,8 +546,8 @@ QMimeData *QgsRuleBased3DRendererModel::mimeData( const QModelIndexList &indexes
     QgsRuleBased3DRenderer::Rule *rule = ruleForIndex( index )->clone();
     QDomDocument doc;
 
-    QDomElement rootElem = doc.createElement( QStringLiteral( "rule_mime" ) );
-    rootElem.setAttribute( QStringLiteral( "type" ), QStringLiteral( "labeling" ) ); // for determining whether rules are from renderer or labeling
+    QDomElement rootElem = doc.createElement( u"rule_mime"_s );
+    rootElem.setAttribute( u"type"_s, u"labeling"_s ); // for determining whether rules are from renderer or labeling
     const QDomElement rulesElem = rule->save( doc, QgsReadWriteContext() );
     rootElem.appendChild( rulesElem );
     doc.appendChild( rootElem );
@@ -447,7 +557,7 @@ QMimeData *QgsRuleBased3DRendererModel::mimeData( const QModelIndexList &indexes
     stream << doc.toString( -1 );
   }
 
-  mimeData->setData( QStringLiteral( "application/vnd.text.list" ), encodedData );
+  mimeData->setData( u"application/vnd.text.list"_s, encodedData );
   return mimeData;
 }
 
@@ -458,13 +568,13 @@ bool QgsRuleBased3DRendererModel::dropMimeData( const QMimeData *data, Qt::DropA
   if ( action == Qt::IgnoreAction )
     return true;
 
-  if ( !data->hasFormat( QStringLiteral( "application/vnd.text.list" ) ) )
+  if ( !data->hasFormat( u"application/vnd.text.list"_s ) )
     return false;
 
   if ( parent.column() > 0 )
     return false;
 
-  QByteArray encodedData = data->data( QStringLiteral( "application/vnd.text.list" ) );
+  QByteArray encodedData = data->data( u"application/vnd.text.list"_s );
   QDataStream stream( &encodedData, QIODevice::ReadOnly );
   int rows = 0;
 
@@ -483,10 +593,10 @@ bool QgsRuleBased3DRendererModel::dropMimeData( const QMimeData *data, Qt::DropA
     if ( !doc.setContent( text ) )
       continue;
     const QDomElement rootElem = doc.documentElement();
-    if ( rootElem.tagName() != QLatin1String( "rule_mime" ) )
+    if ( rootElem.tagName() != "rule_mime"_L1 )
       continue;
-    QDomElement ruleElem = rootElem.firstChildElement( QStringLiteral( "rule" ) );
-    if ( rootElem.attribute( QStringLiteral( "type" ) ) == QLatin1String( "renderer" ) )
+    QDomElement ruleElem = rootElem.firstChildElement( u"rule"_s );
+    if ( rootElem.attribute( u"type"_s ) == "renderer"_L1 )
       _renderer2renderer3DRules( ruleElem ); // do some modifications so that we load the rules more nicely
     QgsRuleBased3DRenderer::Rule *rule = QgsRuleBased3DRenderer::Rule::create( ruleElem, QgsReadWriteContext() );
 
@@ -514,7 +624,7 @@ bool QgsRuleBased3DRendererModel::removeRows( int row, int count, const QModelIn
     }
     else
     {
-      QgsDebugError( QStringLiteral( "trying to remove invalid index - this should not happen!" ) );
+      QgsDebugError( u"trying to remove invalid index - this should not happen!"_s );
     }
   }
 
@@ -542,8 +652,7 @@ void QgsRuleBased3DRendererModel::insertRule( const QModelIndex &parent, int bef
 
 void QgsRuleBased3DRendererModel::updateRule( const QModelIndex &parent, int row )
 {
-  emit dataChanged( index( row, 0, parent ),
-                    index( row, columnCount( parent ), parent ) );
+  emit dataChanged( index( row, 0, parent ), index( row, columnCount( parent ), parent ) );
 }
 
 
@@ -571,24 +680,28 @@ Qgs3DRendererRulePropsWidget::Qgs3DRendererRulePropsWidget( QgsRuleBased3DRender
   else
   {
     groupSymbol->setChecked( false );
-    mSymbol.reset( QgsApplication::symbol3DRegistry()->defaultSymbolForGeometryType( layer->geometryType() ) );
+    mSymbol = QgsApplication::symbol3DRegistry()->defaultSymbolForGeometryType( layer->geometryType() );
     mSymbol->setDefaultPropertiesFromLayer( layer );
   }
 
   mSymbolWidget = new QgsSymbol3DWidget( layer, this );
   mSymbolWidget->setSymbol( mSymbol.get(), layer );
+  mSymbolWidget->setMode( Qgis::MaterialWidgetMode::Compact );
   QVBoxLayout *l = new QVBoxLayout;
   l->addWidget( mSymbolWidget );
   groupSymbol->setLayout( l );
 
   connect( btnExpressionBuilder, &QAbstractButton::clicked, this, &Qgs3DRendererRulePropsWidget::buildExpression );
   connect( btnTestFilter, &QAbstractButton::clicked, this, &Qgs3DRendererRulePropsWidget::testFilter );
-  connect( editFilter, &QLineEdit::textEdited, this, &Qgs3DRendererRulePropsWidget::widgetChanged );
-  connect( editDescription, &QLineEdit::textChanged, this, &Qgs3DRendererRulePropsWidget::widgetChanged );
-  connect( groupSymbol, &QGroupBox::toggled, this, &Qgs3DRendererRulePropsWidget::widgetChanged );
-  connect( mSymbolWidget, &QgsSymbol3DWidget::widgetChanged, this, &Qgs3DRendererRulePropsWidget::widgetChanged );
-  connect( mFilterRadio, &QRadioButton::toggled, this, [ = ]( bool toggled ) { filterFrame->setEnabled( toggled ) ; } );
-  connect( mElseRadio, &QRadioButton::toggled, this, [ = ]( bool toggled ) { if ( toggled ) editFilter->setText( QStringLiteral( "ELSE" ) );} );
+  connect( editFilter, &QLineEdit::textEdited, this, &Qgs3DRendererRulePropsWidget::changed );
+  connect( editDescription, &QLineEdit::textChanged, this, &Qgs3DRendererRulePropsWidget::changed );
+  connect( groupSymbol, &QGroupBox::toggled, this, &Qgs3DRendererRulePropsWidget::changed );
+  connect( mSymbolWidget, &QgsSymbol3DWidget::changed, this, &Qgs3DRendererRulePropsWidget::changed );
+  connect( mFilterRadio, &QRadioButton::toggled, this, [this]( bool toggled ) { filterFrame->setEnabled( toggled ); } );
+  connect( mElseRadio, &QRadioButton::toggled, this, [this]( bool toggled ) {
+    if ( toggled )
+      editFilter->setText( u"ELSE"_s );
+  } );
 }
 
 Qgs3DRendererRulePropsWidget::~Qgs3DRendererRulePropsWidget() = default;
@@ -601,11 +714,12 @@ void Qgs3DRendererRulePropsWidget::testFilter()
   QgsExpression filter( editFilter->text() );
   if ( filter.hasParserError() )
   {
-    QMessageBox::critical( this, tr( "Test Filter" ),  tr( "Filter expression parsing error:\n" ) + filter.parserErrorString() );
+    QMessageBox::critical( this, tr( "Test Filter" ), tr( "Filter expression parsing error:\n" ) + filter.parserErrorString() );
     return;
   }
 
-  QgsExpressionContext context( Qgs3DUtils::globalProjectLayerExpressionContext( mLayer ) );
+  QgsExpressionContext context;
+  context.appendScopes( QgsExpressionContextUtils::globalProjectLayerScopes( mLayer ) );
 
   if ( !filter.prepare( &context ) )
   {
@@ -638,9 +752,10 @@ void Qgs3DRendererRulePropsWidget::testFilter()
 
 void Qgs3DRendererRulePropsWidget::buildExpression()
 {
-  const QgsExpressionContext context( Qgs3DUtils::globalProjectLayerExpressionContext( mLayer ) );
+  QgsExpressionContext context;
+  context.appendScopes( QgsExpressionContextUtils::globalProjectLayerScopes( mLayer ) );
 
-  QgsExpressionBuilderDialog dlg( mLayer, editFilter->text(), this, QStringLiteral( "generic" ), context );
+  QgsExpressionBuilderDialog dlg( mLayer, editFilter->text(), this, u"generic"_s, context );
 
   if ( dlg.exec() )
     editFilter->setText( dlg.expressionText() );
@@ -648,10 +763,10 @@ void Qgs3DRendererRulePropsWidget::buildExpression()
 
 void Qgs3DRendererRulePropsWidget::apply()
 {
-  const QString filter = mElseRadio->isChecked() ? QStringLiteral( "ELSE" ) : editFilter->text();
+  const QString filter = mElseRadio->isChecked() ? u"ELSE"_s : editFilter->text();
   mRule->setFilterExpression( filter );
   mRule->setDescription( editDescription->text() );
-  std::unique_ptr< QgsAbstract3DSymbol > newSymbol;
+  std::unique_ptr<QgsAbstract3DSymbol> newSymbol;
   if ( groupSymbol->isChecked() )
     newSymbol = mSymbolWidget->symbol();
   mRule->setSymbol( newSymbol.release() );

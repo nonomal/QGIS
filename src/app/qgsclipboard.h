@@ -18,30 +18,55 @@
 #ifndef QGSCLIPBOARD_H
 #define QGSCLIPBOARD_H
 
+#include "qgis_app.h"
+#include "qgscoordinatereferencesystem.h"
+#include "qgsfeature.h"
+#include "qgsfields.h"
+#include "qgsmaplayer.h"
+
 #include <QList>
 #include <QMap>
+#include <QMimeData>
 #include <QObject>
 #include <QPointer>
-
-#include "qgsfields.h"
-#include "qgsfeature.h"
-#include "qgscoordinatereferencesystem.h"
-#include "qgsmaplayer.h"
-#include "qgis_app.h"
 
 class QgsVectorLayer;
 class QgsVectorTileLayer;
 class QgsFeatureStore;
+class QgsMessageBar;
 
 /**
- * \brief QGIS internal clipboard for features.
+ * A custom QMimeData class which stores original representations of features alongside their CRS and field data.
  *
- * An internal clipboard is required so that features can be retained in
- * their original fidelity.
+ * This allows:
  *
- * The internal clipboard makes a copy of features that are presented to it,
- * therefore the original objects can safely be destructed independent of
- * the lifetime of the internal clipboard.
+ * - Lossless pasting of features, retaining all their original properties (including CRS and field definitions)
+ * - Lazy generation of clipboard text, only when needed (via retrieveData()). We don't have to build potentially costly
+ *   text and HTML representations of thousands of features that may never be used.
+ */
+class QgsFeatureListMimeData : public QMimeData
+{
+    Q_OBJECT
+
+  public:
+    QgsFeatureListMimeData( QgsMapLayer *sourceLayer, const QgsCoordinateReferenceSystem &crs, const QgsFields &fields, const QgsFeatureList &features );
+
+    QStringList formats() const override;
+
+    QgsFeatureList mFeatures;
+    QgsFields mFields;
+    QgsCoordinateReferenceSystem mCRS;
+    QPointer<QgsMapLayer> mSourceLayer;
+
+  protected:
+    QVariant retrieveData( const QString &mimeType, QMetaType type ) const override;
+
+  private:
+    QString toText( bool asHtml ) const;
+};
+
+/**
+ * \brief Handles application clipboard related logic.
  *
  * As this class matures it should also be able to accept CSV representations
  * of features in and out of the system clipboard (QClipboard).
@@ -50,16 +75,17 @@ class APP_EXPORT QgsClipboard : public QObject
 {
     Q_OBJECT
   public:
-
     //! Available formats for copying features as text
     enum CopyFormat
     {
-      AttributesOnly, //!< Tab delimited text, attributes only
+      AttributesOnly,    //!< Tab delimited text, attributes only
       AttributesWithWKT, //!< Tab delimited text, with geometry in WKT format
       AttributesWithWKB, //!< Tab delimited text, with geometry in WKB format
-      GeoJSON, //!< GeoJSON FeatureCollection format
+      GeoJSON,           //!< GeoJSON FeatureCollection format
     };
     Q_ENUM( CopyFormat )
+
+    static const QString FEATURES_MIME_TYPE;
 
     /**
      * Constructor for the clipboard.
@@ -84,20 +110,9 @@ class APP_EXPORT QgsClipboard : public QObject
      */
     void replaceWithCopyOf( QgsFeatureStore &featureStore, QgsVectorLayer *src = nullptr );
 
-    /**
-     * Returns a copy of features on the internal clipboard.
-     */
-    QgsFeatureList copyOf( const QgsFields &fields = QgsFields() ) const;
+    QgsFeatureList getFeaturesFromClipboardText( const QgsFields &fields = QgsFields() ) const;
 
-    /**
-     * Clears the internal clipboard.
-     */
-    void clear();
-
-    /**
-     * Inserts a copy of the feature on the internal clipboard.
-     */
-    void insert( const QgsFeature &feature );
+    bool getFeaturesFromClipboard( QgsCoordinateReferenceSystem &crs, QgsFields &fields, QgsFeatureList &features ) const;
 
     /**
      * Returns TRUE if the internal clipboard is empty, else FALSE.
@@ -108,12 +123,7 @@ class APP_EXPORT QgsClipboard : public QObject
      * Returns a copy of features on the internal clipboard, transformed
      * from the clipboard CRS to the destCRS.
      */
-    QgsFeatureList transformedCopyOf( const QgsCoordinateReferenceSystem &destCRS, const QgsFields &fields = QgsFields() ) const;
-
-    /**
-     * Get the clipboard CRS
-     */
-    QgsCoordinateReferenceSystem crs() const;
+    QgsFeatureList transformedCopyOf( QgsVectorLayer *destinationLayer ) const;
 
     /**
      * Stores a MimeData together with a text into the system clipboard
@@ -137,12 +147,16 @@ class APP_EXPORT QgsClipboard : public QObject
      */
     QByteArray data( const QString &mimeType ) const;
 
-    /**
-     * Source fields
-     */
-    QgsFields fields() const;
-
     QgsMapLayer *layer() const;
+
+    /**
+     * Pastes clipboard features to a new memory layer.
+     *
+     * If no features are in clipboard an empty layer is returned.
+     *
+     * Returns a new memory layer or NULLPTR if the operation failed.
+     */
+    std::unique_ptr<QgsVectorLayer> pasteToNewMemoryVector( QgsMessageBar *messageBar );
 
   private slots:
 
@@ -153,17 +167,12 @@ class APP_EXPORT QgsClipboard : public QObject
     void changed();
 
   private:
+    const QgsFeatureListMimeData *featureListDataFromClipboard() const;
 
     /**
      * Set system clipboard from previously set features.
      */
-    void setSystemClipboard();
-
-    /**
-     * Creates a text representation of the clipboard features.
-     * \returns clipboard text, respecting user export format
-     */
-    void generateClipboardText( QString &textContent, QString &htmlContent ) const;
+    void setSystemClipboard( QgsMapLayer *sourceLayer, const QgsCoordinateReferenceSystem &crs, const QgsFields &fields, const QgsFeatureList &features );
 
     /**
      * Attempts to convert a string to a list of features, by parsing the string as WKT/WKB and GeoJSON
@@ -180,24 +189,7 @@ class APP_EXPORT QgsClipboard : public QObject
      */
     QgsFields retrieveFields() const;
 
-    /**
-     * QGIS-internal vector feature clipboard.
-     * Stored as values not pointers as each clipboard operation
-     * involves a deep copy anyway.
-     */
-    QgsFeatureList mFeatureClipboard;
-    QgsFields mFeatureFields;
-    QgsCoordinateReferenceSystem mCRS;
-    QPointer<QgsMapLayer> mFeatureLayer;
-
-    //! True if next system clipboard change should be ignored
-    bool mIgnoreNextSystemClipboardChange = false;
-
-    //! True when the data from the system clipboard should be read
-    bool mUseSystemClipboard = false;
-
     friend class TestQgisAppClipboard;
-
 };
 
 #endif

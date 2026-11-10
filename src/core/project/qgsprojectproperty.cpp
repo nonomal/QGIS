@@ -16,16 +16,19 @@
  ***************************************************************************/
 
 #include "qgsprojectproperty.h"
-#include "qgslogger.h"
+
 #include "qgis.h"
+#include "qgslogger.h"
 #include "qgsmessagelog.h"
 
 #include <QDomDocument>
+#include <QString>
 #include <QStringList>
 
+using namespace Qt::StringLiterals;
+
 QgsProjectProperty::QgsProjectProperty() //NOLINT
-{
-}
+{}
 
 void QgsProjectPropertyValue::dump( int tabs ) const
 {
@@ -35,18 +38,18 @@ void QgsProjectPropertyValue::dump( int tabs ) const
   QString tabString;
   tabString.fill( '\t', tabs );
 
-  if ( QVariant::StringList == mValue.type() )
+  if ( QMetaType::Type::QStringList == mValue.userType() )
   {
     const QStringList sl = mValue.toStringList();
 
     for ( const auto &string : sl )
     {
-      QgsDebugMsgLevel( QStringLiteral( "%1[%2] " ).arg( tabString, string ), 4 );
+      QgsDebugMsgLevel( u"%1[%2] "_s.arg( tabString, string ), 4 );
     }
   }
   else
   {
-    QgsDebugMsgLevel( QStringLiteral( "%1%2" ).arg( tabString, mValue.toString() ), 4 );
+    QgsDebugMsgLevel( u"%1%2"_s.arg( tabString, mValue.toString() ), 4 );
   }
 #endif
 }
@@ -57,11 +60,11 @@ bool QgsProjectPropertyValue::readXml( const QDomNode &keyNode )
   QDomElement subkeyElement = keyNode.toElement();
 
   // get the type so that we can properly parse the key value
-  QString typeString = subkeyElement.attribute( QStringLiteral( "type" ) );
+  QString typeString = subkeyElement.attribute( u"type"_s );
 
   if ( typeString.isNull() )
   {
-    QgsDebugError( QStringLiteral( "null ``type'' attribute for %1" ).arg( keyNode.nodeName() ) );
+    QgsDebugError( u"null ``type'' attribute for %1"_s.arg( keyNode.nodeName() ) );
 
     return false;
   }
@@ -71,7 +74,7 @@ bool QgsProjectPropertyValue::readXml( const QDomNode &keyNode )
   mValue.clear();
 
   // get the type associated with the value first
-  QVariant::Type type = QVariant::nameToType( typeString.toLocal8Bit().constData() );
+  QMetaType::Type type = static_cast<QMetaType::Type>( QMetaType::fromName( typeString.toLocal8Bit().constData() ).id() );
 
   // This huge switch is left-over from an earlier incarnation of
   // QgsProject where there was a fine level of granularity for value
@@ -82,23 +85,23 @@ bool QgsProjectPropertyValue::readXml( const QDomNode &keyNode )
 
   switch ( type )
   {
-    case QVariant::Invalid:
-      QgsDebugError( QStringLiteral( "invalid value type %1 .. " ).arg( typeString ) );
+    case QMetaType::Type::UnknownType:
+      QgsDebugError( u"invalid value type %1 .. "_s.arg( typeString ) );
       return false;
 
-    case QVariant::Map:
-      QgsDebugError( QStringLiteral( "no support for QVariant::Map" ) );
+    case QMetaType::Type::QVariantMap:
+      QgsDebugError( u"no support for QVariant::Map"_s );
       return false;
 
-    case QVariant::List:
-      QgsDebugError( QStringLiteral( "no support for QVariant::List" ) );
+    case QMetaType::Type::QVariantList:
+      QgsDebugError( u"no support for QVariant::List"_s );
       return false;
 
-    case QVariant::String:
-      mValue = subkeyElement.text();  // no translating necessary
+    case QMetaType::Type::QString:
+      mValue = subkeyElement.text(); // no translating necessary
       break;
 
-    case QVariant::StringList:
+    case QMetaType::Type::QStringList:
     {
       int i = 0;
       QDomNodeList values = keyNode.childNodes();
@@ -115,7 +118,7 @@ bool QgsProjectPropertyValue::readXml( const QDomNode &keyNode )
         }
         else
         {
-          QgsDebugError( QStringLiteral( "non <value> element ``%1'' in string list" ).arg( values.item( i ).nodeName() ) );
+          QgsDebugError( u"non <value> element ``%1'' in string list"_s.arg( values.item( i ).nodeName() ) );
         }
 
         ++i;
@@ -125,88 +128,88 @@ bool QgsProjectPropertyValue::readXml( const QDomNode &keyNode )
       break;
     }
 
-    case QVariant::Font:
-      QgsDebugError( QStringLiteral( "no support for QVariant::Font" ) );
+    case QMetaType::Type::QFont:
+      QgsDebugError( u"no support for QVariant::Font"_s );
       return false;
 
-    case QVariant::Pixmap:
-      QgsDebugError( QStringLiteral( "no support for QVariant::Pixmap" ) );
+    case QMetaType::Type::QPixmap:
+      QgsDebugError( u"no support for QVariant::Pixmap"_s );
       return false;
 
-    case QVariant::Brush:
-      QgsDebugError( QStringLiteral( "no support for QVariant::Brush" ) );
+    case QMetaType::Type::QBrush:
+      QgsDebugError( u"no support for QVariant::Brush"_s );
       return false;
 
-    case QVariant::Rect:
-      QgsDebugError( QStringLiteral( "no support for QVariant::Rect" ) );
+    case QMetaType::Type::QRect:
+      QgsDebugError( u"no support for QVariant::Rect"_s );
       return false;
 
-    case QVariant::Size:
-      QgsDebugError( QStringLiteral( "no support for QVariant::Size" ) );
+    case QMetaType::Type::QSize:
+      QgsDebugError( u"no support for QVariant::Size"_s );
       return false;
 
-    case QVariant::Color:
-      QgsDebugError( QStringLiteral( "no support for QVariant::Color" ) );
+    case QMetaType::Type::QColor:
+      QgsDebugError( u"no support for QVariant::Color"_s );
       return false;
 
-    case QVariant::Palette:
-      QgsDebugError( QStringLiteral( "no support for QVariant::Palette" ) );
+    case QMetaType::Type::QPalette:
+      QgsDebugError( u"no support for QVariant::Palette"_s );
       return false;
 
-    case QVariant::Point:
-      QgsDebugError( QStringLiteral( "no support for QVariant::Point" ) );
+    case QMetaType::Type::QPoint:
+      QgsDebugError( u"no support for QVariant::Point"_s );
       return false;
 
-    case QVariant::Image:
-      QgsDebugError( QStringLiteral( "no support for QVariant::Image" ) );
+    case QMetaType::Type::QImage:
+      QgsDebugError( u"no support for QVariant::Image"_s );
       return false;
 
-    case QVariant::Int:
+    case QMetaType::Type::Int:
       mValue = QVariant( subkeyElement.text() ).toInt();
       break;
 
-    case QVariant::UInt:
+    case QMetaType::Type::UInt:
       mValue = QVariant( subkeyElement.text() ).toUInt();
       break;
 
-    case QVariant::Bool:
+    case QMetaType::Type::Bool:
       mValue = QVariant( subkeyElement.text() ).toBool();
       break;
 
-    case QVariant::Double:
+    case QMetaType::Type::Double:
       mValue = QVariant( subkeyElement.text() ).toDouble();
       break;
 
-    case QVariant::ByteArray:
+    case QMetaType::Type::QByteArray:
       mValue = QVariant( subkeyElement.text() ).toByteArray();
       break;
 
-    case QVariant::Polygon:
-      QgsDebugError( QStringLiteral( "no support for QVariant::Polygon" ) );
+    case QMetaType::Type::QPolygon:
+      QgsDebugError( u"no support for QVariant::Polygon"_s );
       return false;
 
-    case QVariant::Region:
-      QgsDebugError( QStringLiteral( "no support for QVariant::Region" ) );
+    case QMetaType::Type::QRegion:
+      QgsDebugError( u"no support for QVariant::Region"_s );
       return false;
 
-    case QVariant::Bitmap:
-      QgsDebugError( QStringLiteral( "no support for QVariant::Bitmap" ) );
+    case QMetaType::Type::QBitmap:
+      QgsDebugError( u"no support for QVariant::Bitmap"_s );
       return false;
 
-    case QVariant::Cursor:
-      QgsDebugError( QStringLiteral( "no support for QVariant::Cursor" ) );
+    case QMetaType::Type::QCursor:
+      QgsDebugError( u"no support for QVariant::Cursor"_s );
       return false;
 
-    case QVariant::BitArray :
-      QgsDebugError( QStringLiteral( "no support for QVariant::BitArray" ) );
+    case QMetaType::Type::QBitArray:
+      QgsDebugError( u"no support for QVariant::BitArray"_s );
       return false;
 
-    case QVariant::KeySequence :
-      QgsDebugError( QStringLiteral( "no support for QVariant::KeySequence" ) );
+    case QMetaType::Type::QKeySequence:
+      QgsDebugError( u"no support for QVariant::KeySequence"_s );
       return false;
 
-    case QVariant::Pen :
-      QgsDebugError( QStringLiteral( "no support for QVariant::Pen" ) );
+    case QMetaType::Type::QPen:
+      QgsDebugError( u"no support for QVariant::Pen"_s );
       return false;
 
 #if 0 // Currently unsupported variant types
@@ -218,52 +221,84 @@ bool QgsProjectPropertyValue::readXml( const QDomNode &keyNode )
       value_ = QVariant( subkeyElement.text() ).toULongLong();
       break;
 #endif
-    default :
-      QgsDebugError( QStringLiteral( "unsupported value type %1 .. not properly translated to QVariant" ).arg( typeString ) );
+    default:
+      QgsDebugError( u"unsupported value type %1 .. not properly translated to QVariant"_s.arg( typeString ) );
   }
 
   return true;
-
 }
 
 
 // keyElement is created by parent QgsProjectPropertyKey
-bool QgsProjectPropertyValue::writeXml( QString const &nodeName,
-                                        QDomElement    &keyElement,
-                                        QDomDocument   &document )
+bool QgsProjectPropertyValue::writeXml( QString const &nodeName, QDomElement &keyElement, QDomDocument &document )
 {
-  QDomElement valueElement = document.createElement( nodeName );
-
-  // remember the type so that we can rebuild it when the project is read in
-  valueElement.setAttribute( QStringLiteral( "type" ), mValue.typeName() );
-
-
-  // we handle string lists differently from other types in that we
-  // create a sequence of repeated elements to cover all the string list
-  // members; each value will be in a <value></value> tag.
-  // XXX Not the most elegant way to handle string lists?
-  if ( QVariant::StringList == mValue.type() )
   {
-    QStringList sl = mValue.toStringList();
+    QDomElement valueElement = document.createElement( u"properties"_s );
 
-    for ( QStringList::iterator i = sl.begin();
-          i != sl.end();
-          ++i )
+    // remember the type so that we can rebuild it when the project is read in
+    valueElement.setAttribute( u"name"_s, nodeName );
+    valueElement.setAttribute( u"type"_s, mValue.typeName() );
+
+    // we handle string lists differently from other types in that we
+    // create a sequence of repeated elements to cover all the string list
+    // members; each value will be in a <value></value> tag.
+    // XXX Not the most elegant way to handle string lists?
+    if ( QMetaType::Type::QStringList == mValue.userType() )
     {
-      QDomElement stringListElement = document.createElement( QStringLiteral( "value" ) );
-      QDomText valueText = document.createTextNode( *i );
-      stringListElement.appendChild( valueText );
+      QStringList sl = mValue.toStringList();
 
-      valueElement.appendChild( stringListElement );
+      for ( QStringList::iterator i = sl.begin(); i != sl.end(); ++i )
+      {
+        QDomElement stringListElement = document.createElement( u"value"_s );
+        QDomText valueText = document.createTextNode( *i );
+        stringListElement.appendChild( valueText );
+
+        valueElement.appendChild( stringListElement );
+      }
     }
-  }
-  else                    // we just plop the value in as plain ole text
-  {
-    QDomText valueText = document.createTextNode( mValue.toString() );
-    valueElement.appendChild( valueText );
+    else // we just plop the value in as plain ole text
+    {
+      QDomText valueText = document.createTextNode( mValue.toString() );
+      valueElement.appendChild( valueText );
+    }
+
+    keyElement.appendChild( valueElement );
   }
 
-  keyElement.appendChild( valueElement );
+  {
+    // retain compatibility with QGIS 3 for the time being
+    // consider dropping after the second LTR of the 4.x cycle is out
+    QDomElement valueElement = document.createElement( nodeName );
+
+    // remember the type so that we can rebuild it when the project is read in
+    valueElement.setAttribute( u"type"_s, mValue.typeName() );
+
+    // we handle string lists differently from other types in that we
+    // create a sequence of repeated elements to cover all the string list
+    // members; each value will be in a <value></value> tag.
+    // XXX Not the most elegant way to handle string lists?
+    if ( QMetaType::Type::QStringList == mValue.userType() )
+    {
+      QStringList sl = mValue.toStringList();
+
+      for ( QStringList::iterator i = sl.begin(); i != sl.end(); ++i )
+      {
+        QDomElement stringListElement = document.createElement( u"value"_s );
+        QDomText valueText = document.createTextNode( *i );
+        stringListElement.appendChild( valueText );
+
+        valueElement.appendChild( stringListElement );
+      }
+    }
+    else
+    {
+      // we just plop the value in as plain ole text
+      QDomText valueText = document.createTextNode( mValue.toString() );
+      valueElement.appendChild( valueText );
+    }
+
+    keyElement.appendChild( valueElement );
+  }
 
   return true;
 }
@@ -284,8 +319,8 @@ QVariant QgsProjectPropertyKey::value() const
 
   if ( !foundQgsProperty )
   {
-    QgsDebugError( QStringLiteral( "key has null child" ) );
-    return QVariant();     // just return an QVariant::Invalid
+    QgsDebugError( u"key has null child"_s );
+    return QVariant(); // just return an QVariant::Invalid
   }
 
   return foundQgsProperty->value();
@@ -298,36 +333,33 @@ void QgsProjectPropertyKey::dump( int tabs ) const
 
   tabString.fill( '\t', tabs );
 
-  QgsDebugMsgLevel( QStringLiteral( "%1name: %2" ).arg( tabString, name() ), 4 );
+  QgsDebugMsgLevel( u"%1name: %2"_s.arg( tabString, name() ), 4 );
 
   tabs++;
   tabString.fill( '\t', tabs );
 
-  if ( ! mProperties.isEmpty() )
+  if ( !mProperties.isEmpty() )
   {
-    QHashIterator < QString, QgsProjectProperty * > i( mProperties );
+    QHashIterator< QString, QgsProjectProperty * > i( mProperties );
     while ( i.hasNext() )
     {
       if ( i.next().value()->isValue() )
       {
         QgsProjectPropertyValue *propertyValue = static_cast<QgsProjectPropertyValue *>( i.value() );
 
-        if ( QVariant::StringList == propertyValue->value().type() )
+        if ( QMetaType::Type::QStringList == propertyValue->value().userType() )
         {
-          QgsDebugMsgLevel( QStringLiteral( "%1key: <%2>  value:" ).arg( tabString, i.key() ), 4 );
+          QgsDebugMsgLevel( u"%1key: <%2>  value:"_s.arg( tabString, i.key() ), 4 );
           propertyValue->dump( tabs + 1 );
         }
         else
         {
-          QgsDebugMsgLevel( QStringLiteral( "%1key: <%2>  value: %3" ).arg( tabString, i.key(), propertyValue->value().toString() ), 4 );
+          QgsDebugMsgLevel( u"%1key: <%2>  value: %3"_s.arg( tabString, i.key(), propertyValue->value().toString() ), 4 );
         }
       }
       else
       {
-        QgsDebugMsgLevel( QStringLiteral( "%1key: <%2>  subkey: <%3>" )
-                          .arg( tabString,
-                                i.key(),
-                                static_cast<QgsProjectPropertyKey *>( i.value() )->name() ), 4 );
+        QgsDebugMsgLevel( u"%1key: <%2>  subkey: <%3>"_s.arg( tabString, i.key(), static_cast<QgsProjectPropertyKey *>( i.value() )->name() ), 4 );
         i.value()->dump( tabs + 1 );
       }
 
@@ -346,49 +378,77 @@ void QgsProjectPropertyKey::dump( int tabs ) const
 #endif
     }
   }
-
 }
-
 
 
 bool QgsProjectPropertyKey::readXml( const QDomNode &keyNode )
 {
-  int i = 0;
   QDomNodeList subkeys = keyNode.childNodes();
-
-  while ( i < subkeys.count() )
+  bool hasModernProperties = false;
+  for ( int i = 0; i < subkeys.count(); i++ )
   {
+    const QDomNode subkey = subkeys.item( i );
+    if ( subkey.nodeName() == "properties"_L1
+         && subkey.hasAttributes()
+         && // if we have attributes
+         subkey.isElement()
+         &&                                             // and we're an element
+         subkey.toElement().hasAttribute( u"name"_s ) ) // and we have a "name" attribute
+    {
+      hasModernProperties = true;
+    }
+  }
+
+  for ( int i = 0; i < subkeys.count(); i++ )
+  {
+    const QDomNode subkey = subkeys.item( i );
+
+    QString name;
+    if ( subkey.nodeName() == "properties"_L1
+         && subkey.hasAttributes()
+         && // if we have attributes
+         subkey.isElement()
+         &&                                             // and we're an element
+         subkey.toElement().hasAttribute( u"name"_s ) ) // and we have a "name" attribute
+    {
+      name = subkey.toElement().attribute( u"name"_s );
+    }
+    else
+    {
+      if ( hasModernProperties )
+      {
+        continue;
+      }
+      name = subkey.nodeName();
+    }
+
     // if the current node is an element that has a "type" attribute,
     // then we know it's a leaf node; i.e., a subkey _value_, and not
     // a subkey
-    if ( subkeys.item( i ).hasAttributes() && // if we have attributes
-         subkeys.item( i ).isElement() && // and we're an element
-         subkeys.item( i ).toElement().hasAttribute( QStringLiteral( "type" ) ) ) // and we have a "type" attribute
+    if ( subkey.hasAttributes()
+         && // if we have attributes
+         subkey.isElement()
+         &&                                             // and we're an element
+         subkey.toElement().hasAttribute( u"type"_s ) ) // and we have a "type" attribute
     {
       // then we're a key value
-      delete mProperties.take( subkeys.item( i ).nodeName() );
-      mProperties.insert( subkeys.item( i ).nodeName(), new QgsProjectPropertyValue );
+      delete mProperties.take( name );
+      mProperties.insert( name, new QgsProjectPropertyValue );
 
-      QDomNode subkey = subkeys.item( i );
-
-      if ( !mProperties[subkeys.item( i ).nodeName()]->readXml( subkey ) )
+      if ( !mProperties[name]->readXml( subkey ) )
       {
-        QgsDebugError( QStringLiteral( "unable to parse key value %1" ).arg( subkeys.item( i ).nodeName() ) );
+        QgsDebugError( u"unable to parse key value %1"_s.arg( name ) );
       }
     }
     else // otherwise it's a subkey, so just recurse on down the remaining keys
     {
-      addKey( subkeys.item( i ).nodeName() );
+      addKey( name );
 
-      QDomNode subkey = subkeys.item( i );
-
-      if ( !mProperties[subkeys.item( i ).nodeName()]->readXml( subkey ) )
+      if ( !mProperties[name]->readXml( subkey ) )
       {
-        QgsDebugError( QStringLiteral( "unable to parse subkey %1" ).arg( subkeys.item( i ).nodeName() ) );
+        QgsDebugError( u"unable to parse subkey %1"_s.arg( name ) );
       }
     }
-
-    ++i;
   }
 
   return true;
@@ -404,21 +464,55 @@ bool QgsProjectPropertyKey::writeXml( QString const &nodeName, QDomElement &elem
   // If it's an _empty_ node (i.e., one with no properties) we need to emit
   // an empty place holder; else create new Dom elements as necessary.
 
-  QDomElement keyElement = document.createElement( nodeName ); // Dom element for this property key
-
-  if ( ! mProperties.isEmpty() )
   {
-    auto keys = mProperties.keys();
-    std::sort( keys.begin(), keys.end() );
+    QDomElement keyElement = document.createElement( "properties" ); // Dom element for this property key
+    keyElement.toElement().setAttribute( u"name"_s, nodeName );
 
-    for ( const auto &key : std::as_const( keys ) )
+    if ( !mProperties.isEmpty() )
     {
-      if ( !mProperties.value( key )->writeXml( key, keyElement, document ) )
-        QgsMessageLog::logMessage( tr( "Failed to save project property %1" ).arg( key ) );
+      auto keys = mProperties.keys();
+      std::sort( keys.begin(), keys.end() );
+
+      for ( const auto &key : std::as_const( keys ) )
+      {
+        if ( !mProperties.value( key )->writeXml( key, keyElement, document ) )
+          QgsMessageLog::logMessage( tr( "Failed to save project property %1" ).arg( key ) );
+      }
     }
+
+    element.appendChild( keyElement );
   }
 
-  element.appendChild( keyElement );
+  {
+    // retain compatibility with QGIS 3 for the time being
+    const bool isRootProperties = element == document.documentElement();
+    QDomElement keyElement;
+    if ( isRootProperties )
+    {
+      keyElement = document.documentElement().firstChildElement( u"properties"_s );
+    }
+    else
+    {
+      keyElement = document.createElement( nodeName ); // Dom element for this property key
+    }
+
+    if ( !mProperties.isEmpty() )
+    {
+      auto keys = mProperties.keys();
+      std::sort( keys.begin(), keys.end() );
+
+      for ( const auto &key : std::as_const( keys ) )
+      {
+        if ( !mProperties.value( key )->writeXml( key, keyElement, document ) )
+          QgsMessageLog::logMessage( tr( "Failed to save project property %1" ).arg( key ) );
+      }
+    }
+
+    if ( !isRootProperties )
+    {
+      element.appendChild( keyElement );
+    }
+  }
 
   return true;
 }
@@ -426,7 +520,7 @@ bool QgsProjectPropertyKey::writeXml( QString const &nodeName, QDomElement &elem
 void QgsProjectPropertyKey::entryList( QStringList &entries ) const
 {
   // now add any leaf nodes to the entries list
-  QHashIterator < QString, QgsProjectProperty * > i( mProperties );
+  QHashIterator< QString, QgsProjectProperty * > i( mProperties );
   while ( i.hasNext() )
   {
     // add any of the nodes that have just a single value
@@ -440,7 +534,7 @@ void QgsProjectPropertyKey::entryList( QStringList &entries ) const
 void QgsProjectPropertyKey::subkeyList( QStringList &entries ) const
 {
   // now add any leaf nodes to the entries list
-  QHashIterator < QString, QgsProjectProperty * > i( mProperties );
+  QHashIterator< QString, QgsProjectProperty * > i( mProperties );
   while ( i.hasNext() )
   {
     // add any of the nodes that have just a single value
@@ -460,7 +554,7 @@ bool QgsProjectPropertyKey::isLeaf() const
   }
   else if ( 1 == count() )
   {
-    QHashIterator < QString, QgsProjectProperty * > i( mProperties );
+    QHashIterator< QString, QgsProjectProperty * > i( mProperties );
 
     if ( i.hasNext() && i.next().value()->isValue() )
     {

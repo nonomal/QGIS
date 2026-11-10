@@ -31,7 +31,7 @@ class QgsFeedback;
 
 /**
  * \ingroup core
- * \brief Abstract class to interpolate 3d stacked mesh data to 2d data
+ * \brief Abstract class for interpolating 3d stacked mesh data to 2d data.
  *
  * \note In QGIS 3.34 this class was renamed from QgsMesh3dAveragingMethod to QgsMesh3DAveragingMethod. The old QgsMesh3dAveragingMethod name
  * remains available in PyQGIS for compatibility.
@@ -40,7 +40,6 @@ class QgsFeedback;
  */
 class CORE_EXPORT QgsMesh3DAveragingMethod SIP_ABSTRACT
 {
-
 #ifdef SIP_RUN
     SIP_CONVERT_TO_SUBCLASS_CODE
     QgsMesh3DAveragingMethod *averagingMethod = dynamic_cast<QgsMesh3DAveragingMethod *>( sipCpp );
@@ -68,7 +67,7 @@ class CORE_EXPORT QgsMesh3DAveragingMethod SIP_ABSTRACT
           break;
       }
     }
-    SIP_END
+  SIP_END
 #endif
 
   public:
@@ -88,7 +87,6 @@ class CORE_EXPORT QgsMesh3DAveragingMethod SIP_ABSTRACT
     //! Ctor
     QgsMesh3DAveragingMethod( Method method );
 
-    //! Dtor
     virtual ~QgsMesh3DAveragingMethod() = default;
 
     //! Calculated 2d block values from 3d stacked mesh values
@@ -100,7 +98,7 @@ class CORE_EXPORT QgsMesh3DAveragingMethod SIP_ABSTRACT
     virtual QDomElement writeXml( QDomDocument &doc ) const = 0;
 
     //! Creates the instance from XML by calling readXml of derived classes
-    static QgsMesh3DAveragingMethod *createFromXml( const QDomElement &elem ) SIP_FACTORY;
+    static std::unique_ptr<QgsMesh3DAveragingMethod> createFromXml( const QDomElement &elem );
 
     //! Reads configuration from the given DOM element
     virtual void readXml( const QDomElement &elem ) = 0;
@@ -139,11 +137,7 @@ class CORE_EXPORT QgsMesh3DAveragingMethod SIP_ABSTRACT
     /**
      * For one face, calculates absolute vertical levels between which we need to average
      */
-    virtual void volumeRangeForFace(
-      double &startVerticalLevel,
-      double &endVerticalLevel,
-      int &singleVerticalLevel,
-      const QVector<double> &verticalLevels ) const = 0;
+    virtual void volumeRangeForFace( double &startVerticalLevel, double &endVerticalLevel, int &singleVerticalLevel, const QVector<double> &verticalLevels ) const = 0;
 
     Method mMethod;
 };
@@ -158,7 +152,7 @@ class CORE_EXPORT QgsMesh3DAveragingMethod SIP_ABSTRACT
  *
  * \since QGIS 3.12
  */
-class CORE_EXPORT QgsMeshMultiLevelsAveragingMethod: public QgsMesh3DAveragingMethod
+class CORE_EXPORT QgsMeshMultiLevelsAveragingMethod : public QgsMesh3DAveragingMethod
 {
   public:
     //! Constructs single level averaging method for 1st (top) vertical level
@@ -219,10 +213,7 @@ class CORE_EXPORT QgsMeshMultiLevelsAveragingMethod: public QgsMesh3DAveragingMe
 
   private:
     bool hasValidInputs() const override;
-    void volumeRangeForFace( double &startVerticalLevel,
-                             double &endVerticalLevel,
-                             int &singleVerticalIndex,
-                             const QVector<double> &verticalLevels ) const override;
+    void volumeRangeForFace( double &startVerticalLevel, double &endVerticalLevel, int &singleVerticalIndex, const QVector<double> &verticalLevels ) const override;
     void setLevels( int startVerticalLevel, int endVerticalLevel );
     int mStartVerticalLevel = 1;
     int mEndVerticalLevel = 1;
@@ -239,7 +230,7 @@ class CORE_EXPORT QgsMeshMultiLevelsAveragingMethod: public QgsMesh3DAveragingMe
  *
  * \since QGIS 3.12
  */
-class CORE_EXPORT QgsMeshSigmaAveragingMethod: public QgsMesh3DAveragingMethod
+class CORE_EXPORT QgsMeshSigmaAveragingMethod : public QgsMesh3DAveragingMethod
 {
   public:
     //! Constructs the sigma method for whole value range 0-1
@@ -276,10 +267,7 @@ class CORE_EXPORT QgsMeshSigmaAveragingMethod: public QgsMesh3DAveragingMethod
 
   private:
     bool hasValidInputs() const override;
-    void volumeRangeForFace( double &startVerticalLevel,
-                             double &endVerticalLevel,
-                             int &singleVerticalIndex,
-                             const QVector<double> &verticalLevels ) const override;
+    void volumeRangeForFace( double &startVerticalLevel, double &endVerticalLevel, int &singleVerticalIndex, const QVector<double> &verticalLevels ) const override;
 
     double mStartFraction = 0;
     double mEndFraction = 1;
@@ -288,23 +276,23 @@ class CORE_EXPORT QgsMeshSigmaAveragingMethod: public QgsMesh3DAveragingMethod
 /**
  * \ingroup core
  *
- * \brief Relative height averaging method averages the values based on range defined relative to bed elevation or surface (when countedFromTop())
+ * \brief Relative height averaging method which averages the values based on range defined relative to bed elevation or surface.
+ *
  * The range is defined in the same length units as defined by model (e.g. meters)
  *
- * if countedFromTop(), the method represents averaging based on depth below surface.
+ * If countedFromTop(), the method represents averaging based on depth below surface.
  * For example one can pull out results for between 6 to 12 meters below the water surface - depth from 6m to 12m.
  * The depth will be truncated at the bed level.
  *
- * if not countedFromTop(), the method represents averaging based on height above bed level.
+ * If not countedFromTop(), the method represents averaging based on height above bed level.
  * For example one can pull out results for between 6 to 12 meters above the bed - height from 6m to 12m.
  * The height will be truncated at the bed level.
  *
  * \since QGIS 3.12
  */
-class CORE_EXPORT QgsMeshRelativeHeightAveragingMethod: public QgsMesh3DAveragingMethod
+class CORE_EXPORT QgsMeshRelativeHeightAveragingMethod : public QgsMesh3DAveragingMethod
 {
   public:
-
     //! Constructs default depth averaging method
     QgsMeshRelativeHeightAveragingMethod();
 
@@ -344,10 +332,7 @@ class CORE_EXPORT QgsMeshRelativeHeightAveragingMethod: public QgsMesh3DAveragin
 
   private:
     bool hasValidInputs() const override;
-    void volumeRangeForFace( double &startVerticalLevel,
-                             double &endVerticalLevel,
-                             int &singleVerticalIndex,
-                             const QVector<double> &verticalLevels ) const override;
+    void volumeRangeForFace( double &startVerticalLevel, double &endVerticalLevel, int &singleVerticalIndex, const QVector<double> &verticalLevels ) const override;
     double mStartHeight = 0;
     double mEndHeight = 0;
     bool mCountedFromTop = true;
@@ -356,7 +341,8 @@ class CORE_EXPORT QgsMeshRelativeHeightAveragingMethod: public QgsMesh3DAveragin
 /**
  * \ingroup core
  *
- * \brief Elevation averaging method averages the values based on range defined absolute value to the model's datum
+ * \brief Elevation averaging method averages the values based on range defined absolute value to the model's datum.
+ *
  * The range is defined in the same length units as defined by model (e.g. meters)
  *
  * For example one can pull out results irrespective of water level change such as between -16m and -10m.
@@ -364,11 +350,9 @@ class CORE_EXPORT QgsMeshRelativeHeightAveragingMethod: public QgsMesh3DAveragin
  *
  * \since QGIS 3.12
  */
-class CORE_EXPORT QgsMeshElevationAveragingMethod: public QgsMesh3DAveragingMethod
+class CORE_EXPORT QgsMeshElevationAveragingMethod : public QgsMesh3DAveragingMethod
 {
   public:
-
-    //! Ctor
     QgsMeshElevationAveragingMethod();
 
     /**
@@ -396,10 +380,7 @@ class CORE_EXPORT QgsMeshElevationAveragingMethod: public QgsMesh3DAveragingMeth
 
   private:
     bool hasValidInputs() const override;
-    void volumeRangeForFace( double &startVerticalLevel,
-                             double &endVerticalLevel,
-                             int &singleVerticalIndex,
-                             const QVector<double> &verticalLevels ) const override;
+    void volumeRangeForFace( double &startVerticalLevel, double &endVerticalLevel, int &singleVerticalIndex, const QVector<double> &verticalLevels ) const override;
     double mStartElevation = 0;
     double mEndElevation = 0;
 };

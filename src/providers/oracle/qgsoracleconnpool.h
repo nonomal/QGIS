@@ -17,8 +17,12 @@
 #define QGSORACLECONNPOOL_H
 
 #include "qgsconnectionpool.h"
+#include "qgslogger.h"
 #include "qgsoracleconn.h"
 
+#include <QString>
+
+using namespace Qt::StringLiterals;
 
 inline QString qgsConnectionPool_ConnectionToName( QgsOracleConn *c )
 {
@@ -27,11 +31,13 @@ inline QString qgsConnectionPool_ConnectionToName( QgsOracleConn *c )
 
 inline void qgsConnectionPool_ConnectionCreate( const QgsDataSourceUri &uri, QgsOracleConn *&c )
 {
+  QgsDebugMsgLevel( u"Creating an Oracle connection"_s, 2 );
   c = QgsOracleConn::connectDb( uri, false );
 }
 
 inline void qgsConnectionPool_ConnectionDestroy( QgsOracleConn *c )
 {
+  QgsDebugMsgLevel( u"Disconnecting an Oracle connection"_s, 2 );
   c->disconnect(); // will delete itself
 }
 
@@ -52,16 +58,19 @@ class QgsOracleConnPoolGroup : public QObject, public QgsConnectionPoolGroup<Qgs
     Q_OBJECT
 
   public:
-    explicit QgsOracleConnPoolGroup( QString name ) : QgsConnectionPoolGroup<QgsOracleConn*>( name ) { initTimer( this ); }
+    explicit QgsOracleConnPoolGroup( QString name )
+      : QgsConnectionPoolGroup<QgsOracleConn *>( name )
+    {
+      initTimer<QgsOracleConnPoolGroup>( this );
+    }
 
-  protected slots:
+  public slots:
     void handleConnectionExpired() { onConnectionExpired(); }
     void startExpirationTimer() { expirationTimer->start(); }
     void stopExpirationTimer() { expirationTimer->stop(); }
 
   protected:
     Q_DISABLE_COPY( QgsOracleConnPoolGroup )
-
 };
 
 //! Oracle connection pool - singleton

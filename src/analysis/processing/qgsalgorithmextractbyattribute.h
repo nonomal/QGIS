@@ -18,10 +18,11 @@
 #ifndef QGSALGORITHMEXTRACTBYATTRIBUTE_H
 #define QGSALGORITHMEXTRACTBYATTRIBUTE_H
 
-#define SIP_NO_FILE
 
 #include "qgis_sip.h"
 #include "qgsprocessingalgorithm.h"
+
+#define SIP_NO_FILE
 
 ///@cond PRIVATE
 
@@ -30,9 +31,7 @@
  */
 class QgsExtractByAttributeAlgorithm : public QgsProcessingAlgorithm
 {
-
   public:
-
     enum Operation
     {
       Equals,
@@ -56,17 +55,13 @@ class QgsExtractByAttributeAlgorithm : public QgsProcessingAlgorithm
     QString group() const override;
     QString groupId() const override;
     QString shortHelpString() const override;
+    QString shortDescription() const override;
     QgsExtractByAttributeAlgorithm *createInstance() const override SIP_FACTORY;
 
   protected:
-
-    QVariantMap processAlgorithm( const QVariantMap &parameters,
-                                  QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
-
+    QVariantMap processAlgorithm( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
 };
 
 ///@endcond PRIVATE
 
 #endif // QGSALGORITHMEXTRACTBYATTRIBUTE_H
-
-

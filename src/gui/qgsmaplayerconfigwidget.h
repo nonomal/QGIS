@@ -15,13 +15,13 @@
 #ifndef QGSMAPLAYERCONFIGWIDGET_H
 #define QGSMAPLAYERCONFIGWIDGET_H
 
-#include <QWidget>
+#include "qgis_gui.h"
+#include "qgslayertreegroup.h"
+#include "qgspanelwidget.h"
+
 #include <QIcon>
 #include <QPointer>
-
-#include "qgspanelwidget.h"
-#include "qgslayertreegroup.h"
-#include "qgis_gui.h"
+#include <QWidget>
 
 class QgsMapCanvas;
 class QgsMapLayer;
@@ -36,7 +36,6 @@ class QgsMessageBar;
 class GUI_EXPORT QgsMapLayerConfigWidgetContext
 {
   public:
-
     /**
      * Returns the item ID of the target annotation, when modifying
      * an annotation from a QgsAnnotationLayer.
@@ -97,25 +96,22 @@ class GUI_EXPORT QgsMapLayerConfigWidgetContext
     QgsLayerTreeGroup *layerTreeGroup() const;
 
   private:
-
     QString mAnnotationId;
     QgsMapCanvas *mMapCanvas = nullptr;
     QgsMessageBar *mMessageBar = nullptr;
-    QPointer< QgsLayerTreeGroup > mLayerTreeGroup = nullptr;
-
+    QPointer<QgsLayerTreeGroup> mLayerTreeGroup = nullptr;
 };
 
 
 /**
  * \ingroup gui
  * \class QgsMapLayerConfigWidget
- * \brief A panel widget that can be shown in the map style dock
+ * \brief A panel widget that can be shown in the map style dock.
  */
 class GUI_EXPORT QgsMapLayerConfigWidget : public QgsPanelWidget
 {
     Q_OBJECT
   public:
-
     /**
        * \brief A panel widget that can be shown in the map style dock
        * \param layer The layer active in the dock.
@@ -127,6 +123,13 @@ class GUI_EXPORT QgsMapLayerConfigWidget : public QgsPanelWidget
     QgsMapLayerConfigWidget( QgsMapLayer *layer, QgsMapCanvas *canvas, QWidget *parent = nullptr );
 
     /**
+     * Returns the layer the widget is associated with.
+     *
+     * \since QGIS 4.4
+     */
+    QgsMapLayer *layer();
+
+    /**
      * Whether this config widget changes map layer properties in a way that triggerRepaint() should
      * be called for the layer after applying changes. This is TRUE by default, but some config widgets
      * (for example 3D rendering config) do not need layer repaint as they do not modify 2D map rendering.
@@ -134,11 +137,19 @@ class GUI_EXPORT QgsMapLayerConfigWidget : public QgsPanelWidget
      */
     virtual bool shouldTriggerLayerRepaint() const { return true; }
 
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Woverloaded-virtual"
+#endif
+
     /**
      * Reset to original (vector layer) values
      * \since QGIS 3.14
      */
     virtual void syncToLayer( QgsMapLayer *layer ) { Q_UNUSED( layer ) }
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
 
     /**
      * Sets the \a context under which the widget is being shown.
@@ -177,8 +188,7 @@ class GUI_EXPORT QgsMapLayerConfigWidget : public QgsPanelWidget
 #endif
 
   protected:
-
-    QgsMapLayer *mLayer = nullptr;
+    QPointer< QgsMapLayer > mLayer;
     QgsMapCanvas *mMapCanvas = nullptr;
     QgsMapLayerConfigWidgetContext mMapLayerConfigWidgetContext;
 };

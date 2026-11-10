@@ -16,11 +16,16 @@
 #include "qgscolorbrewercolorrampdialog.h"
 
 #include "qgscolorramp.h"
-#include "qgssymbollayerutils.h"
 #include "qgshelp.h"
+#include "qgssymbollayerutils.h"
 
 #include <QAbstractButton>
 #include <QDialogButtonBox>
+#include <QString>
+
+#include "moc_qgscolorbrewercolorrampdialog.cpp"
+
+using namespace Qt::StringLiterals;
 
 #if 0 // unused
 static void updateColorButton( QAbstractButton *button, QColor color )
@@ -38,7 +43,6 @@ QgsColorBrewerColorRampWidget::QgsColorBrewerColorRampWidget( const QgsColorBrew
   : QgsPanelWidget( parent )
   , mRamp( ramp )
 {
-
   setupUi( this );
 
   const QSize iconSize( 50, 16 );
@@ -146,5 +150,5 @@ QDialogButtonBox *QgsColorBrewerColorRampDialog::buttonBox() const
 
 void QgsColorBrewerColorRampDialog::showHelp()
 {
-  QgsHelp::openHelp( QStringLiteral( "style_library/style_manager.html#setting-a-color-ramp" ) );
+  QgsHelp::openHelp( u"style_library/style_manager.html#setting-a-color-ramp"_s );
 }

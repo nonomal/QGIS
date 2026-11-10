@@ -19,8 +19,9 @@
 
 #include "qgis_core.h"
 #include "qgslayoutitempage.h"
-#include <QFont>
+
 #include <QColor>
+#include <QFont>
 
 class QgsRenderContext;
 class QgsLayout;
@@ -36,7 +37,6 @@ class QStyleOptionGraphicsItem;
 class CORE_EXPORT QgsLayoutUtils
 {
   public:
-
     /**
      * Rotates a point / vector around the origin.
      * \param angle rotation angle in degrees, counterclockwise
@@ -186,7 +186,16 @@ class CORE_EXPORT QgsLayoutUtils
      *
      * The \a flags parameter allows for passing Qt::TextFlags to control appearance of rendered text.
      */
-    static void drawText( QPainter *painter, const QRectF &rectangle, const QString &text, const QFont &font, const QColor &color = QColor(), Qt::AlignmentFlag halignment = Qt::AlignLeft, Qt::AlignmentFlag valignment = Qt::AlignTop, int flags = Qt::TextWordWrap );
+    static void drawText(
+      QPainter *painter,
+      const QRectF &rectangle,
+      const QString &text,
+      const QFont &font,
+      const QColor &color = QColor(),
+      Qt::AlignmentFlag halignment = Qt::AlignLeft,
+      Qt::AlignmentFlag valignment = Qt::AlignTop,
+      int flags = Qt::TextWordWrap
+    );
 
     /**
      * Calculates the largest scaled version of \a originalRect which fits within \a boundsRect, when it is rotated by
@@ -208,7 +217,7 @@ class CORE_EXPORT QgsLayoutUtils
     /**
      * Extracts the scale factor from an item \a style.
      *
-     * \deprecated Use the variant with a QPainter argument instead
+     * \deprecated QGIS 3.40. Use the variant with a QPainter argument instead.
      */
     Q_DECL_DEPRECATED static double scaleFactorFromItemStyle( const QStyleOptionGraphicsItem *style ) SIP_DEPRECATED;
 
@@ -255,7 +264,6 @@ class CORE_EXPORT QgsLayoutUtils
     static QVector< double > predefinedScales( const QgsLayout *layout );
 
   private:
-
     //! Scale factor for upscaling fontsize and downscaling painter
     static constexpr double FONT_WORKAROUND_SCALE = 10;
 

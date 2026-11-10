@@ -14,9 +14,13 @@
  ***************************************************************************/
 
 #include "qgsprocessingenummodelerwidget.h"
+
 #include "qgsgui.h"
+
 #include <QMessageBox>
 #include <QToolButton>
+
+#include "moc_qgsprocessingenummodelerwidget.cpp"
 
 ///@cond NOT_STABLE
 
@@ -30,8 +34,8 @@ QgsProcessingEnumModelerWidget::QgsProcessingEnumModelerWidget( QWidget *parent 
   connect( mModel, &QStandardItemModel::itemChanged, this, &QgsProcessingEnumModelerWidget::onItemChanged );
 
   connect( mButtonAdd, &QToolButton::clicked, this, &QgsProcessingEnumModelerWidget::addItem );
-  connect( mButtonRemove, &QToolButton::clicked, this, [ = ] { removeItems( false ); } );
-  connect( mButtonClear, &QToolButton::clicked, this, [ = ] { removeItems( true ); } );
+  connect( mButtonRemove, &QToolButton::clicked, this, [this] { removeItems( false ); } );
+  connect( mButtonClear, &QToolButton::clicked, this, [this] { removeItems( true ); } );
 }
 
 void QgsProcessingEnumModelerWidget::addItem()
@@ -41,26 +45,25 @@ void QgsProcessingEnumModelerWidget::addItem()
   item->setDropEnabled( false );
   item->setData( Qt::Unchecked );
   mModel->appendRow( item );
+  emit changed();
 }
 
 void QgsProcessingEnumModelerWidget::removeItems( const bool removeAll )
 {
   if ( removeAll )
   {
-    if ( QMessageBox::question( nullptr, tr( "Delete items" ),
-                                tr( "Are you sure you want to delete all items" ),
-                                QMessageBox::Yes | QMessageBox::No, QMessageBox::No ) == QMessageBox::Yes )
+    if ( QMessageBox::question( nullptr, tr( "Delete items" ), tr( "Are you sure you want to delete all items" ), QMessageBox::Yes | QMessageBox::No, QMessageBox::No ) == QMessageBox::Yes )
       mModel->clear();
   }
   else
   {
     QModelIndexList selected = mItemList->selectionModel()->selectedIndexes();
-    QSet< int > rows;
+    QSet<int> rows;
     rows.reserve( selected.count() );
     for ( const QModelIndex &i : selected )
       rows << i.row();
 
-    QList< int > rowsToDelete = qgis::setToList( rows );
+    QList<int> rowsToDelete = qgis::setToList( rows );
     std::sort( rowsToDelete.begin(), rowsToDelete.end(), std::greater<int>() );
 
     mItemList->setUpdatesEnabled( false );
@@ -68,6 +71,7 @@ void QgsProcessingEnumModelerWidget::removeItems( const bool removeAll )
       mModel->removeRows( i, 1 );
     mItemList->setUpdatesEnabled( true );
   }
+  emit changed();
 }
 
 void QgsProcessingEnumModelerWidget::onItemChanged( QStandardItem *item )
@@ -102,6 +106,7 @@ void QgsProcessingEnumModelerWidget::onItemChanged( QStandardItem *item )
     }
   }
   mModel->blockSignals( false );
+  emit changed();
 }
 
 QStringList QgsProcessingEnumModelerWidget::options() const
@@ -125,6 +130,7 @@ void QgsProcessingEnumModelerWidget::setOptions( const QStringList &options )
     item->setData( Qt::Unchecked );
     mModel->appendRow( item );
   }
+  emit changed();
 }
 
 QVariant QgsProcessingEnumModelerWidget::defaultOptions() const
@@ -145,19 +151,19 @@ void QgsProcessingEnumModelerWidget::setDefaultOptions( const QVariant &defaultV
     return;
 
   QVariant val = defaultValue;
-  QList< int > values;
-  if ( val.type() == QVariant::List || val.type() == QVariant::StringList )
+  QList<int> values;
+  if ( val.userType() == QMetaType::Type::QVariantList || val.userType() == QMetaType::Type::QStringList )
   {
     for ( const QVariant &var : val.toList() )
       values << var.toInt();
   }
-  else if ( val.type() == QVariant::String )
+  else if ( val.userType() == QMetaType::Type::QString )
   {
     QStringList split = val.toString().split( ',' );
     for ( const QString &var : split )
       values << var.toInt();
   }
-  else if ( val.type() == QVariant::Int )
+  else if ( val.userType() == QMetaType::Type::Int )
   {
     values << val.toInt();
   }
@@ -172,6 +178,7 @@ void QgsProcessingEnumModelerWidget::setDefaultOptions( const QVariant &defaultV
       item->setData( Qt::Checked );
     }
   }
+  emit changed();
 }
 
 bool QgsProcessingEnumModelerWidget::allowMultiple() const
@@ -182,6 +189,7 @@ bool QgsProcessingEnumModelerWidget::allowMultiple() const
 void QgsProcessingEnumModelerWidget::setAllowMultiple( bool allowMultiple )
 {
   mAllowMultiple->setChecked( allowMultiple );
+  emit changed();
 }
 
 ///@endcond

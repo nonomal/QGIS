@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/fieldformatter/qgskeyvaluefieldformatter.h                  *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/
 
 
@@ -12,9 +12,8 @@ class QgsKeyValueFieldFormatter : QgsFieldFormatter
 %Docstring(signature="appended")
 Field formatter for a key value field.
 
-This represents a list type value.
-Values will be represented as a colon-delimited and
-comma-separated list.
+This represents a list type value. Values will be represented as a
+colon-delimited and comma-separated list.
 
 E.g. "color: yellow, amount: 5"
 %End
@@ -23,11 +22,7 @@ E.g. "color: yellow, amount: 5"
 #include "qgskeyvaluefieldformatter.h"
 %End
   public:
-
     QgsKeyValueFieldFormatter();
-%Docstring
-Default constructor of field formatter for a key value field.
-%End
     virtual QString id() const;
 
     virtual QString representValue( QgsVectorLayer *layer, int fieldIndex, const QVariantMap &config, const QVariant &cache, const QVariant &value ) const;
@@ -39,5 +34,5 @@ Default constructor of field formatter for a key value field.
  *                                                                      *
  * src/core/fieldformatter/qgskeyvaluefieldformatter.h                  *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/

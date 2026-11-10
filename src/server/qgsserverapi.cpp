@@ -18,13 +18,11 @@
  ***************************************************************************/
 
 
-
 #include "qgsserverapi.h"
 
 QgsServerApi::QgsServerApi( QgsServerInterface *serverIface )
   : mServerIface( serverIface )
-{
-}
+{}
 
 bool QgsServerApi::accept( const QUrl &url ) const
 {

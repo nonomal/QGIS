@@ -15,13 +15,12 @@
 
 #include "qgsuuidwidgetfactory.h"
 
-#include "qgsuuidwidgetwrapper.h"
 #include "qgsdummyconfigdlg.h"
+#include "qgsuuidwidgetwrapper.h"
 
-QgsUuidWidgetFactory::QgsUuidWidgetFactory( const QString &name )
-  :  QgsEditorWidgetFactory( name )
-{
-}
+QgsUuidWidgetFactory::QgsUuidWidgetFactory( const QString &name, const QIcon &icon )
+  : QgsEditorWidgetFactory( name, icon )
+{}
 
 
 QgsEditorWidgetWrapper *QgsUuidWidgetFactory::create( QgsVectorLayer *vl, int fieldIdx, QWidget *editor, QWidget *parent ) const
@@ -36,6 +35,11 @@ QgsEditorConfigWidget *QgsUuidWidgetFactory::configWidget( QgsVectorLayer *vl, i
 
 unsigned int QgsUuidWidgetFactory::fieldScore( const QgsVectorLayer *vl, int fieldIdx ) const
 {
-  const QVariant::Type type = vl->fields().field( fieldIdx ).type();
-  return type == QVariant::String ? 5 : 0;
+  const QMetaType::Type type = vl->fields().field( fieldIdx ).type();
+  return type == QMetaType::Type::QString ? 5 : 0;
+}
+
+bool QgsUuidWidgetFactory::isReadOnly() const
+{
+  return true;
 }

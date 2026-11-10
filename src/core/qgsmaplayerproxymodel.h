@@ -16,12 +16,12 @@
 #ifndef QGSMAPLAYERPROXYMODEL_H
 #define QGSMAPLAYERPROXYMODEL_H
 
-#include <QSortFilterProxyModel>
-#include <QStringList>
-
+#include "qgis.h"
 #include "qgis_core.h"
 #include "qgis_sip.h"
-#include "qgis.h"
+
+#include <QSortFilterProxyModel>
+#include <QStringList>
 
 class QgsMapLayerModel;
 class QgsMapLayer;
@@ -29,7 +29,7 @@ class QgsProject;
 
 /**
  * \ingroup core
- * \brief The QgsMapLayerProxyModel class provides an easy to use model to display the list of layers in widgets.
+ * \brief A proxy model which provides an easy to use model to display the list of layers in widgets.
  */
 class CORE_EXPORT QgsMapLayerProxyModel : public QSortFilterProxyModel
 {
@@ -40,12 +40,26 @@ class CORE_EXPORT QgsMapLayerProxyModel : public QSortFilterProxyModel
     Q_PROPERTY( QStringList exceptedLayerIds READ exceptedLayerIds WRITE setExceptedLayerIds )
 
   public:
-
+    // TODO QGIS 5.0 -- remove deprecated constructor
     /**
-     * \brief QgsMapLayerProxModel creates a proxy model with a QgsMapLayerModel as source model.
-     * It can be used to filter the layers list in a widget.
+     * \brief QgsMapLayerProxModel creates a proxy model with a QgsMapLayerModel
+     * as source model. It can be used to filter the layers list in a widget.
+     *
+     * \note Will be removed in QGIS 5.0. Use the constructor with the QgsProject argument instead.
      */
-    explicit QgsMapLayerProxyModel( QObject *parent SIP_TRANSFERTHIS = nullptr );
+    explicit QgsMapLayerProxyModel( QObject *parent SIP_TRANSFERTHIS = nullptr ) SIP_DEPRECATED;
+
+    // TODO QGIS 5.0 -- drop SIP_SKIP from the following constructor, so that it is available in Python
+    /**
+     * \brief QgsMapLayerProxyModel creates a proxy model with a
+     * QgsMapLayerModel as source model. It can be used to filter the layers
+     * list in a widget.
+     *
+     * Layers are taken from \a project.
+     *
+     * \since QGIS 4.4
+     */
+    explicit QgsMapLayerProxyModel( QgsProject *project, QObject *parent SIP_TRANSFERTHIS = nullptr ) SIP_SKIP;
 
     /**
      * \brief layerModel returns the QgsMapLayerModel used in this QSortFilterProxyModel
@@ -64,7 +78,7 @@ class CORE_EXPORT QgsMapLayerProxyModel : public QSortFilterProxyModel
      * Filters according to layer type and/or geometry type.
      * \note for API compatibility
      * \since QGIS 3.34
-     * \deprecated since QGIS 3.34 use the flag signature instead
+     * \deprecated QGIS 3.34. Use the flag signature instead.
      */
     Q_DECL_DEPRECATED void setFilters( int filters ) SIP_DEPRECATED { setFilters( static_cast<Qgis::LayerFilters>( filters ) ); }
 
@@ -79,7 +93,7 @@ class CORE_EXPORT QgsMapLayerProxyModel : public QSortFilterProxyModel
     /**
      * Sets the \a project from which map layers are shown.
      *
-     * If \a project is NULLPTR then QgsProject::instance() will be used.
+     * If \a project is NULLPTR then QgsProject.instance() will be used.
      *
      * \since QGIS 3.24
      */
@@ -100,7 +114,7 @@ class CORE_EXPORT QgsMapLayerProxyModel : public QSortFilterProxyModel
      * \see layerAllowlist()
      * \see setExceptedLayerList()
      *
-     * \deprecated use setLayerAllowList()
+     * \deprecated QGIS 3.40. Use setLayerAllowList().
      */
     Q_DECL_DEPRECATED void setLayerWhitelist( const QList<QgsMapLayer *> &layers ) SIP_DEPRECATED;
 
@@ -125,9 +139,9 @@ class CORE_EXPORT QgsMapLayerProxyModel : public QSortFilterProxyModel
      * \see setLayerAllowlist()
      * \see exceptedLayerList()
      *
-     * \deprecated use layerAllowlist() instead
+     * \deprecated QGIS 3.40. Use layerAllowlist() instead.
      */
-    Q_DECL_DEPRECATED QList<QgsMapLayer *> layerWhitelist() SIP_DEPRECATED {return mLayerAllowlist;}
+    Q_DECL_DEPRECATED QList<QgsMapLayer *> layerWhitelist() SIP_DEPRECATED { return mLayerAllowlist; }
 
     /**
      * Returns the list of layers which are excluded from the model.
@@ -139,7 +153,7 @@ class CORE_EXPORT QgsMapLayerProxyModel : public QSortFilterProxyModel
      *
      * \since QGIS 3.14
      */
-    QList<QgsMapLayer *> layerAllowlist() {return mLayerAllowlist;}
+    QList<QgsMapLayer *> layerAllowlist() { return mLayerAllowlist; }
 
     /**
      * Sets a blocklist of layers to exclude from the model.
@@ -155,7 +169,7 @@ class CORE_EXPORT QgsMapLayerProxyModel : public QSortFilterProxyModel
      * \see exceptedLayerIds()
      * \see layerAllowlist()
      */
-    QList<QgsMapLayer *> exceptedLayerList() {return mExceptList;}
+    QList<QgsMapLayer *> exceptedLayerList() { return mExceptList; }
 
     /**
      * Sets a blocklist of layers (by layer ID) to exclude from the model.

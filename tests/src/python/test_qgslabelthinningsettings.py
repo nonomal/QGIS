@@ -5,20 +5,21 @@ it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or
 (at your option) any later version.
 """
-__author__ = 'Nyall Dawson'
-__date__ = '2019-12-07'
-__copyright__ = 'Copyright 2019, The QGIS Project'
 
+__author__ = "Nyall Dawson"
+__date__ = "2019-12-07"
+__copyright__ = "Copyright 2019, The QGIS Project"
+
+
+import unittest
 
 from qgis.core import QgsLabelThinningSettings, QgsPalLayerSettings
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.testing import QgisTestCase, start_app
 
 start_app()
 
 
 class TestQgsLabelThinningSettings(QgisTestCase):
-
     def test_thinning_settings(self):
         """
         Test thinning settings
@@ -53,5 +54,5 @@ class TestQgsLabelThinningSettings(QgisTestCase):
         self.assertEqual(pal_settings.thinningSettings().minimumFeatureSize(), 4.6)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

@@ -18,31 +18,32 @@
 #ifndef QGSOGRITEMGUIPROVIDER_H
 #define QGSOGRITEMGUIPROVIDER_H
 
-#include <QObject>
-#include "qgsdataitemguiprovider.h"
 #include "qgis_sip.h"
+#include "qgsdataitemguiprovider.h"
+
+#include <QObject>
+#include <QString>
+
+#define SIP_NO_FILE
+
+using namespace Qt::StringLiterals;
 
 ///@cond PRIVATE
-#define SIP_NO_FILE
 
 class QgsOgrItemGuiProvider : public QObject, public QgsDataItemGuiProvider
 {
     Q_OBJECT
 
   public:
-
     QgsOgrItemGuiProvider() = default;
 
-    QString name() override { return QStringLiteral( "ogr_items" ); }
+    QString name() override { return u"ogr_items"_s; }
 
-    void populateContextMenu( QgsDataItem *item, QMenu *menu,
-                              const QList<QgsDataItem *> &selectedItems,
-                              QgsDataItemGuiContext context ) override;
+    void populateContextMenu( QgsDataItem *item, QMenu *menu, const QList<QgsDataItem *> &selectedItems, QgsDataItemGuiContext context ) override;
 
   protected slots:
     void onDeleteLayer( QgsDataItemGuiContext context );
     void deleteCollection( QgsDataItemGuiContext context );
-
 };
 
 ///@endcond

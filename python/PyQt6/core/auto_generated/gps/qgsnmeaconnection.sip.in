@@ -3,23 +3,22 @@
  *                                                                      *
  * src/core/gps/qgsnmeaconnection.h                                     *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/
 
 
 
 
-class QgsNmeaConnection: QgsGpsConnection
+class QgsNmeaConnection : QgsGpsConnection
 {
 %Docstring(signature="appended")
-Evaluates NMEA sentences coming from a GPS device
+Evaluates NMEA sentences coming from a GPS device.
 %End
 
 %TypeHeaderCode
 #include "qgsnmeaconnection.h"
 %End
   public:
-
     QgsNmeaConnection( QIODevice *device /Transfer/ );
 %Docstring
 Constructs a QgsNmeaConnection with given ``device``.
@@ -71,10 +70,7 @@ process HDT sentence
 %Docstring
 process HCHDG sentence
 %End
-    void processHchdtSentence( const char *data, int len );
-%Docstring
-process HCHDT sentence
-%End
+
 };
 
 /************************************************************************
@@ -82,5 +78,5 @@ process HCHDT sentence
  *                                                                      *
  * src/core/gps/qgsnmeaconnection.h                                     *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/

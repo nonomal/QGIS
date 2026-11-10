@@ -15,12 +15,15 @@
 #ifndef QGSMIMEDATAUTILS_H
 #define QGSMIMEDATAUTILS_H
 
-#include <QMimeData>
-#include <QStringList>
-
 #include "qgis_core.h"
 #include "qgis_sip.h"
 #include "qgswkbtypes.h"
+
+#include <QMimeData>
+#include <QString>
+#include <QStringList>
+
+using namespace Qt::StringLiterals;
 
 class QgsLayerItem;
 class QgsLayerTreeNode;
@@ -28,70 +31,141 @@ class QgsVectorLayer;
 class QgsRasterLayer;
 class QgsMeshLayer;
 class QgsMapLayer;
+class QgsProject;
 
 /**
  * \ingroup core
  * \class QgsMimeDataUtils
+ * \brief Contains utility functions for working with MIME data.
  */
 class CORE_EXPORT QgsMimeDataUtils
 {
   public:
-
     struct CORE_EXPORT Uri
     {
-      //! Constructs invalid URI
-      Uri() = default;
-      //! Constructs URI from encoded data
-      explicit Uri( const QString &encData );
+        //! Constructs invalid URI
+        Uri() = default;
+        //! Constructs URI from encoded data
+        explicit Uri( const QString &encData );
 
-      /**
+        /**
        * Constructs a URI corresponding to the specified \a layer.
        *
        * \since QGIS 3.8
        */
-      explicit Uri( QgsMapLayer *layer );
+        explicit Uri( QgsMapLayer *layer );
 
-      /**
+        /**
        * Returns whether the object contains valid data
        */
-      bool isValid() const { return !layerType.isEmpty(); }
+        bool isValid() const { return !layerType.isEmpty(); }
 
-      //! Returns encoded representation of the object
-      QString data() const;
+        //! Returns encoded representation of the object
+        QString data() const;
 
-      /**
+        // TODO QGIS 5.0 -- remove this version of function in favor of the one with explicit project parameter
+        /**
        * Gets vector layer from uri if possible, otherwise returns NULLPTR and error is set
        * \param owner set to TRUE if caller becomes owner
        * \param error set to error message if cannot get vector
+       *
+       * \returns vector layer if successful, otherwise NULLPTR
+       *
+       * \deprecated QGIS 4.4. Use vectorLayer() with explicit project parameter instead.
        */
-      QgsVectorLayer *vectorLayer( bool &owner, QString &error ) const;
+        Q_DECL_DEPRECATED QgsVectorLayer *vectorLayer( bool &owner SIP_OUT, QString &error SIP_OUT ) const SIP_DEPRECATED;
 
-      /**
+        /**
+       * Gets vector layer from uri if possible, otherwise returns NULLPTR and error is set
+       * \param owner set to TRUE if caller becomes owner
+       * \param error set to error message if cannot get vector
+       * \param project project is used to obtain the layer
+       *
+       * \returns vector layer if successful, otherwise NULLPTR
+       *
+       * \since QGIS 4.4
+       */
+        QgsVectorLayer *vectorLayer( bool &owner SIP_OUT, QString &error SIP_OUT, QgsProject *project ) const;
+
+        // TODO QGIS 5.0 -- remove this version of function in favor of the one with explicit project parameter
+        /**
        * Gets raster layer from uri if possible, otherwise returns NULLPTR and error is set
        * \param owner set to TRUE if caller becomes owner
        * \param error set to error message if cannot get raster
+       *
+       * \returns raster layer if successful, otherwise NULLPTR
+       *
+       * \deprecated QGIS 4.4. Use rasterLayer() with explicit project parameter instead.
        */
-      QgsRasterLayer *rasterLayer( bool &owner, QString &error ) const;
+        Q_DECL_DEPRECATED QgsRasterLayer *rasterLayer( bool &owner SIP_OUT, QString &error SIP_OUT ) const SIP_DEPRECATED;
 
-      /**
-       * Gets mesh layer from uri if possible, otherwise returns NULLPTR and error is set
+        /**
+       * Gets raster layer from uri if possible, otherwise returns NULLPTR and error is set
        * \param owner set to TRUE if caller becomes owner
        * \param error set to error message if cannot get raster
+       * \param project project is used to obtain the layer
+       *
+       * \returns raster layer if successful, otherwise NULLPTR
+       *
+       * \since QGIS 4.4
        */
-      QgsMeshLayer *meshLayer( bool &owner, QString &error ) const;
+        QgsRasterLayer *rasterLayer( bool &owner SIP_OUT, QString &error SIP_OUT, QgsProject *project ) const;
 
-      /**
+        // TODO QGIS 5.0 -- remove this version of function in favor of the one with explicit project parameter
+        /**
+       * Gets mesh layer from uri if possible, otherwise returns NULLPTR and error is set
+       * \param owner set to TRUE if caller becomes owner
+       * \param error set to error message if cannot get mesh
+       *
+       * \returns mesh layer if successful, otherwise NULLPTR
+       *
+       * \deprecated QGIS 4.4. Use meshLayer() with explicit project parameter instead.
+       */
+        Q_DECL_DEPRECATED QgsMeshLayer *meshLayer( bool &owner SIP_OUT, QString &error SIP_OUT ) const SIP_DEPRECATED;
+
+        /**
+       * Gets mesh layer from uri if possible, otherwise returns NULLPTR and error is set
+       * \param owner set to TRUE if caller becomes owner
+       * \param error set to error message if cannot get mesh
+       * \param project project is used to obtain the layer
+       *
+       * \returns mesh layer if successful, otherwise NULLPTR
+       *
+       * \since QGIS 4.4
+       */
+        QgsMeshLayer *meshLayer( bool &owner SIP_OUT, QString &error SIP_OUT, QgsProject *project ) const;
+
+        // TODO QGIS 5.0 -- remove this version of function in favor of the one with explicit project parameter
+        /**
        * Returns the layer from the active project corresponding to this uri (if possible),
        * otherwise returns NULLPTR.
        *
        * Unlike vectorLayer(), rasterLayer(), or meshLayer(), this method will not attempt
        * to create a new layer corresponding to the URI.
        *
+       * \returns map layer if found in the active project, otherwise NULLPTR
+       *
        * \since QGIS 3.8
+       * \deprecated QGIS 4.4. Use mapLayer() with explicit project parameter instead.
        */
-      QgsMapLayer *mapLayer() const;
+        Q_DECL_DEPRECATED QgsMapLayer *mapLayer() const SIP_DEPRECATED;
 
-      /**
+        /**
+       * Returns the layer from \a project corresponding to this uri (if possible),
+       * otherwise returns NULLPTR.
+       *
+       * Unlike vectorLayer(), rasterLayer(), or meshLayer(), this method will not attempt
+       * to create a new layer corresponding to the URI.
+       *
+       * \param project used to obtain the layer
+       *
+       * \returns map layer if found in the project, otherwise NULLPTR
+       *
+       * \since QGIS 4.4
+       */
+        QgsMapLayer *mapLayer( QgsProject *project ) const;
+
+        /**
        * Type of URI.
        *
        * Recognized types include
@@ -99,66 +173,74 @@ class CORE_EXPORT QgsMimeDataUtils
        * - "vector": vector layers
        * - "raster": raster layers
        * - "mesh": mesh layers
-       * - "pointcloud": point cloud layers
+       * - "point-cloud": point cloud layers (spelled with a dash since QGIS 3.42.0. In prior versions, there was no dash)
        * - "vector-tile": vector tile layers
        * - "tiled-scene": tiled scene layers
+       * - "annotation": annotation layers
+       * - "group": group layers
        * - "plugin": plugin layers
        * - "custom": custom types
        * - "project": QGS/QGZ project file
        * - "directory": directory path
        *
+       * Note: use QgsMapLayerFactory::typeToString() to convert from a
+       * Qgis::LayerType to a string (except for "custom", "project" and
+       * "directory")
+       *
        * Mime data from plugins may use additional custom layer types.
        */
-      QString layerType;
+        QString layerType;
 
-      /**
+        /**
        * For "vector" / "raster" type: provider id.
        * For "plugin" type: plugin layer type name.
        * For "custom" type: key of its QgsCustomDropHandler
        * For "project" and "directory" types: unused
        */
-      QString providerKey;
+        QString providerKey;
 
-      //! Human readable name to be used e.g. in layer tree
-      QString name;
-      //! Identifier of the data source recognized by its providerKey
-      QString uri;
-      QStringList supportedCrs;
-      QStringList supportedFormats;
+        //! Human readable name to be used e.g. in layer tree
+        QString name;
+        //! Identifier of the data source recognized by its providerKey
+        QString uri;
+        QStringList supportedCrs;
+        QStringList supportedFormats;
 
-      /**
+        /**
        * Layer ID, if uri is associated with a layer from a QgsProject.
        * \since QGIS 3.8
        */
-      QString layerId;
+        QString layerId;
 
-      /**
+        /**
        * Unique ID associated with application instance. Can be used to identify
        * if mime data was created inside the current application instance or not.
        * \since QGIS 3.8
        */
-      QString pId;
+        QString pId;
 
-      /**
+        /**
        * WKB type, if associated with a vector layer, or QgsWkbTypes::Unknown if not
        * yet known.
        *
        * \since QGIS 3.8
        */
-      Qgis::WkbType wkbType = Qgis::WkbType::Unknown;
+        Qgis::WkbType wkbType = Qgis::WkbType::Unknown;
 
-      /**
+        /**
        * Path to file, if uri is associated with a file.
        * \since QGIS 3.22
        */
-      QString filePath;
+        QString filePath;
 
 #ifdef SIP_RUN
+        // clang-format off
       SIP_PYOBJECT __repr__();
       % MethodCode
-      QString str = QStringLiteral( "<QgsMimeDataUtils::Uri (%1): %2>" ).arg( sipCpp->providerKey, sipCpp->uri );
+      QString str = u"<QgsMimeDataUtils::Uri (%1): %2>"_s.arg( sipCpp->providerKey, sipCpp->uri );
       sipRes = PyUnicode_FromString( str.toUtf8().constData() );
       % End
+// clang-format on
 #endif
     };
     typedef QList<QgsMimeDataUtils::Uri> UriList;
@@ -192,10 +274,8 @@ class CORE_EXPORT QgsMimeDataUtils
 
 
     friend class TestQgsMimeDataUtils;
-
 };
 
 Q_DECLARE_METATYPE( QgsMimeDataUtils::UriList )
 
 #endif // QGSMIMEDATAUTILS_H
-

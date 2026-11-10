@@ -18,9 +18,10 @@
 
 #include <memory>
 
+#include "qgsabstract3dsymbol.h"
 #include "qgsmaplayerconfigwidget.h"
 #include "qgsmaplayerconfigwidgetfactory.h"
-#include "qgsvectorlayer3drenderer.h"
+#include "qgspanelwidget.h"
 
 class QComboBox;
 class QCheckBox;
@@ -30,12 +31,13 @@ class QStackedWidget;
 class QgsVectorLayer;
 class QgsMapCanvas;
 
+class QgsCategorized3DRendererWidget;
 class QgsRuleBased3DRendererWidget;
 class QgsSymbol3DWidget;
 class QgsVectorLayer3DPropertiesWidget;
 
 
-class QgsSingleSymbol3DRendererWidget : public QWidget
+class QgsSingleSymbol3DRendererWidget : public QgsPanelWidget
 {
     Q_OBJECT
   public:
@@ -45,17 +47,13 @@ class QgsSingleSymbol3DRendererWidget : public QWidget
     void setLayer( QgsVectorLayer *layer );
 
     //! Returns the cloned symbol or NULLPTR.
-    std::unique_ptr< QgsAbstract3DSymbol > symbol();
-
-  signals:
-    void widgetChanged();
+    std::unique_ptr<QgsAbstract3DSymbol> symbol();
+    void setDockMode( bool dockMode ) override;
 
   private:
     QgsSymbol3DWidget *widgetSymbol = nullptr;
     QgsVectorLayer *mLayer = nullptr;
-
 };
-
 
 
 //! Widget for configuration of 3D renderer of a vector layer
@@ -85,6 +83,7 @@ class QgsVectorLayer3DRendererWidget : public QgsMapLayerConfigWidget
 
     QLabel *widgetNoRenderer = nullptr;
     QgsSingleSymbol3DRendererWidget *widgetSingleSymbolRenderer = nullptr;
+    QgsCategorized3DRendererWidget *widgetCategorizedRenderer = nullptr;
     QgsRuleBased3DRendererWidget *widgetRuleBasedRenderer = nullptr;
 };
 
@@ -99,7 +98,6 @@ class QgsVectorLayer3DRendererWidgetFactory : public QObject, public QgsMapLayer
     bool supportsLayer( QgsMapLayer *layer ) const override;
     QString layerPropertiesPagePositionHint() const override;
 };
-
 
 
 #endif // QGSVECTORLAYER3DRENDERERWIDGET_H

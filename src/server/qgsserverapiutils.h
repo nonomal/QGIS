@@ -22,14 +22,15 @@
 #define QGSSERVERAPIUTILS_H
 
 #include "qgis_server.h"
-#include <QString>
+#include "qgsjsonutils.h"
+#include "qgsmaplayerserverproperties.h"
 #include "qgsproject.h"
-#include "qgsserverprojectutils.h"
+#include "qgsrange.h"
 #include "qgsserverapicontext.h"
 #include "qgsserverexception.h"
-#include "qgsmaplayerserverproperties.h"
-#include "qgsrange.h"
-#include "qgsjsonutils.h"
+#include "qgsserverprojectutils.h"
+
+#include <QString>
 
 #ifdef HAVE_SERVER_PYTHON_PLUGINS
 #include "qgsaccesscontrol.h"
@@ -41,20 +42,18 @@ class QgsCoordinateReferenceSystem;
 class QgsVectorLayer;
 
 #ifndef SIP_RUN
-#include "nlohmann/json_fwd.hpp"
+#include <nlohmann/json_fwd.hpp>
 using namespace nlohmann;
 #endif
 
 /**
  * \ingroup server
- * \brief The QgsServerApiUtils class contains helper functions to handle common API operations.
+ * \brief Contains helper functions to handle common API operations.
  * \since QGIS 3.10
  */
 class SERVER_EXPORT QgsServerApiUtils
 {
-
   public:
-
     /**
      * Parses a comma separated \a bbox into a (possibly empty) QgsRectangle.
      *
@@ -66,7 +65,7 @@ class SERVER_EXPORT QgsServerApiUtils
      * Returns a list of temporal dimensions information for the given \a layer (either configured in wmsDimensions or the first date/datetime field)
      * \since QGIS 3.12
      */
-    static QList< QgsServerWmsDimensionProperties::WmsDimensionInfo > temporalDimensions( const QgsVectorLayer *layer );
+    static QList<QgsServerWmsDimensionProperties::WmsDimensionInfo> temporalDimensions( const QgsVectorLayer *layer );
 
     /**
      * Parses a date \a interval and returns a QgsDateRange
@@ -92,10 +91,10 @@ class SERVER_EXPORT QgsServerApiUtils
      */
     static QString fieldName( const QString &name, const QgsVectorLayer *layer ) SIP_THROW( QgsServerApiBadRequestException );
 
-///@cond PRIVATE
+    ///@cond PRIVATE
     // T is TemporalDateInterval|TemporalDateTimeInterval, T2 is QDate|QdateTime
     template<typename T, class T2> static T parseTemporalInterval( const QString &interval ) SIP_SKIP;
-/// @endcond
+    /// @endcond
 
 
     /**
@@ -154,6 +153,7 @@ class SERVER_EXPORT QgsServerApiUtils
      */
     static QVariantList temporalExtentList( const QgsVectorLayer *layer ) SIP_PYNAME( temporalExtent );
 
+
     /**
      * Parses the CRS URI \a bboxCrs (example: "http://www.opengis.net/def/crs/OGC/1.3/CRS84") into a QGIS CRS object
      */
@@ -177,8 +177,7 @@ class SERVER_EXPORT QgsServerApiUtils
      *
      * \note not available in Python bindings
      */
-    template <typename T>
-    static const QVector<T> publishedWfsLayers( const QgsServerApiContext &context )
+    template<typename T> static const QVector<T> publishedWfsLayers( const QgsServerApiContext &context )
     {
 #ifdef HAVE_SERVER_PYTHON_PLUGINS
       QgsAccessControl *accessControl = context.serverInterface()->accessControls();
@@ -191,7 +190,7 @@ class SERVER_EXPORT QgsServerApiUtils
         const auto constLayers { project->layers<T>() };
         for ( const auto &layer : constLayers )
         {
-          if ( ! wfsLayerIds.contains( layer->id() ) )
+          if ( !wfsLayerIds.contains( layer->id() ) )
           {
             continue;
           }
@@ -226,7 +225,7 @@ class SERVER_EXPORT QgsServerApiUtils
      * Returns a \a crs as OGC URI (format: http://www.opengis.net/def/crs/OGC/1.3/CRS84)
      * Returns an empty string on failure.
      *
-     * \deprecated since QGIS 3.30 use QgsCoordinateReferenceSystem::toOgcUri() instead
+     * \deprecated QGIS 3.30. Use QgsCoordinateReferenceSystem::toOgcUri() instead.
      */
     Q_DECL_DEPRECATED static QString crsToOgcUri( const QgsCoordinateReferenceSystem &crs ) SIP_DEPRECATED;
 
@@ -234,6 +233,5 @@ class SERVER_EXPORT QgsServerApiUtils
      * Appends MAP query string parameter from current \a requestUrl to the given \a path
      */
     static QString appendMapParameter( const QString &path, const QUrl &requestUrl );
-
 };
 #endif // QGSSERVERAPIUTILS_H

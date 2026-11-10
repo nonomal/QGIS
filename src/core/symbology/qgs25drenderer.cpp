@@ -14,78 +14,82 @@
  *                                                                         *
  ***************************************************************************/
 #include "qgs25drenderer.h"
-#include "qgsgeometrygeneratorsymbollayer.h"
-#include "qgsfillsymbollayer.h"
-#include "qgspainteffect.h"
+
+#include <memory>
+
 #include "qgseffectstack.h"
-#include "qgsgloweffect.h"
-#include "qgsproperty.h"
-#include "qgssymbollayerutils.h"
-#include "qgsstyleentityvisitor.h"
 #include "qgsfillsymbol.h"
+#include "qgsfillsymbollayer.h"
+#include "qgsgeometrygeneratorsymbollayer.h"
+#include "qgsgloweffect.h"
+#include "qgspainteffect.h"
+#include "qgsproperty.h"
+#include "qgsstyleentityvisitor.h"
+#include "qgssymbollayerutils.h"
 
-#define ROOF_EXPRESSION \
-  "translate(" \
-  "  $geometry," \
+#include <QString>
+
+using namespace Qt::StringLiterals;
+
+#define ROOF_EXPRESSION                                                     \
+  "translate("                                                              \
+  "  @geometry,"                                                            \
   "  cos( radians( eval( @qgis_25d_angle ) ) ) * eval( @qgis_25d_height )," \
-  "  sin( radians( eval( @qgis_25d_angle ) ) ) * eval( @qgis_25d_height )" \
+  "  sin( radians( eval( @qgis_25d_angle ) ) ) * eval( @qgis_25d_height )"  \
   ")"
 
-#define WALL_EXPRESSION \
-  "order_parts( "\
-  "  extrude(" \
-  "    segments_to_lines( $geometry )," \
-  "    cos( radians( eval( @qgis_25d_angle ) ) ) * eval( @qgis_25d_height )," \
-  "    sin( radians( eval( @qgis_25d_angle ) ) ) * eval( @qgis_25d_height )" \
-  "  )," \
-  "  'distance(  $geometry,  translate(    @map_extent_center,    1000 * @map_extent_width * cos( radians( @qgis_25d_angle + 180 ) ),    1000 * @map_extent_width * sin( radians( @qgis_25d_angle + 180 ) )  ))'," \
-  "  False" \
+#define WALL_EXPRESSION                                                                                                                                                                               \
+  "order_parts( "                                                                                                                                                                                     \
+  "  extrude("                                                                                                                                                                                        \
+  "    segments_to_lines( @geometry ),"                                                                                                                                                               \
+  "    cos( radians( eval( @qgis_25d_angle ) ) ) * eval( @qgis_25d_height ),"                                                                                                                         \
+  "    sin( radians( eval( @qgis_25d_angle ) ) ) * eval( @qgis_25d_height )"                                                                                                                          \
+  "  ),"                                                                                                                                                                                              \
+  "  'distance(  @geometry,  translate(    @map_extent_center,    1000 * @map_extent_width * cos( radians( @qgis_25d_angle + 180 ) ),    1000 * @map_extent_width * sin( radians( @qgis_25d_angle + " \
+  "180 ) )  ))',"                                                                                                                                                                                     \
+  "  False"                                                                                                                                                                                           \
   ")"
 
-#define ORDER_BY_EXPRESSION \
-  "distance(" \
-  "  $geometry," \
-  "  translate(" \
-  "    @map_extent_center," \
+#define ORDER_BY_EXPRESSION                                                 \
+  "distance("                                                               \
+  "  @geometry,"                                                            \
+  "  translate("                                                            \
+  "    @map_extent_center,"                                                 \
   "    1000 * @map_extent_width * cos( radians( @qgis_25d_angle + 180 ) )," \
-  "    1000 * @map_extent_width * sin( radians( @qgis_25d_angle + 180 ) )" \
-  "  )" \
+  "    1000 * @map_extent_width * sin( radians( @qgis_25d_angle + 180 ) )"  \
+  "  )"                                                                     \
   ")"
 
-#define WALL_SHADING_EXPRESSION \
-  "set_color_part( " \
-  "  @symbol_color," \
-  " 'value'," \
-  "  40 + 19 * abs( $pi - azimuth( " \
-  "    point_n( geometry_n($geometry, @geometry_part_num) , 1 ), " \
-  "    point_n( geometry_n($geometry, @geometry_part_num) , 2 )" \
-  "  ) ) " \
+#define WALL_SHADING_EXPRESSION                                    \
+  "set_color_part( "                                               \
+  "  @symbol_color,"                                               \
+  " 'value',"                                                      \
+  "  40 + 19 * abs( $pi - azimuth( "                               \
+  "    point_n( geometry_n(@geometry, @geometry_part_num) , 1 ), " \
+  "    point_n( geometry_n(@geometry, @geometry_part_num) , 2 )"   \
+  "  ) ) "                                                         \
   ")"
 
 Qgs25DRenderer::Qgs25DRenderer()
-  : QgsFeatureRenderer( QStringLiteral( "25dRenderer" ) )
+  : QgsFeatureRenderer( u"25dRenderer"_s )
 {
-  mSymbol.reset( new QgsFillSymbol() );
+  mSymbol = std::make_unique<QgsFillSymbol>();
 
   mSymbol->deleteSymbolLayer( 0 ); // We never asked for the default layer
 
-  QgsSymbolLayer *floor = QgsSimpleFillSymbolLayer::create();
+  std::unique_ptr<QgsSymbolLayer> floor = QgsSimpleFillSymbolLayer::create();
 
   QVariantMap wallProperties;
-  wallProperties.insert( QStringLiteral( "geometryModifier" ), WALL_EXPRESSION );
-  wallProperties.insert( QStringLiteral( "symbolType" ), QStringLiteral( "Fill" ) );
-  QgsSymbolLayer *walls = QgsGeometryGeneratorSymbolLayer::create( wallProperties );
+  wallProperties.insert( u"geometryModifier"_s, WALL_EXPRESSION );
+  wallProperties.insert( u"symbolType"_s, u"Fill"_s );
+  std::unique_ptr<QgsSymbolLayer> walls = QgsGeometryGeneratorSymbolLayer::create( wallProperties );
 
   QVariantMap roofProperties;
-  roofProperties.insert( QStringLiteral( "geometryModifier" ), ROOF_EXPRESSION );
-  roofProperties.insert( QStringLiteral( "symbolType" ), QStringLiteral( "Fill" ) );
-  QgsSymbolLayer *roof = QgsGeometryGeneratorSymbolLayer::create( roofProperties );
+  roofProperties.insert( u"geometryModifier"_s, ROOF_EXPRESSION );
+  roofProperties.insert( u"symbolType"_s, u"Fill"_s );
+  std::unique_ptr<QgsSymbolLayer> roof = QgsGeometryGeneratorSymbolLayer::create( roofProperties );
 
   floor->setLocked( true );
-
-  mSymbol->appendSymbolLayer( floor );
-  mSymbol->appendSymbolLayer( walls );
-  mSymbol->appendSymbolLayer( roof );
 
   QgsEffectStack *effectStack = new QgsEffectStack();
   QgsOuterGlowEffect *glowEffect = new QgsOuterGlowEffect();
@@ -93,6 +97,11 @@ Qgs25DRenderer::Qgs25DRenderer()
   glowEffect->setSpreadUnit( Qgis::RenderUnit::MapUnits );
   effectStack->appendEffect( glowEffect );
   floor->setPaintEffect( effectStack );
+
+  mSymbol->appendSymbolLayer( floor.release() );
+  mSymbol->appendSymbolLayer( walls.release() );
+  mSymbol->appendSymbolLayer( roof.release() );
+
 
   // These methods must only be used after the above initialization!
 
@@ -105,9 +114,7 @@ Qgs25DRenderer::Qgs25DRenderer()
   setShadowColor( QColor( 17, 17, 17 ) );
 
   QgsFeatureRequest::OrderBy orderBy;
-  orderBy << QgsFeatureRequest::OrderByClause(
-            ORDER_BY_EXPRESSION,
-            false );
+  orderBy << QgsFeatureRequest::OrderByClause( ORDER_BY_EXPRESSION, false );
 
   setOrderBy( orderBy );
   setOrderByEnabled( true );
@@ -117,9 +124,9 @@ QDomElement Qgs25DRenderer::save( QDomDocument &doc, const QgsReadWriteContext &
 {
   QDomElement rendererElem = doc.createElement( RENDERER_TAG_NAME );
 
-  rendererElem.setAttribute( QStringLiteral( "type" ), QStringLiteral( "25dRenderer" ) );
+  rendererElem.setAttribute( u"type"_s, u"25dRenderer"_s );
 
-  const QDomElement symbolElem = QgsSymbolLayerUtils::saveSymbol( QStringLiteral( "symbol" ), mSymbol.get(), doc, context );
+  const QDomElement symbolElem = QgsSymbolLayerUtils::saveSymbol( u"symbol"_s, mSymbol.get(), doc, context );
 
   saveRendererData( doc, rendererElem, context );
 
@@ -128,14 +135,23 @@ QDomElement Qgs25DRenderer::save( QDomDocument &doc, const QgsReadWriteContext &
   return rendererElem;
 }
 
-QgsFeatureRenderer *Qgs25DRenderer::create( QDomElement &element, const QgsReadWriteContext &context )
+Qgis::FeatureRendererFlags Qgs25DRenderer::flags() const
 {
-  Qgs25DRenderer *renderer = new Qgs25DRenderer();
+  Qgis::FeatureRendererFlags res;
+  if ( mSymbol && mSymbol->flags().testFlag( Qgis::SymbolFlag::AffectsLabeling ) )
+    res.setFlag( Qgis::FeatureRendererFlag::AffectsLabeling );
 
-  const QDomNodeList symbols = element.elementsByTagName( QStringLiteral( "symbol" ) );
+  return res;
+}
+
+std::unique_ptr<QgsFeatureRenderer> Qgs25DRenderer::create( QDomElement &element, const QgsReadWriteContext &context )
+{
+  auto renderer = std::make_unique<Qgs25DRenderer>();
+
+  const QDomNodeList symbols = element.elementsByTagName( u"symbol"_s );
   if ( symbols.size() )
   {
-    renderer->mSymbol.reset( QgsSymbolLayerUtils::loadSymbol( symbols.at( 0 ).toElement(), context ) );
+    renderer->mSymbol = QgsSymbolLayerUtils::loadSymbol( symbols.at( 0 ).toElement(), context );
   }
 
   return renderer;
@@ -270,17 +286,16 @@ void Qgs25DRenderer::setRoofColor( const QColor &roofColor ) const
   roofLayer()->setStrokeColor( roofColor );
 }
 
-Qgs25DRenderer *Qgs25DRenderer::convertFromRenderer( QgsFeatureRenderer *renderer )
+std::unique_ptr<Qgs25DRenderer> Qgs25DRenderer::convertFromRenderer( QgsFeatureRenderer *renderer )
 {
-  if ( renderer->type() == QLatin1String( "25dRenderer" ) )
+  if ( renderer->type() == "25dRenderer"_L1 )
   {
-    return static_cast<Qgs25DRenderer *>( renderer->clone() );
+    return std::unique_ptr<Qgs25DRenderer>( static_cast<Qgs25DRenderer *>( renderer->clone() ) );
   }
   else
   {
-    std::unique_ptr< Qgs25DRenderer > res = std::make_unique< Qgs25DRenderer >();
+    auto res = std::make_unique< Qgs25DRenderer >();
     renderer->copyRendererData( res.get() );
-    return res.release();
+    return res;
   }
 }
-

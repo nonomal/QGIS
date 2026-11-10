@@ -16,11 +16,17 @@
  ***************************************************************************/
 
 #include "qgsvectorfilewritertask.h"
+
+#include <memory>
+
 #include "qgsvectorlayer.h"
 
-QgsVectorFileWriterTask::QgsVectorFileWriterTask( QgsVectorLayer *layer, const QString &fileName, const QgsVectorFileWriter::SaveVectorOptions &options )
+#include "moc_qgsvectorfilewritertask.cpp"
+
+QgsVectorFileWriterTask::QgsVectorFileWriterTask( QgsVectorLayer *layer, const QString &fileName, const QgsVectorFileWriter::SaveVectorOptions &options, QgsFeatureSink::SinkFlags sinkFlags )
   : QgsTask( tr( "Saving %1" ).arg( fileName ), QgsTask::CanCancel )
   , mDestFileName( fileName )
+  , mSinkFlags( sinkFlags )
   , mOptions( options )
 {
   if ( mOptions.fieldValueConverter )
@@ -32,7 +38,7 @@ QgsVectorFileWriterTask::QgsVectorFileWriterTask( QgsVectorLayer *layer, const Q
   }
   if ( !mOptions.feedback )
   {
-    mOwnedFeedback.reset( new QgsFeedback() );
+    mOwnedFeedback = std::make_unique<QgsFeedback>();
     mOptions.feedback = mOwnedFeedback.get();
   }
 
@@ -58,8 +64,7 @@ bool QgsVectorFileWriterTask::run()
   connect( mOptions.feedback, &QgsFeedback::progressChanged, this, &QgsVectorFileWriterTask::setProgress );
 
 
-  mError = QgsVectorFileWriter::writeAsVectorFormatV2(
-             mWriterDetails, mDestFileName, mTransformContext, mOptions, &mNewFilename, &mNewLayer, &mErrorMessage );
+  mError = QgsVectorFileWriter::writeAsVectorFormatV2( mWriterDetails, mDestFileName, mTransformContext, mOptions, &mNewFilename, &mNewLayer, &mErrorMessage, mSinkFlags );
   return mError == QgsVectorFileWriter::NoError;
 }
 

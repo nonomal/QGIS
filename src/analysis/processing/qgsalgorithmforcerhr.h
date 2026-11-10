@@ -18,10 +18,11 @@
 #ifndef QGSALGORITHMFORCERHR_H
 #define QGSALGORITHMFORCERHR_H
 
-#define SIP_NO_FILE
 
 #include "qgis_sip.h"
 #include "qgsprocessingalgorithm.h"
+
+#define SIP_NO_FILE
 
 ///@cond PRIVATE
 
@@ -30,9 +31,7 @@
  */
 class QgsForceRHRAlgorithm : public QgsProcessingFeatureBasedAlgorithm
 {
-
   public:
-
     QgsForceRHRAlgorithm() = default;
     QString name() const override;
     QString displayName() const override;
@@ -47,12 +46,9 @@ class QgsForceRHRAlgorithm : public QgsProcessingFeatureBasedAlgorithm
   protected:
     Qgis::ProcessingFeatureSourceFlags sourceFlags() const override;
     QString outputName() const override;
-    QgsFeatureList processFeature( const QgsFeature &feature,  QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
-
+    QgsFeatureList processFeature( const QgsFeature &feature, QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
 };
 
 ///@endcond PRIVATE
 
 #endif // QGSALGORITHMFORCERHR_H
-
-

@@ -36,10 +36,10 @@
 #ifndef QGISPLUGIN_H
 #define QGISPLUGIN_H
 
-#define SIP_NO_FILE
-
 
 #include <QString>
+
+#define SIP_NO_FILE
 
 class QgisInterface;
 
@@ -54,7 +54,6 @@ class QgisInterface;
 class QgisPlugin
 {
   public:
-
     //! Interface to gui element collection object
     //virtual QgisPluginGui *gui()=0;
     //! Element types that can be added to the interface
@@ -81,11 +80,7 @@ class QgisPlugin
     /**
      * Constructor for QgisPlugin
      */
-    QgisPlugin( QString const &name = "",
-                QString const &description = "",
-                QString const &category = "",
-                QString const &version = "",
-                PluginType type = MapLayer )
+    QgisPlugin( QString const &name = "", QString const &description = "", QString const &category = "", QString const &version = "", PluginType type = MapLayer )
       : mName( name )
       , mDescription( description )
       , mCategory( category )
@@ -96,64 +91,34 @@ class QgisPlugin
     virtual ~QgisPlugin() = default;
 
     //! Gets the name of the plugin
-    QString const &name() const
-    {
-      return mName;
-    }
+    QString const &name() const { return mName; }
 
-    QString        &name()
-    {
-      return mName;
-    }
+    QString &name() { return mName; }
 
     //! Version of the plugin
-    QString const &version() const
-    {
-      return mVersion;
-    }
+    QString const &version() const { return mVersion; }
 
     //! Version of the plugin
-    QString &version()
-    {
-      return mVersion;
-    }
+    QString &version() { return mVersion; }
 
     //! A brief description of the plugin
-    QString const &description() const
-    {
-      return mDescription;
-    }
+    QString const &description() const { return mDescription; }
 
     //! A brief description of the plugin
-    QString        &description()
-    {
-      return mDescription;
-    }
+    QString &description() { return mDescription; }
 
     //! Plugin category
-    QString const &category() const
-    {
-      return mCategory;
-    }
+    QString const &category() const { return mCategory; }
 
     //! Plugin category
-    QString        &category()
-    {
-      return mCategory;
-    }
+    QString &category() { return mCategory; }
 
     //! Plugin type, either UI or map layer
-    QgisPlugin::PluginType const &type() const
-    {
-      return mType;
-    }
+    QgisPlugin::PluginType const &type() const { return mType; }
 
 
     //! Plugin type, either UI or map layer
-    QgisPlugin::PluginType        &type()
-    {
-      return mType;
-    }
+    QgisPlugin::PluginType &type() { return mType; }
 
     /// function to initialize connection to GUI
     virtual void initGui() = 0;
@@ -162,7 +127,6 @@ class QgisPlugin
     virtual void unload() = 0;
 
   private:
-
     /// plug-in name
     QString mName;
 

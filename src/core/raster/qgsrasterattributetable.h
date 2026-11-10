@@ -16,16 +16,16 @@
 #ifndef QGSRASTERATTRIBUTETABLE_H
 #define QGSRASTERATTRIBUTETABLE_H
 
-#include "qgsfields.h"
-#include "qgsfeature.h"
+#include "qgis.h"
 #include "qgis_core.h"
 #include "qgis_sip.h"
-#include "qgis.h"
 #include "qgscolorrampimpl.h"
+#include "qgsfeature.h"
+#include "qgsfields.h"
 
-#include <QObject>
-#include <QLinearGradient>
 #include <QCoreApplication>
+#include <QLinearGradient>
+#include <QObject>
 
 class QgsRasterLayer;
 class QgsRasterRenderer;
@@ -33,7 +33,7 @@ class QgsRasterDataProvider;
 
 /**
  * \ingroup core
- * \brief The QgsRasterAttributeTable class represents a Raster Attribute Table (RAT).
+ * \brief Represents a Raster Attribute Table (RAT).
  *
  * This class is modeled after the GDAL Raster Attribute Table implementation, it adds some convenience
  * methods to handle data from QGIS and to import/export a Raster Attribute Table from/to a DBF VAT file.
@@ -42,11 +42,9 @@ class QgsRasterDataProvider;
  */
 class CORE_EXPORT QgsRasterAttributeTable
 {
-
     Q_DECLARE_TR_FUNCTIONS( QgsRasterAttributeTable )
 
   public:
-
     /**
      * \ingroup core
      * \brief The UsageInformation class represents information about a field usage.
@@ -55,7 +53,6 @@ class CORE_EXPORT QgsRasterAttributeTable
     class CORE_EXPORT UsageInformation
     {
       public:
-
         //! Usage description
         QString description;
 
@@ -78,7 +75,7 @@ class CORE_EXPORT QgsRasterAttributeTable
         bool maybeClass = false;
 
         //! Usage allowed types
-        QList<QVariant::Type> allowedTypes;
+        QList<QMetaType::Type> allowedTypes;
     };
 
     /**
@@ -88,27 +85,43 @@ class CORE_EXPORT QgsRasterAttributeTable
      */
     class CORE_EXPORT Field
     {
-
       public:
-
         /**
          * Creates a new Field with \a name, \a type and \a usage.
          */
-        Field( const QString &name, const Qgis::RasterAttributeTableFieldUsage &usage, const QVariant::Type type ): name( name ), usage( usage ), type( type ) {}
+        Field( const QString &name, const Qgis::RasterAttributeTableFieldUsage &usage, const QMetaType::Type type )
+          : name( name )
+          , usage( usage )
+          , type( type )
+        {}
+
+        /**
+         * Creates a new Field with \a name, \a type and \a usage.
+         * \deprecated QGIS 3.38. Use the method with a QMetaType::Type argument instead.
+         */
+        Q_DECL_DEPRECATED Field( const QString &name, const Qgis::RasterAttributeTableFieldUsage &usage, const QVariant::Type type ) SIP_DEPRECATED
+          : Field( name, usage, QgsVariantUtils::variantTypeToMetaType( type ) )
+        {}
 
         /**
          * Returns TRUE if the field carries a color component (Red, Green, Blue and optionally Alpha) information.
          */
-        bool isColor( ) const;
+        bool isColor() const;
 
         /**
          * Returns TRUE if the field carries a color ramp component information (RedMin/RedMax, GreenMin/GreenMax, BlueMin/BlueMax and optionally AlphaMin/AlphaMax) information.
          */
-        bool isRamp( ) const;
+        bool isRamp() const;
+
+        /**
+         * Comparison operator for Field objects. Two fields are considered equal if they have the same name, usage and type.
+         * \since QGIS 4.4
+         */
+        bool operator==( const Field &other ) const { return name == other.name && usage == other.usage && type == other.type; }
 
         QString name;
         Qgis::RasterAttributeTableFieldUsage usage;
-        QVariant::Type type;
+        QMetaType::Type type;
     };
 
     /**
@@ -174,16 +187,16 @@ class CORE_EXPORT QgsRasterAttributeTable
     /**
      * Returns the list of field usages.
      */
-    QList<Qgis::RasterAttributeTableFieldUsage> usages( ) const SIP_SKIP;
+    QList<Qgis::RasterAttributeTableFieldUsage> usages() const SIP_SKIP;
 
-///@cond PRIVATE
+    ///@cond PRIVATE
 
     /**
      * Returns the list of field usages.
      */
-    QList<int> intUsages( ) const SIP_PYNAME( usages );
+    QList<int> intUsages() const SIP_PYNAME( usages );
 
-///@endcond PRIVATE
+    ///@endcond PRIVATE
 
     /**
      * Returns the color of the rat \a row or an invalid color if row does not exist or if there is no color definition.
@@ -220,7 +233,7 @@ class CORE_EXPORT QgsRasterAttributeTable
     /**
      * Returns the Raster Attribute Table rows as a list of QgsFeature.
      */
-    QgsFeatureList qgisFeatures( ) const;
+    QgsFeatureList qgisFeatures() const;
 
     /**
      * Returns TRUE if the Raster Attribute Table was modified from its last reading from the storage.
@@ -246,7 +259,14 @@ class CORE_EXPORT QgsRasterAttributeTable
     /**
      * Creates a new field from \a name, \a usage and \a type and inserts it at \a position, optionally reporting any error in \a errorMessage, returns TRUE on success.
      */
-    bool insertField( int position, const QString &name, const Qgis::RasterAttributeTableFieldUsage usage, const QVariant::Type type, QString *errorMessage SIP_OUT = nullptr );
+    bool insertField( int position, const QString &name, const Qgis::RasterAttributeTableFieldUsage usage, const QMetaType::Type type, QString *errorMessage SIP_OUT = nullptr );
+
+    /**
+     * Creates a new field from \a name, \a usage and \a type and inserts it at \a position, optionally reporting any error in \a errorMessage, returns TRUE on success.
+     * \deprecated QGIS 3.38. Use the method with a QMetaType::Type argument instead.
+     */
+    Q_DECL_DEPRECATED bool insertField( int position, const QString &name, const Qgis::RasterAttributeTableFieldUsage usage, const QVariant::Type type, QString *errorMessage SIP_OUT = nullptr )
+      SIP_DEPRECATED;
 
     /**
      * Create RGBA fields and inserts them at \a position, optionally reporting any error in \a errorMessage, returns TRUE on success.
@@ -263,6 +283,11 @@ class CORE_EXPORT QgsRasterAttributeTable
      * Create RGBA minimum and maximum fields and inserts them at \a position, optionally reporting any error in \a errorMessage, returns TRUE on success.
      */
     bool insertRamp( int position, QString *errorMessage SIP_OUT = nullptr );
+
+    /**
+     * Creates a new field from \a name, \a usage and \a type and appends it to the fields, optionally reporting any error in \a errorMessage, returns TRUE on success.
+     */
+    bool appendField( const QString &name, const Qgis::RasterAttributeTableFieldUsage usage, const QMetaType::Type type, QString *errorMessage SIP_OUT = nullptr );
 
     /**
      * Creates a new field from \a name, \a usage and \a type and appends it to the fields, optionally reporting any error in \a errorMessage, returns TRUE on success.
@@ -339,12 +364,12 @@ class CORE_EXPORT QgsRasterAttributeTable
     /**
      * Returns the minimum value of the MinMax (thematic) or Min (athematic) column, returns NaN on errors.
      */
-    double minimumValue( ) const;
+    double minimumValue() const;
 
     /**
      * Returns the maximum value of the MinMax (thematic) or Max (athematic) column, returns NaN on errors.
      */
-    double maximumValue( ) const;
+    double maximumValue() const;
 
     /**
      * Returns a row of data for the given \a matchValue or and empty row
@@ -357,7 +382,7 @@ class CORE_EXPORT QgsRasterAttributeTable
      * by \a classificationColumn, the default value of -1 makes the method guess
      * the classification column based on the field usage.
      */
-    QList<QgsRasterAttributeTable::MinMaxClass> minMaxClasses( const int classificationColumn  = -1 ) const;
+    QList<QgsRasterAttributeTable::MinMaxClass> minMaxClasses( const int classificationColumn = -1 ) const;
 
     /**
      * Returns the color ramp for an athematic Raster Attribute Table
@@ -375,7 +400,7 @@ class CORE_EXPORT QgsRasterAttributeTable
      *       the renderer will still use the \a classificationColumn for
      *       generating the class labels.
      */
-    QgsRasterRenderer *createRenderer( QgsRasterDataProvider *provider, const int bandNumber, const int classificationColumn = -1 ) SIP_FACTORY;
+    std::unique_ptr<QgsRasterRenderer> createRenderer( QgsRasterDataProvider *provider, const int bandNumber, const int classificationColumn = -1 );
 
     /**
      * Returns the data rows ordered by the value column(s) in ascending order, if
@@ -384,7 +409,12 @@ class CORE_EXPORT QgsRasterAttributeTable
      * If the attribute table does not have any value field (and hence is not valid),
      * the current data are returned without any change.
      */
-    QList<QList<QVariant>> orderedRows( ) const;
+    QList<QList<QVariant>> orderedRows() const;
+
+    /**
+     * Try to determine the field usage from its \a name and \a type.
+     */
+    static Qgis::RasterAttributeTableFieldUsage guessFieldUsage( const QString &name, const QMetaType::Type type );
 
     /**
      * Try to determine the field usage from its \a name and \a type.
@@ -414,39 +444,37 @@ class CORE_EXPORT QgsRasterAttributeTable
      * Creates a new Raster Attribute Table from a raster layer, the renderer must be Paletted or SingleBandPseudoColor, optionally reporting the raster band from which the attribute table was created.
      * \param rasterLayer raster layer
      * \param bandNumber band number
-     * \returns NULL in case of errors or unsupported renderer.
+     * \returns NULLPTR in case of errors or unsupported renderer.
      */
-    static QgsRasterAttributeTable *createFromRaster( QgsRasterLayer *rasterLayer, int *bandNumber SIP_OUT = nullptr ) SIP_FACTORY;
+    static std::unique_ptr<QgsRasterAttributeTable> createFromRaster( QgsRasterLayer *rasterLayer, int *bandNumber SIP_OUT = nullptr );
 
     /**
      * Returns information about supported Raster Attribute Table usages.
      * \see usageName()
      */
-    static QHash<Qgis::RasterAttributeTableFieldUsage, QgsRasterAttributeTable::UsageInformation> usageInformation( ) SIP_SKIP;
+    static QHash<Qgis::RasterAttributeTableFieldUsage, QgsRasterAttributeTable::UsageInformation> usageInformation() SIP_SKIP;
 
-///@cond PRIVATE
+    ///@cond PRIVATE
 
     /**
      * Returns information about supported Raster Attribute Table usages.
      * \see usageName()
      */
-    static QHash<int, QgsRasterAttributeTable::UsageInformation> usageInformationInt( ) SIP_PYNAME( usageInformation );
+    static QHash<int, QgsRasterAttributeTable::UsageInformation> usageInformationInt() SIP_PYNAME( usageInformation );
 
     static QHash<Qgis::RasterAttributeTableFieldUsage, QgsRasterAttributeTable::UsageInformation> sUsageInformation SIP_SKIP;
 
-///@endcond PRIVATE
+    ///@endcond PRIVATE
 
   private:
-
     Qgis::RasterAttributeTableType mType = Qgis::RasterAttributeTableType::Thematic;
     QList<Field> mFields;
     QList<QVariantList> mData;
-    bool mIsDirty;
+    bool mIsDirty = false;
     QString mFilePath;
 
     // Set type from fields.
-    void setType( );
-
+    void setType();
 };
 
 #endif // QGSRASTERATTRIBUTETABLE_H

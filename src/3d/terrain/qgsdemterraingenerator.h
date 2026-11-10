@@ -17,21 +17,17 @@
 #define QGSDEMTERRAINGENERATOR_H
 
 #include "qgis_3d.h"
-
+#include "qgscoordinatetransformcontext.h"
+#include "qgsrasterlayer.h"
 #include "qgsterraingenerator.h"
-
-
-#include <memory>
-
-class QgsRasterLayer;
-class QgsDemHeightMapGenerator;
-
-#include "qgsmaplayerref.h"
 
 #define SIP_NO_FILE
 
+class QgsDemHeightMapGenerator;
+
+
 /**
- * \ingroup 3d
+ * \ingroup qgis_3d
  * \brief Implementation of terrain generator that uses a raster layer with DEM to build terrain.
  *
  * \note Not available in Python bindings
@@ -42,8 +38,12 @@ class _3D_EXPORT QgsDemTerrainGenerator : public QgsTerrainGenerator
     Q_OBJECT
 
   public:
-    //! Constructor for QgsDemTerrainGenerator
-    QgsDemTerrainGenerator() = default;
+    /**
+     * Creates a new instance of a QgsDemTerrainGenerator object.
+     */
+    static QgsTerrainGenerator *create() SIP_FACTORY;
+
+    QgsDemTerrainGenerator();
     ~QgsDemTerrainGenerator() override;
 
     //! Sets raster layer with elevation model to be used for terrain generation
@@ -51,11 +51,15 @@ class _3D_EXPORT QgsDemTerrainGenerator : public QgsTerrainGenerator
     //! Returns raster layer with elevation model to be used for terrain generation
     QgsRasterLayer *layer() const;
 
-    //! Sets CRS of the terrain
-    void setCrs( const QgsCoordinateReferenceSystem &crs, const QgsCoordinateTransformContext &context );
+    void setCrs( const QgsCoordinateReferenceSystem &crs, const QgsCoordinateTransformContext &context ) override;
+    QgsCoordinateReferenceSystem crs() const override { return mCrs; }
 
     //! Sets resolution of the generator (how many elevation samples on one side of a terrain tile)
-    void setResolution( int resolution ) { mResolution = resolution; updateGenerator(); }
+    void setResolution( int resolution )
+    {
+      mResolution = resolution;
+      updateGenerator();
+    }
     //! Returns resolution of the generator (how many elevation samples on one side of a terrain tile)
     int resolution() const { return mResolution; }
 
@@ -65,34 +69,37 @@ class _3D_EXPORT QgsDemTerrainGenerator : public QgsTerrainGenerator
     float skirtHeight() const { return mSkirtHeight; }
 
     //! Returns height map generator object - takes care of extraction of elevations from the layer)
-    QgsDemHeightMapGenerator *heightMapGenerator() { return mHeightMapGenerator; }
+    QgsDemHeightMapGenerator *heightMapGenerator() { return mHeightMapGenerator.get(); }
 
     QgsTerrainGenerator *clone() const override SIP_FACTORY;
     Type type() const override;
     QgsRectangle rootChunkExtent() const override;
     void setExtent( const QgsRectangle &extent ) override;
-    float heightAt( double x, double y, const Qgs3DMapSettings &map ) const override;
-    void writeXml( QDomElement &elem ) const override;
-    void readXml( const QDomElement &elem ) override;
-    void resolveReferences( const QgsProject &project ) override;
+    float heightAt( double x, double y, const Qgs3DRenderContext &context ) const override;
 
-    QgsChunkLoader *createChunkLoader( QgsChunkNode *node ) const override SIP_FACTORY;
+    QFuture<QgsChunkLoaderResult> loadChunk( QgsChunkNode *node ) override;
 
-  private:
-    void updateGenerator();
+    QgsTerrainGenerator::Capabilities capabilities() const override;
 
-    QgsDemHeightMapGenerator *mHeightMapGenerator = nullptr;
+  protected:
+    //! (Re-)creates mHeightMapGenerator based on current params
+    virtual void updateGenerator();
+
+    std::unique_ptr<QgsDemHeightMapGenerator> mHeightMapGenerator;
 
     QgsCoordinateReferenceSystem mCrs;
 
     QgsCoordinateTransformContext mTransformContext;
 
     //! source layer for heights
-    QgsMapLayerRef mLayer;
+    QPointer<QgsRasterLayer> mLayer;
     //! how many vertices to place on one side of the tile
     int mResolution = 16;
     //! height of the "skirts" at the edges of tiles to hide cracks between adjacent cracks
     float mSkirtHeight = 10.f;
+
+  private:
+    Qt3DCore::QEntity *createEntity( QByteArray heightMap, TerrainTextureResources textureResources, QgsChunkNode *node, Qt3DCore::QEntity *parent );
 };
 
 

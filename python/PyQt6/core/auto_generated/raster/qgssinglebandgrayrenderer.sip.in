@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/raster/qgssinglebandgrayrenderer.h                          *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/
 
 
@@ -11,7 +11,7 @@
 
 
 
-class QgsSingleBandGrayRenderer: QgsRasterRenderer
+class QgsSingleBandGrayRenderer : QgsRasterRenderer
 {
 %Docstring(signature="appended")
 Raster renderer pipe for single band gray.
@@ -32,29 +32,26 @@ Raster renderer pipe for single band gray.
 
     virtual QgsSingleBandGrayRenderer *clone() const /Factory/;
 
-%Docstring
-QgsSingleBandGrayRenderer cannot be copied. Use :py:func:`~QgsSingleBandGrayRenderer.clone` instead.
-%End
     virtual Qgis::RasterRendererFlags flags() const;
 
 
-    static QgsRasterRenderer *create( const QDomElement &elem, QgsRasterInterface *input ) /Factory/;
+    static std::unique_ptr<QgsRasterRenderer> create( const QDomElement &elem, QgsRasterInterface *input );
 
     virtual QgsRasterBlock *block( int bandNo, const QgsRectangle &extent, int width, int height, QgsRasterBlockFeedback *feedback = 0 ) /Factory/;
 
 
- int grayBand() const /Deprecated/;
+ int grayBand() const /Deprecated="Since 3.38. Use inputBand() instead."/;
 %Docstring
+.. deprecated:: 3.38
 
-.. deprecated:: QGIS 3.38
-   use :py:func:`~QgsSingleBandGrayRenderer.inputBand` instead
+   Use :py:func:`~QgsSingleBandGrayRenderer.inputBand` instead.
 %End
 
- void setGrayBand( int band ) /Deprecated/;
+ void setGrayBand( int band ) /Deprecated="Since 3.38. Use setInputBand() instead."/;
 %Docstring
+.. deprecated:: 3.38
 
-.. deprecated:: QGIS 3.38
-   use :py:func:`~QgsSingleBandGrayRenderer.setInputBand` instead
+   Use :py:func:`~QgsSingleBandGrayRenderer.setInputBand` instead.
 %End
 
     virtual int inputBand() const;
@@ -82,7 +79,9 @@ Takes ownership
     virtual QList<int> usesBands() const;
 
 
-    virtual void toSld( QDomDocument &doc, QDomElement &element, const QVariantMap &props = QVariantMap() ) const;
+ virtual void toSld( QDomDocument &doc, QDomElement &element, const QVariantMap &props = QVariantMap() ) const /Deprecated/;
+
+    virtual bool toSld( QDomDocument &doc, QDomElement &element, QgsSldExportContext &context ) const;
 
 
     const QgsColorRampLegendNodeSettings *legendSettings() const;
@@ -105,6 +104,7 @@ Ownership of ``settings`` is transferred.
 .. versionadded:: 3.18
 %End
 
+
   private:
     QgsSingleBandGrayRenderer( const QgsSingleBandGrayRenderer & );
     const QgsSingleBandGrayRenderer &operator=( const QgsSingleBandGrayRenderer & );
@@ -115,5 +115,5 @@ Ownership of ``settings`` is transferred.
  *                                                                      *
  * src/core/raster/qgssinglebandgrayrenderer.h                          *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/

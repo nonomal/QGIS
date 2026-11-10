@@ -16,10 +16,12 @@
 #ifndef QGSLEGENDPATCHSHAPEWIDGET_H
 #define QGSLEGENDPATCHSHAPEWIDGET_H
 
+#include "ui_qgslegendpatchshapewidgetbase.h"
+
 #include "qgis.h"
 #include "qgis_gui.h"
-#include "ui_qgslegendpatchshapewidgetbase.h"
 #include "qgslegendpatchshape.h"
+
 #include <QDialog>
 
 class QDialogButtonBox;
@@ -34,7 +36,6 @@ class GUI_EXPORT QgsLegendPatchShapeWidget : public QgsPanelWidget, private Ui::
     Q_OBJECT
 
   public:
-
     /**
      * Constructor for QgsLegendPatchShapeWidget, with the specified \a parent widget.
      */
@@ -54,21 +55,12 @@ class GUI_EXPORT QgsLegendPatchShapeWidget : public QgsPanelWidget, private Ui::
      */
     void setShape( const QgsLegendPatchShape &shape );
 
-  signals:
-
-    /**
-     * Emitted whenever the patch shape defined by the widget is changed.
-     */
-    void changed();
-
   private slots:
     void setShapeFromStyle( const QString &name, QgsStyle::StyleEntity type, const QString &stylePath );
     void saveShape();
 
   private:
-
     Qgis::SymbolType mType = Qgis::SymbolType::Fill;
-
 };
 
 /**
@@ -81,7 +73,6 @@ class GUI_EXPORT QgsLegendPatchShapeDialog : public QDialog
     Q_OBJECT
 
   public:
-
     /**
      * Constructor for QgsLegendPatchShapeDialog, initially showing the specified \a shape.
      */
@@ -98,10 +89,8 @@ class GUI_EXPORT QgsLegendPatchShapeDialog : public QDialog
     QDialogButtonBox *buttonBox() const;
 
   private:
-
     QgsLegendPatchShapeWidget *mWidget = nullptr;
     QDialogButtonBox *mButtonBox = nullptr;
-
 };
 
 #endif // QGSLEGENDPATCHSHAPEWIDGET_H

@@ -5,20 +5,21 @@ it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or
 (at your option) any later version.
 """
-__author__ = 'Nyall Dawson'
-__date__ = '16/03/2016'
-__copyright__ = 'Copyright 2016, The QGIS Project'
 
+__author__ = "Nyall Dawson"
+__date__ = "16/03/2016"
+__copyright__ = "Copyright 2016, The QGIS Project"
+
+
+import unittest
 
 from qgis.gui import QgsMultiEditToolButton
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.testing import QgisTestCase, start_app
 
 start_app()
 
 
 class TestQgsMultiEditToolButton(QgisTestCase):
-
     def test_state_logic(self):
         """
         Test that the logic involving button states is correct
@@ -59,5 +60,5 @@ class TestQgsMultiEditToolButton(QgisTestCase):
         self.assertEqual(w.state(), QgsMultiEditToolButton.State.Default)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

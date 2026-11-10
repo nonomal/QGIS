@@ -25,3 +25,15 @@ QgsSearchWidgetWrapper.FilterFlag.__bool__ = lambda flag: bool(_force_int(flag))
 QgsSearchWidgetWrapper.FilterFlag.__eq__ = lambda flag1, flag2: _force_int(flag1) == _force_int(flag2)
 QgsSearchWidgetWrapper.FilterFlag.__and__ = lambda flag1, flag2: _force_int(flag1) & _force_int(flag2)
 QgsSearchWidgetWrapper.FilterFlag.__or__ = lambda flag1, flag2: QgsSearchWidgetWrapper.FilterFlag(_force_int(flag1) | _force_int(flag2))
+try:
+    QgsSearchWidgetWrapper.__attribute_docs__ = {'expressionChanged': 'Emitted whenever the expression changes\n\n:param exp: The new search expression\n', 'valueChanged': 'Emitted when a user changes the value of the search widget.\n', 'valueCleared': 'Emitted when a user changes the value of the search widget back to an\nempty, default state.\n'}
+    QgsSearchWidgetWrapper.exclusiveFilterFlags = staticmethod(QgsSearchWidgetWrapper.exclusiveFilterFlags)
+    QgsSearchWidgetWrapper.nonExclusiveFilterFlags = staticmethod(QgsSearchWidgetWrapper.nonExclusiveFilterFlags)
+    QgsSearchWidgetWrapper.toString = staticmethod(QgsSearchWidgetWrapper.toString)
+    QgsSearchWidgetWrapper.__virtual_methods__ = ['supportedFlags', 'defaultFlags', 'createExpression', 'clearWidget']
+    QgsSearchWidgetWrapper.__abstract_methods__ = ['expression', 'applyDirectly', 'setExpression']
+    QgsSearchWidgetWrapper.__overridden_methods__ = ['setEnabled', 'setFeature']
+    QgsSearchWidgetWrapper.__signal_arguments__ = {'expressionChanged': ['exp: str']}
+    QgsSearchWidgetWrapper.__group__ = ['editorwidgets', 'core']
+except (NameError, AttributeError):
+    pass

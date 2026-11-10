@@ -20,6 +20,7 @@
 
 #include "qgis_core.h"
 #include "qgis_sip.h"
+
 #include <QMap>
 
 class QPainter;
@@ -37,12 +38,11 @@ class QgsRasterIterator;
 class CORE_EXPORT QgsRasterDrawer
 {
   public:
-
     /**
      * The QgsRasterDrawer constructor.
      * \param iterator the raster iterator to fetch data from
      * \param dpiTarget the target dpi (dots per inch) to be taken into consideration when rendering
-     * \deprecated since QGIS 3.28. Use the constructor without the \a dpiTarget argument instead, as DPI is now handled by the draw() method which accepts a QgsRenderContext.
+     * \deprecated QGIS 3.28. Use the constructor without the \a dpiTarget argument instead, as DPI is now handled by the draw() method which accepts a QgsRenderContext.
      */
     Q_DECL_DEPRECATED QgsRasterDrawer( QgsRasterIterator *iterator, double dpiTarget ) SIP_DEPRECATED;
 
@@ -71,7 +71,6 @@ class CORE_EXPORT QgsRasterDrawer
     void draw( QgsRenderContext &context, QgsRasterViewPort *viewPort, QgsRasterBlockFeedback *feedback = nullptr );
 
   protected:
-
     /**
      * Draws raster part
      * \param p the painter to draw to

@@ -15,13 +15,12 @@
 
 #include "qgshiddenwidgetfactory.h"
 
-#include "qgshiddenwidgetwrapper.h"
 #include "qgsdummyconfigdlg.h"
+#include "qgshiddenwidgetwrapper.h"
 
-QgsHiddenWidgetFactory::QgsHiddenWidgetFactory( const QString &name )
-  : QgsEditorWidgetFactory( name )
-{
-}
+QgsHiddenWidgetFactory::QgsHiddenWidgetFactory( const QString &name, const QIcon &icon )
+  : QgsEditorWidgetFactory( name, icon )
+{}
 
 QgsEditorWidgetWrapper *QgsHiddenWidgetFactory::create( QgsVectorLayer *vl, int fieldIdx, QWidget *editor, QWidget *parent ) const
 {
@@ -31,4 +30,9 @@ QgsEditorWidgetWrapper *QgsHiddenWidgetFactory::create( QgsVectorLayer *vl, int 
 QgsEditorConfigWidget *QgsHiddenWidgetFactory::configWidget( QgsVectorLayer *vl, int fieldIdx, QWidget *parent ) const
 {
   return new QgsDummyConfigDlg( vl, fieldIdx, parent, QObject::tr( "A hidden field will be invisible - the user is not able to see its contents." ) );
+}
+
+bool QgsHiddenWidgetFactory::isReadOnly() const
+{
+  return true;
 }

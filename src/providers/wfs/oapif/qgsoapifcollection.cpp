@@ -14,12 +14,18 @@
  ***************************************************************************/
 
 #include <nlohmann/json.hpp>
+
+#include <QString>
+
+using namespace Qt::StringLiterals;
+
 using namespace nlohmann;
 
 #include "qgslogger.h"
 #include "qgsoapifcollection.h"
+#include "moc_qgsoapifcollection.cpp"
 #include "qgsoapifutils.h"
-#include "qgsoapifprovider.h"
+#include "qgswfsconstants.h"
 
 #include <set>
 
@@ -40,7 +46,7 @@ bool QgsOapifCollection::deserialize( const json &j, const json &jCollections )
     else
 #endif
     {
-      QgsDebugError( QStringLiteral( "missing id in collection" ) );
+      QgsDebugError( u"missing id in collection"_s );
       return false;
     }
   }
@@ -49,12 +55,10 @@ bool QgsOapifCollection::deserialize( const json &j, const json &jCollections )
     return false;
   mId = QString::fromStdString( id.get<std::string>() );
 
-  mLayerMetadata.setType( QStringLiteral( "dataset" ) );
+  mLayerMetadata.setType( u"dataset"_s );
 
   const auto links = QgsOAPIFJson::parseLinks( j );
-  const auto selfUrl = QgsOAPIFJson::findLink( links,
-                       QStringLiteral( "self" ),
-  { QStringLiteral( "application/json" ) } );
+  const auto selfUrl = QgsOAPIFJson::findLink( links, u"self"_s, { QgsOapifUtils::MEDIA_TYPE_JSON } );
   if ( !selfUrl.isEmpty() )
   {
     mLayerMetadata.setIdentifier( selfUrl );
@@ -64,22 +68,86 @@ bool QgsOapifCollection::deserialize( const json &j, const json &jCollections )
     mLayerMetadata.setIdentifier( mId );
   }
 
-  const auto parentUrl = QgsOAPIFJson::findLink( links,
-                         QStringLiteral( "parent" ),
-  { QStringLiteral( "application/json" ) } );
+  const auto parentUrl = QgsOAPIFJson::findLink( links, u"parent"_s, { QgsOapifUtils::MEDIA_TYPE_JSON } );
   if ( !parentUrl.isEmpty() )
   {
     mLayerMetadata.setParentIdentifier( parentUrl );
   }
 
+  bool xmlBulkIsGml = false;
+  bool foundGmlBulk = false;
+  bool foundJsonFgNonCompatibilityMode = false;
+  QString jsonFgCompatibilityModeUrl;
   for ( const auto &link : links )
   {
-    auto mdLink = QgsAbstractMetadataBase::Link( link.rel, QStringLiteral( "WWW:LINK" ), link.href );
+    auto mdLink = QgsAbstractMetadataBase::Link( link.rel, u"WWW:LINK"_s, link.href );
     mdLink.mimeType = link.type;
     mdLink.description = link.title;
     if ( link.length > 0 )
       mdLink.size = QString::number( link.length );
     mLayerMetadata.addLink( mdLink );
+
+    if ( link.rel == "items"_L1 )
+    {
+      if ( link.type == QgsOapifUtils::MEDIA_TYPE_GEOJSON
+           || link.type == QgsOapifUtils::MEDIA_TYPE_FLATGEOBUF
+           || link.type == QgsOapifUtils::MEDIA_TYPE_PSEUDO_JSONFG
+           || link.type.startsWith( QgsOapifUtils::MEDIA_TYPE_GML ) )
+      {
+        // OGC API 1.1 way no longer uses a "application/fg+json" media-type
+        // but "application/geo+json" + profile = http://www.opengis.net/def/profile/OGC/0/jsonfg
+        // Cf https://github.com/ldproxy/ldproxy/issues/1551
+        if ( link.type == QgsOapifUtils::MEDIA_TYPE_GEOJSON && link.profiles.size() == 1 )
+        {
+          if ( link.profiles[0].compare( QgsOapifUtils::PROFILE_JSONFG, Qt::CaseInsensitive ) == 0 )
+          {
+            foundJsonFgNonCompatibilityMode = true;
+            mFeatureFormats << QgsOapifUtils::MEDIA_TYPE_PSEUDO_JSONFG;
+            mMapFeatureFormatToUrl[QgsOapifUtils::MEDIA_TYPE_PSEUDO_JSONFG] = link.href;
+          }
+          else if ( link.profiles[0].compare( QgsOapifUtils::PROFILE_JSONFG_PLUS, Qt::CaseInsensitive ) == 0 )
+          {
+            jsonFgCompatibilityModeUrl = link.href;
+          }
+          else
+          {
+            mFeatureFormats << link.type;
+            mMapFeatureFormatToUrl[link.type] = link.href;
+          }
+        }
+        else
+        {
+          mFeatureFormats << link.type;
+          mMapFeatureFormatToUrl[link.type] = link.href;
+        }
+      }
+    }
+    else if ( link.rel == "enclosure"_L1 )
+    {
+      mMapFeatureFormatToBulkDownloadUrl[link.type] = link.href;
+      if ( link.type == QgsOapifUtils::MEDIA_TYPE_XML && link.title.contains( "GML"_L1 ) )
+      {
+        xmlBulkIsGml = true;
+      }
+      else if ( link.type.startsWith( QgsOapifUtils::MEDIA_TYPE_GML ) )
+      {
+        foundGmlBulk = true;
+      }
+    }
+    else if ( link.rel == "describedby"_L1 && link.type == QgsOapifUtils::MEDIA_TYPE_XML )
+    {
+      mXmlSchemaUrl = link.href;
+    }
+  }
+
+  if ( xmlBulkIsGml && !foundGmlBulk )
+  {
+    mMapFeatureFormatToBulkDownloadUrl[QgsOapifUtils::MEDIA_TYPE_GML] = mMapFeatureFormatToBulkDownloadUrl[QgsOapifUtils::MEDIA_TYPE_XML];
+  }
+  if ( !foundJsonFgNonCompatibilityMode && !jsonFgCompatibilityModeUrl.isEmpty() )
+  {
+    mFeatureFormats << QgsOapifUtils::MEDIA_TYPE_PSEUDO_JSONFG;
+    mMapFeatureFormatToUrl[QgsOapifUtils::MEDIA_TYPE_PSEUDO_JSONFG] = jsonFgCompatibilityModeUrl;
   }
 
   if ( j.contains( "title" ) )
@@ -111,8 +179,7 @@ bool QgsOapifCollection::deserialize( const json &j, const json &jCollections )
       const auto spatial = extent["spatial"];
       if ( spatial.is_object() && spatial.contains( "bbox" ) )
       {
-        QgsCoordinateReferenceSystem crs( QgsCoordinateReferenceSystem::fromOgcWmsCrs(
-                                            QgsOapifProvider::OAPIF_PROVIDER_DEFAULT_CRS ) );
+        QgsCoordinateReferenceSystem crs( QgsCoordinateReferenceSystem::fromOgcWmsCrs( QgsOapifUtils::DEFAULT_CRS ) );
         if ( spatial.contains( "crs" ) )
         {
           const auto jCrs = spatial["crs"];
@@ -125,7 +192,7 @@ bool QgsOapifCollection::deserialize( const json &j, const json &jCollections )
         const auto jBboxes = spatial["bbox"];
         if ( jBboxes.is_array() )
         {
-          QList<  QgsLayerMetadata::SpatialExtent > spatialExtents;
+          QList<QgsLayerMetadata::SpatialExtent> spatialExtents;
           bool firstBbox = true;
           for ( const auto &jBbox : jBboxes )
           {
@@ -159,8 +226,7 @@ bool QgsOapifCollection::deserialize( const json &j, const json &jCollections )
                   mBboxCrs = crs;
                   mBbox.set( values[0], values[1], values[3], values[4] );
                 }
-                spatialExtent.bounds = QgsBox3D( values[0], values[1], values[2],
-                                                 values[3], values[4], values[5] );
+                spatialExtent.bounds = QgsBox3D( values[0], values[1], values[2], values[3], values[4], values[5] );
               }
               if ( values.size() == 4 || values.size() == 6 )
               {
@@ -193,10 +259,9 @@ bool QgsOapifCollection::deserialize( const json &j, const json &jCollections )
         {
           mBbox.set( values[0], values[1], values[2], values[3] );
           QgsLayerMetadata::SpatialExtent spatialExtent;
-          spatialExtent.extentCrs = QgsCoordinateReferenceSystem::fromOgcWmsCrs(
-                                      QgsOapifProvider::OAPIF_PROVIDER_DEFAULT_CRS );
+          spatialExtent.extentCrs = QgsCoordinateReferenceSystem::fromOgcWmsCrs( QgsOapifUtils::DEFAULT_CRS );
           mLayerMetadata.setCrs( spatialExtent.extentCrs );
-          metadataExtent.setSpatialExtents( QList<  QgsLayerMetadata::SpatialExtent >() << spatialExtent );
+          metadataExtent.setSpatialExtents( QList<QgsLayerMetadata::SpatialExtent>() << spatialExtent );
         }
       }
     }
@@ -210,7 +275,7 @@ bool QgsOapifCollection::deserialize( const json &j, const json &jCollections )
         const auto jIntervals = temporal["interval"];
         if ( jIntervals.is_array() )
         {
-          QList< QgsDateTimeRange > temporalExtents;
+          QList<QgsDateTimeRange> temporalExtents;
           for ( const auto &jInterval : jIntervals )
           {
             if ( jInterval.is_array() && jInterval.size() == 2 )
@@ -245,11 +310,11 @@ bool QgsOapifCollection::deserialize( const json &j, const json &jCollections )
     if ( jLicense.is_string() )
     {
       const auto license = QString::fromStdString( jLicense.get<std::string>() );
-      if ( license == QLatin1String( "proprietary" ) )
+      if ( license == "proprietary"_L1 )
       {
         isProprietaryLicense = true;
       }
-      else if ( license != QLatin1String( "various" ) )
+      else if ( license != "various"_L1 )
       {
         mLayerMetadata.setLicenses( { license } );
       }
@@ -261,9 +326,9 @@ bool QgsOapifCollection::deserialize( const json &j, const json &jCollections )
     std::set<QString> licenseSet;
     for ( const auto &link : links )
     {
-      if ( link.rel == QLatin1String( "license" ) )
+      if ( link.rel == "license"_L1 )
       {
-        const auto license =  !link.title.isEmpty() ? link.title : link.href;
+        const auto license = !link.title.isEmpty() ? link.title : link.href;
         if ( licenseSet.find( license ) == licenseSet.end() )
         {
           licenseSet.insert( license );
@@ -273,7 +338,7 @@ bool QgsOapifCollection::deserialize( const json &j, const json &jCollections )
     }
     if ( licenses.isEmpty() && isProprietaryLicense )
     {
-      licenses << QStringLiteral( "proprietary" );
+      licenses << u"proprietary"_s;
     }
     mLayerMetadata.setLicenses( licenses );
   }
@@ -294,7 +359,7 @@ bool QgsOapifCollection::deserialize( const json &j, const json &jCollections )
       }
       if ( !keywords.empty() )
       {
-        mLayerMetadata.addKeywords( QStringLiteral( "keywords" ), keywords );
+        mLayerMetadata.addKeywords( u"keywords"_s, keywords );
       }
     }
   }
@@ -328,9 +393,7 @@ bool QgsOapifCollection::deserialize( const json &j, const json &jCollections )
   {
     json jCrs = j["crs"];
     // Resolve "#/crs" link
-    if ( jCrs.is_array() && jCrs.size() == 1 &&
-         jCrs[0].is_string() && jCrs[0].get<std::string>() == "#/crs" &&
-         jCollections.is_object() && jCollections.contains( "crs" ) )
+    if ( jCrs.is_array() && jCrs.size() == 1 && jCrs[0].is_string() && jCrs[0].get<std::string>() == "#/crs" && jCollections.is_object() && jCollections.contains( "crs" ) )
     {
       jCrs = jCollections["crs"];
     }
@@ -361,10 +424,18 @@ bool QgsOapifCollection::deserialize( const json &j, const json &jCollections )
 
   if ( mCrsList.isEmpty() )
   {
-    QgsCoordinateReferenceSystem crs = QgsCoordinateReferenceSystem::fromOgcWmsCrs(
-                                         QgsOapifProvider::OAPIF_PROVIDER_DEFAULT_CRS );
+    QgsCoordinateReferenceSystem crs = QgsCoordinateReferenceSystem::fromOgcWmsCrs( QgsOapifUtils::DEFAULT_CRS );
     mLayerMetadata.setCrs( QgsCoordinateReferenceSystem::fromOgcWmsCrs( crs.authid() ) );
     mCrsList.append( crs.authid() );
+  }
+
+  if ( j.contains( "itemCount" ) )
+  {
+    json jItemCount = j["itemCount"];
+    if ( jItemCount.is_number() )
+    {
+      mFeatureCount = jItemCount.get<int64_t>();
+    }
   }
 
   return true;
@@ -372,9 +443,9 @@ bool QgsOapifCollection::deserialize( const json &j, const json &jCollections )
 
 // -----------------------------------------
 
-QgsOapifCollectionsRequest::QgsOapifCollectionsRequest( const QgsDataSourceUri &baseUri, const QString &url ):
-  QgsBaseNetworkRequest( QgsAuthorizationSettings( baseUri.username(), baseUri.password(), baseUri.authConfigId() ), tr( "OAPIF" ) ),
-  mUrl( url )
+QgsOapifCollectionsRequest::QgsOapifCollectionsRequest( const QgsDataSourceUri &baseUri, const QString &url )
+  : QgsBaseNetworkRequest( QgsAuthorizationSettings( baseUri.username(), baseUri.password(), QgsHttpHeaders(), baseUri.authConfigId() ), tr( "OAPIF" ), baseUri.hasParam( QgsWFSConstants::URI_PARAM_DISABLE_DECOMPRESSED_SAFETY_CHECK_THRESHOLD ) )
+  , mUrl( url )
 {
   // Using Qt::DirectConnection since the download might be running on a different thread.
   // In this case, the request was sent from the main thread and is executed with the main
@@ -385,7 +456,7 @@ QgsOapifCollectionsRequest::QgsOapifCollectionsRequest( const QgsDataSourceUri &
 
 bool QgsOapifCollectionsRequest::request( bool synchronous, bool forceRefresh )
 {
-  if ( !sendGET( QUrl( mUrl ), QStringLiteral( "application/json" ), synchronous, forceRefresh ) )
+  if ( !sendGET( QUrl( mUrl ), QgsOapifUtils::MEDIA_TYPE_JSON, synchronous, forceRefresh ) )
   {
     emit gotResponse();
     return false;
@@ -414,7 +485,7 @@ void QgsOapifCollectionsRequest::processReply()
     return;
   }
 
-  QgsDebugMsgLevel( QStringLiteral( "parsing collections response: " ) + buffer, 4 );
+  QgsDebugMsgLevel( u"parsing collections response: "_s + buffer, 4 );
 
   QTextCodec::ConverterState state;
   QTextCodec *codec = QTextCodec::codecForName( "UTF-8" );
@@ -439,9 +510,9 @@ void QgsOapifCollectionsRequest::processReply()
     std::set<QString> licenseSet;
     for ( const auto &link : links )
     {
-      if ( link.rel == QLatin1String( "license" ) )
+      if ( link.rel == "license"_L1 )
       {
-        const auto license =  !link.title.isEmpty() ? link.title : link.href;
+        const auto license = !link.title.isEmpty() ? link.title : link.href;
         if ( licenseSet.find( license ) == licenseSet.end() )
         {
           licenseSet.insert( license );
@@ -466,6 +537,13 @@ void QgsOapifCollectionsRequest::processReply()
               // use the one from the collection set.
               collection.mLayerMetadata.setLicenses( licenses );
             }
+
+            // Create a merged map of feature formats
+            for ( const QString &format : collection.mFeatureFormats )
+            {
+              mFeatureFormats << format;
+            }
+
             mCollections.emplace_back( collection );
           }
         }
@@ -473,9 +551,7 @@ void QgsOapifCollectionsRequest::processReply()
     }
 
     // Paging informal extension used by api.planet.com/
-    mNextUrl = QgsOAPIFJson::findLink( links,
-                                       QStringLiteral( "next" ),
-    {  QStringLiteral( "application/json" ) } );
+    mNextUrl = QgsOAPIFJson::findLink( links, u"next"_s, { QgsOapifUtils::MEDIA_TYPE_JSON } );
   }
   catch ( const json::parse_error &ex )
   {
@@ -491,9 +567,9 @@ void QgsOapifCollectionsRequest::processReply()
 
 // -----------------------------------------
 
-QgsOapifCollectionRequest::QgsOapifCollectionRequest( const QgsDataSourceUri &baseUri, const QString &url ):
-  QgsBaseNetworkRequest( QgsAuthorizationSettings( baseUri.username(), baseUri.password(), baseUri.authConfigId() ), tr( "OAPIF" ) ),
-  mUrl( url )
+QgsOapifCollectionRequest::QgsOapifCollectionRequest( const QgsDataSourceUri &baseUri, const QString &url )
+  : QgsBaseNetworkRequest( QgsAuthorizationSettings( baseUri.username(), baseUri.password(), QgsHttpHeaders(), baseUri.authConfigId() ), tr( "OAPIF" ), baseUri.hasParam( QgsWFSConstants::URI_PARAM_DISABLE_DECOMPRESSED_SAFETY_CHECK_THRESHOLD ) )
+  , mUrl( url )
 {
   // Using Qt::DirectConnection since the download might be running on a different thread.
   // In this case, the request was sent from the main thread and is executed with the main
@@ -504,7 +580,7 @@ QgsOapifCollectionRequest::QgsOapifCollectionRequest( const QgsDataSourceUri &ba
 
 bool QgsOapifCollectionRequest::request( bool synchronous, bool forceRefresh )
 {
-  if ( !sendGET( QUrl( mUrl ), QStringLiteral( "application/json" ), synchronous, forceRefresh ) )
+  if ( !sendGET( QUrl( mUrl ), QgsOapifUtils::MEDIA_TYPE_JSON, synchronous, forceRefresh ) )
   {
     emit gotResponse();
     return false;
@@ -533,7 +609,7 @@ void QgsOapifCollectionRequest::processReply()
     return;
   }
 
-  QgsDebugMsgLevel( QStringLiteral( "parsing collection response: " ) + buffer, 4 );
+  QgsDebugMsgLevel( u"parsing collection response: "_s + buffer, 4 );
 
   QTextCodec::ConverterState state;
   QTextCodec *codec = QTextCodec::codecForName( "UTF-8" );

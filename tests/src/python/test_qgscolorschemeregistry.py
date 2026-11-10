@@ -5,25 +5,29 @@ it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or
 (at your option) any later version.
 """
-__author__ = 'Nyall Dawson'
-__date__ = '25/07/2014'
-__copyright__ = 'Copyright 2014, The QGIS Project'
 
+__author__ = "Nyall Dawson"
+__date__ = "25/07/2014"
+__copyright__ = "Copyright 2014, The QGIS Project"
+
+
+import unittest
 
 from qgis.core import (
     QgsApplication,
     QgsColorScheme,
     QgsColorSchemeRegistry,
+    QgsProject,
+    QgsProjectColorScheme,
     QgsRecentColorScheme,
 )
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.PyQt.QtGui import QColor
+from qgis.testing import QgisTestCase, start_app
 
 start_app()
 
 
 class TestQgsColorSchemeRegistry(QgisTestCase):
-
     def testCreateInstance(self):
         """Test creating global color scheme registry instance"""
         registry = QgsApplication.colorSchemeRegistry()
@@ -59,7 +63,9 @@ class TestQgsColorSchemeRegistry(QgisTestCase):
         registry = QgsColorSchemeRegistry()
         self.assertEqual(len(registry.schemes()), 0)
         registry.populateFromInstance()
-        self.assertEqual(len(registry.schemes()), len(QgsApplication.colorSchemeRegistry().schemes()))
+        self.assertEqual(
+            len(registry.schemes()), len(QgsApplication.colorSchemeRegistry().schemes())
+        )
 
     def testRemoveScheme(self):
         """Test removing a scheme from a registry"""
@@ -80,8 +86,8 @@ class TestQgsColorSchemeRegistry(QgisTestCase):
         They should be parented to the registry (on transfer) and even if there's no reference
         to the registry around (see the `del` below) this childship should continue to exist.
         """
-        class TestColorScheme(QgsColorScheme):
 
+        class TestColorScheme(QgsColorScheme):
             def schemeName(self):
                 return "TestScheme"
 
@@ -100,7 +106,54 @@ class TestQgsColorSchemeRegistry(QgisTestCase):
 
         reg = QgsApplication.instance().colorSchemeRegistry()
 
-        self.assertIn('TestScheme', [scheme.schemeName() for scheme in reg.schemes()])
+        self.assertIn("TestScheme", [scheme.schemeName() for scheme in reg.schemes()])
+
+    def testSetProject(self):
+        """Test that the project colors scheme follows setProject()"""
+        project1 = QgsProject()
+        project1.setProjectColors([[QColor(255, 0, 0), "red"]])
+        project2 = QgsProject()
+        project2.setProjectColors([[QColor(0, 255, 0), "green"]])
+
+        # without a project, default schemes do not include project colors
+        registry = QgsColorSchemeRegistry()
+        registry.addDefaultSchemes()
+        self.assertFalse(
+            [s for s in registry.schemes() if isinstance(s, QgsProjectColorScheme)]
+        )
+
+        # setting a project on an empty registry does not add any scheme by itself
+        registry = QgsColorSchemeRegistry()
+        registry.setProject(project1)
+        self.assertEqual(len(registry.schemes()), 0)
+
+        # default schemes include the project colors scheme once a project is set
+        registry.addDefaultSchemes()
+        schemes = [
+            s for s in registry.schemes() if isinstance(s, QgsProjectColorScheme)
+        ]
+        self.assertEqual(len(schemes), 1)
+        self.assertEqual(
+            [[c[0], c[1]] for c in schemes[0].fetchColors()],
+            [[QColor(255, 0, 0), "red"]],
+        )
+
+        # switching to a second project should swap the scheme's colors, not add a second scheme
+        registry.setProject(project2)
+        schemes = [
+            s for s in registry.schemes() if isinstance(s, QgsProjectColorScheme)
+        ]
+        self.assertEqual(len(schemes), 1)
+        self.assertEqual(
+            [[c[0], c[1]] for c in schemes[0].fetchColors()],
+            [[QColor(0, 255, 0), "green"]],
+        )
+
+        # clearing the project should remove the project colors scheme entirely
+        registry.setProject(None)
+        self.assertFalse(
+            [s for s in registry.schemes() if isinstance(s, QgsProjectColorScheme)]
+        )
 
 
 if __name__ == "__main__":

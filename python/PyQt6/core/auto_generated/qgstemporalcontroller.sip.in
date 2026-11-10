@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/qgstemporalcontroller.h                                     *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/
 
 
@@ -14,11 +14,11 @@
 #include <qgstemporalnavigationobject.h>
 %End
 
-class QgsTemporalController : QObject
+  class QgsTemporalController : QObject
 {
 %Docstring(signature="appended")
-A controller base class for temporal objects, contains a signal for notifying
-updates of the objects temporal range.
+A controller base class for temporal objects, contains a signal for
+notifying updates of the objects temporal range.
 
 .. versionadded:: 3.14
 %End
@@ -40,7 +40,8 @@ updates of the objects temporal range.
 
     QgsTemporalController( QObject *parent /TransferThis/ = 0 );
 %Docstring
-Constructor for QgsTemporalController, with the specified ``parent`` object.
+Constructor for QgsTemporalController, with the specified ``parent``
+object.
 %End
 
   signals:
@@ -50,7 +51,6 @@ Constructor for QgsTemporalController, with the specified ``parent`` object.
 Signals that a temporal ``range`` has changed and needs to be updated in
 all connected objects.
 %End
-
 };
 
 /************************************************************************
@@ -58,5 +58,5 @@ all connected objects.
  *                                                                      *
  * src/core/qgstemporalcontroller.h                                     *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/

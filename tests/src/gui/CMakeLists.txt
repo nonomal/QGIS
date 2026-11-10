@@ -11,28 +11,27 @@ include_directories(
   ${CMAKE_CURRENT_BINARY_DIR}
 )
 
-if(ENABLE_MODELTEST)
-  include_directories(${CMAKE_SOURCE_DIR}/tests/qt_modeltest)
-endif()
-
 # a simple app for testing GUI of renderers
 # These tests are old and are never run so removed for now.
-#set(rendererv2gui_SRCS testrenderergui.cpp)
-#set(rendererv2gui_HDRS testrenderergui.h)
-#add_executable(qgis_rendererv2gui ${rendererv2gui_SRCS} ${rendererv2gui_MOC_SRCS})
 
 #ADD_QGIS_TEST(histogramtest testqgsrasterhistogram.cpp)
 
 set(TESTS
   testqgsadvanceddigitizingdockwidget.cpp
+  testqgsadvanceddigitizingtoolsregistry.cpp
   testqgsannotationitemguiregistry.cpp
+  testqgsbezierdata.cpp
   testqgsmaptoolzoom.cpp
   testqgsmaptooledit.cpp
   testqgscategorizedrendererwidget.cpp
   testqgsdatumtransformdialog.cpp
+  testqgsdiagramproperties.cpp
+  testqgsdockablewidgethelper.cpp
   testqgsdoublespinbox.cpp
   testqgsdualview.cpp
   testqgsattributeform.cpp
+  testqgsattributesformmodel.cpp
+  testqgsattributesformproperties.cpp
   testqgsdatetimeedit.cpp
   testqgsdockwidget.cpp
   testqgsfieldexpressionwidget.cpp
@@ -45,8 +44,11 @@ set(TESTS
   testqgsmessagebar.cpp
   testprojectionissues.cpp
   testqgsgui.cpp
+  testqgsgdalguiutils.cpp
+  testqgsprocessingmodelgui.cpp
   testprocessinggui.cpp
   testqgsprocessingmodel.cpp
+  testqgssymbollayermodel.cpp
   testqgsrubberband.cpp
   testqgsscalecombobox.cpp
   testqgsscalerangewidget.cpp
@@ -56,8 +58,12 @@ set(TESTS
   testqgseditorwidgetregistry.cpp
   testqgskeyvaluewidget.cpp
   testqgsfiledownloader.cpp
+  testqgsfileuploader.cpp
   testqgslayoutgui.cpp
+  testqgslayoutitemlistview.cpp
   testqgslayoutview.cpp
+  testqgsmaptooleditblanksegments.cpp
+  testqgsmaptoolextraitem.cpp
   testqgsvaluemapwidgetwrapper.cpp
   testqgsvaluemapconfigdlg.cpp
   testqgsvaluerelationwidgetwrapper.cpp
@@ -74,6 +80,12 @@ set(TESTS
   testqgsexternalresourcewidgetwrapper.cpp
   testqgsquerybuilder.cpp
   testqgsqueryresultwidget.cpp
+  testqgscompoundcolorwidget.cpp
+  testqgsmaskingwidget.cpp
+  testqgssvgselectorwidget.cpp
+  testqgslabelingwidget.cpp
+  testqgsmeshrendererscalarsettingswidget.cpp
+  testqgsqmlwidgetwrapper.cpp
 )
 
 foreach(TESTSRC ${TESTS})

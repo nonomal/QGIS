@@ -15,15 +15,15 @@
  ***************************************************************************/
 
 #include "qgsexternalresourcewidgetfactory.h"
-#include "qgsfilewidget.h"
-#include "qgsexternalresourcewidgetwrapper.h"
-#include "qgsexternalresourceconfigdlg.h"
 
-QgsExternalResourceWidgetFactory::QgsExternalResourceWidgetFactory( const QString &name, QgsMessageBar *messageBar )
-  : QgsEditorWidgetFactory( name )
+#include "qgsexternalresourceconfigdlg.h"
+#include "qgsexternalresourcewidgetwrapper.h"
+#include "qgsfilewidget.h"
+
+QgsExternalResourceWidgetFactory::QgsExternalResourceWidgetFactory( const QString &name, QgsMessageBar *messageBar, const QIcon &icon )
+  : QgsEditorWidgetFactory( name, icon )
   , mMessageBar( messageBar )
-{
-}
+{}
 
 QgsEditorWidgetWrapper *QgsExternalResourceWidgetFactory::create( QgsVectorLayer *vl, int fieldIdx, QWidget *editor, QWidget *parent ) const
 {
@@ -37,7 +37,7 @@ QgsEditorConfigWidget *QgsExternalResourceWidgetFactory::configWidget( QgsVector
 
 unsigned int QgsExternalResourceWidgetFactory::fieldScore( const QgsVectorLayer *vl, int fieldIdx ) const
 {
-  if ( vl->fields().at( fieldIdx ).type() == QVariant::String )
+  if ( vl->fields().at( fieldIdx ).type() == QMetaType::Type::QString )
     return 5;
 
   return 0;

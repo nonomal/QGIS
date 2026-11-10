@@ -3,15 +3,15 @@
  *                                                                      *
  * src/core/labeling/qgslabeling.h                                      *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/
+
 
 
 
 class QgsLabeling
 {
 %Docstring(signature="appended")
-
 Contains constants and enums relating to labeling.
 
 .. versionadded:: 3.12
@@ -21,8 +21,6 @@ Contains constants and enums relating to labeling.
 #include "qgslabeling.h"
 %End
   public:
-
-
 };
 
 
@@ -31,5 +29,5 @@ Contains constants and enums relating to labeling.
  *                                                                      *
  * src/core/labeling/qgslabeling.h                                      *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/

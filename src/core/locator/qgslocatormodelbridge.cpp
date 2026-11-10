@@ -15,10 +15,15 @@
  *                                                                         *
  ***************************************************************************/
 
+
 #include "qgslocatormodelbridge.h"
+
 #include "qgslocator.h"
 #include "qgslocatormodel.h"
 
+#include <QItemSelection>
+
+#include "moc_qgslocatormodelbridge.cpp"
 
 QgsLocatorModelBridge::QgsLocatorModelBridge( QObject *parent )
   : QObject( parent )
@@ -39,14 +44,37 @@ bool QgsLocatorModelBridge::isRunning() const
 
 void QgsLocatorModelBridge::triggerResult( const QModelIndex &index, const int actionId )
 {
-  mLocator->clearPreviousResults();
   QgsLocatorResult result = mProxyModel->data( index, static_cast< int >( QgsLocatorModel::CustomRole::ResultData ) ).value< QgsLocatorResult >();
+  mLocator->clearPreviousResults();
   if ( result.filter )
   {
     if ( actionId >= 0 )
       result.filter->triggerResultFromAction( result, actionId );
     else
       result.filter->triggerResult( result );
+  }
+}
+
+void QgsLocatorModelBridge::selectionChanged( const QItemSelection &selected, const QItemSelection &deselected )
+{
+  if ( deselected.count() > 0 && deselected.indexes().at( 0 ).isValid() )
+  {
+    const QModelIndex deselectedIndex = deselected.indexes().at( 0 );
+    QgsLocatorResult result = mProxyModel->data( deselectedIndex, static_cast< int >( QgsLocatorModel::CustomRole::ResultData ) ).value< QgsLocatorResult >();
+    if ( result.filter )
+    {
+      result.filter->resultDeselected( result );
+    }
+  }
+
+  if ( selected.count() > 0 && selected.indexes().at( 0 ).isValid() )
+  {
+    const QModelIndex selectedIndex = selected.indexes().at( 0 );
+    QgsLocatorResult result = mProxyModel->data( selectedIndex, static_cast< int >( QgsLocatorModel::CustomRole::ResultData ) ).value< QgsLocatorResult >();
+    if ( result.filter )
+    {
+      result.filter->resultSelected( result );
+    }
   }
 }
 

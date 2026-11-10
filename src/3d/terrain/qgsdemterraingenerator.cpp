@@ -15,26 +15,46 @@
 
 #include "qgsdemterraingenerator.h"
 
-#include "qgsdemterraintileloader_p.h"
+#include <functional>
+#include <limits>
 
+#include "qgs3drendercontext.h"
 #include "qgs3dutils.h"
-#include "qgsrasterlayer.h"
 #include "qgscoordinatetransform.h"
+#include "qgsdemterraintilegeometry_p.h"
+#include "qgsdemterraintileloader_p.h"
+#include "qgsfutureutils.h"
+#include "qgsgeotransform.h"
+#include "qgsrasterlayer.h"
+#include "qgsterrainentity.h"
+#include "qgsterraintileentity_p.h"
+#include "qgsthreadingutils.h"
+
+#include <QFuture>
+#include <QGeometryRenderer>
+#include <Qt3DCore/QEntity>
+
+#include "moc_qgsdemterraingenerator.cpp"
+
+QgsTerrainGenerator *QgsDemTerrainGenerator::create()
+{
+  return new QgsDemTerrainGenerator();
+}
+
+QgsDemTerrainGenerator::QgsDemTerrainGenerator() = default;
 
 QgsDemTerrainGenerator::~QgsDemTerrainGenerator()
-{
-  delete mHeightMapGenerator;
-}
+{}
 
 void QgsDemTerrainGenerator::setLayer( QgsRasterLayer *layer )
 {
-  mLayer = QgsMapLayerRef( layer );
+  mLayer = layer;
   updateGenerator();
 }
 
 QgsRasterLayer *QgsDemTerrainGenerator::layer() const
 {
-  return qobject_cast<QgsRasterLayer *>( mLayer.layer.data() );
+  return mLayer;
 }
 
 void QgsDemTerrainGenerator::setCrs( const QgsCoordinateReferenceSystem &crs, const QgsCoordinateTransformContext &context )
@@ -67,76 +87,127 @@ QgsRectangle QgsDemTerrainGenerator::rootChunkExtent() const
   return mTerrainTilingScheme.tileToExtent( 0, 0, 0 );
 }
 
-float QgsDemTerrainGenerator::heightAt( double x, double y, const Qgs3DMapSettings &map ) const
+float QgsDemTerrainGenerator::heightAt( double x, double y, const Qgs3DRenderContext &context ) const
 {
-  Q_UNUSED( map )
+  Q_UNUSED( context )
   if ( mHeightMapGenerator )
     return mHeightMapGenerator->heightAt( x, y );
   else
-    return 0;
+    return std::numeric_limits<float>::quiet_NaN();
 }
 
-void QgsDemTerrainGenerator::writeXml( QDomElement &elem ) const
+static void heightMapMinMax( const QByteArray &heightMap, float &zMin, float &zMax )
 {
-  elem.setAttribute( QStringLiteral( "layer" ), mLayer.layerId );
-  elem.setAttribute( QStringLiteral( "resolution" ), mResolution );
-  elem.setAttribute( QStringLiteral( "skirt-height" ), mSkirtHeight );
+  const float *zBits = ( const float * ) heightMap.constData();
+  int zCount = heightMap.count() / sizeof( float );
+  bool first = true;
 
-  // crs is not read/written - it should be the same as destination crs of the map
+  zMin = zMax = std::numeric_limits<float>::quiet_NaN();
+  for ( int i = 0; i < zCount; ++i )
+  {
+    float z = zBits[i];
+    if ( std::isnan( z ) )
+      continue;
+    if ( first )
+    {
+      zMin = zMax = z;
+      first = false;
+    }
+    zMin = std::min( zMin, z );
+    zMax = std::max( zMax, z );
+  }
 }
 
-void QgsDemTerrainGenerator::readXml( const QDomElement &elem )
+QFuture<QgsChunkLoaderResult> QgsDemTerrainGenerator::loadChunk( QgsChunkNode *node )
 {
-  mLayer = QgsMapLayerRef( elem.attribute( QStringLiteral( "layer" ) ) );
-  mResolution = elem.attribute( QStringLiteral( "resolution" ) ).toInt();
-  mSkirtHeight = elem.attribute( QStringLiteral( "skirt-height" ) ).toFloat();
-
-  // crs is not read/written - it should be the same as destination crs of the map
+  QFuture<QByteArray> heightMapFuture = mHeightMapGenerator->render( node->tileId() );
+  QFuture<TerrainTextureResources> textureFuture = loadTextureResources( node );
+  return QgsFutureUtils::combine( heightMapFuture, textureFuture ).then( this, [this, node]( std::tuple<QByteArray, QgsTerrainGenerator::TerrainTextureResources> results ) {
+    QByteArray heightMap = std::get<0>( results );
+    TerrainTextureResources textureResources = std::get<1>( results );
+    return QgsChunkLoaderResult { std::bind_front( &QgsDemTerrainGenerator::createEntity, this, heightMap, textureResources, node ) };
+  } );
 }
 
-void QgsDemTerrainGenerator::resolveReferences( const QgsProject &project )
+Qt3DCore::QEntity *QgsDemTerrainGenerator::createEntity( QByteArray heightMap, TerrainTextureResources textureResources, QgsChunkNode *node, Qt3DCore::QEntity *parent )
 {
-  mLayer = QgsMapLayerRef( project.mapLayer( mLayer.layerId ) );
-  // now that we have the layer, call setExtent() again so we can keep the intersection of mExtent and layer's extent
-  setExtent( mExtent );
-}
+  QGIS_CHECK_MAIN_THREAD_ACCESS
+  float zMin, zMax;
+  heightMapMinMax( heightMap, zMin, zMax );
 
-QgsChunkLoader *QgsDemTerrainGenerator::createChunkLoader( QgsChunkNode *node ) const
-{
-  // A bit of a hack to make cloning terrain generator work properly
-  return new QgsDemTerrainTileLoader( mTerrain, node, const_cast<QgsDemTerrainGenerator *>( this ) );
+  if ( std::isnan( zMin ) || std::isnan( zMax ) )
+  {
+    // no data available for this tile
+    return nullptr;
+  }
+
+  Qgs3DMapSettings *map = mTerrain->mapSettings();
+  Qgs3DRenderContext context = Qgs3DRenderContext::fromMapSettings( map );
+  QgsChunkNodeId nodeId = node->tileId();
+  QgsRectangle extent = map->terrainGenerator()->tilingScheme().tileToExtent( nodeId );
+  double side = extent.width();
+
+  QgsTerrainTileEntity *entity = new QgsTerrainTileEntity( nodeId );
+
+  // create geometry renderer
+
+  Qt3DRender::QGeometryRenderer *mesh = new Qt3DRender::QGeometryRenderer;
+  mesh->setGeometry( new DemTerrainTileGeometry( mResolution, side, map->terrainSettings()->verticalScale(), mSkirtHeight, heightMap, mesh ) );
+  entity->addComponent( mesh ); // takes ownership if the component has no parent
+
+  // create material
+
+  applyMaterial( textureResources, entity, map->isTerrainShadingEnabled(), map->terrainShadingMaterial(), !map->layers().empty(), context );
+
+  // create transform
+  QgsGeoTransform *transform = new QgsGeoTransform;
+  transform->setGeoTranslation( QgsVector3D( extent.xMinimum(), extent.yMinimum(), 0 ) );
+  entity->addComponent( transform );
+
+  // clang-format off
+          node->setExactBox3D(
+            QgsBox3D( extent.xMinimum(), extent.yMinimum(), zMin * map->terrainSettings()->verticalScale(),
+                      extent.xMinimum() + side, extent.yMinimum() + side, zMax * map->terrainSettings()->verticalScale() )
+          );
+  // clang-format on
+  node->updateParentBoundingBoxesRecursively();
+
+  entity->setParent( parent );
+  return entity;
 }
 
 void QgsDemTerrainGenerator::setExtent( const QgsRectangle &extent )
 {
-  if ( !mLayer )
-  {
-    // Keep the whole extent for now and setExtent() will be called by again by resolveReferences()
-    mExtent = extent;
+  if ( mExtent == extent )
     return;
-  }
 
-  QgsRectangle layerExtent = Qgs3DUtils::tryReprojectExtent2D( mLayer->extent(), mLayer->crs(), mCrs, mTransformContext );
-  // no need to have an mExtent larger than the actual layer's extent
-  mExtent = extent.intersect( layerExtent );
+  mExtent = extent;
   updateGenerator();
 }
 
 void QgsDemTerrainGenerator::updateGenerator()
 {
   QgsRasterLayer *dem = layer();
-  if ( dem )
+  if ( dem && mCrs.isValid() )
   {
-    mTerrainTilingScheme = QgsTilingScheme( mExtent, mCrs );
-    delete mHeightMapGenerator;
-    mHeightMapGenerator = new QgsDemHeightMapGenerator( dem, mTerrainTilingScheme, mResolution, mTransformContext );
+    QgsRectangle layerExtent = Qgs3DUtils::tryReprojectExtent2D( mLayer->extent(), mLayer->crs(), mCrs, mTransformContext );
+    // no need to have an mExtent larger than the actual layer's extent
+    const QgsRectangle intersectExtent = mExtent.intersect( layerExtent );
+
+    mTerrainTilingScheme = QgsTilingScheme( intersectExtent, mCrs );
+    mHeightMapGenerator = std::make_unique<QgsDemHeightMapGenerator>( dem, mTerrainTilingScheme, mResolution, mTransformContext );
+
     mIsValid = true;
   }
   else
   {
     mTerrainTilingScheme = QgsTilingScheme();
-    delete mHeightMapGenerator;
-    mHeightMapGenerator = nullptr;
+    mHeightMapGenerator.reset();
     mIsValid = false;
   }
+}
+
+QgsTerrainGenerator::Capabilities QgsDemTerrainGenerator::capabilities() const
+{
+  return QgsTerrainGenerator::Capability::SupportsTileResolution;
 }

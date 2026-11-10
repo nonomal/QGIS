@@ -14,15 +14,21 @@
  ***************************************************************************/
 
 
+#include "qgssettings.h"
+
 #include <cstdlib>
 
+#include "qgssettingsproxy.h"
+#include "qgsvariantutils.h"
+
+#include <QDir>
 #include <QFileInfo>
 #include <QSettings>
-#include <QDir>
+#include <QString>
 
-#include "qgssettings.h"
-#include "qgsvariantutils.h"
-#include "qgssettingsproxy.h"
+#include "moc_qgssettings.cpp"
+
+using namespace Qt::StringLiterals;
 
 Q_GLOBAL_STATIC( QString, sGlobalSettingsPath )
 
@@ -40,54 +46,44 @@ bool QgsSettings::setGlobalSettingsPath( const QString &path )
 
 void QgsSettings::init()
 {
-  if ( ! sGlobalSettingsPath()->isEmpty() )
+  if ( !sGlobalSettingsPath()->isEmpty() )
   {
-    mGlobalSettings = new QSettings( *sGlobalSettingsPath(), QSettings::IniFormat );
-#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
-    mGlobalSettings->setIniCodec( "UTF-8" );
-#endif
+    mGlobalSettings = std::make_unique<QSettings>( *sGlobalSettingsPath(), QSettings::IniFormat );
   }
 }
 
-
 QgsSettings::QgsSettings( const QString &organization, const QString &application, QObject *parent )
 {
-  mUserSettings = new QSettings( organization, application, parent );
+  mUserSettings = std::make_unique<QSettings>( organization, application, parent );
   init();
 }
 
-QgsSettings::QgsSettings( QSettings::Scope scope, const QString &organization,
-                          const QString &application, QObject *parent )
+QgsSettings::QgsSettings( QSettings::Scope scope, const QString &organization, const QString &application, QObject *parent )
 {
-  mUserSettings = new QSettings( scope, organization, application, parent );
+  mUserSettings = std::make_unique<QSettings>( scope, organization, application, parent );
   init();
 }
 
-QgsSettings::QgsSettings( QSettings::Format format, QSettings::Scope scope,
-                          const QString &organization, const QString &application, QObject *parent )
+QgsSettings::QgsSettings( QSettings::Format format, QSettings::Scope scope, const QString &organization, const QString &application, QObject *parent )
 {
-  mUserSettings = new QSettings( format, scope, organization, application, parent );
+  mUserSettings = std::make_unique<QSettings>( format, scope, organization, application, parent );
   init();
 }
 
 QgsSettings::QgsSettings( const QString &fileName, QSettings::Format format, QObject *parent )
 {
-  mUserSettings = new QSettings( fileName, format, parent );
+  mUserSettings = std::make_unique<QSettings>( fileName, format, parent );
   init();
 }
 
 QgsSettings::QgsSettings( QObject *parent )
 {
-  mUserSettings = new QSettings( parent );
+  mUserSettings = std::make_unique<QSettings>( parent );
   init();
 }
 
 QgsSettings::~QgsSettings()
-{
-  delete mUserSettings;
-  delete mGlobalSettings;
-}
-
+{}
 
 void QgsSettings::beginGroup( const QString &prefix, const QgsSettings::Section section )
 {
@@ -119,11 +115,10 @@ QStringList QgsSettings::allKeys() const
   if ( mGlobalSettings )
   {
     const QStringList constAllKeys = mGlobalSettings->allKeys();
-    std::copy_if( constAllKeys.constBegin(), constAllKeys.constEnd(), std::back_inserter( keys ), [&keys]( const QString & key ) {return !keys.contains( key );} );
+    std::copy_if( constAllKeys.constBegin(), constAllKeys.constEnd(), std::back_inserter( keys ), [&keys]( const QString &key ) { return !keys.contains( key ); } );
   }
   return keys;
 }
-
 
 QStringList QgsSettings::childKeys() const
 {
@@ -131,7 +126,7 @@ QStringList QgsSettings::childKeys() const
   if ( mGlobalSettings )
   {
     const QStringList constChildKeys = mGlobalSettings->childKeys();
-    std::copy_if( constChildKeys.constBegin(), constChildKeys.constEnd(), std::back_inserter( keys ), [&keys]( const QString & key ) {return !keys.contains( key );} );
+    std::copy_if( constChildKeys.constBegin(), constChildKeys.constEnd(), std::back_inserter( keys ), [&keys]( const QString &key ) { return !keys.contains( key ); } );
   }
   return keys;
 }
@@ -146,7 +141,7 @@ QStringList QgsSettings::childGroups( Qgis::SettingsOrigin origin ) const
       if ( mGlobalSettings )
       {
         const QStringList constChildGroups = mGlobalSettings->childGroups();
-        std::copy_if( constChildGroups.constBegin(), constChildGroups.constEnd(), std::back_inserter( keys ), [&keys]( const QString & key ) {return !keys.contains( key );} );
+        std::copy_if( constChildGroups.constBegin(), constChildGroups.constEnd(), std::back_inserter( keys ), [&keys]( const QString &key ) { return !keys.contains( key ); } );
       }
       return keys;
     }
@@ -155,7 +150,7 @@ QStringList QgsSettings::childGroups( Qgis::SettingsOrigin origin ) const
       return mUserSettings->childGroups();
 
     case Qgis::SettingsOrigin::Global:
-      return  mGlobalSettings ? mGlobalSettings->childGroups() : QStringList();
+      return mGlobalSettings ? mGlobalSettings->childGroups() : QStringList();
   }
 
   BUILTIN_UNREACHABLE
@@ -188,8 +183,7 @@ QVariant QgsSettings::value( const QString &key, const QVariant &defaultValue, c
 bool QgsSettings::contains( const QString &key, const QgsSettings::Section section ) const
 {
   const QString pKey = prefixedKey( key, section );
-  return mUserSettings->contains( pKey ) ||
-         ( mGlobalSettings && mGlobalSettings->contains( pKey ) );
+  return mUserSettings->contains( pKey ) || ( mGlobalSettings && mGlobalSettings->contains( pKey ) );
 }
 
 QString QgsSettings::fileName() const
@@ -205,6 +199,10 @@ void QgsSettings::sync()
 void QgsSettings::remove( const QString &key, const QgsSettings::Section section )
 {
   const QString pKey = prefixedKey( key, section );
+  if ( pKey.isEmpty() )
+  {
+    QgsDebugError( u"QSettings::remove called with empty key -- this probably wasn't intentional, but will result in ALL SETTINGS GETTING DELETED!"_s );
+  }
   mUserSettings->remove( pKey );
 }
 
@@ -214,41 +212,40 @@ QString QgsSettings::prefixedKey( const QString &key, const Section section ) co
   switch ( section )
   {
     case Section::Core:
-      prefix = QStringLiteral( "core" );
+      prefix = u"core"_s;
       break;
     case Section::Server:
-      prefix = QStringLiteral( "server" );
+      prefix = u"server"_s;
       break;
     case Section::Gui:
-      prefix = QStringLiteral( "gui" );
+      prefix = u"gui"_s;
       break;
     case Section::Plugins:
-      prefix = QStringLiteral( "plugins" );
+      prefix = u"plugins"_s;
       break;
     case Section::Misc:
-      prefix = QStringLiteral( "misc" );
+      prefix = u"misc"_s;
       break;
     case Section::Auth:
-      prefix = QStringLiteral( "auth" );
+      prefix = u"auth"_s;
       break;
     case Section::App:
-      prefix = QStringLiteral( "app" );
+      prefix = u"app"_s;
       break;
     case Section::Providers:
-      prefix = QStringLiteral( "providers" );
+      prefix = u"providers"_s;
       break;
     case Section::Expressions:
-      prefix = QStringLiteral( "expressions" );
+      prefix = u"expressions"_s;
       break;
     case Section::Gps:
-      prefix = QStringLiteral( "gps" );
+      prefix = u"gps"_s;
       break;
     case Section::NoSection:
       return sanitizeKey( key );
   }
-  return prefix  + "/" + sanitizeKey( key );
+  return prefix + "/" + sanitizeKey( key );
 }
-
 
 int QgsSettings::beginReadArray( const QString &prefix )
 {
@@ -270,7 +267,7 @@ void QgsSettings::beginWriteArray( const QString &prefix, int size )
 void QgsSettings::endArray()
 {
   mUserSettings->endArray();
-  if ( mGlobalSettings )
+  if ( mGlobalSettings && mUsingGlobalArray )
   {
     mGlobalSettings->endArray();
   }
@@ -319,7 +316,12 @@ void QgsSettings::setValue( const QString &key, const QVariant &value, const Qgs
   // might be a nullptr (for example in case of standalone scripts or apps).
   else if ( mGlobalSettings && mGlobalSettings->value( prefixedKey( key, section ) ) == currentValue )
   {
-    mUserSettings->remove( prefixedKey( key, section ) );
+    const QString resolvedKey = prefixedKey( key, section );
+    if ( resolvedKey.isEmpty() )
+    {
+      QgsDebugError( u"QSettings::remove called with empty key -- this probably wasn't intentional, but will result in ALL SETTINGS GETTING DELETED!"_s );
+    }
+    mUserSettings->remove( resolvedKey );
   }
 }
 
@@ -333,7 +335,6 @@ void QgsSettings::clear()
 {
   mUserSettings->clear();
 }
-
 
 void QgsSettings::holdFlush()
 {

@@ -18,11 +18,16 @@
 #ifndef QGSALGORITHMDISSOLVE_H
 #define QGSALGORITHMDISSOLVE_H
 
-#define SIP_NO_FILE
 
 #include "qgis_sip.h"
-#include "qgsprocessingalgorithm.h"
 #include "qgsapplication.h"
+#include "qgsprocessingalgorithm.h"
+
+#include <QString>
+
+#define SIP_NO_FILE
+
+using namespace Qt::StringLiterals;
 
 ///@cond PRIVATE
 
@@ -32,10 +37,15 @@
 class QgsCollectorAlgorithm : public QgsProcessingAlgorithm
 {
   protected:
-
-    QVariantMap processCollection( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback,
-                                   const std::function<QgsGeometry( const QVector<QgsGeometry>& )> &collector, int maxQueueLength = 0, Qgis::ProcessingFeatureSourceFlags sourceFlags = Qgis::ProcessingFeatureSourceFlags(),
-                                   bool separateDisjoint = false );
+    QVariantMap processCollection(
+      const QVariantMap &parameters,
+      QgsProcessingContext &context,
+      QgsProcessingFeedback *feedback,
+      const std::function<QgsGeometry( const QVector<QgsGeometry> & )> &collector,
+      int maxQueueLength = 0,
+      Qgis::ProcessingFeatureSourceFlags sourceFlags = Qgis::ProcessingFeatureSourceFlags(),
+      bool separateDisjoint = false
+    );
 };
 
 /**
@@ -43,26 +53,23 @@ class QgsCollectorAlgorithm : public QgsProcessingAlgorithm
  */
 class QgsDissolveAlgorithm : public QgsCollectorAlgorithm
 {
-
   public:
-
     QgsDissolveAlgorithm() = default;
     void initAlgorithm( const QVariantMap &configuration = QVariantMap() ) override;
-    QIcon icon() const override { return QgsApplication::getThemeIcon( QStringLiteral( "/algorithms/mAlgorithmDissolve.svg" ) ); }
-    QString svgIconPath() const override { return QgsApplication::iconPath( QStringLiteral( "/algorithms/mAlgorithmDissolve.svg" ) ); }
+    QIcon icon() const override { return QgsApplication::getThemeIcon( u"/algorithms/mAlgorithmDissolve.svg"_s ); }
+    QString svgIconPath() const override { return QgsApplication::iconPath( u"/algorithms/mAlgorithmDissolve.svg"_s ); }
     QString name() const override;
     QString displayName() const override;
     QStringList tags() const override;
     QString group() const override;
     QString groupId() const override;
     QString shortHelpString() const override;
+    QString shortDescription() const override;
+    Qgis::ProcessingAlgorithmDocumentationFlags documentationFlags() const override;
     QgsDissolveAlgorithm *createInstance() const override SIP_FACTORY;
 
   protected:
-
-    QVariantMap processAlgorithm( const QVariantMap &parameters,
-                                  QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
-
+    QVariantMap processAlgorithm( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
 };
 
 /**
@@ -70,12 +77,10 @@ class QgsDissolveAlgorithm : public QgsCollectorAlgorithm
  */
 class QgsCollectAlgorithm : public QgsCollectorAlgorithm
 {
-
   public:
-
     QgsCollectAlgorithm() = default;
-    QIcon icon() const override { return QgsApplication::getThemeIcon( QStringLiteral( "/algorithms/mAlgorithmCollect.svg" ) ); }
-    QString svgIconPath() const override { return QgsApplication::iconPath( QStringLiteral( "/algorithms/mAlgorithmCollect.svg" ) ); }
+    QIcon icon() const override { return QgsApplication::getThemeIcon( u"/algorithms/mAlgorithmCollect.svg"_s ); }
+    QString svgIconPath() const override { return QgsApplication::iconPath( u"/algorithms/mAlgorithmCollect.svg"_s ); }
     void initAlgorithm( const QVariantMap &configuration = QVariantMap() ) override;
     QString name() const override;
     QString displayName() const override;
@@ -83,17 +88,14 @@ class QgsCollectAlgorithm : public QgsCollectorAlgorithm
     QString group() const override;
     QString groupId() const override;
     QString shortHelpString() const override;
+    QString shortDescription() const override;
+    Qgis::ProcessingAlgorithmDocumentationFlags documentationFlags() const override;
     QgsCollectAlgorithm *createInstance() const override SIP_FACTORY;
 
   protected:
-
-    QVariantMap processAlgorithm( const QVariantMap &parameters,
-                                  QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
-
+    QVariantMap processAlgorithm( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
 };
 
 ///@endcond PRIVATE
 
 #endif // QGSALGORITHMDISSOLVE_H
-
-

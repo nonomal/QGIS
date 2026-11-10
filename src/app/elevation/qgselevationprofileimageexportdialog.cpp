@@ -16,9 +16,17 @@
  ***************************************************************************/
 
 #include "qgselevationprofileimageexportdialog.h"
-#include "qgsplot.h"
+
 #include "qgselevationprofileexportsettingswidget.h"
 #include "qgsgui.h"
+#include "qgshelp.h"
+#include "qgsplot.h"
+
+#include <QString>
+
+#include "moc_qgselevationprofileimageexportdialog.cpp"
+
+using namespace Qt::StringLiterals;
 
 QgsElevationProfileImageExportDialog::QgsElevationProfileImageExportDialog( QWidget *parent )
   : QDialog( parent )
@@ -29,15 +37,17 @@ QgsElevationProfileImageExportDialog::QgsElevationProfileImageExportDialog( QWid
   scrollAreaLayout->addWidget( mProfileSettingsWidget );
   scrollAreaLayout->addStretch( 1 );
 
+  connect( buttonBox, &QDialogButtonBox::helpRequested, this, [] { QgsHelp::openHelp( u"map_views/elevation_profile.html#export-elevation-profile"_s ); } );
+
   QgsGui::enableAutoGeometryRestore( this );
 }
 
-void QgsElevationProfileImageExportDialog::setPlotSettings( const Qgs2DPlot &plot )
+void QgsElevationProfileImageExportDialog::setPlotSettings( const Qgs2DXyPlot &plot )
 {
   mProfileSettingsWidget->setPlotSettings( plot );
 }
 
-void QgsElevationProfileImageExportDialog::updatePlotSettings( Qgs2DPlot &plot )
+void QgsElevationProfileImageExportDialog::updatePlotSettings( Qgs2DXyPlot &plot )
 {
   mProfileSettingsWidget->updatePlotSettings( plot );
 }
@@ -52,4 +62,3 @@ QSize QgsElevationProfileImageExportDialog::imageSize() const
 {
   return QSize( mWidthSpinBox->value(), mHeightSpinBox->value() );
 }
-

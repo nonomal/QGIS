@@ -24,7 +24,7 @@
 
 /**
  * \ingroup core
- * \brief The QgsReadWriteLocker class is a convenience class that simplifies locking and unlocking QReadWriteLocks.
+ * \brief A convenience class that simplifies locking and unlocking QReadWriteLocks.
  *
  * Locking and unlocking a QReadWriteLocks in complex functions and statements or in exception handling code
  * is error-prone and difficult to debug.
@@ -40,14 +40,13 @@
 class CORE_EXPORT QgsReadWriteLocker
 {
   public:
-
     /**
      * A QReadWriteLock can be in 3 different modes, read, write or unlocked.
      */
     enum Mode
     {
-      Read, //!< Lock for read
-      Write, //!< Lock for write
+      Read,    //!< Lock for read
+      Write,   //!< Lock for write
       Unlocked //!< Unlocked
     };
 

@@ -18,10 +18,11 @@
 #ifndef QGSALGORITHMRASTERDTMSLOPEBASEDFILTER_H
 #define QGSALGORITHMRASTERDTMSLOPEBASEDFILTER_H
 
-#define SIP_NO_FILE
 
 #include "qgis_sip.h"
 #include "qgsprocessingalgorithm.h"
+
+#define SIP_NO_FILE
 
 ///@cond PRIVATE
 
@@ -30,9 +31,7 @@
  */
 class QgsRasterDtmSlopeBasedFilterAlgorithm : public QgsProcessingAlgorithm
 {
-
   public:
-
     QgsRasterDtmSlopeBasedFilterAlgorithm() = default;
     QString name() const override;
     QString displayName() const override;
@@ -40,18 +39,19 @@ class QgsRasterDtmSlopeBasedFilterAlgorithm : public QgsProcessingAlgorithm
     QString group() const override;
     QString groupId() const override;
     QString shortHelpString() const override;
+    QList<QgsAcademicReference> academicReferences() const override;
+    QList<QgsProcessingAlgorithm::ExternalLink> externalLinks() const override;
+    QString shortDescription() const override;
     void initAlgorithm( const QVariantMap &configuration = QVariantMap() ) override;
     QgsRasterDtmSlopeBasedFilterAlgorithm *createInstance() const override SIP_FACTORY;
 
   protected:
     bool prepareAlgorithm( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
 
-    QVariantMap processAlgorithm( const QVariantMap &parameters,
-                                  QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
+    QVariantMap processAlgorithm( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
 
   private:
-
-    std::unique_ptr< QgsRasterInterface > mInterface;
+    std::unique_ptr<QgsRasterInterface> mInterface;
     bool mHasNoDataValue = false;
     double mNoData = 0;
     int mBand = 1;
@@ -67,5 +67,3 @@ class QgsRasterDtmSlopeBasedFilterAlgorithm : public QgsProcessingAlgorithm
 ///@endcond PRIVATE
 
 #endif // QGSALGORITHMRASTERDTMSLOPEBASEDFILTER_H
-
-

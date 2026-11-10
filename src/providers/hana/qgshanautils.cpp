@@ -14,14 +14,19 @@
  * (at your option) any later version.
  *
  ***************************************************************************/
+#include "qgshanautils.h"
+
 #include "qgsdatasourceuri.h"
 #include "qgshanaexception.h"
 #include "qgshanasettings.h"
-#include "qgshanautils.h"
+#include "qgsvariantutils.h"
 
 #include <QDate>
-#include <QTime>
 #include <QDateTime>
+#include <QString>
+#include <QTime>
+
+using namespace Qt::StringLiterals;
 
 using namespace NS_ODBC;
 
@@ -31,22 +36,21 @@ namespace
   {
     QString escaped = val;
 
-    escaped.replace( '\\', QLatin1String( "\\\\" ) );
-    escaped.replace( delim, QStringLiteral( "\\%1" ).arg( delim ) );
+    escaped.replace( '\\', "\\\\"_L1 );
+    escaped.replace( delim, u"\\%1"_s.arg( delim ) );
 
     return escaped;
   }
-}
+} // namespace
 
 QString QgsHanaUtils::connectionInfo( const QgsDataSourceUri &uri )
 {
   QStringList connectionItems;
-  auto addItem = [&connectionItems]( const char *key, const QString & value, bool quoted = true )
-  {
+  auto addItem = [&connectionItems]( const char *key, const QString &value, bool quoted = true ) {
     if ( quoted )
-      connectionItems << QStringLiteral( "%1='%2'" ).arg( key, value );
+      connectionItems << u"%1='%2'"_s.arg( key, value );
     else
-      connectionItems << QStringLiteral( "%1=%2" ).arg( key, value );
+      connectionItems << u"%1=%2"_s.arg( key, value );
   };
 
   QgsHanaConnectionType connType = QgsHanaConnectionType::HostPort;
@@ -79,83 +83,83 @@ QString QgsHanaUtils::connectionInfo( const QgsDataSourceUri &uri )
       addItem( "password", escape( uri.password() ) );
   }
 
-  if ( uri.hasParam( QStringLiteral( "sslEnabled" ) ) )
+  if ( uri.hasParam( u"sslEnabled"_s ) )
   {
-    addItem( "sslEnabled", uri.param( QStringLiteral( "sslEnabled" ) ) );
-    if ( uri.hasParam( QStringLiteral( "sslCryptoProvider" ) ) )
-      addItem( "sslCryptoProvider", uri.param( QStringLiteral( "sslCryptoProvider" ) ) );
-    if ( uri.hasParam( QStringLiteral( "sslValidateCertificate" ) ) )
-      addItem( "sslValidateCertificate", uri.param( QStringLiteral( "sslValidateCertificate" ) ) );
-    if ( uri.hasParam( QStringLiteral( "sslHostNameInCertificate" ) ) )
-      addItem( "sslHostNameInCertificate", uri.param( QStringLiteral( "sslHostNameInCertificate" ) ) );
-    if ( uri.hasParam( QStringLiteral( "sslKeyStore" ) ) )
-      addItem( "sslKeyStore", uri.param( QStringLiteral( "sslKeyStore" ) ) );
-    if ( uri.hasParam( QStringLiteral( "sslTrustStore" ) ) )
-      addItem( "sslTrustStore", uri.param( QStringLiteral( "sslTrustStore" ) ) );
+    addItem( "sslEnabled", uri.param( u"sslEnabled"_s ) );
+    if ( uri.hasParam( u"sslCryptoProvider"_s ) )
+      addItem( "sslCryptoProvider", uri.param( u"sslCryptoProvider"_s ) );
+    if ( uri.hasParam( u"sslValidateCertificate"_s ) )
+      addItem( "sslValidateCertificate", uri.param( u"sslValidateCertificate"_s ) );
+    if ( uri.hasParam( u"sslHostNameInCertificate"_s ) )
+      addItem( "sslHostNameInCertificate", uri.param( u"sslHostNameInCertificate"_s ) );
+    if ( uri.hasParam( u"sslKeyStore"_s ) )
+      addItem( "sslKeyStore", uri.param( u"sslKeyStore"_s ) );
+    if ( uri.hasParam( u"sslTrustStore"_s ) )
+      addItem( "sslTrustStore", uri.param( u"sslTrustStore"_s ) );
   }
 
-  return connectionItems.join( QLatin1Char( ' ' ) );
+  return connectionItems.join( ' '_L1 );
 }
 
 QString QgsHanaUtils::quotedIdentifier( const QString &str )
 {
   QString result = str;
-  result.replace( '"', QLatin1String( "\"\"" ) );
+  result.replace( '"', "\"\""_L1 );
   return result.prepend( '\"' ).append( '\"' );
 }
 
 QString QgsHanaUtils::quotedString( const QString &str )
 {
   QString result = str;
-  result.replace( '\'', QLatin1String( "''" ) );
+  result.replace( '\'', "''"_L1 );
   return result.prepend( '\'' ).append( '\'' );
 }
 
 QString QgsHanaUtils::quotedValue( const QVariant &value )
 {
   if ( value.isNull() )
-    return QStringLiteral( "NULL" );
+    return u"NULL"_s;
 
-  switch ( value.type() )
+  switch ( value.userType() )
   {
-    case QVariant::Int:
-    case QVariant::LongLong:
-    case QVariant::Double:
+    case QMetaType::Type::Int:
+    case QMetaType::Type::LongLong:
+    case QMetaType::Type::Double:
       return value.toString();
-    case QVariant::Bool:
-      return value.toBool() ? QStringLiteral( "TRUE" ) : QStringLiteral( "FALSE" );
-    case QVariant::String:
+    case QMetaType::Type::Bool:
+      return value.toBool() ? u"TRUE"_s : u"FALSE"_s;
+    case QMetaType::Type::QString:
     default:
       return quotedString( value.toString() );
   }
 }
 
-QString QgsHanaUtils::toConstant( const QVariant &value, QVariant::Type type )
+QString QgsHanaUtils::toConstant( const QVariant &value, QMetaType::Type type )
 {
   if ( value.isNull() )
-    return QStringLiteral( "NULL" );
+    return u"NULL"_s;
 
   switch ( type )
   {
-    case QVariant::Bool:
-      return value.toBool() ? QStringLiteral( "TRUE" ) : QStringLiteral( "FALSE" );
-    case QVariant::Int:
-    case QVariant::UInt:
-    case QVariant::LongLong:
-    case QVariant::ULongLong:
-    case QVariant::Double:
+    case QMetaType::Type::Bool:
+      return value.toBool() ? u"TRUE"_s : u"FALSE"_s;
+    case QMetaType::Type::Int:
+    case QMetaType::Type::UInt:
+    case QMetaType::Type::LongLong:
+    case QMetaType::Type::ULongLong:
+    case QMetaType::Type::Double:
       return value.toString();
-    case QVariant::Char:
-    case QVariant::String:
+    case QMetaType::Type::QChar:
+    case QMetaType::Type::QString:
       return QgsHanaUtils::quotedString( value.toString() );
-    case QVariant::Date:
-      return QStringLiteral( "date'%1'" ).arg( value.toDate().toString( QStringLiteral( "yyyy-MM-dd" ) ) );
-    case QVariant::DateTime:
-      return QStringLiteral( "timestamp'%1'" ).arg( value.toDateTime().toString( QStringLiteral( "yyyy-MM-dd hh:mm:ss.zzz" ) ) );
-    case QVariant::Time:
-      return QStringLiteral( "time'%1'" ).arg( value.toTime().toString( QStringLiteral( "hh:mm:ss.zzz" ) ) );
-    case QVariant::ByteArray:
-      return QStringLiteral( "x'%1'" ).arg( QString( value.toByteArray().toHex() ) );
+    case QMetaType::Type::QDate:
+      return u"date'%1'"_s.arg( value.toDate().toString( u"yyyy-MM-dd"_s ) );
+    case QMetaType::Type::QDateTime:
+      return u"timestamp'%1'"_s.arg( value.toDateTime().toString( u"yyyy-MM-dd hh:mm:ss.zzz"_s ) );
+    case QMetaType::Type::QTime:
+      return u"time'%1'"_s.arg( value.toTime().toString( u"hh:mm:ss.zzz"_s ) );
+    case QMetaType::Type::QByteArray:
+      return u"x'%1'"_s.arg( QString( value.toByteArray().toHex() ) );
     default:
       return value.toString();
   }
@@ -170,27 +174,66 @@ QString QgsHanaUtils::toString( Qgis::DistanceUnit unit )
   switch ( unit )
   {
     case Qgis::DistanceUnit::Meters:
-      return QStringLiteral( "meter" );
+      return u"meter"_s;
     case Qgis::DistanceUnit::Kilometers:
-      return QStringLiteral( "kilometer" );
+      return u"kilometer"_s;
     case Qgis::DistanceUnit::Feet:
-      return QStringLiteral( "foot" );
+      return u"foot"_s;
     case Qgis::DistanceUnit::Yards:
-      return QStringLiteral( "yard" );
+      return u"yard"_s;
     case Qgis::DistanceUnit::Miles:
-      return QStringLiteral( "mile" );
+      return u"mile"_s;
     case Qgis::DistanceUnit::Degrees:
-      return QStringLiteral( "degree" );
+      return u"degree"_s;
     case Qgis::DistanceUnit::Centimeters:
-      return QStringLiteral( "centimeter" );
+      return u"centimeter"_s;
     case Qgis::DistanceUnit::Millimeters:
-      return QStringLiteral( "millimeter" );
+      return u"millimeter"_s;
     case Qgis::DistanceUnit::NauticalMiles:
-      return QStringLiteral( "nautical mile" );
+      return u"nautical mile"_s;
     case Qgis::DistanceUnit::Inches:
-      return QStringLiteral( "inch" );
+      return u"inch"_s;
+    case Qgis::DistanceUnit::ChainsInternational:
+    case Qgis::DistanceUnit::ChainsBritishBenoit1895A:
+    case Qgis::DistanceUnit::ChainsBritishBenoit1895B:
+    case Qgis::DistanceUnit::ChainsBritishSears1922Truncated:
+    case Qgis::DistanceUnit::ChainsBritishSears1922:
+    case Qgis::DistanceUnit::ChainsClarkes:
+    case Qgis::DistanceUnit::ChainsUSSurvey:
+    case Qgis::DistanceUnit::FeetBritish1865:
+    case Qgis::DistanceUnit::FeetBritish1936:
+    case Qgis::DistanceUnit::FeetBritishBenoit1895A:
+    case Qgis::DistanceUnit::FeetBritishBenoit1895B:
+    case Qgis::DistanceUnit::FeetBritishSears1922Truncated:
+    case Qgis::DistanceUnit::FeetBritishSears1922:
+    case Qgis::DistanceUnit::FeetClarkes:
+    case Qgis::DistanceUnit::FeetGoldCoast:
+    case Qgis::DistanceUnit::FeetIndian:
+    case Qgis::DistanceUnit::FeetIndian1937:
+    case Qgis::DistanceUnit::FeetIndian1962:
+    case Qgis::DistanceUnit::FeetIndian1975:
+    case Qgis::DistanceUnit::FeetUSSurvey:
+    case Qgis::DistanceUnit::LinksInternational:
+    case Qgis::DistanceUnit::LinksBritishBenoit1895A:
+    case Qgis::DistanceUnit::LinksBritishBenoit1895B:
+    case Qgis::DistanceUnit::LinksBritishSears1922Truncated:
+    case Qgis::DistanceUnit::LinksBritishSears1922:
+    case Qgis::DistanceUnit::LinksClarkes:
+    case Qgis::DistanceUnit::LinksUSSurvey:
+    case Qgis::DistanceUnit::YardsBritishBenoit1895A:
+    case Qgis::DistanceUnit::YardsBritishBenoit1895B:
+    case Qgis::DistanceUnit::YardsBritishSears1922Truncated:
+    case Qgis::DistanceUnit::YardsBritishSears1922:
+    case Qgis::DistanceUnit::YardsClarkes:
+    case Qgis::DistanceUnit::YardsIndian:
+    case Qgis::DistanceUnit::YardsIndian1937:
+    case Qgis::DistanceUnit::YardsIndian1962:
+    case Qgis::DistanceUnit::YardsIndian1975:
+    case Qgis::DistanceUnit::MilesUSSurvey:
+    case Qgis::DistanceUnit::Fathoms:
+    case Qgis::DistanceUnit::MetersGermanLegal:
     case Qgis::DistanceUnit::Unknown:
-      return QStringLiteral( "<unknown>" );
+      return u"<unknown>"_s;
   }
   return QString();
 }
@@ -214,7 +257,7 @@ QString QgsHanaUtils::toQString( const String &str )
 QVariant QgsHanaUtils::toVariant( const Boolean &value )
 {
   if ( value.isNull() )
-    return QVariant( QVariant::Bool );
+    return QgsVariantUtils::createNullVariant( QMetaType::Type::Bool );
   else
     return QVariant( *value );
 }
@@ -222,7 +265,7 @@ QVariant QgsHanaUtils::toVariant( const Boolean &value )
 QVariant QgsHanaUtils::toVariant( const Byte &value )
 {
   if ( value.isNull() )
-    return QVariant( QVariant::Int );
+    return QgsVariantUtils::createNullVariant( QMetaType::Type::Int );
   else
     return QVariant( static_cast<int>( *value ) );
 }
@@ -230,7 +273,7 @@ QVariant QgsHanaUtils::toVariant( const Byte &value )
 QVariant QgsHanaUtils::toVariant( const UByte &value )
 {
   if ( value.isNull() )
-    return QVariant( QVariant::UInt );
+    return QgsVariantUtils::createNullVariant( QMetaType::Type::UInt );
   else
     return QVariant( static_cast<uint>( *value ) );
 }
@@ -238,7 +281,7 @@ QVariant QgsHanaUtils::toVariant( const UByte &value )
 QVariant QgsHanaUtils::toVariant( const Short &value )
 {
   if ( value.isNull() )
-    return QVariant( QVariant::Int );
+    return QgsVariantUtils::createNullVariant( QMetaType::Type::Int );
   else
     return QVariant( static_cast<int>( *value ) );
 }
@@ -246,7 +289,7 @@ QVariant QgsHanaUtils::toVariant( const Short &value )
 QVariant QgsHanaUtils::toVariant( const UShort &value )
 {
   if ( value.isNull() )
-    return QVariant( QVariant::UInt );
+    return QgsVariantUtils::createNullVariant( QMetaType::Type::UInt );
   else
     return QVariant( static_cast<uint>( *value ) );
 }
@@ -254,7 +297,7 @@ QVariant QgsHanaUtils::toVariant( const UShort &value )
 QVariant QgsHanaUtils::toVariant( const Int &value )
 {
   if ( value.isNull() )
-    return QVariant( QVariant::Int );
+    return QgsVariantUtils::createNullVariant( QMetaType::Type::Int );
   else
     return QVariant( static_cast<int>( *value ) );
 }
@@ -262,7 +305,7 @@ QVariant QgsHanaUtils::toVariant( const Int &value )
 QVariant QgsHanaUtils::toVariant( const UInt &value )
 {
   if ( value.isNull() )
-    return QVariant( QVariant::UInt );
+    return QgsVariantUtils::createNullVariant( QMetaType::Type::UInt );
   else
     return QVariant( static_cast<uint>( *value ) );
 }
@@ -270,7 +313,7 @@ QVariant QgsHanaUtils::toVariant( const UInt &value )
 QVariant QgsHanaUtils::toVariant( const Long &value )
 {
   if ( value.isNull() )
-    return QVariant( QVariant::LongLong );
+    return QgsVariantUtils::createNullVariant( QMetaType::Type::LongLong );
   else
     return QVariant( static_cast<qlonglong>( *value ) );
 }
@@ -278,7 +321,7 @@ QVariant QgsHanaUtils::toVariant( const Long &value )
 QVariant QgsHanaUtils::toVariant( const ULong &value )
 {
   if ( value.isNull() )
-    return QVariant( QVariant::ULongLong );
+    return QgsVariantUtils::createNullVariant( QMetaType::Type::ULongLong );
   else
     return QVariant( static_cast<qulonglong>( *value ) );
 }
@@ -286,7 +329,7 @@ QVariant QgsHanaUtils::toVariant( const ULong &value )
 QVariant QgsHanaUtils::toVariant( const Float &value )
 {
   if ( value.isNull() )
-    return QVariant( QVariant::Double );
+    return QgsVariantUtils::createNullVariant( QMetaType::Type::Double );
   else
     return QVariant( static_cast<double>( *value ) );
 }
@@ -294,7 +337,7 @@ QVariant QgsHanaUtils::toVariant( const Float &value )
 QVariant QgsHanaUtils::toVariant( const Double &value )
 {
   if ( value.isNull() )
-    return QVariant( QVariant::Double );
+    return QgsVariantUtils::createNullVariant( QMetaType::Type::Double );
   else
     return QVariant( *value );
 }
@@ -302,7 +345,7 @@ QVariant QgsHanaUtils::toVariant( const Double &value )
 QVariant QgsHanaUtils::toVariant( const Date &value )
 {
   if ( value.isNull() )
-    return QVariant( QVariant::Date );
+    return QgsVariantUtils::createNullVariant( QMetaType::Type::QDate );
   else
     return QVariant( QDate( value->year(), value->month(), value->day() ) );
 }
@@ -310,7 +353,7 @@ QVariant QgsHanaUtils::toVariant( const Date &value )
 QVariant QgsHanaUtils::toVariant( const Time &value )
 {
   if ( value.isNull() )
-    return QVariant( QVariant::Time );
+    return QgsVariantUtils::createNullVariant( QMetaType::Type::QTime );
   else
     return QVariant( QTime( value->hour(), value->minute(), value->second(), 0 ) );
 }
@@ -318,16 +361,15 @@ QVariant QgsHanaUtils::toVariant( const Time &value )
 QVariant QgsHanaUtils::toVariant( const Timestamp &value )
 {
   if ( value.isNull() )
-    return QVariant( QVariant::DateTime );
+    return QgsVariantUtils::createNullVariant( QMetaType::Type::QDateTime );
   else
-    return QVariant( QDateTime( QDate( value->year(), value->month(), value->day() ),
-                                QTime( value->hour(), value->minute(), value->second(), value->milliseconds() ) ) );
+    return QVariant( QDateTime( QDate( value->year(), value->month(), value->day() ), QTime( value->hour(), value->minute(), value->second(), value->milliseconds() ) ) );
 }
 
 QVariant QgsHanaUtils::toVariant( const String &value )
 {
   if ( value.isNull() )
-    return QVariant( QVariant::String );
+    return QgsVariantUtils::createNullVariant( QMetaType::Type::QString );
   else
     return QVariant( QString::fromUtf8( value->c_str() ) );
 }
@@ -335,7 +377,7 @@ QVariant QgsHanaUtils::toVariant( const String &value )
 QVariant QgsHanaUtils::toVariant( const NString &value )
 {
   if ( value.isNull() )
-    return QVariant( QVariant::String );
+    return QgsVariantUtils::createNullVariant( QMetaType::Type::QString );
   else
     return QVariant( QString::fromStdU16String( *value ) );
 }
@@ -343,7 +385,7 @@ QVariant QgsHanaUtils::toVariant( const NString &value )
 QVariant QgsHanaUtils::toVariant( const Binary &value )
 {
   if ( value.isNull() )
-    return QVariant( QVariant::ByteArray );
+    return QgsVariantUtils::createNullVariant( QMetaType::Type::QByteArray );
 
   if ( value->size() > static_cast<size_t>( std::numeric_limits<int>::max() ) )
     throw QgsHanaException( "Binary size is larger than maximum integer value" );
@@ -383,21 +425,21 @@ Qgis::WkbType QgsHanaUtils::toWkbType( const NS_ODBC::String &type, const NS_ODB
   const bool hasMValue = hasM.isNull() ? false : *hasM == 1;
   const QString hanaType( type->c_str() );
 
-  if ( hanaType == QLatin1String( "ST_POINT" ) )
+  if ( hanaType == "ST_POINT"_L1 )
     return QgsWkbTypes::zmType( Qgis::WkbType::Point, hasZValue, hasMValue );
-  else if ( hanaType == QLatin1String( "ST_MULTIPOINT" ) )
+  else if ( hanaType == "ST_MULTIPOINT"_L1 )
     return QgsWkbTypes::zmType( Qgis::WkbType::MultiPoint, hasZValue, hasMValue );
-  else if ( hanaType == QLatin1String( "ST_LINESTRING" ) )
+  else if ( hanaType == "ST_LINESTRING"_L1 )
     return QgsWkbTypes::zmType( Qgis::WkbType::LineString, hasZValue, hasMValue );
-  else if ( hanaType == QLatin1String( "ST_MULTILINESTRING" ) )
+  else if ( hanaType == "ST_MULTILINESTRING"_L1 )
     return QgsWkbTypes::zmType( Qgis::WkbType::MultiLineString, hasZValue, hasMValue );
-  else if ( hanaType == QLatin1String( "ST_POLYGON" ) )
+  else if ( hanaType == "ST_POLYGON"_L1 )
     return QgsWkbTypes::zmType( Qgis::WkbType::Polygon, hasZValue, hasMValue );
-  else if ( hanaType == QLatin1String( "ST_MULTIPOLYGON" ) )
+  else if ( hanaType == "ST_MULTIPOLYGON"_L1 )
     return QgsWkbTypes::zmType( Qgis::WkbType::MultiPolygon, hasZValue, hasMValue );
-  else if ( hanaType == QLatin1String( "ST_GEOMETRYCOLLECTION" ) )
+  else if ( hanaType == "ST_GEOMETRYCOLLECTION"_L1 )
     return QgsWkbTypes::zmType( Qgis::WkbType::GeometryCollection, hasZValue, hasMValue );
-  else if ( hanaType == QLatin1String( "ST_CIRCULARSTRING" ) )
+  else if ( hanaType == "ST_CIRCULARSTRING"_L1 )
     return QgsWkbTypes::zmType( Qgis::WkbType::CircularString, hasZValue, hasMValue );
   return Qgis::WkbType::Unknown;
 }
@@ -405,7 +447,7 @@ Qgis::WkbType QgsHanaUtils::toWkbType( const NS_ODBC::String &type, const NS_ODB
 QVersionNumber QgsHanaUtils::toHANAVersion( const QString &dbVersion )
 {
   QString version = dbVersion;
-  QStringList strs = version.replace( ' ', '.' ).split( '.' );
+  QStringList strs = version.replace( '-', '.' ).replace( ' ', '.' ).split( '.' );
 
   if ( strs.length() < 3 )
     return QVersionNumber( 0 );
@@ -420,88 +462,106 @@ constexpr int PLANAR_SRID_OFFSET = 1000000000;
 
 int QgsHanaUtils::toPlanarSRID( int srid )
 {
-  return srid  < PLANAR_SRID_OFFSET ? PLANAR_SRID_OFFSET + srid : srid;
+  return srid < PLANAR_SRID_OFFSET ? PLANAR_SRID_OFFSET + srid : srid;
 }
 
 bool QgsHanaUtils::convertField( QgsField &field )
 {
-  QString fieldType = QStringLiteral( "NVARCHAR(5000)" ); //default to string
+  QString fieldType = u"NVARCHAR(5000)"_s; //default to string
   int fieldSize = field.length();
   int fieldPrec = field.precision();
 
   switch ( field.type() )
   {
-    case QVariant::Bool:
-      fieldType = QStringLiteral( "BOOLEAN" );
+    case QMetaType::Type::Bool:
+      fieldType = u"BOOLEAN"_s;
       fieldSize = -1;
       fieldPrec = 0;
       break;
-    case QVariant::Int:
-      fieldType = QStringLiteral( "INTEGER" );
+    case QMetaType::Type::Int:
+      fieldType = u"INTEGER"_s;
       fieldSize = -1;
       fieldPrec = 0;
       break;
-    case QVariant::UInt:
-      fieldType = QStringLiteral( "DECIMAL" );
+    case QMetaType::Type::UInt:
+      fieldType = u"DECIMAL"_s;
       fieldSize = 10;
       fieldPrec = 0;
       break;
-    case QVariant::LongLong:
-      fieldType = QStringLiteral( "BIGINT" );
+    case QMetaType::Type::LongLong:
+      fieldType = u"BIGINT"_s;
       fieldSize = -1;
       fieldPrec = 0;
       break;
-    case QVariant::ULongLong:
-      fieldType = QStringLiteral( "DECIMAL" );
+    case QMetaType::Type::ULongLong:
+      fieldType = u"DECIMAL"_s;
       fieldSize = 20;
       fieldPrec = 0;
       break;
-    case QVariant::Date:
-      fieldType = QStringLiteral( "DATE" );
+    case QMetaType::Type::QDate:
+      fieldType = u"DATE"_s;
       fieldPrec = -1;
       break;
-    case QVariant::Time:
-      fieldType = QStringLiteral( "TIME" );
+    case QMetaType::Type::QTime:
+      fieldType = u"TIME"_s;
       fieldPrec = -1;
       break;
-    case QVariant::DateTime:
-      fieldType = QStringLiteral( "TIMESTAMP" );
+    case QMetaType::Type::QDateTime:
+      fieldType = u"TIMESTAMP"_s;
       fieldPrec = -1;
       break;
-    case QVariant::Double:
+    case QMetaType::Type::Double:
       if ( fieldSize <= 0 || fieldPrec <= 0 )
       {
-        fieldType = QStringLiteral( "DOUBLE" );
+        fieldType = u"DOUBLE"_s;
         fieldSize = -1;
         fieldPrec = -1;
       }
       else
       {
-        fieldType = QStringLiteral( "DECIMAL(%1,%2)" ).arg( QString::number( fieldSize ), QString::number( fieldPrec ) );
+        fieldType = u"DECIMAL(%1,%2)"_s.arg( QString::number( fieldSize ), QString::number( fieldPrec ) );
       }
       break;
-    case QVariant::Char:
-      fieldType = QStringLiteral( "NCHAR(1)" );
+    case QMetaType::Type::QChar:
+      fieldType = u"NCHAR(1)"_s;
       fieldSize = 1;
       fieldPrec = 0;
       break;
-    case QVariant::String:
-      if ( fieldSize > 0 )
+    case QMetaType::Type::QString:
+      if ( field.typeName() == "REAL_VECTOR"_L1 )
       {
-        if ( fieldSize <= 5000 )
-          fieldType = QStringLiteral( "NVARCHAR(%1)" ).arg( QString::number( fieldSize ) );
+        if ( fieldSize > 0 )
+          fieldType = u"REAL_VECTOR(%1)"_s.arg( QString::number( fieldSize ) );
         else
-          fieldType = QStringLiteral( "NCLOB" );
+          fieldType = u"REAL_VECTOR"_s;
+      }
+      else if ( field.typeName() == "ST_GEOMETRY"_L1 )
+      {
+        QVariant srid = field.metadata( Qgis::FieldMetadataProperty::CustomProperty );
+        if ( srid.isValid() && srid.toInt() >= 0 )
+          fieldType = u"ST_GEOMETRY(%1)"_s.arg( QString::number( srid.toInt() ) );
+        else
+          fieldType = u"ST_GEOMETRY"_s;
       }
       else
-        fieldType = QStringLiteral( "NVARCHAR(5000)" );
-      fieldPrec = -1;
+      {
+        if ( fieldSize > 0 )
+        {
+          if ( fieldSize <= 5000 )
+            fieldType = u"NVARCHAR(%1)"_s.arg( QString::number( fieldSize ) );
+          else
+            fieldType = u"NCLOB"_s;
+        }
+        else
+          fieldType = u"NVARCHAR(5000)"_s;
+        fieldPrec = -1;
+      }
       break;
-    case QVariant::ByteArray:
+    case QMetaType::Type::QByteArray:
       if ( fieldSize >= 1 && fieldSize <= 5000 )
-        fieldType = QStringLiteral( "VARBINARY(%1)" ).arg( QString::number( fieldSize ) );
+        fieldType = u"VARBINARY(%1)"_s.arg( QString::number( fieldSize ) );
       else
-        fieldType = QStringLiteral( "BLOB" );
+        fieldType = u"BLOB"_s;
       break;
     default:
       return false;
@@ -534,11 +594,11 @@ QString QgsHanaUtils::formatErrorMessage( const char *message, bool withPrefix )
     return QString();
 
   QString ret( message );
-  const QString mark = QStringLiteral( "[HDBODBC] " );
+  const QString mark = u"[HDBODBC] "_s;
   const int pos = ret.indexOf( mark );
   if ( pos != -1 )
     ret = ret.remove( 0, pos + mark.length() );
-  if ( withPrefix && ret.indexOf( QLatin1String( "HANA" ) ) == -1 )
-    return QStringLiteral( "SAP HANA: " ) + ret;
+  if ( withPrefix && ret.indexOf( "HANA"_L1 ) == -1 )
+    return u"SAP HANA: "_s + ret;
   return ret;
 }

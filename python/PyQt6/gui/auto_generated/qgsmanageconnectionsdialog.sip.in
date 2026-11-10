@@ -3,14 +3,19 @@
  *                                                                      *
  * src/gui/qgsmanageconnectionsdialog.h                                 *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/
+
+
 
 
 
 
 class QgsManageConnectionsDialog : QDialog
 {
+%Docstring(signature="appended")
+A dialog for importing or exporting stored connections.
+%End
 
 %TypeHeaderCode
 #include "qgsmanageconnectionsdialog.h"
@@ -37,6 +42,8 @@ class QgsManageConnectionsDialog : QDialog
       VectorTile,
       TiledScene,
       SensorThings,
+      CloudStorage,
+      STAC,
     };
 
     QgsManageConnectionsDialog( QWidget *parent /TransferThis/ = 0, Mode mode = Export, Type type = WMS, const QString &fileName = QString() );
@@ -53,11 +60,10 @@ Constructor for QgsManageConnectionsDialog.
 };
 
 
-
 /************************************************************************
  * This file has been generated automatically from                      *
  *                                                                      *
  * src/gui/qgsmanageconnectionsdialog.h                                 *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/

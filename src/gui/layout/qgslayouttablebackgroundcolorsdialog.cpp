@@ -16,14 +16,20 @@
  ***************************************************************************/
 
 #include "qgslayouttablebackgroundcolorsdialog.h"
-#include "qgslayouttable.h"
-#include "qgslayout.h"
-#include "qgssettings.h"
-#include "qgshelp.h"
+
 #include "qgsgui.h"
+#include "qgshelp.h"
+#include "qgslayout.h"
+#include "qgslayouttable.h"
+#include "qgssettings.h"
 
 #include <QCheckBox>
 #include <QPushButton>
+#include <QString>
+
+#include "moc_qgslayouttablebackgroundcolorsdialog.cpp"
+
+using namespace Qt::StringLiterals;
 
 QgsLayoutTableBackgroundColorsDialog::QgsLayoutTableBackgroundColorsDialog( QgsLayoutTable *table, QWidget *parent, Qt::WindowFlags flags )
   : QDialog( parent, flags )
@@ -95,7 +101,7 @@ void QgsLayoutTableBackgroundColorsDialog::buttonBox_rejected()
 
 void QgsLayoutTableBackgroundColorsDialog::showHelp()
 {
-  QgsHelp::openHelp( QStringLiteral( "print_composer/composer_items/composer_attribute_table.html#appearance" ) );
+  QgsHelp::openHelp( u"print_composer/composer_items/composer_attribute_table.html#appearance"_s );
 }
 
 void QgsLayoutTableBackgroundColorsDialog::setGuiElementValues()
@@ -120,4 +126,5 @@ void QgsLayoutTableBackgroundColorsDialog::setGuiElementValues()
   mDefaultColorButton->setColorDialogTitle( tr( "Select Background Color" ) );
   mDefaultColorButton->setShowNoColor( true );
   mDefaultColorButton->setNoColorString( tr( "No Background" ) );
+  mDefaultColorButton->setOpaqueColorString( tr( "Opaque Background" ) );
 }

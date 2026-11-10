@@ -31,7 +31,6 @@ class QgsAppPluginManagerInterface : public QgsPluginManagerInterface
     Q_OBJECT
 
   public:
-
     //! Constructor
     explicit QgsAppPluginManagerInterface( QgsPluginManager *pluginManager );
 
@@ -53,14 +52,13 @@ class QgsAppPluginManagerInterface : public QgsPluginManagerInterface
     //! Adds a repository to the repository listWidget
     void addToRepositoryList( const QMap<QString, QString> &repository ) override;
 
-    //! Shows the Plugin Manager window and optionally open tab tabIndex
-    void showPluginManager( int tabIndex = -1 ) override;
+    //! Shows the Plugin Manager window and optionally open tab tabIndex and pre-fill search term
+    void showPluginManager( int tabIndex = -1, const QString &searchTerm = QString() ) override;
 
     //! Shows the given message in the Plugin Manager internal message bar
     void pushMessage( const QString &text, Qgis::MessageLevel level = Qgis::MessageLevel::Info, int duration = -1 ) override;
 
   private:
-
     //! Pointer to QgsPluginManager object
     QgsPluginManager *mPluginManager = nullptr;
 };

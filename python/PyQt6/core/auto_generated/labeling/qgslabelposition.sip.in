@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/labeling/qgslabelposition.h                                 *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/
 
 
@@ -20,9 +20,23 @@ Represents the calculated placement of a map label.
 #include "qgslabelposition.h"
 %End
   public:
-
-    QgsLabelPosition( QgsFeatureId id, double r, const QVector< QgsPointXY > &corners, const QgsRectangle &rect, double w, double h, const QString &layer, const QString &labeltext, const QFont &labelfont, bool upside_down, bool diagram = false, bool pinned = false, const QString &providerId = QString(),
-                      const QgsGeometry &labelGeometry = QgsGeometry(), bool isUnplaced = false );
+    QgsLabelPosition(
+      QgsFeatureId id,
+      double r,
+      const QVector< QgsPointXY > &corners,
+      const QgsRectangle &rect,
+      double w,
+      double h,
+      const QString &layer,
+      const QString &labeltext,
+      const QFont &labelfont,
+      bool upside_down,
+      bool diagram = false,
+      bool pinned = false,
+      const QString &providerId = QString(),
+      const QgsGeometry &labelGeometry = QgsGeometry(),
+      bool isUnplaced = false
+    );
 %Docstring
 Constructor for QgsLabelPosition.
 
@@ -40,13 +54,11 @@ Constructor for QgsLabelPosition.
 :param pinned: ``True`` if label has pinned placement
 :param providerId: ID of associated label provider
 :param labelGeometry: polygon geometry of label boundary
-:param isUnplaced: set to ``True`` if label was unplaced (e.g. due to collisions with other labels)
+:param isUnplaced: set to ``True`` if label was unplaced (e.g. due to
+                   collisions with other labels)
 %End
 
     QgsLabelPosition();
-%Docstring
-Constructor for QgsLabelPosition
-%End
 
     SIP_PYOBJECT __repr__();
 %MethodCode
@@ -55,7 +67,7 @@ Constructor for QgsLabelPosition
     sipRes = PyUnicode_FromString( str.toUtf8().constData() );
 %End
 
-    QgsFeatureId featureId;
+        QgsFeatureId featureId;
 
     double rotation;
 
@@ -85,6 +97,10 @@ Constructor for QgsLabelPosition
     bool isUnplaced;
 
     long long groupedLabelId;
+
+    long long groupedPositionIndex;
+
+    long long subPartId;
 };
 
 /************************************************************************
@@ -92,5 +108,5 @@ Constructor for QgsLabelPosition
  *                                                                      *
  * src/core/labeling/qgslabelposition.h                                 *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/

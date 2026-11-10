@@ -18,16 +18,16 @@
 #ifndef QGSGPSCONNECTIONREGISTRY_H
 #define QGSGPSCONNECTIONREGISTRY_H
 
+#include "qgis_core.h"
+
 #include <QList>
 #include <QSet>
-
-#include "qgis_core.h"
 
 class QgsGpsConnection;
 
 /**
  * \ingroup core
- * \brief A class to register / unregister existing GPS connections such that the information
+ * \brief Registers existing GPS connections such that the information
  * is available to all classes and plugins.
  *
  * QgsGpsConnectionRegistry is not usually directly created, but rather accessed through
@@ -36,16 +36,10 @@ class QgsGpsConnection;
 class CORE_EXPORT QgsGpsConnectionRegistry
 {
   public:
-
-    /**
-     * Constructor for QgsGpsConnectionRegistry.
-     */
     QgsGpsConnectionRegistry() = default;
     ~QgsGpsConnectionRegistry();
 
-    //! QgsGpsConnectionRegistry cannot be copied.
     QgsGpsConnectionRegistry( const QgsGpsConnectionRegistry &rh ) = delete;
-    //! QgsGpsConnectionRegistry cannot be copied.
     QgsGpsConnectionRegistry &operator=( const QgsGpsConnectionRegistry &rh ) = delete;
 
     //! Inserts a connection into the registry. The connection is owned by the registry class until it is unregistered again

@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/pointcloud/qgspointcloudblock.h                             *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/
 
 
@@ -13,7 +13,7 @@
 class QgsPointCloudBlock
 {
 %Docstring(signature="appended")
-Base class for storing raw data from point cloud nodes
+Base class for storing raw data from point cloud nodes.
 
 .. note::
 
@@ -26,18 +26,17 @@ Base class for storing raw data from point cloud nodes
 #include "qgspointcloudblock.h"
 %End
   public:
-    QgsPointCloudBlock( int count,
-                        const QgsPointCloudAttributeCollection &attributes,
-                        const QByteArray &data, const QgsVector3D &scale, const QgsVector3D &offset );
+    QgsPointCloudBlock( int count, const QgsPointCloudAttributeCollection &attributes, const QByteArray &data, const QgsVector3D &scale, const QgsVector3D &offset );
 %Docstring
 Ctor
 %End
+
     virtual ~QgsPointCloudBlock();
 
-    QgsPointCloudBlock *clone() const /Factory/;
+    std::unique_ptr<QgsPointCloudBlock> clone() const;
 %Docstring
-Clones the QgsPointCloudBlock returning a new copy.
-Caller takes ownership of the returned object.
+Clones the QgsPointCloudBlock returning a new copy. Caller takes
+ownership of the returned object.
 
 .. versionadded:: 3.36
 %End
@@ -61,7 +60,8 @@ Returns the total size of each individual point record.
 
     QgsPointCloudAttributeCollection attributes() const;
 %Docstring
-Returns the attributes that are stored in the data block, along with their size
+Returns the attributes that are stored in the data block, along with
+their size
 %End
 
     QgsVector3D scale() const;
@@ -77,8 +77,11 @@ Returns the custom offset of the block.
     void setPointCount( int size );
 %Docstring
 Changes the number of points in the block.
+
 This is used in order to remove all points after point ``size``.
-If a ``size`` larger than ``pointCount``() is used, data for the new points will be uninitialized
+
+If a ``size`` larger than :py:func:`~QgsPointCloudBlock.pointCount` is
+used, data for the new points will be uninitialized.
 
 .. versionadded:: 3.26
 %End
@@ -91,5 +94,5 @@ If a ``size`` larger than ``pointCount``() is used, data for the new points will
  *                                                                      *
  * src/core/pointcloud/qgspointcloudblock.h                             *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/

@@ -18,8 +18,8 @@
 
 #include "qgsprovidersourcewidget.h"
 
+#include "moc_qgsprovidersourcewidget.cpp"
+
 QgsProviderSourceWidget::QgsProviderSourceWidget( QWidget *parent )
   : QWidget( parent )
-{
-
-}
+{}

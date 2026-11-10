@@ -15,21 +15,20 @@
 
 #include "qgsstackedwidget.h"
 
-#include <QStackedWidget>
 #include <QSize>
+#include <QStackedWidget>
 
+#include "moc_qgsstackedwidget.cpp"
 
 QgsStackedWidget::QgsStackedWidget( QWidget *parent )
   : QStackedWidget( parent )
-  , mSizeMode( SizeMode::ConsiderAllPages )  //#spellok
-{
-}
+{}
 
 QSize QgsStackedWidget::sizeHint() const
 {
   switch ( mSizeMode )
   {
-    case SizeMode::ConsiderAllPages:  //#spellok
+    case SizeMode::ConsiderAllPages: //#spellok
       return QStackedWidget::sizeHint();
     case SizeMode::CurrentPageOnly:
       return currentWidget() ? currentWidget()->sizeHint() : QSize();
@@ -41,7 +40,7 @@ QSize QgsStackedWidget::minimumSizeHint() const
 {
   switch ( mSizeMode )
   {
-    case SizeMode::ConsiderAllPages:  //#spellok
+    case SizeMode::ConsiderAllPages: //#spellok
       return QStackedWidget::sizeHint();
     case SizeMode::CurrentPageOnly:
       return currentWidget() ? currentWidget()->minimumSizeHint() : QSize();

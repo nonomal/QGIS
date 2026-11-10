@@ -14,20 +14,25 @@
  ***************************************************************************/
 #include "qgsfeaturelistcombobox.h"
 
-#include "qgsfeaturefiltermodel.h"
 #include "qgsanimatedicon.h"
+#include "qgsapplication.h"
+#include "qgsfeaturefiltermodel.h"
 #include "qgsfilterlineedit.h"
 #include "qgslogger.h"
-#include "qgsapplication.h"
 
 #include <QCompleter>
-#include <QLineEdit>
 #include <QKeyEvent>
+#include <QLineEdit>
+#include <QString>
+
+#include "moc_qgsfeaturelistcombobox.cpp"
+
+using namespace Qt::StringLiterals;
 
 QgsFeatureListComboBox::QgsFeatureListComboBox( QWidget *parent )
   : QComboBox( parent )
   , mModel( new QgsFeatureFilterModel( this ) )
-  , mCompleter( new QCompleter( mModel ) )
+  , mCompleter( new QCompleter( mModel, this ) )
 {
   setMinimumContentsLength( 1 );
   setSizeAdjustPolicy( QComboBox::SizeAdjustPolicy::AdjustToMinimumContentsLengthWithIcon );
@@ -39,20 +44,22 @@ QgsFeatureListComboBox::QgsFeatureListComboBox( QWidget *parent )
   connect( mModel, &QgsFeatureFilterModel::sourceLayerChanged, this, &QgsFeatureListComboBox::sourceLayerChanged );
   connect( mModel, &QgsFeatureFilterModel::displayExpressionChanged, this, &QgsFeatureListComboBox::displayExpressionChanged );
   connect( mModel, &QgsFeatureFilterModel::filterExpressionChanged, this, &QgsFeatureListComboBox::filterExpressionChanged );
+  connect( mModel, &QgsFeatureFilterModel::formFeatureChanged, this, &QgsFeatureListComboBox::formFeatureChanged );
+  connect( mModel, &QgsFeatureFilterModel::parentFormFeatureChanged, this, &QgsFeatureListComboBox::parentFormFeatureChanged );
   connect( mModel, &QgsFeatureFilterModel::isLoadingChanged, this, &QgsFeatureListComboBox::onLoadingChanged );
   connect( mModel, &QgsFeatureFilterModel::filterJobCompleted, this, &QgsFeatureListComboBox::onFilterUpdateCompleted );
   connect( mModel, &QgsFeatureFilterModel::allowNullChanged, this, &QgsFeatureListComboBox::allowNullChanged );
   connect( mModel, &QgsFeatureFilterModel::extraIdentifierValueChanged, this, &QgsFeatureListComboBox::identifierValueChanged );
   connect( mModel, &QgsFeatureFilterModel::extraIdentifierValueIndexChanged, this, &QgsFeatureListComboBox::setCurrentIndex );
   connect( mModel, &QgsFeatureFilterModel::identifierFieldsChanged, this, &QgsFeatureListComboBox::identifierFieldChanged );
-  connect( mCompleter, static_cast<void( QCompleter::* )( const QModelIndex & )>( &QCompleter::highlighted ), this, &QgsFeatureListComboBox::onItemSelected );
-  connect( mCompleter, static_cast<void( QCompleter::* )( const QModelIndex & )>( &QCompleter::activated ), this, &QgsFeatureListComboBox::onActivated );
+  connect( mCompleter, static_cast<void ( QCompleter::* )( const QModelIndex & )>( &QCompleter::highlighted ), this, &QgsFeatureListComboBox::onItemSelected );
+  connect( mCompleter, static_cast<void ( QCompleter::* )( const QModelIndex & )>( &QCompleter::activated ), this, &QgsFeatureListComboBox::onActivated );
   connect( mModel, &QgsFeatureFilterModel::beginUpdate, this, &QgsFeatureListComboBox::storeLineEditState );
   connect( mModel, &QgsFeatureFilterModel::endUpdate, this, &QgsFeatureListComboBox::restoreLineEditState );
   connect( mModel, &QgsFeatureFilterModel::endUpdate, this, &QgsFeatureListComboBox::modelUpdated );
   connect( mModel, &QgsFeatureFilterModel::dataChanged, this, &QgsFeatureListComboBox::onDataChanged );
 
-  connect( this, static_cast<void( QgsFeatureListComboBox::* )( int )>( &QgsFeatureListComboBox::currentIndexChanged ), this, &QgsFeatureListComboBox::onCurrentIndexChanged );
+  connect( this, static_cast<void ( QgsFeatureListComboBox::* )( int )>( &QgsFeatureListComboBox::currentIndexChanged ), this, &QgsFeatureListComboBox::onCurrentIndexChanged );
 
   mLineEdit = new QgsFilterLineEdit( nullptr, QgsApplication::nullRepresentation() );
   mLineEdit->setSelectOnFocus( true );
@@ -65,6 +72,8 @@ QgsFeatureListComboBox::QgsFeatureListComboBox( QWidget *parent )
   connect( mLineEdit, &QgsFilterLineEdit::cleared, this, &QgsFeatureListComboBox::onFilterLineEditCleared );
 
   connect( mModel, &QgsFeatureFilterModel::currentFeatureChanged, this, &QgsFeatureListComboBox::currentFeatureChanged );
+  // To avoid wrongly signaling a foreign key change, handle model feature found state following feature gathering separately
+  connect( mModel, &QgsFeatureFilterModel::extraValueDoesNotExistChanged, this, &QgsFeatureListComboBox::currentFeatureFoundChanged );
 
   setToolTip( tr( "Just start typing what you are looking for." ) );
 }
@@ -137,8 +146,8 @@ void QgsFeatureListComboBox::onCurrentIndexChanged( int i )
   if ( !mLineEdit->hasStateStored() )
     mIsCurrentlyEdited = false;
   const QModelIndex modelIndex = mModel->index( i, 0, QModelIndex() );
-  mModel->setExtraIdentifierValues( mModel->data( modelIndex, static_cast< int >( QgsFeatureFilterModel::CustomRole::IdentifierValues ) ).toList() );
-  mLineEdit->setText( mModel->data( modelIndex, static_cast< int >( QgsFeatureFilterModel::CustomRole::Value ) ).toString() );
+  mModel->setExtraIdentifierValues( mModel->data( modelIndex, static_cast<int>( QgsFeatureFilterModel::CustomRole::IdentifierValues ) ).toList() );
+  mLineEdit->setText( mModel->data( modelIndex, static_cast<int>( QgsFeatureFilterModel::CustomRole::Value ) ).toString() );
   mLineEdit->setFont( mModel->data( modelIndex, Qt::FontRole ).value<QFont>() );
   QPalette palette = mLineEdit->palette();
   palette.setBrush( mLineEdit->foregroundRole(), mModel->data( modelIndex, Qt::ForegroundRole ).value<QBrush>() );
@@ -147,15 +156,15 @@ void QgsFeatureListComboBox::onCurrentIndexChanged( int i )
 
 void QgsFeatureListComboBox::onActivated( QModelIndex modelIndex )
 {
-  setIdentifierValues( mModel->data( modelIndex, static_cast< int >( QgsFeatureFilterModel::CustomRole::IdentifierValues ) ).toList() );
-  mLineEdit->setText( mModel->data( modelIndex, static_cast< int >( QgsFeatureFilterModel::CustomRole::Value ) ).toString() );
+  setIdentifierValues( mModel->data( modelIndex, static_cast<int>( QgsFeatureFilterModel::CustomRole::IdentifierValues ) ).toList() );
+  mLineEdit->setText( mModel->data( modelIndex, static_cast<int>( QgsFeatureFilterModel::CustomRole::Value ) ).toString() );
 }
 
 void QgsFeatureListComboBox::storeLineEditState()
 {
   if ( mIsCurrentlyEdited )
   {
-    mLineEdit->storeState( );
+    mLineEdit->storeState();
   }
 }
 
@@ -163,7 +172,7 @@ void QgsFeatureListComboBox::restoreLineEditState()
 {
   if ( mIsCurrentlyEdited )
   {
-    mLineEdit->restoreState( );
+    mLineEdit->restoreState();
   }
 }
 
@@ -173,7 +182,7 @@ int QgsFeatureListComboBox::nullIndex() const
 
   if ( allowNull() )
   {
-    index = findText( QgsApplication::nullRepresentation( ) );
+    index = findText( QgsApplication::nullRepresentation() );
   }
 
   return index;
@@ -188,7 +197,7 @@ void QgsFeatureListComboBox::onDataChanged( const QModelIndex &topLeft, const QM
     if ( currentIndex >= topLeft.row() && currentIndex <= bottomRight.row() )
     {
       const QModelIndex modelIndex = mModel->index( currentIndex, 0, QModelIndex() );
-      mLineEdit->setText( mModel->data( modelIndex, static_cast< int >( QgsFeatureFilterModel::CustomRole::Value ) ).toString() );
+      mLineEdit->setText( mModel->data( modelIndex, static_cast<int>( QgsFeatureFilterModel::CustomRole::Value ) ).toString() );
     }
   }
 }
@@ -226,14 +235,14 @@ void QgsFeatureListComboBox::focusOutEvent( QFocusEvent *event )
 {
   Q_UNUSED( event )
   QComboBox::focusOutEvent( event );
-  mLineEdit->setText( mModel->data( currentModelIndex(), static_cast< int >( QgsFeatureFilterModel::CustomRole::Value ) ).toString() );
+  mLineEdit->setText( mModel->data( currentModelIndex(), static_cast<int>( QgsFeatureFilterModel::CustomRole::Value ) ).toString() );
 }
 
 void QgsFeatureListComboBox::keyPressEvent( QKeyEvent *event )
 {
   if ( event->key() == Qt::Key_Escape )
   {
-    mLineEdit->setText( mModel->data( currentModelIndex(), static_cast< int >( QgsFeatureFilterModel::CustomRole::Value ) ).toString() );
+    mLineEdit->setText( mModel->data( currentModelIndex(), static_cast<int>( QgsFeatureFilterModel::CustomRole::Value ) ).toString() );
   }
   QComboBox::keyReleaseEvent( event );
 }
@@ -288,9 +297,11 @@ void QgsFeatureListComboBox::setIdentifierValuesToNull()
 
 QgsFeatureRequest QgsFeatureListComboBox::currentFeatureRequest() const
 {
+  QgsFeatureRequest request;
+  request.setRequestMayBeNested( true );
   if ( mModel->extraIdentifierValues().isEmpty() )
   {
-    return QgsFeatureRequest().setFilterFids( QgsFeatureIds() ); // NULL: Return a request that's guaranteed to not return anything
+    request.setFilterFids( QgsFeatureIds() ); // NULL: Return a request that's guaranteed to not return anything
   }
   else
   {
@@ -308,9 +319,10 @@ QgsFeatureRequest QgsFeatureListComboBox::currentFeatureRequest() const
         filtersAttrs << QgsExpression::createFieldEqualityExpression( identifierFields.at( i ), values.at( i ) );
       }
     }
-    const QString expression = filtersAttrs.join( QLatin1String( " AND " ) );
-    return QgsFeatureRequest().setFilterExpression( expression );
+    const QString expression = filtersAttrs.join( " AND "_L1 );
+    return request.setFilterExpression( expression );
   }
+  return request;
 }
 
 QString QgsFeatureListComboBox::filterExpression() const
@@ -321,4 +333,44 @@ QString QgsFeatureListComboBox::filterExpression() const
 void QgsFeatureListComboBox::setFilterExpression( const QString &filterExpression )
 {
   mModel->setFilterExpression( filterExpression );
+}
+
+QgsFeature QgsFeatureListComboBox::formFeature() const
+{
+  return mModel->formFeature();
+}
+
+void QgsFeatureListComboBox::setFormFeature( const QgsFeature &feature )
+{
+  mModel->setFormFeature( feature );
+}
+
+QgsFeature QgsFeatureListComboBox::parentFormFeature() const
+{
+  return mModel->parentFormFeature();
+}
+
+void QgsFeatureListComboBox::setParentFormFeature( const QgsFeature &feature )
+{
+  mModel->setParentFormFeature( feature );
+}
+
+QString QgsFeatureListComboBox::orderExpression() const
+{
+  return mModel->orderExpression();
+}
+
+void QgsFeatureListComboBox::setOrderExpression( const QString &orderExpression )
+{
+  mModel->setOrderExpression( orderExpression );
+}
+
+Qt::SortOrder QgsFeatureListComboBox::sortOrder() const
+{
+  return mModel->sortOrder();
+}
+
+void QgsFeatureListComboBox::setSortOrder( const Qt::SortOrder sortOrder )
+{
+  mModel->setSortOrder( sortOrder );
 }

@@ -18,11 +18,13 @@
 
 #include "qgis_core.h"
 #include "qgserror.h"
+
 #include <QIcon>
 
 /**
  * \ingroup core
  * \brief User profile contains information about the user profile folders on the machine.
+ *
  * In QGIS 3 all settings, plugins, etc were moved into a %APPDATA%/profiles folder for each platform.
  * This allows for manage different user profiles per machine vs the single default one that was allowed in the
  * past.
@@ -33,9 +35,8 @@
 class CORE_EXPORT QgsUserProfile
 {
   public:
-
     /**
-     * Reference to a existing user profile folder.
+     * Reference to an existing user profile folder.
      * Profile folder should be created using QgsProfileManager.
      * \param folder An existing profile folder as the base of the user profile.
      */

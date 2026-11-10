@@ -30,12 +30,11 @@ class QgsMarkerSymbolLayer;
 class CORE_EXPORT QgsMarkerSymbol : public QgsSymbol
 {
   public:
-
     /**
      * Create a marker symbol with one symbol layer: SimpleMarker with specified properties.
      * This is a convenience method for easier creation of marker symbols.
      */
-    static QgsMarkerSymbol *createSimple( const QVariantMap &properties ) SIP_FACTORY;
+    static std::unique_ptr< QgsMarkerSymbol > createSimple( const QVariantMap &properties );
 
     /**
      * Constructor for QgsMarkerSymbol, with the specified list of initial symbol \a layers.
@@ -214,9 +213,7 @@ class CORE_EXPORT QgsMarkerSymbol : public QgsSymbol
     QgsMarkerSymbol *clone() const override SIP_FACTORY;
 
   private:
-
     void renderPointUsingLayer( QgsMarkerSymbolLayer *layer, QPointF point, QgsSymbolRenderContext &context );
-
 };
 
 

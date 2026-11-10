@@ -15,19 +15,19 @@
 #ifndef QGSMERGEDFEATURERENDERER_H
 #define QGSMERGEDFEATURERENDERER_H
 
+#include "qgis.h"
 #include "qgis_core.h"
 #include "qgis_sip.h"
-#include "qgis.h"
-#include "qgsrenderer.h"
 #include "qgsexpression.h"
 #include "qgsfeature.h"
 #include "qgsgeometry.h"
 #include "qgsrendercontext.h"
+#include "qgsrenderer.h"
 
 /**
  * \ingroup core
- * \brief QgsMergedFeatureRenderer is a polygon or line-only feature renderer used to
- * renderer a set of features merged (or dissolved) into a single geometry.
+ * \brief A polygon or line-only feature renderer used to
+ * render a set of features merged (or dissolved) into a single geometry.
  *
  * It is designed on top of another feature renderer, which is called "embedded"
  * Most of the methods are then only proxies to the embedded renderer. E.g. if
@@ -40,7 +40,6 @@
 class CORE_EXPORT QgsMergedFeatureRenderer : public QgsFeatureRenderer
 {
   public:
-
     /**
      * Constructor for QgsMergedFeatureRenderer.
      * \param embeddedRenderer optional embeddedRenderer. Ownership will be transferred.
@@ -53,10 +52,11 @@ class CORE_EXPORT QgsMergedFeatureRenderer : public QgsFeatureRenderer
     QgsMergedFeatureRenderer &operator=( const QgsMergedFeatureRenderer & ) = delete;
 
     //! Creates a renderer out of an XML, for loading
-    static QgsFeatureRenderer *create( QDomElement &element, const QgsReadWriteContext &context ) SIP_FACTORY;
+    static std::unique_ptr<QgsFeatureRenderer> create( QDomElement &element, const QgsReadWriteContext &context );
 
     QgsMergedFeatureRenderer *clone() const override SIP_FACTORY;
     void startRender( QgsRenderContext &context, const QgsFields &fields ) override;
+    Qgis::FeatureRendererFlags flags() const override;
 
     /**
      * Renders a given feature.
@@ -102,10 +102,9 @@ class CORE_EXPORT QgsMergedFeatureRenderer : public QgsFeatureRenderer
      * Creates a QgsMergedFeatureRenderer by a conversion from an existing renderer.
      * \returns a new renderer if the conversion was possible, otherwise NULLPTR.
      */
-    static QgsMergedFeatureRenderer *convertFromRenderer( const QgsFeatureRenderer *renderer ) SIP_FACTORY;
+    static std::unique_ptr<QgsMergedFeatureRenderer> convertFromRenderer( const QgsFeatureRenderer *renderer );
 
   protected:
-
     /**
      * Constructor for QgsMergedFeatureRenderer.
      * \param type renderer ID string
@@ -118,8 +117,8 @@ class CORE_EXPORT QgsMergedFeatureRenderer : public QgsFeatureRenderer
      */
     enum GeometryOperation
     {
-      Merge, //!< Merge features (union/dissolve)
-      InvertOnly, //!< Invert features only (polygons only)
+      Merge,          //!< Merge features (union/dissolve)
+      InvertOnly,     //!< Invert features only (polygons only)
       MergeAndInvert, //!< Merge and invert features (polygons only)
     };
 
@@ -130,12 +129,11 @@ class CORE_EXPORT QgsMergedFeatureRenderer : public QgsFeatureRenderer
     std::unique_ptr<QgsFeatureRenderer> mSubRenderer;
 
   private:
-
     //! Structure where the reversed geometry is built during renderFeature
     struct CombinedFeature
     {
-      QVector<QgsGeometry> geometries; //< list of geometries
-      QgsFeature feature;             //< one feature (for attriute-based rendering)
+        QVector<QgsGeometry> geometries; //< list of geometries
+        QgsFeature feature;              //< one feature (for attriute-based rendering)
     };
     typedef QVector<CombinedFeature> FeatureCategoryVector;
     //! Where features are stored, based on the index of their symbol category \see mSymbolCategories
@@ -159,19 +157,18 @@ class CORE_EXPORT QgsMergedFeatureRenderer : public QgsFeatureRenderer
      */
     struct FeatureDecoration
     {
-      QgsFeature feature;
-      bool selected;
-      bool drawMarkers;
-      int layer;
-      FeatureDecoration( const QgsFeature &a_feature, bool a_selected, bool a_drawMarkers, int a_layer )
-        : feature( a_feature )
-        , selected( a_selected )
-        , drawMarkers( a_drawMarkers )
-        , layer( a_layer )
-      {}
+        QgsFeature feature;
+        bool selected;
+        bool drawMarkers;
+        int layer;
+        FeatureDecoration( const QgsFeature &a_feature, bool a_selected, bool a_drawMarkers, int a_layer )
+          : feature( a_feature )
+          , selected( a_selected )
+          , drawMarkers( a_drawMarkers )
+          , layer( a_layer )
+        {}
     };
     QList<FeatureDecoration> mFeatureDecorations;
-
 };
 
 

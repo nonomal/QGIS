@@ -18,10 +18,12 @@
 #ifndef QGSALGORITHMGPSBABELTOOLS_H
 #define QGSALGORITHMGPSBABELTOOLS_H
 
-#define SIP_NO_FILE
 
 #include <QtGlobal>
-#if QT_CONFIG(process)
+
+#define SIP_NO_FILE
+
+#if QT_CONFIG( process )
 
 
 #include "qgis_sip.h"
@@ -37,9 +39,7 @@
  */
 class ANALYSIS_EXPORT QgsConvertGpxFeatureTypeAlgorithm : public QgsProcessingAlgorithm
 {
-
   public:
-
     QgsConvertGpxFeatureTypeAlgorithm() = default;
     void initAlgorithm( const QVariantMap &configuration = QVariantMap() ) override;
     QIcon icon() const override;
@@ -50,15 +50,13 @@ class ANALYSIS_EXPORT QgsConvertGpxFeatureTypeAlgorithm : public QgsProcessingAl
     QString group() const override;
     QString groupId() const override;
     QString shortHelpString() const override;
+    QString shortDescription() const override;
     QgsConvertGpxFeatureTypeAlgorithm *createInstance() const override SIP_FACTORY;
 
   protected:
-
-    QVariantMap processAlgorithm( const QVariantMap &parameters,
-                                  QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
+    QVariantMap processAlgorithm( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
 
   private:
-
     enum ConversionType
     {
       WaypointsFromRoute = 0,
@@ -70,16 +68,9 @@ class ANALYSIS_EXPORT QgsConvertGpxFeatureTypeAlgorithm : public QgsProcessingAl
     /**
      * Builds the argument lists for the babel command
      */
-    static void createArgumentLists(
-      const QString &inputFile,
-      const QString &outputFile,
-      ConversionType conversion,
-      QStringList &processArgs,
-      QStringList &logArgs
-    );
+    static void createArgumentLists( const QString &inputFile, const QString &outputFile, ConversionType conversion, QStringList &processArgs, QStringList &logArgs );
 
     friend class TestQgsProcessingAlgsPt2;
-
 };
 
 
@@ -88,9 +79,7 @@ class ANALYSIS_EXPORT QgsConvertGpxFeatureTypeAlgorithm : public QgsProcessingAl
  */
 class ANALYSIS_EXPORT QgsConvertGpsDataAlgorithm : public QgsProcessingAlgorithm
 {
-
   public:
-
     QgsConvertGpsDataAlgorithm() = default;
     void initAlgorithm( const QVariantMap &configuration = QVariantMap() ) override;
     QIcon icon() const override;
@@ -101,17 +90,14 @@ class ANALYSIS_EXPORT QgsConvertGpsDataAlgorithm : public QgsProcessingAlgorithm
     QString group() const override;
     QString groupId() const override;
     QString shortHelpString() const override;
+    QString shortDescription() const override;
     QgsConvertGpsDataAlgorithm *createInstance() const override SIP_FACTORY;
 
   protected:
-
-    QVariantMap processAlgorithm( const QVariantMap &parameters,
-                                  QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
+    QVariantMap processAlgorithm( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
 
   private:
-
     friend class TestQgsProcessingAlgs;
-
 };
 
 
@@ -120,9 +106,7 @@ class ANALYSIS_EXPORT QgsConvertGpsDataAlgorithm : public QgsProcessingAlgorithm
  */
 class ANALYSIS_EXPORT QgsDownloadGpsDataAlgorithm : public QgsProcessingAlgorithm
 {
-
   public:
-
     QgsDownloadGpsDataAlgorithm() = default;
     void initAlgorithm( const QVariantMap &configuration = QVariantMap() ) override;
     QIcon icon() const override;
@@ -133,17 +117,14 @@ class ANALYSIS_EXPORT QgsDownloadGpsDataAlgorithm : public QgsProcessingAlgorith
     QString group() const override;
     QString groupId() const override;
     QString shortHelpString() const override;
+    QString shortDescription() const override;
     QgsDownloadGpsDataAlgorithm *createInstance() const override SIP_FACTORY;
 
   protected:
-
-    QVariantMap processAlgorithm( const QVariantMap &parameters,
-                                  QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
+    QVariantMap processAlgorithm( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
 
   private:
-
     friend class TestQgsProcessingAlgs;
-
 };
 
 
@@ -152,9 +133,7 @@ class ANALYSIS_EXPORT QgsDownloadGpsDataAlgorithm : public QgsProcessingAlgorith
  */
 class ANALYSIS_EXPORT QgsUploadGpsDataAlgorithm : public QgsProcessingAlgorithm
 {
-
   public:
-
     QgsUploadGpsDataAlgorithm() = default;
     void initAlgorithm( const QVariantMap &configuration = QVariantMap() ) override;
     QIcon icon() const override;
@@ -165,22 +144,17 @@ class ANALYSIS_EXPORT QgsUploadGpsDataAlgorithm : public QgsProcessingAlgorithm
     QString group() const override;
     QString groupId() const override;
     QString shortHelpString() const override;
+    QString shortDescription() const override;
     QgsUploadGpsDataAlgorithm *createInstance() const override SIP_FACTORY;
 
   protected:
-
-    QVariantMap processAlgorithm( const QVariantMap &parameters,
-                                  QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
+    QVariantMap processAlgorithm( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
 
   private:
-
     friend class TestQgsProcessingAlgs;
-
 };
 
 ///@endcond PRIVATE
 
 #endif // process
 #endif // QGSALGORITHMGPSBABELTOOLS_H
-
-

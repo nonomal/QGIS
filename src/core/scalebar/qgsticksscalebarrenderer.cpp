@@ -15,30 +15,34 @@
  ***************************************************************************/
 
 #include "qgsticksscalebarrenderer.h"
+
+#include "qgslinesymbol.h"
+#include "qgspainting.h"
 #include "qgsscalebarsettings.h"
 #include "qgssymbol.h"
-#include "qgslinesymbol.h"
 #include "qgstextrenderer.h"
+
 #include <QPainter>
+#include <QString>
+
+using namespace Qt::StringLiterals;
 
 QgsTicksScaleBarRenderer::QgsTicksScaleBarRenderer( QgsTicksScaleBarRenderer::TickPosition position )
   : mTickPosition( position )
-{
-
-}
+{}
 
 QString QgsTicksScaleBarRenderer::id() const
 {
   switch ( mTickPosition )
   {
     case TicksUp:
-      return QStringLiteral( "Line Ticks Up" );
+      return u"Line Ticks Up"_s;
     case TicksDown:
-      return QStringLiteral( "Line Ticks Down" );
+      return u"Line Ticks Down"_s;
     case TicksMiddle:
-      return QStringLiteral( "Line Ticks Middle" );
+      return u"Line Ticks Middle"_s;
   }
-  return QString();  // to make gcc happy
+  return QString(); // to make gcc happy
 }
 
 QString QgsTicksScaleBarRenderer::visibleName() const
@@ -52,8 +56,7 @@ QString QgsTicksScaleBarRenderer::visibleName() const
     case TicksMiddle:
       return QObject::tr( "Line Ticks Middle" );
   }
-  return QString();  // to make gcc happy
-
+  return QString(); // to make gcc happy
 }
 
 int QgsTicksScaleBarRenderer::sortKey() const
@@ -72,23 +75,23 @@ int QgsTicksScaleBarRenderer::sortKey() const
 
 QgsScaleBarRenderer::Flags QgsTicksScaleBarRenderer::flags() const
 {
-  return Flag::FlagUsesLineSymbol |
-         Flag::FlagUsesDivisionSymbol |
-         Flag::FlagUsesSubdivisionSymbol |
-         Flag::FlagRespectsUnits |
-         Flag::FlagRespectsMapUnitsPerScaleBarUnit |
-         Flag::FlagUsesUnitLabel |
-         Flag::FlagUsesSegments |
-         Flag::FlagUsesLabelBarSpace |
-         Flag::FlagUsesLabelVerticalPlacement |
-         Flag::FlagUsesLabelHorizontalPlacement |
-         Flag::FlagUsesSubdivisions |
-         Flag::FlagUsesSubdivisionsHeight;
+  return Flag::FlagUsesLineSymbol
+         | Flag::FlagUsesDivisionSymbol
+         | Flag::FlagUsesSubdivisionSymbol
+         | Flag::FlagRespectsUnits
+         | Flag::FlagRespectsMapUnitsPerScaleBarUnit
+         | Flag::FlagUsesUnitLabel
+         | Flag::FlagUsesSegments
+         | Flag::FlagUsesLabelBarSpace
+         | Flag::FlagUsesLabelVerticalPlacement
+         | Flag::FlagUsesLabelHorizontalPlacement
+         | Flag::FlagUsesSubdivisions
+         | Flag::FlagUsesSubdivisionsHeight;
 }
 
 QgsTicksScaleBarRenderer *QgsTicksScaleBarRenderer::clone() const
 {
-  return new QgsTicksScaleBarRenderer( * this );
+  return new QgsTicksScaleBarRenderer( *this );
 }
 
 void QgsTicksScaleBarRenderer::draw( QgsRenderContext &context, const QgsScaleBarSettings &settings, const ScaleBarContext &scaleContext ) const
@@ -98,10 +101,7 @@ void QgsTicksScaleBarRenderer::draw( QgsRenderContext &context, const QgsScaleBa
 
   QPainter *painter = context.painter();
 
-  const double scaledLabelBarSpace = context.convertToPainterUnits( settings.labelBarSpace(), Qgis::RenderUnit::Millimeters );
-  const double scaledBoxContentSpace = context.convertToPainterUnits( settings.boxContentSpace(), Qgis::RenderUnit::Millimeters );
-  const QFontMetricsF fontMetrics = QgsTextRenderer::fontMetrics( context, settings.textFormat() );
-  const double barTopPosition = scaledBoxContentSpace + ( settings.labelVerticalPlacement() == QgsScaleBarSettings::LabelAboveSegment ? fontMetrics.ascent() + scaledLabelBarSpace : 0 );
+  const double barTopPosition = verticalOffset( context, settings );
   const double scaledHeight = context.convertToPainterUnits( settings.height(), Qgis::RenderUnit::Millimeters );
   const double scaledSubdivisionsHeight = context.convertToPainterUnits( settings.subdivisionsHeight(), Qgis::RenderUnit::Millimeters );
   const double scaledMaxHeight = ( ( settings.numberOfSubdivisions() > 1 ) && ( scaledSubdivisionsHeight > scaledHeight ) ) ? scaledSubdivisionsHeight : scaledHeight;
@@ -110,7 +110,7 @@ void QgsTicksScaleBarRenderer::draw( QgsRenderContext &context, const QgsScaleBa
 
   const double xOffset = firstLabelXOffset( settings, context, scaleContext );
 
-  painter->save();
+  QgsScopedQPainterState painterState( painter );
   context.setPainterFlagsUsingContext( painter );
 
   std::unique_ptr< QgsLineSymbol > symbol( settings.lineSymbol()->clone() );
@@ -158,7 +158,7 @@ void QgsTicksScaleBarRenderer::draw( QgsRenderContext &context, const QgsScaleBa
   symbolLayerCount = std::max( symbolLayerCount, subdivisionSymbol->symbolLayerCount() );
 
   // we render the bar symbol-layer-by-symbol-layer, to avoid ugliness where the lines overlap in multi-layer symbols
-  for ( int layer = 0; layer < symbolLayerCount; ++ layer )
+  for ( int layer = 0; layer < symbolLayerCount; ++layer )
   {
     const bool drawDivisionsForThisSymbolLayer = layer < divisionSymbol->symbolLayerCount();
     const bool drawSubdivisionsForThisSymbolLayer = layer < subdivisionSymbol->symbolLayerCount();
@@ -170,8 +170,7 @@ void QgsTicksScaleBarRenderer::draw( QgsRenderContext &context, const QgsScaleBa
       for ( int i = 0; i < positions.size(); ++i )
       {
         const double thisX = context.convertToPainterUnits( positions.at( i ), Qgis::RenderUnit::Millimeters ) + xOffset;
-        divisionSymbol->renderPolyline( QPolygonF() << QPointF( thisX, tickPositionsY.at( 0 ) )
-                                        << QPointF( thisX, tickPositionsY.at( 1 ) ), nullptr, context, layer );
+        divisionSymbol->renderPolyline( QPolygonF() << QPointF( thisX, tickPositionsY.at( 0 ) ) << QPointF( thisX, tickPositionsY.at( 1 ) ), nullptr, context, layer );
       }
     }
 
@@ -183,8 +182,7 @@ void QgsTicksScaleBarRenderer::draw( QgsRenderContext &context, const QgsScaleBa
         for ( int j = 1; j < settings.numberOfSubdivisions(); ++j )
         {
           const double thisSubX = context.convertToPainterUnits( positions.at( i ) + j * scaleContext.segmentWidth / settings.numberOfSubdivisions(), Qgis::RenderUnit::Millimeters ) + xOffset;
-          subdivisionSymbol->renderPolyline( QPolygonF() << QPointF( thisSubX, subTickPositionsY.at( 0 ) )
-                                             << QPointF( thisSubX, subTickPositionsY.at( 1 ) ), nullptr, context, layer );
+          subdivisionSymbol->renderPolyline( QPolygonF() << QPointF( thisSubX, subTickPositionsY.at( 0 ) ) << QPointF( thisSubX, subTickPositionsY.at( 1 ) ), nullptr, context, layer );
         }
       }
     }
@@ -197,16 +195,13 @@ void QgsTicksScaleBarRenderer::draw( QgsRenderContext &context, const QgsScaleBa
       //last vertical line
       if ( drawDivisionsForThisSymbolLayer )
       {
-        divisionSymbol->renderPolyline( QPolygonF() << QPointF( lastTickPositionX, tickPositionsY.at( 0 ) )
-                                        << QPointF( lastTickPositionX, tickPositionsY.at( 1 ) ),
-                                        nullptr, context, layer );
+        divisionSymbol->renderPolyline( QPolygonF() << QPointF( lastTickPositionX, tickPositionsY.at( 0 ) ) << QPointF( lastTickPositionX, tickPositionsY.at( 1 ) ), nullptr, context, layer );
       }
 
       //horizontal line
       if ( drawLineForThisSymbolLayer )
       {
-        symbol->renderPolyline( QPolygonF() << QPointF( xOffset + context.convertToPainterUnits( positions.at( 0 ), Qgis::RenderUnit::Millimeters ), verticalPos )
-                                << QPointF( lastTickPositionX, verticalPos ), nullptr, context, layer );
+        symbol->renderPolyline( QPolygonF() << QPointF( xOffset + context.convertToPainterUnits( positions.at( 0 ), Qgis::RenderUnit::Millimeters ), verticalPos ) << QPointF( lastTickPositionX, verticalPos ), nullptr, context, layer );
       }
     }
   }
@@ -215,10 +210,8 @@ void QgsTicksScaleBarRenderer::draw( QgsRenderContext &context, const QgsScaleBa
   divisionSymbol->stopRender( context );
   subdivisionSymbol->stopRender( context );
 
-  painter->restore();
+  painterState.restore();
 
   //draw labels using the default method
   drawDefaultLabels( context, settings, scaleContext );
 }
-
-

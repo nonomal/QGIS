@@ -6,3 +6,8 @@ QgsGeometryCheckError.StatusObsolete = QgsGeometryCheckError.Status.StatusObsole
 QgsGeometryCheckError.ValueLength = QgsGeometryCheckError.ValueType.ValueLength
 QgsGeometryCheckError.ValueArea = QgsGeometryCheckError.ValueType.ValueArea
 QgsGeometryCheckError.ValueOther = QgsGeometryCheckError.ValueType.ValueOther
+try:
+    QgsGeometryCheckError.__virtual_methods__ = ['contextBoundingBox', 'affectedAreaBBox', 'description', 'isEqual', 'closeMatch', 'update', 'icon']
+    QgsGeometryCheckError.__group__ = ['vector', 'geometry_checker']
+except (NameError, AttributeError):
+    pass

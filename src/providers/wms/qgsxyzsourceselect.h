@@ -18,8 +18,9 @@
 #ifndef QGSXYZSOURCESELECT_H
 #define QGSXYZSOURCESELECT_H
 
-#include "qgsabstractdatasourcewidget.h"
 #include "ui_qgstilesourceselectbase.h"
+
+#include "qgsabstractdatasourcewidget.h"
 
 class QgsXyzSourceWidget;
 
@@ -38,7 +39,7 @@ class QgsXyzSourceSelect : public QgsAbstractDataSourceWidget, private Ui::QgsTi
 
   public:
     //! Constructor
-    QgsXyzSourceSelect( QWidget *parent = nullptr, Qt::WindowFlags fl = QgsGuiUtils::ModalDialogFlags, QgsProviderRegistry::WidgetMode widgetMode = QgsProviderRegistry::WidgetMode::None );
+    QgsXyzSourceSelect( QWidget *parent = nullptr, Qt::WindowFlags fl = QgsGuiUtils::ModalDialogFlags, QgsProviderRegistry::WidgetMode widgetMode = QgsProviderRegistry::WidgetMode::Standalone );
 
     //! Determines the layers the user selected
     void addButtonClicked() override;

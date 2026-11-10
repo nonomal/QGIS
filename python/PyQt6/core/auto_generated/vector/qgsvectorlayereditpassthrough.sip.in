@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/vector/qgsvectorlayereditpassthrough.h                      *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/
 
 
@@ -12,8 +12,12 @@
 #include <qgsvectorlayereditpassthrough.h>
 %End
 
-class QgsVectorLayerEditPassthrough : QgsVectorLayerEditBuffer
+  class QgsVectorLayerEditPassthrough : QgsVectorLayerEditBuffer
 {
+%Docstring(signature="appended")
+An edit buffer which directly passes commands through, used when a layer
+is within a transaction.
+%End
 
 %TypeHeaderCode
 #include "qgsvectorlayereditpassthrough.h"
@@ -25,6 +29,7 @@ class QgsVectorLayerEditPassthrough : QgsVectorLayerEditBuffer
       sipType = nullptr;
 %End
   public:
+
     QgsVectorLayerEditPassthrough( QgsVectorLayer *layer );
     virtual bool isModified() const;
 
@@ -68,7 +73,8 @@ Update underlying data with a SQL query embedded in a transaction.
 :param sql: The SQL query updating data
 :param name: The name of the undo/redo command
 
-:return: ``True`` if the undo/redo command is well added to the stack, ``False`` otherwise
+:return: ``True`` if the undo/redo command is well added to the stack,
+         ``False`` otherwise
 %End
 
 };
@@ -78,5 +84,5 @@ Update underlying data with a SQL query embedded in a transaction.
  *                                                                      *
  * src/core/vector/qgsvectorlayereditpassthrough.h                      *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/

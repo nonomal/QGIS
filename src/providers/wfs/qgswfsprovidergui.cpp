@@ -15,41 +15,45 @@
 
 #include "qgswfsprovidergui.h"
 
-#include "qgsquerybuilder.h"
-#include "qgswfsprovider.h"
-#include "qgswfsdataitemguiprovider.h"
-#include "qgswfssourceselect.h"
-#include "qgssourceselectprovider.h"
 #include "qgsproviderguimetadata.h"
+#include "qgsquerybuilder.h"
+#include "qgssourceselectprovider.h"
 #include "qgssubsetstringeditorprovider.h"
+#include "qgswfsdataitemguiprovider.h"
+#include "qgswfsprovider.h"
+#include "qgswfssourceselect.h"
 #include "qgswfssubsetstringeditor.h"
+
+#include <QString>
+
+using namespace Qt::StringLiterals;
 
 //! Provider for WFS layers source select
 class QgsWfsSourceSelectProvider : public QgsSourceSelectProvider
 {
   public:
-
     QString providerKey() const override { return QgsWFSProvider::WFS_PROVIDER_KEY; }
     QString text() const override { return QObject::tr( "WFS / OGC API - Features" ); }
     int ordering() const override { return QgsSourceSelectProvider::OrderRemoteProvider + 20; }
-    QIcon icon() const override { return QgsApplication::getThemeIcon( QStringLiteral( "/mActionAddWfsLayer.svg" ) ); }
-    QgsAbstractDataSourceWidget *createDataSourceWidget( QWidget *parent = nullptr, Qt::WindowFlags fl = Qt::Widget, QgsProviderRegistry::WidgetMode widgetMode = QgsProviderRegistry::WidgetMode::Embedded ) const override
+    QIcon icon() const override { return QgsApplication::getThemeIcon( u"/mActionAddWfsLayer.svg"_s ); }
+    QgsAbstractDataSourceWidget *createDataSourceWidget(
+      QWidget *parent = nullptr, Qt::WindowFlags fl = Qt::Widget, QgsProviderRegistry::WidgetMode widgetMode = QgsProviderRegistry::WidgetMode::Embedded
+    ) const override
     {
       return new QgsWFSSourceSelect( parent, fl, widgetMode );
     }
 };
 
 //! Provider for dedicated subset string editor for WFS layers
-class QgsWfsSubsetStringEditorProvider: public QgsSubsetStringEditorProvider
+class QgsWfsSubsetStringEditorProvider : public QgsSubsetStringEditorProvider
 {
   public:
-
     QString providerKey() const override { return QgsWFSProvider::WFS_PROVIDER_KEY; }
 
     bool canHandleLayer( QgsVectorLayer *layer ) const override
     {
       QgsDataProvider *provider = layer->dataProvider();
-      return static_cast< bool >( dynamic_cast<QgsWFSProvider *>( provider ) );
+      return static_cast<bool>( dynamic_cast<QgsWFSProvider *>( provider ) );
     }
 
     QgsSubsetStringEditorInterface *createDialog( QgsVectorLayer *layer, QWidget *parent, Qt::WindowFlags fl ) override
@@ -62,10 +66,10 @@ class QgsWfsSubsetStringEditorProvider: public QgsSubsetStringEditorProvider
       // If we have an existing full SQL request, open the SQL editor
       // Otherwise use the standard expression builder.
       const QString subsetString = wfsProvider->subsetString();
-      if ( subsetString.startsWith( QLatin1String( "SELECT " ), Qt::CaseInsensitive ) ||
-           subsetString.startsWith( QLatin1String( "SELECT\t" ), Qt::CaseInsensitive ) ||
-           subsetString.startsWith( QLatin1String( "SELECT\r" ), Qt::CaseInsensitive ) ||
-           subsetString.startsWith( QLatin1String( "SELECT\n" ), Qt::CaseInsensitive ) )
+      if ( subsetString.startsWith( "SELECT "_L1, Qt::CaseInsensitive )
+           || subsetString.startsWith( "SELECT\t"_L1, Qt::CaseInsensitive )
+           || subsetString.startsWith( "SELECT\r"_L1, Qt::CaseInsensitive )
+           || subsetString.startsWith( "SELECT\n"_L1, Qt::CaseInsensitive ) )
       {
         return QgsWfsSubsetStringEditor::create( layer, wfsProvider, parent, fl );
       }
@@ -77,8 +81,7 @@ class QgsWfsSubsetStringEditorProvider: public QgsSubsetStringEditorProvider
 
 QgsWfsProviderGuiMetadata::QgsWfsProviderGuiMetadata()
   : QgsProviderGuiMetadata( QgsWFSProvider::WFS_PROVIDER_KEY )
-{
-}
+{}
 
 QList<QgsSourceSelectProvider *> QgsWfsProviderGuiMetadata::sourceSelectProviders()
 {
@@ -89,14 +92,12 @@ QList<QgsSourceSelectProvider *> QgsWfsProviderGuiMetadata::sourceSelectProvider
 
 QList<QgsDataItemGuiProvider *> QgsWfsProviderGuiMetadata::dataItemGuiProviders()
 {
-  return QList<QgsDataItemGuiProvider *>()
-         << new QgsWfsDataItemGuiProvider;
+  return QList<QgsDataItemGuiProvider *>() << new QgsWfsDataItemGuiProvider;
 }
 
 QList<QgsSubsetStringEditorProvider *> QgsWfsProviderGuiMetadata::subsetStringEditorProviders()
 {
-  return QList<QgsSubsetStringEditorProvider *>()
-         << new QgsWfsSubsetStringEditorProvider;
+  return QList<QgsSubsetStringEditorProvider *>() << new QgsWfsSubsetStringEditorProvider;
 }
 
 

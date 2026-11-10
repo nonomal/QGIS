@@ -15,27 +15,23 @@
 #ifndef QGSVECTORLAYERJOININFO_H
 #define QGSVECTORLAYERJOININFO_H
 
+#include "qgsfeature.h"
+#include "qgsvectorlayerref.h"
+
 #include <QHash>
 #include <QString>
 #include <QStringList>
 
-#include "qgsfeature.h"
-
-#include "qgsvectorlayerref.h"
-
 /**
  * \ingroup core
  * \brief Defines left outer join from our vector layer to some other vector layer.
+ *
  * The join is done based on [our layer].targetField = [join layer].joinField
  *
  */
 class CORE_EXPORT QgsVectorLayerJoinInfo
 {
   public:
-
-    /**
-     * Constructor for QgsVectorLayerJoinInfo.
-     */
     QgsVectorLayerJoinInfo() = default;
 
     //! Sets weak reference to the joined layer
@@ -137,14 +133,14 @@ class CORE_EXPORT QgsVectorLayerJoinInfo
     /**
      * Sets a list of fields to ignore whatever happens.
      *
-     * \deprecated use setJoinFieldNamesBlockList() instead
+     * \deprecated QGIS 3.40. Use setJoinFieldNamesBlockList() instead.
      */
     Q_DECL_DEPRECATED void setJoinFieldNamesBlackList( const QStringList &blackList ) SIP_DEPRECATED { mBlockList = blackList; }
 
     /**
      * Returns the list of fields to ignore.
      *
-     * \deprecated use joinFieldNamesBlockList() instead
+     * \deprecated QGIS 3.40. Use joinFieldNamesBlockList() instead.
      */
     Q_DECL_DEPRECATED QStringList joinFieldNamesBlackList() const SIP_DEPRECATED { return mBlockList; }
 
@@ -193,12 +189,12 @@ class CORE_EXPORT QgsVectorLayerJoinInfo
 
     bool operator==( const QgsVectorLayerJoinInfo &other ) const
     {
-      return mTargetFieldName == other.mTargetFieldName &&
-             mJoinLayerRef.layerId == other.mJoinLayerRef.layerId &&
-             mJoinFieldName == other.mJoinFieldName &&
-             mJoinFieldsSubset == other.mJoinFieldsSubset &&
-             mMemoryCache == other.mMemoryCache &&
-             mPrefix == other.mPrefix;
+      return mTargetFieldName == other.mTargetFieldName
+             && mJoinLayerRef.layerId == other.mJoinLayerRef.layerId
+             && mJoinFieldName == other.mJoinFieldName
+             && mJoinFieldsSubset == other.mJoinFieldsSubset
+             && mMemoryCache == other.mMemoryCache
+             && mPrefix == other.mPrefix;
     }
 
     /**
@@ -243,6 +239,7 @@ class CORE_EXPORT QgsVectorLayerJoinInfo
 
     friend class QgsVectorLayerJoinBuffer;
     friend class QgsVectorLayerFeatureIterator;
+    friend class TestVectorLayerJoinBuffer;
 
     //! True if the cached join attributes need to be updated
     bool cacheDirty = true;
@@ -259,7 +256,6 @@ class CORE_EXPORT QgsVectorLayerJoinInfo
 
     //! Cache for joined attributes to provide fast lookup (size is 0 if no memory caching)
     QHash< QString, QgsAttributes> cachedAttributes;
-
 };
 
 

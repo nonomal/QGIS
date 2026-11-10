@@ -16,9 +16,9 @@
 #ifndef QGSVTPKTILES_H
 #define QGSVTPKTILES_H
 
-#include "qgis_core.h"
+#include <sqlite3.h>
 
-#include "sqlite3.h"
+#include "qgis_core.h"
 #include "qgsvectortilematrixset.h"
 
 #include <QVariantMap>
@@ -41,9 +41,7 @@ class CORE_EXPORT QgsVtpkTiles
     explicit QgsVtpkTiles( const QString &filename );
 
 #ifndef SIP_RUN
-    //! QgsVtpkTiles cannot be copied
     QgsVtpkTiles( const QgsVtpkTiles &other ) = delete;
-    //! QgsVtpkTiles cannot be copied
     QgsVtpkTiles &operator=( const QgsVtpkTiles &other ) = delete;
 #endif
     ~QgsVtpkTiles();
@@ -116,9 +114,7 @@ class CORE_EXPORT QgsVtpkTiles
     QByteArray tileData( int z, int x, int y );
 
   private:
-
 #ifdef SIP_RUN
-    //! QgsVtpkTiles cannot be copied
     QgsVtpkTiles( const QgsVtpkTiles &other );
 #endif
 

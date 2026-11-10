@@ -7,22 +7,24 @@ the Free Software Foundation; either version 2 of the License, or
 """
 
 import os
+import shutil
+import tempfile
+import unittest
+from pathlib import Path
 
-from qgis.PyQt.QtCore import (
-    QDate,
-    QTime,
-    QDateTime
-)
 from qgis.core import (
     Qgis,
-    QgsRasterLayerUtils,
-    QgsRasterLayer,
+    QgsDateTimeRange,
     QgsDoubleRange,
-    QgsDateTimeRange
+    QgsPointXY,
+    QgsRasterLayer,
+    QgsRasterLayerUtils,
+    QgsRasterReliefColor,
+    QgsRectangle,
 )
-import unittest
-from qgis.testing import start_app, QgisTestCase
-
+from qgis.PyQt.QtCore import QDate, QDateTime, QTime
+from qgis.PyQt.QtGui import QColor
+from qgis.testing import QgisTestCase, start_app
 from utilities import unitTestDataPath
 
 # Convenience instances in case you may need them
@@ -32,21 +34,18 @@ TEST_DATA_DIR = unitTestDataPath()
 
 
 class TestQgsRasterLayerUtils(QgisTestCase):
-
     def test_rendered_band_for_elevation_and_temporal_ranges(self):
-        raster_layer = QgsRasterLayer(os.path.join(TEST_DATA_DIR, 'landsat_4326.tif'))
+        raster_layer = QgsRasterLayer(os.path.join(TEST_DATA_DIR, "landsat_4326.tif"))
         self.assertTrue(raster_layer.isValid())
 
         # no temporal or elevation properties
         band, matched = QgsRasterLayerUtils.renderedBandForElevationAndTemporalRange(
             raster_layer,
             QgsDateTimeRange(
-                QDateTime(QDate(2023, 1, 1),
-                          QTime(0, 0, 0)),
-                QDateTime(QDate(2023, 12, 31),
-                          QTime(23, 59, 59))
+                QDateTime(QDate(2023, 1, 1), QTime(0, 0, 0)),
+                QDateTime(QDate(2023, 12, 31), QTime(23, 59, 59)),
             ),
-            QgsDoubleRange(30, 50)
+            QgsDoubleRange(30, 50),
         )
         self.assertEqual(band, -1)
         self.assertTrue(matched)
@@ -57,27 +56,26 @@ class TestQgsRasterLayerUtils(QgisTestCase):
             Qgis.RasterElevationMode.FixedRangePerBand
         )
         raster_layer.elevationProperties().setFixedRangePerBand(
-            {1: QgsDoubleRange(1, 5),
-             2: QgsDoubleRange(4, 10),
-             3: QgsDoubleRange(11, 15),
-             4: QgsDoubleRange(1, 5),
-             5: QgsDoubleRange(4, 10),
-             6: QgsDoubleRange(11, 16),
-             7: QgsDoubleRange(1, 5),
-             8: QgsDoubleRange(4, 10),
-             9: QgsDoubleRange(11, 15),
-             }
+            {
+                1: QgsDoubleRange(1, 5),
+                2: QgsDoubleRange(4, 10),
+                3: QgsDoubleRange(11, 15),
+                4: QgsDoubleRange(1, 5),
+                5: QgsDoubleRange(4, 10),
+                6: QgsDoubleRange(11, 16),
+                7: QgsDoubleRange(1, 5),
+                8: QgsDoubleRange(4, 10),
+                9: QgsDoubleRange(11, 15),
+            }
         )
         # no matching elevation
         band, matched = QgsRasterLayerUtils.renderedBandForElevationAndTemporalRange(
             raster_layer,
             QgsDateTimeRange(
-                QDateTime(QDate(2023, 1, 1),
-                          QTime(0, 0, 0)),
-                QDateTime(QDate(2023, 12, 31),
-                          QTime(23, 59, 59))
+                QDateTime(QDate(2023, 1, 1), QTime(0, 0, 0)),
+                QDateTime(QDate(2023, 12, 31), QTime(23, 59, 59)),
             ),
-            QgsDoubleRange(30, 50)
+            QgsDoubleRange(30, 50),
         )
         self.assertEqual(band, -1)
         self.assertFalse(matched)
@@ -85,24 +83,20 @@ class TestQgsRasterLayerUtils(QgisTestCase):
         band, matched = QgsRasterLayerUtils.renderedBandForElevationAndTemporalRange(
             raster_layer,
             QgsDateTimeRange(
-                QDateTime(QDate(2023, 1, 1),
-                          QTime(0, 0, 0)),
-                QDateTime(QDate(2023, 12, 31),
-                          QTime(23, 59, 59))
+                QDateTime(QDate(2023, 1, 1), QTime(0, 0, 0)),
+                QDateTime(QDate(2023, 12, 31), QTime(23, 59, 59)),
             ),
-            QgsDoubleRange(1, 3)
+            QgsDoubleRange(1, 3),
         )
         self.assertEqual(band, 7)
         self.assertTrue(matched)
         band, matched = QgsRasterLayerUtils.renderedBandForElevationAndTemporalRange(
             raster_layer,
             QgsDateTimeRange(
-                QDateTime(QDate(2023, 1, 1),
-                          QTime(0, 0, 0)),
-                QDateTime(QDate(2023, 12, 31),
-                          QTime(23, 59, 59))
+                QDateTime(QDate(2023, 1, 1), QTime(0, 0, 0)),
+                QDateTime(QDate(2023, 12, 31), QTime(23, 59, 59)),
             ),
-            QgsDoubleRange(5, 8)
+            QgsDoubleRange(5, 8),
         )
         self.assertEqual(band, 8)
         self.assertTrue(matched)
@@ -111,12 +105,10 @@ class TestQgsRasterLayerUtils(QgisTestCase):
         band, matched = QgsRasterLayerUtils.renderedBandForElevationAndTemporalRange(
             raster_layer,
             QgsDateTimeRange(
-                QDateTime(QDate(2023, 1, 1),
-                          QTime(0, 0, 0)),
-                QDateTime(QDate(2023, 12, 31),
-                          QTime(23, 59, 59))
+                QDateTime(QDate(2023, 1, 1), QTime(0, 0, 0)),
+                QDateTime(QDate(2023, 12, 31), QTime(23, 59, 59)),
             ),
-            QgsDoubleRange()
+            QgsDoubleRange(),
         )
         self.assertEqual(band, -1)
         self.assertTrue(matched)
@@ -130,59 +122,41 @@ class TestQgsRasterLayerUtils(QgisTestCase):
         raster_layer.temporalProperties().setFixedRangePerBand(
             {
                 1: QgsDateTimeRange(
-                    QDateTime(QDate(2020, 1, 1),
-                              QTime(0, 0, 0)),
-                    QDateTime(QDate(2020, 12, 31),
-                              QTime(23, 59, 59))
+                    QDateTime(QDate(2020, 1, 1), QTime(0, 0, 0)),
+                    QDateTime(QDate(2020, 12, 31), QTime(23, 59, 59)),
                 ),
                 2: QgsDateTimeRange(
-                    QDateTime(QDate(2020, 1, 1),
-                              QTime(0, 0, 0)),
-                    QDateTime(QDate(2020, 12, 31),
-                              QTime(23, 59, 59))
+                    QDateTime(QDate(2020, 1, 1), QTime(0, 0, 0)),
+                    QDateTime(QDate(2020, 12, 31), QTime(23, 59, 59)),
                 ),
                 3: QgsDateTimeRange(
-                    QDateTime(QDate(2020, 1, 1),
-                              QTime(0, 0, 0)),
-                    QDateTime(QDate(2020, 12, 31),
-                              QTime(23, 59, 59))
+                    QDateTime(QDate(2020, 1, 1), QTime(0, 0, 0)),
+                    QDateTime(QDate(2020, 12, 31), QTime(23, 59, 59)),
                 ),
                 4: QgsDateTimeRange(
-                    QDateTime(QDate(2021, 1, 1),
-                              QTime(0, 0, 0)),
-                    QDateTime(QDate(2021, 12, 31),
-                              QTime(23, 59, 59))
+                    QDateTime(QDate(2021, 1, 1), QTime(0, 0, 0)),
+                    QDateTime(QDate(2021, 12, 31), QTime(23, 59, 59)),
                 ),
                 5: QgsDateTimeRange(
-                    QDateTime(QDate(2021, 1, 1),
-                              QTime(0, 0, 0)),
-                    QDateTime(QDate(2021, 12, 31),
-                              QTime(23, 59, 59))
+                    QDateTime(QDate(2021, 1, 1), QTime(0, 0, 0)),
+                    QDateTime(QDate(2021, 12, 31), QTime(23, 59, 59)),
                 ),
                 6: QgsDateTimeRange(
-                    QDateTime(QDate(2021, 1, 1),
-                              QTime(0, 0, 0)),
-                    QDateTime(QDate(2021, 12, 31),
-                              QTime(23, 59, 59))
+                    QDateTime(QDate(2021, 1, 1), QTime(0, 0, 0)),
+                    QDateTime(QDate(2021, 12, 31), QTime(23, 59, 59)),
                 ),
                 7: QgsDateTimeRange(
-                    QDateTime(QDate(2022, 1, 1),
-                              QTime(0, 0, 0)),
-                    QDateTime(QDate(2022, 12, 31),
-                              QTime(23, 59, 59))
+                    QDateTime(QDate(2022, 1, 1), QTime(0, 0, 0)),
+                    QDateTime(QDate(2022, 12, 31), QTime(23, 59, 59)),
                 ),
                 8: QgsDateTimeRange(
-                    QDateTime(QDate(2022, 1, 1),
-                              QTime(0, 0, 0)),
-                    QDateTime(QDate(2022, 12, 31),
-                              QTime(23, 59, 59))
+                    QDateTime(QDate(2022, 1, 1), QTime(0, 0, 0)),
+                    QDateTime(QDate(2022, 12, 31), QTime(23, 59, 59)),
                 ),
                 9: QgsDateTimeRange(
-                    QDateTime(QDate(2022, 1, 1),
-                              QTime(0, 0, 0)),
-                    QDateTime(QDate(2022, 12, 31),
-                              QTime(23, 59, 59))
-                )
+                    QDateTime(QDate(2022, 1, 1), QTime(0, 0, 0)),
+                    QDateTime(QDate(2022, 12, 31), QTime(23, 59, 59)),
+                ),
             }
         )
 
@@ -190,12 +164,10 @@ class TestQgsRasterLayerUtils(QgisTestCase):
         band, matched = QgsRasterLayerUtils.renderedBandForElevationAndTemporalRange(
             raster_layer,
             QgsDateTimeRange(
-                QDateTime(QDate(2023, 1, 1),
-                          QTime(0, 0, 0)),
-                QDateTime(QDate(2023, 12, 31),
-                          QTime(23, 59, 59))
+                QDateTime(QDate(2023, 1, 1), QTime(0, 0, 0)),
+                QDateTime(QDate(2023, 12, 31), QTime(23, 59, 59)),
             ),
-            QgsDoubleRange(30, 50)
+            QgsDoubleRange(30, 50),
         )
         self.assertEqual(band, -1)
         self.assertFalse(matched)
@@ -203,24 +175,20 @@ class TestQgsRasterLayerUtils(QgisTestCase):
         band, matched = QgsRasterLayerUtils.renderedBandForElevationAndTemporalRange(
             raster_layer,
             QgsDateTimeRange(
-                QDateTime(QDate(2020, 1, 1),
-                          QTime(0, 0, 0)),
-                QDateTime(QDate(2020, 6, 30),
-                          QTime(23, 59, 59))
+                QDateTime(QDate(2020, 1, 1), QTime(0, 0, 0)),
+                QDateTime(QDate(2020, 6, 30), QTime(23, 59, 59)),
             ),
-            QgsDoubleRange(1, 3)
+            QgsDoubleRange(1, 3),
         )
         self.assertEqual(band, 3)
         self.assertTrue(matched)
         band, matched = QgsRasterLayerUtils.renderedBandForElevationAndTemporalRange(
             raster_layer,
             QgsDateTimeRange(
-                QDateTime(QDate(2020, 6, 1),
-                          QTime(0, 0, 0)),
-                QDateTime(QDate(2021, 6, 30),
-                          QTime(23, 59, 59))
+                QDateTime(QDate(2020, 6, 1), QTime(0, 0, 0)),
+                QDateTime(QDate(2021, 6, 30), QTime(23, 59, 59)),
             ),
-            QgsDoubleRange(5, 8)
+            QgsDoubleRange(5, 8),
         )
         self.assertEqual(band, 6)
         self.assertTrue(matched)
@@ -229,7 +197,7 @@ class TestQgsRasterLayerUtils(QgisTestCase):
         band, matched = QgsRasterLayerUtils.renderedBandForElevationAndTemporalRange(
             raster_layer,
             QgsDateTimeRange(QDateTime(), QDateTime()),
-            QgsDoubleRange(5, 8)
+            QgsDoubleRange(5, 8),
         )
         self.assertEqual(band, -1)
         self.assertTrue(matched)
@@ -241,7 +209,7 @@ class TestQgsRasterLayerUtils(QgisTestCase):
         band, matched = QgsRasterLayerUtils.renderedBandForElevationAndTemporalRange(
             raster_layer,
             QgsDateTimeRange(QDateTime(), QDateTime()),
-            QgsDoubleRange(5, 8)
+            QgsDoubleRange(5, 8),
         )
         self.assertEqual(band, 8)
         self.assertTrue(matched)
@@ -250,11 +218,10 @@ class TestQgsRasterLayerUtils(QgisTestCase):
         band, matched = QgsRasterLayerUtils.renderedBandForElevationAndTemporalRange(
             raster_layer,
             QgsDateTimeRange(
-                QDateTime(QDate(2020, 6, 1),
-                          QTime(0, 0, 0)),
-                QDateTime(QDate(2021, 6, 30),
-                          QTime(23, 59, 59))),
-            QgsDoubleRange()
+                QDateTime(QDate(2020, 6, 1), QTime(0, 0, 0)),
+                QDateTime(QDate(2021, 6, 30), QTime(23, 59, 59)),
+            ),
+            QgsDoubleRange(),
         )
         self.assertEqual(band, 6)
         self.assertTrue(matched)
@@ -262,34 +229,30 @@ class TestQgsRasterLayerUtils(QgisTestCase):
         band, matched = QgsRasterLayerUtils.renderedBandForElevationAndTemporalRange(
             raster_layer,
             QgsDateTimeRange(
-                QDateTime(QDate(2020, 6, 1),
-                          QTime(0, 0, 0)),
-                QDateTime(QDate(2020, 6, 30),
-                          QTime(23, 59, 59))),
-            QgsDoubleRange(2, 3)
+                QDateTime(QDate(2020, 6, 1), QTime(0, 0, 0)),
+                QDateTime(QDate(2020, 6, 30), QTime(23, 59, 59)),
+            ),
+            QgsDoubleRange(2, 3),
         )
         self.assertEqual(band, 1)
         self.assertTrue(matched)
         band, matched = QgsRasterLayerUtils.renderedBandForElevationAndTemporalRange(
             raster_layer,
             QgsDateTimeRange(
-                QDateTime(QDate(2020, 6, 1),
-                          QTime(0, 0, 0)),
-                QDateTime(QDate(2020, 6, 30),
-                          QTime(23, 59, 59))),
-            QgsDoubleRange(3, 7)
+                QDateTime(QDate(2020, 6, 1), QTime(0, 0, 0)),
+                QDateTime(QDate(2020, 6, 30), QTime(23, 59, 59)),
+            ),
+            QgsDoubleRange(3, 7),
         )
         self.assertEqual(band, 2)
         self.assertTrue(matched)
         band, matched = QgsRasterLayerUtils.renderedBandForElevationAndTemporalRange(
             raster_layer,
             QgsDateTimeRange(
-                QDateTime(QDate(2020, 6, 1),
-                          QTime(0, 0, 0)),
-                QDateTime(QDate(2020, 6, 30),
-                          QTime(23, 59, 59))),
-            QgsDoubleRange(11,
-                           13)
+                QDateTime(QDate(2020, 6, 1), QTime(0, 0, 0)),
+                QDateTime(QDate(2020, 6, 30), QTime(23, 59, 59)),
+            ),
+            QgsDoubleRange(11, 13),
         )
         self.assertEqual(band, 3)
         self.assertTrue(matched)
@@ -297,34 +260,30 @@ class TestQgsRasterLayerUtils(QgisTestCase):
         band, matched = QgsRasterLayerUtils.renderedBandForElevationAndTemporalRange(
             raster_layer,
             QgsDateTimeRange(
-                QDateTime(QDate(2021, 6, 1),
-                          QTime(0, 0, 0)),
-                QDateTime(QDate(2021, 6, 30),
-                          QTime(23, 59, 59))),
-            QgsDoubleRange(2, 3)
+                QDateTime(QDate(2021, 6, 1), QTime(0, 0, 0)),
+                QDateTime(QDate(2021, 6, 30), QTime(23, 59, 59)),
+            ),
+            QgsDoubleRange(2, 3),
         )
         self.assertEqual(band, 4)
         self.assertTrue(matched)
         band, matched = QgsRasterLayerUtils.renderedBandForElevationAndTemporalRange(
             raster_layer,
             QgsDateTimeRange(
-                QDateTime(QDate(2021, 6, 1),
-                          QTime(0, 0, 0)),
-                QDateTime(QDate(2021, 6, 30),
-                          QTime(23, 59, 59))),
-            QgsDoubleRange(3, 7)
+                QDateTime(QDate(2021, 6, 1), QTime(0, 0, 0)),
+                QDateTime(QDate(2021, 6, 30), QTime(23, 59, 59)),
+            ),
+            QgsDoubleRange(3, 7),
         )
         self.assertEqual(band, 5)
         self.assertTrue(matched)
         band, matched = QgsRasterLayerUtils.renderedBandForElevationAndTemporalRange(
             raster_layer,
             QgsDateTimeRange(
-                QDateTime(QDate(2021, 6, 1),
-                          QTime(0, 0, 0)),
-                QDateTime(QDate(2021, 6, 30),
-                          QTime(23, 59, 59))),
-            QgsDoubleRange(11,
-                           13)
+                QDateTime(QDate(2021, 6, 1), QTime(0, 0, 0)),
+                QDateTime(QDate(2021, 6, 30), QTime(23, 59, 59)),
+            ),
+            QgsDoubleRange(11, 13),
         )
         self.assertEqual(band, 6)
         self.assertTrue(matched)
@@ -332,34 +291,30 @@ class TestQgsRasterLayerUtils(QgisTestCase):
         band, matched = QgsRasterLayerUtils.renderedBandForElevationAndTemporalRange(
             raster_layer,
             QgsDateTimeRange(
-                QDateTime(QDate(2022, 6, 1),
-                          QTime(0, 0, 0)),
-                QDateTime(QDate(2022, 6, 30),
-                          QTime(23, 59, 59))),
-            QgsDoubleRange(2, 3)
+                QDateTime(QDate(2022, 6, 1), QTime(0, 0, 0)),
+                QDateTime(QDate(2022, 6, 30), QTime(23, 59, 59)),
+            ),
+            QgsDoubleRange(2, 3),
         )
         self.assertEqual(band, 7)
         self.assertTrue(matched)
         band, matched = QgsRasterLayerUtils.renderedBandForElevationAndTemporalRange(
             raster_layer,
             QgsDateTimeRange(
-                QDateTime(QDate(2022, 6, 1),
-                          QTime(0, 0, 0)),
-                QDateTime(QDate(2022, 6, 30),
-                          QTime(23, 59, 59))),
-            QgsDoubleRange(3, 7)
+                QDateTime(QDate(2022, 6, 1), QTime(0, 0, 0)),
+                QDateTime(QDate(2022, 6, 30), QTime(23, 59, 59)),
+            ),
+            QgsDoubleRange(3, 7),
         )
         self.assertEqual(band, 8)
         self.assertTrue(matched)
         band, matched = QgsRasterLayerUtils.renderedBandForElevationAndTemporalRange(
             raster_layer,
             QgsDateTimeRange(
-                QDateTime(QDate(2022, 6, 1),
-                          QTime(0, 0, 0)),
-                QDateTime(QDate(2022, 6, 30),
-                          QTime(23, 59, 59))),
-            QgsDoubleRange(11,
-                           13)
+                QDateTime(QDate(2022, 6, 1), QTime(0, 0, 0)),
+                QDateTime(QDate(2022, 6, 30), QTime(23, 59, 59)),
+            ),
+            QgsDoubleRange(11, 13),
         )
         self.assertEqual(band, 9)
         self.assertTrue(matched)
@@ -368,12 +323,10 @@ class TestQgsRasterLayerUtils(QgisTestCase):
         band, matched = QgsRasterLayerUtils.renderedBandForElevationAndTemporalRange(
             raster_layer,
             QgsDateTimeRange(
-                QDateTime(QDate(2023, 6, 1),
-                          QTime(0, 0, 0)),
-                QDateTime(QDate(2023, 6, 30),
-                          QTime(23, 59, 59))),
-            QgsDoubleRange(11,
-                           13)
+                QDateTime(QDate(2023, 6, 1), QTime(0, 0, 0)),
+                QDateTime(QDate(2023, 6, 30), QTime(23, 59, 59)),
+            ),
+            QgsDoubleRange(11, 13),
         )
         self.assertEqual(band, -1)
         self.assertFalse(matched)
@@ -382,16 +335,123 @@ class TestQgsRasterLayerUtils(QgisTestCase):
         band, matched = QgsRasterLayerUtils.renderedBandForElevationAndTemporalRange(
             raster_layer,
             QgsDateTimeRange(
-                QDateTime(QDate(2022, 6, 1),
-                          QTime(0, 0, 0)),
-                QDateTime(QDate(2022, 6, 30),
-                          QTime(23, 59, 59))),
-            QgsDoubleRange(111,
-                           113)
+                QDateTime(QDate(2022, 6, 1), QTime(0, 0, 0)),
+                QDateTime(QDate(2022, 6, 30), QTime(23, 59, 59)),
+            ),
+            QgsDoubleRange(111, 113),
         )
         self.assertEqual(band, -1)
         self.assertFalse(matched)
 
+    def test_alignRasterExtent(self):
 
-if __name__ == '__main__':
+        # nominal case
+        grid_origin = QgsPointXY(100, 200)
+        xres = 10
+        yres = 20
+        extent = QgsRectangle(209, 419, 301, 601)
+        aligned = QgsRasterLayerUtils.alignRasterExtent(extent, grid_origin, xres, yres)
+        self.assertEqual(aligned, QgsRectangle(200, 400, 310, 620))
+
+        # test with extent already aligned
+        extent = QgsRectangle(200, 400, 310, 620)
+        aligned = QgsRasterLayerUtils.alignRasterExtent(extent, grid_origin, xres, yres)
+        self.assertEqual(aligned, extent)
+
+        # test with negative coordinates
+        grid_origin = QgsPointXY(-100, -200)
+        extent = QgsRectangle(-91, -179, -81, -161)
+        aligned = QgsRasterLayerUtils.alignRasterExtent(extent, grid_origin, xres, yres)
+        self.assertEqual(aligned, QgsRectangle(-100, -180, -80, -160))
+
+        # test with out of bounds extent
+        grid_origin = QgsPointXY(0, 0)
+        extent = QgsRectangle(-15, -25, 15, 25)
+        aligned = QgsRasterLayerUtils.alignRasterExtent(extent, grid_origin, xres, yres)
+        self.assertEqual(aligned, QgsRectangle(-20, -40, 20, 40))
+
+        # test with zero resolution (should return original extent)
+        grid_origin = QgsPointXY(0, 0)
+        xres = 0
+        yres = 0
+        extent = QgsRectangle(10, 20, 30, 40)
+        aligned = QgsRasterLayerUtils.alignRasterExtent(extent, grid_origin, xres, yres)
+        self.assertEqual(aligned, extent)
+
+        # test with empty extent
+        grid_origin = QgsPointXY(0, 0)
+        xres = 10
+        yres = 10
+        extent = QgsRectangle()
+        aligned = QgsRasterLayerUtils.alignRasterExtent(extent, grid_origin, xres, yres)
+        self.assertEqual(aligned, QgsRectangle())
+
+    def test_optimized_relief_classes(self):
+        # invalid provider
+        res = QgsRasterLayerUtils.calculateOptimizedReliefClasses(None, 6)
+        self.assertFalse(res)
+
+        # we work on a temporary copy of the layer, where we are sure there's
+        # no .aux.xml that may have been created by a previous test
+        with tempfile.TemporaryDirectory() as tmpdir:
+            test_layer = Path(tmpdir) / "dem.tif"
+            shutil.copy(self.get_test_data_path("raster/dem.tif"), test_layer)
+            raster_layer = QgsRasterLayer(test_layer.as_posix())
+            self.assertTrue(raster_layer.isValid())
+
+            # invalid band
+            res = QgsRasterLayerUtils.calculateOptimizedReliefClasses(
+                raster_layer.dataProvider(), 6
+            )
+            self.assertFalse(res)
+
+            # valid band
+            res = QgsRasterLayerUtils.calculateOptimizedReliefClasses(
+                raster_layer.dataProvider(), 1
+            )
+            self.assertEqual(
+                [round(r.minElevation, 5) for r in res],
+                [
+                    85.0,
+                    104.43651,
+                    104.43651,
+                    104.43651,
+                    104.43651,
+                    104.43651,
+                    190.33333,
+                    226.69841,
+                    226.69841,
+                ],
+            )
+            self.assertEqual(
+                [round(r.maxElevation, 5) for r in res],
+                [
+                    104.43651,
+                    104.43651,
+                    104.43651,
+                    104.43651,
+                    104.43651,
+                    190.33333,
+                    226.69841,
+                    226.69841,
+                    243.0,
+                ],
+            )
+            self.assertEqual(
+                [r.color.name() for r in res],
+                [
+                    "#07a590",
+                    "#0cdda2",
+                    "#21fcb7",
+                    "#f7fc98",
+                    "#fcc408",
+                    "#fca60f",
+                    "#af650f",
+                    "#ff855c",
+                    "#cccccc",
+                ],
+            )
+
+
+if __name__ == "__main__":
     unittest.main()

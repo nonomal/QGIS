@@ -14,15 +14,19 @@ email                : marco.hugentobler at sourcepole dot com
  ***************************************************************************/
 
 #include "qgsabstractgeometry.h"
-#include "qgspoint.h"
-#include "qgsgeometrycollection.h"
-#include "qgsvertexid.h"
-#include "qgscurve.h"
-#include "qgsbox3d.h"
 
-#include <nlohmann/json.hpp>
 #include <limits>
+#include <nlohmann/json.hpp>
+
+#include "qgsbox3d.h"
+#include "qgscurve.h"
+#include "qgsgeometrycollection.h"
+#include "qgspoint.h"
+#include "qgsvertexid.h"
+
 #include <QTransform>
+
+#include "moc_qgsabstractgeometry.cpp"
 
 QgsAbstractGeometry::QgsAbstractGeometry( const QgsAbstractGeometry &geom )
 {
@@ -80,14 +84,12 @@ void QgsAbstractGeometry::setZMTypeFromSubGeometry( const QgsAbstractGeometry *s
   }
 
   //special handling for 25d types:
-  if ( baseGeomType == Qgis::WkbType::LineString &&
-       ( subgeom->wkbType() == Qgis::WkbType::Point25D || subgeom->wkbType() == Qgis::WkbType::LineString25D ) )
+  if ( baseGeomType == Qgis::WkbType::LineString && ( subgeom->wkbType() == Qgis::WkbType::Point25D || subgeom->wkbType() == Qgis::WkbType::LineString25D ) )
   {
     mWkbType = Qgis::WkbType::LineString25D;
     return;
   }
-  else if ( baseGeomType == Qgis::WkbType::Polygon &&
-            ( subgeom->wkbType() == Qgis::WkbType::Point25D || subgeom->wkbType() == Qgis::WkbType::LineString25D ) )
+  else if ( baseGeomType == Qgis::WkbType::Polygon && ( subgeom->wkbType() == Qgis::WkbType::Point25D || subgeom->wkbType() == Qgis::WkbType::LineString25D ) )
   {
     mWkbType = Qgis::WkbType::Polygon25D;
     return;
@@ -174,8 +176,7 @@ QgsBox3D QgsAbstractGeometry::calculateBoundingBox3D() const
 }
 
 void QgsAbstractGeometry::clearCache() const
-{
-}
+{}
 
 int QgsAbstractGeometry::nCoordinates() const
 {
@@ -208,24 +209,41 @@ double QgsAbstractGeometry::area() const
   return 0.0;
 }
 
+double QgsAbstractGeometry::area3D() const
+{
+  return 0.0;
+}
+
 QString QgsAbstractGeometry::wktTypeStr() const
 {
   QString wkt = geometryType();
+  QString suffix;
   if ( is3D() )
-    wkt += 'Z';
+    suffix += 'Z';
   if ( isMeasure() )
-    wkt += 'M';
+    suffix += 'M';
+  if ( !suffix.isEmpty() )
+  {
+    wkt += ' ' + suffix;
+  }
   return wkt;
 }
 
 QString QgsAbstractGeometry::asJson( int precision )
 {
-  return QString::fromStdString( asJsonObject( precision ).dump() );
+  return asGeoJson( precision, Qgis::GeoJsonProfile::Rfc7946 );
 }
 
-json QgsAbstractGeometry::asJsonObject( int precision ) const
+QString QgsAbstractGeometry::asGeoJson( int precision, Qgis::GeoJsonProfile profile )
 {
-  Q_UNUSED( precision ) return nullptr;
+  return QString::fromStdString( asJsonObject( precision, profile ).dump() );
+}
+
+json QgsAbstractGeometry::asJsonObject( int precision, Qgis::GeoJsonProfile profile ) const
+{
+  Q_UNUSED( profile )
+  Q_UNUSED( precision )
+  return nullptr;
 }
 
 QgsPoint QgsAbstractGeometry::centroid() const
@@ -319,7 +337,7 @@ const QgsAbstractGeometry *QgsAbstractGeometry::simplifiedTypeRef() const
   return this;
 }
 
-void QgsAbstractGeometry::filterVertices( const std::function<bool ( const QgsPoint & )> & )
+void QgsAbstractGeometry::filterVertices( const std::function<bool( const QgsPoint & )> & )
 {
   // Ideally this would be pure virtual, but SIP has issues with that
 }
@@ -442,15 +460,15 @@ QgsAbstractGeometry::vertex_iterator::vertex_iterator( const QgsAbstractGeometry
   levels[0].g = g;
   levels[0].index = index;
 
-  digDown();  // go to the leaf level of the first vertex
+  digDown(); // go to the leaf level of the first vertex
 }
 
 QgsAbstractGeometry::vertex_iterator &QgsAbstractGeometry::vertex_iterator::operator++()
 {
   if ( depth == 0 && levels[0].index >= levels[0].g->childCount() )
-    return *this;  // end of geometry - nowhere else to go
+    return *this; // end of geometry - nowhere else to go
 
-  Q_ASSERT( !levels[depth].g->hasChildGeometries() );  // we should be at a leaf level
+  Q_ASSERT( !levels[depth].g->hasChildGeometries() ); // we should be at a leaf level
 
   ++levels[depth].index;
 
@@ -461,7 +479,7 @@ QgsAbstractGeometry::vertex_iterator &QgsAbstractGeometry::vertex_iterator::oper
     ++levels[depth].index;
   }
 
-  digDown();  // go to the leaf level again
+  digDown(); // go to the leaf level again
 
   return *this;
 }
@@ -525,13 +543,13 @@ bool QgsAbstractGeometry::vertex_iterator::operator==( const QgsAbstractGeometry
 void QgsAbstractGeometry::vertex_iterator::digDown()
 {
   if ( levels[depth].g->hasChildGeometries() && levels[depth].index >= levels[depth].g->childCount() )
-    return;  // first check we are not already at the end
+    return; // first check we are not already at the end
 
   // while not "final" depth for the geom: go one level down.
   while ( levels[depth].g->hasChildGeometries() )
   {
     ++depth;
-    Q_ASSERT( depth < 3 );  // that's capacity of the levels array
+    Q_ASSERT( depth < 3 ); // that's capacity of the levels array
     levels[depth].index = 0;
     levels[depth].g = levels[depth - 1].g->childGeometry( levels[depth - 1].index );
   }
@@ -546,8 +564,7 @@ QgsPoint QgsVertexIterator::next()
 QgsAbstractGeometry::part_iterator::part_iterator( QgsAbstractGeometry *g, int index )
   : mIndex( index )
   , mGeometry( g )
-{
-}
+{}
 
 QgsAbstractGeometry::part_iterator &QgsAbstractGeometry::part_iterator::operator++()
 {
@@ -600,12 +617,10 @@ QgsAbstractGeometry *QgsGeometryPartIterator::next()
 }
 
 
-
 QgsAbstractGeometry::const_part_iterator::const_part_iterator( const QgsAbstractGeometry *g, int index )
   : mIndex( index )
   , mGeometry( g )
-{
-}
+{}
 
 QgsAbstractGeometry::const_part_iterator &QgsAbstractGeometry::const_part_iterator::operator++()
 {

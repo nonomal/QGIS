@@ -16,14 +16,20 @@
 #ifndef QGSNUMERICFORMATSELECTORWIDGET_H
 #define QGSNUMERICFORMATSELECTORWIDGET_H
 
+#include "ui_qgsnumericformatselectorbase.h"
+
+#include <memory>
+
 #include "qgis_gui.h"
 #include "qgis_sip.h"
-#include "ui_qgsnumericformatselectorbase.h"
-#include <memory>
+#include "qgsguiutils.h"
+
+#include <QDialog>
 
 class QgsNumericFormat;
 class QgsBasicNumericFormat;
-
+class QgsExpressionContextGenerator;
+class QDialogButtonBox;
 
 /**
  * \ingroup gui
@@ -36,7 +42,6 @@ class GUI_EXPORT QgsNumericFormatSelectorWidget : public QgsPanelWidget, private
     Q_OBJECT
 
   public:
-
     /**
      * Constructor for QgsNumericFormatSelectorWidget with the specified \a parent widget.
      */
@@ -56,25 +61,75 @@ class GUI_EXPORT QgsNumericFormatSelectorWidget : public QgsPanelWidget, private
      */
     QgsNumericFormat *format() const SIP_TRANSFERBACK;
 
-  signals:
-
     /**
-     * Emitted whenever the format configured55 in the widget is changed.
+     * Register an expression context \a generator class that will be used to retrieve
+     * an expression context for the widget when required.
+     *
+     * Ownership is not transferred, and the \a generator must exist for the lifetime of this widget.
+     *
+     * \since QGIS 3.40
      */
-    void changed();
+    void registerExpressionContextGenerator( QgsExpressionContextGenerator *generator );
 
   private slots:
     void formatTypeChanged();
     void formatChanged();
 
   private:
-
     void populateTypes();
     void updateFormatWidget();
     void updateSampleText();
 
-    std::unique_ptr< QgsNumericFormat > mCurrentFormat;
-    std::unique_ptr< QgsBasicNumericFormat > mPreviewFormat;
+    std::unique_ptr<QgsNumericFormat> mCurrentFormat;
+    std::unique_ptr<QgsBasicNumericFormat> mPreviewFormat;
+
+    QgsExpressionContextGenerator *mExpressionContextGenerator = nullptr;
+};
+
+
+/**
+ * \class QgsNumericFormatSelectorDialog
+ * \ingroup gui
+ * \brief A simple dialog for customizing a numeric format.
+ *
+ * \see QgsNumericFormatSelectorWidget()
+ * \since QGIS 3.40
+ */
+class GUI_EXPORT QgsNumericFormatSelectorDialog : public QDialog
+{
+    Q_OBJECT
+
+  public:
+    /**
+     * Constructor for QgsNumericFormatSelectorDialog.
+     * \param parent parent widget
+     * \param flags window flags for dialog
+     */
+    QgsNumericFormatSelectorDialog( QWidget *parent SIP_TRANSFERTHIS = nullptr, Qt::WindowFlags flags = QgsGuiUtils::ModalDialogFlags );
+
+    /**
+     * Sets the format to show in the dialog.
+     */
+    void setFormat( const QgsNumericFormat *format );
+
+    /**
+     * Returns a new format object representing the settings currently configured in the dialog.
+     *
+     * The caller takes ownership of the returned object.
+     */
+    QgsNumericFormat *format() const SIP_TRANSFERBACK;
+
+    /**
+     * Register an expression context \a generator class that will be used to retrieve
+     * an expression context for the dialog when required.
+     *
+     * Ownership is not transferred, and the \a generator must exist for the lifetime of this dialog.
+     */
+    void registerExpressionContextGenerator( QgsExpressionContextGenerator *generator );
+
+  private:
+    QgsNumericFormatSelectorWidget *mFormatWidget = nullptr;
+    QDialogButtonBox *mButtonBox = nullptr;
 };
 
 #endif //QGSNUMERICFORMATSELECTORWIDGET_H

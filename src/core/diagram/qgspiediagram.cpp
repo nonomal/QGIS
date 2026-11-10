@@ -13,12 +13,17 @@
  *                                                                         *
  ***************************************************************************/
 #include "qgspiediagram.h"
+
 #include "qgsdiagramrenderer.h"
-#include "qgsrendercontext.h"
 #include "qgsexpression.h"
+#include "qgsrendercontext.h"
 
 #include <QPainter>
+#include <QString>
 
+using namespace Qt::StringLiterals;
+
+const QString QgsPieDiagram::DIAGRAM_NAME_PIE = u"Pie"_s;
 
 QgsPieDiagram::QgsPieDiagram()
 {
@@ -69,7 +74,7 @@ double QgsPieDiagram::legendSize( double value, const QgsDiagramSettings &s, con
 
 QString QgsPieDiagram::diagramName() const
 {
-  return DIAGRAM_NAME_PIE;
+  return QgsPieDiagram::DIAGRAM_NAME_PIE;
 }
 
 QSizeF QgsPieDiagram::diagramSize( const QgsAttributes &attributes, const QgsRenderContext &c, const QgsDiagramSettings &s )
@@ -105,7 +110,8 @@ void QgsPieDiagram::renderDiagram( const QgsFeature &feature, QgsRenderContext &
     currentVal = expression->evaluate( &expressionContext ).toDouble();
     values.push_back( currentVal );
     valSum += currentVal;
-    if ( currentVal ) valCount++;
+    if ( currentVal )
+      valCount++;
   }
 
   //draw the slices

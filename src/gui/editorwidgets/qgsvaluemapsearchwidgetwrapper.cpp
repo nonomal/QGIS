@@ -14,21 +14,25 @@
  ***************************************************************************/
 
 #include "qgsvaluemapsearchwidgetwrapper.h"
+
+#include "qgsfields.h"
+#include "qgsfieldvalidator.h"
 #include "qgstexteditconfigdlg.h"
 #include "qgsvaluemapconfigdlg.h"
 #include "qgsvaluemapfieldformatter.h"
 
-#include "qgsfields.h"
-#include "qgsfieldvalidator.h"
-
 #include <QSettings>
 #include <QSizePolicy>
+#include <QString>
+
+#include "moc_qgsvaluemapsearchwidgetwrapper.cpp"
+
+using namespace Qt::StringLiterals;
 
 QgsValueMapSearchWidgetWrapper::QgsValueMapSearchWidgetWrapper( QgsVectorLayer *vl, int fieldIdx, QWidget *parent )
   : QgsSearchWidgetWrapper( vl, fieldIdx, parent )
 
-{
-}
+{}
 
 QWidget *QgsValueMapSearchWidgetWrapper::createWidget( QWidget *parent )
 {
@@ -86,7 +90,7 @@ QString QgsValueMapSearchWidgetWrapper::createExpression( QgsSearchWidgetWrapper
   //clear any unsupported flags
   flags &= supportedFlags();
 
-  const QVariant::Type fldType = layer()->fields().at( mFieldIdx ).type();
+  const QMetaType::Type fldType = layer()->fields().at( mFieldIdx ).type();
   const QString fieldName = createFieldIdentifier();
 
   if ( flags & IsNull )
@@ -102,11 +106,11 @@ QString QgsValueMapSearchWidgetWrapper::createExpression( QgsSearchWidgetWrapper
 
   switch ( fldType )
   {
-    case QVariant::Int:
-    case QVariant::UInt:
-    case QVariant::Double:
-    case QVariant::LongLong:
-    case QVariant::ULongLong:
+    case QMetaType::Type::Int:
+    case QMetaType::Type::UInt:
+    case QMetaType::Type::Double:
+    case QMetaType::Type::LongLong:
+    case QMetaType::Type::ULongLong:
     {
       if ( flags & EqualTo )
         return fieldName + '=' + currentKey;
@@ -157,10 +161,7 @@ void QgsValueMapSearchWidgetWrapper::setExpression( const QString &expression )
   const QString fieldName = layer()->fields().at( mFieldIdx ).name();
   QString str;
 
-  str = QStringLiteral( "%1 = '%2'" )
-        .arg( QgsExpression::quotedColumnRef( fieldName ),
-              exp.replace( '\'', QLatin1String( "''" ) ) );
+  str = u"%1 = '%2'"_s.arg( QgsExpression::quotedColumnRef( fieldName ), exp.replace( '\'', "''"_L1 ) );
 
   mExpression = str;
 }
-

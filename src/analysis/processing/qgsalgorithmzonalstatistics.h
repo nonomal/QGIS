@@ -18,10 +18,11 @@
 #ifndef QGSALGORITHMZONALSTATISTICS_H
 #define QGSALGORITHMZONALSTATISTICS_H
 
-#define SIP_NO_FILE
 
 #include "qgis_sip.h"
 #include "qgsprocessingalgorithm.h"
+
+#define SIP_NO_FILE
 
 ///@cond PRIVATE
 
@@ -30,9 +31,7 @@
  */
 class QgsZonalStatisticsAlgorithm : public QgsProcessingAlgorithm
 {
-
   public:
-
     QgsZonalStatisticsAlgorithm() = default;
     Qgis::ProcessingAlgorithmFlags flags() const override;
     QString name() const override;
@@ -47,11 +46,10 @@ class QgsZonalStatisticsAlgorithm : public QgsProcessingAlgorithm
 
   protected:
     bool prepareAlgorithm( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
-    QVariantMap processAlgorithm( const QVariantMap &parameters,
-                                  QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
+    QVariantMap processAlgorithm( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
 
   private:
-    std::unique_ptr< QgsRasterInterface > mInterface;
+    std::unique_ptr<QgsRasterInterface> mInterface;
     int mBand = 1;
     QString mPrefix;
     Qgis::ZonalStatistics mStats = Qgis::ZonalStatistic::All;

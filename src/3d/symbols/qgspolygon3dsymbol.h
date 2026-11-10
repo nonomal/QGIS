@@ -17,16 +17,15 @@
 #define QGSPOLYGON3DSYMBOL_H
 
 #include "qgis_3d.h"
-
-#include "qgsabstract3dsymbol.h"
 #include "qgs3dtypes.h"
+#include "qgsabstract3dsymbol.h"
 
 #include <Qt3DRender/QCullFace>
 
 class QgsAbstractMaterialSettings;
 
 /**
- * \ingroup 3d
+ * \ingroup qgis_3d
  * \brief 3D symbol that draws polygon geometries as planar polygons, optionally extruded (with added walls).
  *
  * \warning This is not considered stable API, and may change in future QGIS releases. It is
@@ -36,7 +35,6 @@ class QgsAbstractMaterialSettings;
 class _3D_EXPORT QgsPolygon3DSymbol : public QgsAbstract3DSymbol SIP_NODEFAULTCTORS
 {
   public:
-    //! Constructor for QgsPolygon3DSymbol
     QgsPolygon3DSymbol();
     ~QgsPolygon3DSymbol() override;
 
@@ -45,7 +43,7 @@ class _3D_EXPORT QgsPolygon3DSymbol : public QgsAbstract3DSymbol SIP_NODEFAULTCT
 
     void writeXml( QDomElement &elem, const QgsReadWriteContext &context ) const override;
     void readXml( const QDomElement &elem, const QgsReadWriteContext &context ) override;
-    QList< Qgis::GeometryType > compatibleGeometryTypes() const override;
+    QList<Qgis::GeometryType> compatibleGeometryTypes() const override;
     void setDefaultPropertiesFromLayer( const QgsVectorLayer *layer ) override;
 
     /**
@@ -68,14 +66,14 @@ class _3D_EXPORT QgsPolygon3DSymbol : public QgsAbstract3DSymbol SIP_NODEFAULTCT
     /**
      * Returns height (altitude) of the symbol (in map units)
      *
-     * \deprecated since QGIS 3.36. Use offset() instead.
+     * \deprecated QGIS 3.36. Use offset() instead.
      */
     Q_DECL_DEPRECATED float height() const SIP_DEPRECATED { return mOffset; }
 
     /**
      * Sets height (altitude) of the symbol (in map units)
      *
-     * \deprecated since QGIS 3.36. Use setOffset() instead.
+     * \deprecated QGIS 3.36. Use setOffset() instead.
      */
     Q_DECL_DEPRECATED void setHeight( float height ) SIP_DEPRECATED { mOffset = height; }
 
@@ -99,14 +97,14 @@ class _3D_EXPORT QgsPolygon3DSymbol : public QgsAbstract3DSymbol SIP_NODEFAULTCT
     void setExtrusionHeight( float extrusionHeight ) { mExtrusionHeight = extrusionHeight; }
 
     //! Returns material settings used for shading of the symbol
-    QgsAbstractMaterialSettings *materialSettings() const;
+    QgsAbstractMaterialSettings *materialSettings() const override;
 
     /**
      * Sets the \a material settings used for shading of the symbol.
      *
      * Ownership of \a material is transferred to the symbol.
      */
-    void setMaterialSettings( QgsAbstractMaterialSettings *materialSettings SIP_TRANSFER );
+    void setMaterialSettings( QgsAbstractMaterialSettings *materialSettings SIP_TRANSFER ) override;
 
     //! Returns front/back culling mode
     Qgs3DTypes::CullingMode cullingMode() const { return mCullingMode; }
@@ -167,16 +165,30 @@ class _3D_EXPORT QgsPolygon3DSymbol : public QgsAbstract3DSymbol SIP_NODEFAULTCT
     void setEdgeColor( const QColor &color ) { mEdgeColor = color; }
 
     /**
-     * Sets which facade of the buildings is rendered (0 for None, 1 for Walls, 2 for Roofs, 3 for WallsAndRoofs)
+     * Sets which facade of the buildings is rendered (0 for None, 1 for Walls, 2 for Roof, 3 for WallsAndRoof)
      * \since QGIS 3.16
+     * \deprecated QGIS 4.0. Use setExtrusionFaces() instead.
      */
-    void setRenderedFacade( int side ) { mRenderedFacade = side; }
+    Q_DECL_DEPRECATED void setRenderedFacade( int side ) SIP_DEPRECATED;
 
     /**
-     * Returns which facade of the buildings is rendered (0 for None, 1 for Walls, 2 for Roofs, 3 for WallsAndRoofs)
-     * \since QGIS 3.16
+     * Sets the building extrusion sides to be rendered.
+     * \since QGIS 4.0
      */
-    int renderedFacade() const { return mRenderedFacade; }
+    void setExtrusionFaces( Qgis::ExtrusionFaces side ) { mExtrusionFaces = side; }
+
+    /**
+     * Returns which facade of the buildings is rendered (0 for None, 1 for Walls, 2 for Roof, 3 for WallsAndRoof)
+     * \since QGIS 3.16
+     * \deprecated QGIS 4.0. Use extrusionFaces() instead.
+     */
+    Q_DECL_DEPRECATED int renderedFacade() SIP_DEPRECATED;
+
+    /**
+     * Returns the building extrusion sides to be rendered.
+     * \since QGIS 4.0
+     */
+    Qgis::ExtrusionFaces extrusionFaces() const { return mExtrusionFaces; }
 
     /**
      * Exports the geometries contained within the hierarchy of entity.
@@ -187,20 +199,20 @@ class _3D_EXPORT QgsPolygon3DSymbol : public QgsAbstract3DSymbol SIP_NODEFAULTCT
 
   private:
     //! how to handle altitude of vector features
-    Qgis::AltitudeClamping mAltClamping = Qgis::AltitudeClamping::Relative;
+    Qgis::AltitudeClamping mAltClamping = Qgis::AltitudeClamping::Absolute;
     //! how to handle clamping of vertices of individual features
     Qgis::AltitudeBinding mAltBinding = Qgis::AltitudeBinding::Centroid;
 
-    float mOffset = 0.0f;           //!< Vertical offset of polygons
-    float mExtrusionHeight = 0.0f;  //!< How much to extrude (0 means no walls)
-    std::unique_ptr< QgsAbstractMaterialSettings > mMaterialSettings; //!< Defines appearance of objects
-    Qgs3DTypes::CullingMode mCullingMode = Qgs3DTypes::NoCulling;  //!< Front/back culling mode
+    float mOffset = 0.0f;                                           //!< Vertical offset of polygons
+    float mExtrusionHeight = 0.0f;                                  //!< How much to extrude (0 means no walls)
+    std::unique_ptr<QgsAbstractMaterialSettings> mMaterialSettings; //!< Defines appearance of objects
+    Qgs3DTypes::CullingMode mCullingMode = Qgs3DTypes::NoCulling;   //!< Front/back culling mode
     bool mInvertNormals = false;
     bool mAddBackFaces = false;
-    int mRenderedFacade = 3;
+    Qgis::ExtrusionFaces mExtrusionFaces = Qgis::ExtrusionFace::Walls | Qgis::ExtrusionFace::Roof;
 
-    bool mEdgesEnabled = false;  //!< Whether to highlight edges
-    float mEdgeWidth = 1.f;  //!< Width of edges in pixels
+    bool mEdgesEnabled = false;    //!< Whether to highlight edges
+    float mEdgeWidth = 1.f;        //!< Width of edges in pixels
     QColor mEdgeColor = Qt::black; //!< Color of edge lines
 };
 

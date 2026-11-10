@@ -35,16 +35,16 @@ class CORE_EXPORT QgsMapRendererParallelJob : public QgsMapRendererQImageJob
     QgsMapRendererParallelJob( const QgsMapSettings &settings );
     ~QgsMapRendererParallelJob() override;
 
-    void cancel() override;
-    void cancelWithoutBlocking() override;
-    void waitForFinished() override;
-    bool isActive() const override;
+    void cancel() final;
+    void cancelWithoutBlocking() final;
+    void waitForFinished() final;
+    bool isActive() const final;
 
-    bool usedCachedLabels() const override;
-    QgsLabelingResults *takeLabelingResults() SIP_TRANSFER override;
+    bool usedCachedLabels() const final;
+    QgsLabelingResults *takeLabelingResults() final SIP_TRANSFER;
 
     // from QgsMapRendererJobWithPreview
-    QImage renderedImage() override;
+    QImage renderedImage() final;
 
   private slots:
     //! layers are rendered, labeling is still pending
@@ -55,7 +55,6 @@ class CORE_EXPORT QgsMapRendererParallelJob : public QgsMapRendererQImageJob
     void renderingFinished();
 
   private:
-
     //! \note not available in Python bindings
     static void renderLayerStatic( LayerRenderJob &job ) SIP_SKIP;
     //! \note not available in Python bindings
@@ -66,7 +65,14 @@ class CORE_EXPORT QgsMapRendererParallelJob : public QgsMapRendererQImageJob
     QImage mFinalImage;
 
     //! \note not available in Python bindings
-    enum { Idle, RenderingLayers, RenderingSecondPass, RenderingLabels } mStatus SIP_SKIP;
+    enum
+    {
+      Idle,
+      RenderingLayers,
+      RenderingSecondPass,
+      RenderingLabels
+    } mStatus
+      = Idle SIP_SKIP;
 
     QFuture<void> mFuture;
     QFutureWatcher<void> mFutureWatcher;
@@ -82,7 +88,6 @@ class CORE_EXPORT QgsMapRendererParallelJob : public QgsMapRendererQImageJob
     std::unique_ptr< QgsLabelingEngine > mLabelingEngineV2;
     QFuture<void> mLabelingFuture;
     QFutureWatcher<void> mLabelingFutureWatcher;
-
 };
 
 

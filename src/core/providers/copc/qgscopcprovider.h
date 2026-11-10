@@ -18,26 +18,25 @@
 #ifndef QGSCOPCPROVIDER_H
 #define QGSCOPCPROVIDER_H
 
+#include <memory>
+
 #include "qgspointclouddataprovider.h"
 #include "qgsprovidermetadata.h"
 
-#include <memory>
+#define SIP_NO_FILE
 
 ///@cond PRIVATE
-#define SIP_NO_FILE
 
 class QgsCopcPointCloudIndex;
 class QgsRemoteCopcPointCloudIndex;
 
-class QgsCopcProvider: public QgsPointCloudDataProvider
+class QgsCopcProvider : public QgsPointCloudDataProvider
 {
     Q_OBJECT
   public:
-    QgsCopcProvider( const QString &uri,
-                     const QgsDataProvider::ProviderOptions &providerOptions,
-                     QgsDataProvider::ReadFlags flags = QgsDataProvider::ReadFlags() );
+    QgsCopcProvider( const QString &uri, const QgsDataProvider::ProviderOptions &providerOptions, Qgis::DataProviderReadFlags flags = Qgis::DataProviderReadFlags() );
 
-    ~QgsCopcProvider();
+    ~QgsCopcProvider() override;
 
     QgsCoordinateReferenceSystem crs() const override;
     Qgis::DataProviderFlags flags() const override;
@@ -46,18 +45,18 @@ class QgsCopcProvider: public QgsPointCloudDataProvider
     bool isValid() const override;
     QString name() const override;
     QString description() const override;
-    QgsPointCloudIndex *index() const override;
+    QgsPointCloudIndex index() const override;
     qint64 pointCount() const override;
     QVariantMap originalMetadata() const override;
-    void loadIndex( ) override;
-    void generateIndex( ) override;
-    PointCloudIndexGenerationState indexingState( ) override { return PointCloudIndexGenerationState::Indexed; }
+    void loadIndex() override;
+    void generateIndex() override;
+    PointCloudIndexGenerationState indexingState() override { return PointCloudIndexGenerationState::Indexed; }
+    QgsPointCloudDataProvider::Capabilities capabilities() const override;
 
   private:
-    std::unique_ptr<QgsPointCloudIndex> mIndex;
+    QgsPointCloudIndex mIndex;
 
     QgsRectangle mExtent;
-    uint64_t mPointCount;
     QgsCoordinateReferenceSystem mCrs;
 };
 
@@ -68,7 +67,7 @@ class QgsCopcProviderMetadata : public QgsProviderMetadata
     QgsCopcProviderMetadata();
     QIcon icon() const override;
     QgsProviderMetadata::ProviderMetadataCapabilities capabilities() const override;
-    QgsCopcProvider *createProvider( const QString &uri, const QgsDataProvider::ProviderOptions &options, QgsDataProvider::ReadFlags flags = QgsDataProvider::ReadFlags() ) override;
+    QgsCopcProvider *createProvider( const QString &uri, const QgsDataProvider::ProviderOptions &options, Qgis::DataProviderReadFlags flags = Qgis::DataProviderReadFlags() ) override;
     QList< QgsProviderSublayerDetails > querySublayers( const QString &uri, Qgis::SublayerQueryFlags flags = Qgis::SublayerQueryFlags(), QgsFeedback *feedback = nullptr ) const override;
     int priorityForUri( const QString &uri ) const override;
     QList< Qgis::LayerType > validLayerTypesForUri( const QString &uri ) const override;

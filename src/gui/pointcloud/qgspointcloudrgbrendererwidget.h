@@ -18,9 +18,12 @@
 #ifndef QGSPOINTCLOUDRGBRENDERERWIDGET_H
 #define QGSPOINTCLOUDRGBRENDERERWIDGET_H
 
-#include "qgspointcloudrendererwidget.h"
 #include "ui_qgspointcloudrgbrendererwidgetbase.h"
+
 #include "qgis_gui.h"
+#include "qgspointcloudrendererwidget.h"
+
+#define SIP_NO_FILE
 
 class QgsContrastEnhancement;
 class QgsPointCloudLayer;
@@ -28,11 +31,10 @@ class QgsStyle;
 class QLineEdit;
 class QgsPointCloudRgbRenderer;
 
-#define SIP_NO_FILE
 
 ///@cond PRIVATE
 
-class GUI_EXPORT QgsPointCloudRgbRendererWidget: public QgsPointCloudRendererWidget, private Ui::QgsPointCloudRgbRendererWidgetBase
+class GUI_EXPORT QgsPointCloudRgbRendererWidget : public QgsPointCloudRendererWidget, private Ui::QgsPointCloudRgbRendererWidgetBase
 {
     Q_OBJECT
 
@@ -68,7 +70,6 @@ class GUI_EXPORT QgsPointCloudRgbRendererWidget: public QgsPointCloudRendererWid
 
     bool mBlockChangedSignal = false;
     int mDisableMinMaxWidgetRefresh = 0;
-
 };
 
 ///@endcond

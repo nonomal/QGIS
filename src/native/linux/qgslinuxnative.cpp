@@ -15,28 +15,47 @@
  *                                                                         *
  ***************************************************************************/
 
+#include "qgsconfig.h"
 #include "qgslinuxnative.h"
 
-#include <QCoreApplication>
-#include <QUrl>
-#include <QString>
-#include <QtDBus/QtDBus>
-#include <QtDebug>
+#include <QDBusArgument>
+#include <QDBusConnection>
+#include <QDBusInterface>
+#include <QDBusMetaType>
+#include <QFile>
+#include <QGuiApplication>
 #include <QImage>
 #include <QProcess>
+#include <QString>
+#include <QUrl>
+#include <QtDebug>
+
+using namespace Qt::StringLiterals;
+
+#include "moc_qgslinuxnative.cpp"
+
+#include "qgswaylandpointerlocker.h"
+
+QgsLinuxNative::QgsLinuxNative()
+  : mIsWayland( QGuiApplication::platformName() == "wayland"_L1 )
+{}
 
 QgsNative::Capabilities QgsLinuxNative::capabilities() const
 {
-  return NativeDesktopNotifications | NativeFilePropertiesDialog | NativeOpenTerminalAtPath;
+  QgsNative::Capabilities res = QgsNative::Capability::NativeDesktopNotifications | QgsNative::Capability::NativeFilePropertiesDialog | QgsNative::Capability::NativeOpenTerminalAtPath;
+#ifdef HAVE_WAYLAND
+  if ( mIsWayland )
+  {
+    res.setFlag( QgsNative::Capability::NativePointerLock );
+  }
+#endif
+  return res;
 }
 
-void QgsLinuxNative::initializeMainWindow( QWindow *,
-    const QString &,
-    const QString &,
-    const QString & )
+void QgsLinuxNative::initializeMainWindow( QWindow *, const QString &, const QString &, const QString & )
 {
   // Hardcoded desktop file value matching our official .deb packages
-  mDesktopFile = QStringLiteral( "org.qgis.qgis.desktop" );
+  mDesktopFile = u"org.qgis.qgis.desktop"_s;
 }
 
 void QgsLinuxNative::openFileExplorerAndSelectFile( const QString &path )
@@ -47,12 +66,9 @@ void QgsLinuxNative::openFileExplorerAndSelectFile( const QString &path )
     return;
   }
 
-  QDBusInterface iface( QStringLiteral( "org.freedesktop.FileManager1" ),
-                        QStringLiteral( "/org/freedesktop/FileManager1" ),
-                        QStringLiteral( "org.freedesktop.FileManager1" ),
-                        QDBusConnection::sessionBus() );
+  QDBusInterface iface( u"org.freedesktop.FileManager1"_s, u"/org/freedesktop/FileManager1"_s, u"org.freedesktop.FileManager1"_s, QDBusConnection::sessionBus() );
 
-  iface.call( QDBus::NoBlock, QStringLiteral( "ShowItems" ), QStringList( QUrl::fromLocalFile( path ).toString() ), QStringLiteral( "QGIS" ) );
+  iface.call( QDBus::NoBlock, u"ShowItems"_s, QStringList( QUrl::fromLocalFile( path ).toString() ), u"QGIS"_s );
   if ( iface.lastError().type() != QDBusError::NoError )
   {
     QgsNative::openFileExplorerAndSelectFile( path );
@@ -67,12 +83,9 @@ void QgsLinuxNative::showFileProperties( const QString &path )
     return;
   }
 
-  QDBusInterface iface( QStringLiteral( "org.freedesktop.FileManager1" ),
-                        QStringLiteral( "/org/freedesktop/FileManager1" ),
-                        QStringLiteral( "org.freedesktop.FileManager1" ),
-                        QDBusConnection::sessionBus() );
+  QDBusInterface iface( u"org.freedesktop.FileManager1"_s, u"/org/freedesktop/FileManager1"_s, u"org.freedesktop.FileManager1"_s, QDBusConnection::sessionBus() );
 
-  iface.call( QDBus::NoBlock, QStringLiteral( "ShowItemProperties" ), QStringList( QUrl::fromLocalFile( path ).toString() ), QStringLiteral( "QGIS" ) );
+  iface.call( QDBus::NoBlock, u"ShowItemProperties"_s, QStringList( QUrl::fromLocalFile( path ).toString() ), u"QGIS"_s );
   if ( iface.lastError().type() != QDBusError::NoError )
   {
     QgsNative::showFileProperties( path );
@@ -81,61 +94,40 @@ void QgsLinuxNative::showFileProperties( const QString &path )
 
 void QgsLinuxNative::showUndefinedApplicationProgress()
 {
-  const QVariantMap properties
-  {
-    { QStringLiteral( "progress-visible" ), true },
-    { QStringLiteral( "progress" ), 0.0 }
-  };
+  const QVariantMap properties { { u"progress-visible"_s, true }, { u"progress"_s, 0.0 } };
 
-  QDBusMessage message = QDBusMessage::createSignal( QStringLiteral( "/org/qgis/UnityLauncher" ),
-                         QStringLiteral( "com.canonical.Unity.LauncherEntry" ),
-                         QStringLiteral( "Update" ) );
-  message.setArguments( {mDesktopFile, properties} );
+  QDBusMessage message = QDBusMessage::createSignal( u"/org/qgis/UnityLauncher"_s, u"com.canonical.Unity.LauncherEntry"_s, u"Update"_s );
+  message.setArguments( { mDesktopFile, properties } );
   QDBusConnection::sessionBus().send( message );
 }
 
 void QgsLinuxNative::setApplicationProgress( double progress )
 {
-  const QVariantMap properties
-  {
-    { QStringLiteral( "progress-visible" ), true },
-    { QStringLiteral( "progress" ), progress / 100.0 }
-  };
+  const QVariantMap properties { { u"progress-visible"_s, true }, { u"progress"_s, progress / 100.0 } };
 
-  QDBusMessage message = QDBusMessage::createSignal( QStringLiteral( "/org/qgis/UnityLauncher" ),
-                         QStringLiteral( "com.canonical.Unity.LauncherEntry" ),
-                         QStringLiteral( "Update" ) );
-  message.setArguments( {mDesktopFile, properties} );
+  QDBusMessage message = QDBusMessage::createSignal( u"/org/qgis/UnityLauncher"_s, u"com.canonical.Unity.LauncherEntry"_s, u"Update"_s );
+  message.setArguments( { mDesktopFile, properties } );
   QDBusConnection::sessionBus().send( message );
 }
 
 void QgsLinuxNative::hideApplicationProgress()
 {
-  const QVariantMap properties
-  {
-    { QStringLiteral( "progress-visible" ), false },
+  const QVariantMap properties {
+    { u"progress-visible"_s, false },
   };
 
-  QDBusMessage message = QDBusMessage::createSignal( QStringLiteral( "/org/qgis/UnityLauncher" ),
-                         QStringLiteral( "com.canonical.Unity.LauncherEntry" ),
-                         QStringLiteral( "Update" ) );
-  message.setArguments( {mDesktopFile, properties} );
+  QDBusMessage message = QDBusMessage::createSignal( u"/org/qgis/UnityLauncher"_s, u"com.canonical.Unity.LauncherEntry"_s, u"Update"_s );
+  message.setArguments( { mDesktopFile, properties } );
   QDBusConnection::sessionBus().send( message );
 }
 
 void QgsLinuxNative::setApplicationBadgeCount( int count )
 {
   // the badge will only be shown when the count is greater than one
-  const QVariantMap properties
-  {
-    { QStringLiteral( "count-visible" ), count > 1 },
-    { QStringLiteral( "count" ), static_cast< long long >( count ) }
-  };
+  const QVariantMap properties { { u"count-visible"_s, count > 1 }, { u"count"_s, static_cast<long long>( count ) } };
 
-  QDBusMessage message = QDBusMessage::createSignal( QStringLiteral( "/org/qgis/UnityLauncher" ),
-                         QStringLiteral( "com.canonical.Unity.LauncherEntry" ),
-                         QStringLiteral( "Update" ) );
-  message.setArguments( {mDesktopFile, properties} );
+  QDBusMessage message = QDBusMessage::createSignal( u"/org/qgis/UnityLauncher"_s, u"com.canonical.Unity.LauncherEntry"_s, u"Update"_s );
+  message.setArguments( { mDesktopFile, properties } );
   QDBusConnection::sessionBus().send( message );
 }
 
@@ -143,32 +135,41 @@ bool QgsLinuxNative::openTerminalAtPath( const QString &path )
 {
   // logic adapted from https://askubuntu.com/a/227669,
   // https://github.com/Microsoft/vscode/blob/fec1775aa52e2124d3f09c7b2ac8f69c57309549/src/vs/workbench/parts/execution/electron-browser/terminal.ts
-  QString term = QStringLiteral( "xterm" );
+  QString term = u"xterm"_s;
   const QString desktopSession = qgetenv( "DESKTOP_SESSION" );
   const QString currentDesktop = qgetenv( "XDG_CURRENT_DESKTOP" );
   const QString gdmSession = qgetenv( "GDMSESSION" );
-  const bool isDebian = QFile::exists( QStringLiteral( "/etc/debian_version" ) );
+  const bool isDebian = QFile::exists( u"/etc/debian_version"_s );
   if ( isDebian )
   {
-    term = QStringLiteral( "x-terminal-emulator" );
+    term = u"x-terminal-emulator"_s;
   }
-  else if ( desktopSession.contains( QLatin1String( "gnome" ), Qt::CaseInsensitive ) ||
-            currentDesktop.contains( QLatin1String( "gnome" ), Qt::CaseInsensitive ) ||
-            currentDesktop.contains( QLatin1String( "unity" ), Qt::CaseInsensitive ) )
+  else if ( desktopSession.contains( "gnome"_L1, Qt::CaseInsensitive ) || currentDesktop.contains( "gnome"_L1, Qt::CaseInsensitive ) || currentDesktop.contains( "unity"_L1, Qt::CaseInsensitive ) )
   {
-    term = QStringLiteral( "gnome-terminal" );
+    term = u"gnome-terminal"_s;
   }
-  else if ( desktopSession.contains( QLatin1String( "kde" ), Qt::CaseInsensitive ) ||
-            currentDesktop.contains( QLatin1String( "kde" ), Qt::CaseInsensitive ) ||
-            gdmSession.contains( QLatin1String( "kde" ), Qt::CaseInsensitive ) )
+  else if ( desktopSession.contains( "kde"_L1, Qt::CaseInsensitive ) || currentDesktop.contains( "kde"_L1, Qt::CaseInsensitive ) || gdmSession.contains( "kde"_L1, Qt::CaseInsensitive ) )
   {
-    term = QStringLiteral( "konsole" );
+    term = u"konsole"_s;
   }
 
   QStringList arguments;
-  arguments << QStringLiteral( "--working-directory" )
-            << path;
+  arguments << u"--working-directory"_s << path;
   return QProcess::startDetached( term, QStringList(), path );
+}
+
+QgsPointerLocker *QgsLinuxNative::createPointerLocker( QWindow *window, QObject *parent )
+{
+#ifdef HAVE_WAYLAND
+  if ( !mIsWayland )
+    return nullptr;
+
+  return new QgsWaylandPointerLocker( window, parent );
+#else
+  ( void ) window;
+  ( void ) parent;
+  return nullptr;
+#endif
 }
 
 /**
@@ -245,35 +246,32 @@ QgsNative::NotificationResult QgsLinuxNative::showDesktopNotification( const QSt
 
   qDBusRegisterMetaType<QImage>();
 
-  QDBusInterface iface( QStringLiteral( "org.freedesktop.Notifications" ),
-                        QStringLiteral( "/org/freedesktop/Notifications" ),
-                        QStringLiteral( "org.freedesktop.Notifications" ),
-                        QDBusConnection::sessionBus() );
+  QDBusInterface iface( u"org.freedesktop.Notifications"_s, u"/org/freedesktop/Notifications"_s, u"org.freedesktop.Notifications"_s, QDBusConnection::sessionBus() );
 
   QVariantMap hints;
-  hints[QStringLiteral( "transient" )] = settings.transient;
+  hints[u"transient"_s] = settings.transient;
   if ( !settings.image.isNull() )
-    hints[QStringLiteral( "image_data" )] = settings.image;
+    hints[u"image_data"_s] = settings.image;
 
   QVariantList argumentList;
   argumentList << "qgis"; //app_name
   // replace_id
   if ( settings.messageId.isValid() )
-    argumentList << static_cast< uint >( settings.messageId.toInt() );
+    argumentList << static_cast<uint>( settings.messageId.toInt() );
   else
-    argumentList << static_cast< uint >( 0 );
+    argumentList << static_cast<uint>( 0 );
   // app_icon
   if ( !settings.svgAppIconPath.isEmpty() )
     argumentList << settings.svgAppIconPath;
   else
     argumentList << "";
-  argumentList << summary; // summary
-  argumentList << body; // body
-  argumentList << QStringList();  // actions
-  argumentList << hints;  // hints
-  argumentList << -1; // timeout in ms "If -1, the notification's expiration time is dependent on the notification server's settings, and may vary for the type of notification."
+  argumentList << summary;       // summary
+  argumentList << body;          // body
+  argumentList << QStringList(); // actions
+  argumentList << hints;         // hints
+  argumentList << -1;            // timeout in ms "If -1, the notification's expiration time is dependent on the notification server's settings, and may vary for the type of notification."
 
-  const QDBusMessage reply = iface.callWithArgumentList( QDBus::AutoDetect, QStringLiteral( "Notify" ), argumentList );
+  const QDBusMessage reply = iface.callWithArgumentList( QDBus::AutoDetect, u"Notify"_s, argumentList );
   if ( reply.type() == QDBusMessage::ErrorMessage )
   {
     qDebug() << "D-Bus Error:" << reply.errorMessage();

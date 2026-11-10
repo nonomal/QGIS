@@ -3,21 +3,82 @@
  *                                                                      *
  * src/gui/processing/qgsprocessingguiregistry.h                        *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/
 
 
 
 
 
-class QgsProcessingGuiRegistry
+
+class QgsProcessingDialogFactory
 {
 %Docstring(signature="appended")
-The :py:class:`QgsProcessingGuiRegistry` is a home for widgets for processing
-configuration widgets.
+A factory for creating widgets and dialogs for Processing components.
 
-:py:class:`QgsProcessingGuiRegistry` is not usually directly created, but rather accessed through
-:py:func:`QgsGui.processingGuiRegistry()`.
+.. warning::
+
+   This is not stable API, it is in place for temporary compatibility with Python code only.
+
+.. versionadded:: 4.4
+%End
+
+%TypeHeaderCode
+#include "qgsprocessingguiregistry.h"
+%End
+  public:
+    virtual ~QgsProcessingDialogFactory();
+
+    virtual QgsProcessingAlgorithmWidget *createWidget(
+      QgsProcessingAlgorithm *algorithm /Transfer/,
+      bool inPlace = false,
+      QMainWindow *parent = 0,
+      QgsProcessingAlgorithmWidgetBase::WidgetFlags flags = QgsProcessingAlgorithmWidgetBase::WidgetFlags(),
+      Qgis::DockableWidgetInitialState initialState = Qgis::DockableWidgetInitialState::RestorePreviousState
+    ) = 0 /TransferBack/;
+%Docstring
+Creates a new widget for executing the specified algorithm.
+%End
+
+
+    virtual QgsProcessingScriptEditorDialog *createScriptEditorDialog( const QString &filePath = QString(), QWidget *parent = 0 ) = 0 /TransferBack/;
+%Docstring
+Creates a new script editor dialog.
+%End
+};
+
+class QgsProcessingContextFactory
+{
+%Docstring(signature="appended")
+A factory for creating Processing contexts, aware of the GUI components
+which may influence this.
+
+.. warning::
+
+   This is not stable API, it is in place for temporary compatibility with Python code only.
+
+.. versionadded:: 4.4
+%End
+
+%TypeHeaderCode
+#include "qgsprocessingguiregistry.h"
+%End
+  public:
+    virtual ~QgsProcessingContextFactory();
+
+    virtual QgsProcessingContext *createContext( QgsProcessingFeedback *feedback = 0 ) = 0 /TransferBack/;
+%Docstring
+Creates a new Processing context.
+%End
+};
+
+class QgsProcessingGuiRegistry : QgsProcessingWidgetContextGenerator
+{
+%Docstring(signature="appended")
+A registry for widgets for use with the Processing framework.
+
+:py:class:`QgsProcessingGuiRegistry` is not usually directly created,
+but rather accessed through :py:func:`QgsGui.processingGuiRegistry()`.
 
 .. versionadded:: 3.2
 %End
@@ -26,49 +87,53 @@ configuration widgets.
 #include "qgsprocessingguiregistry.h"
 %End
   public:
-
     QgsProcessingGuiRegistry();
 %Docstring
-Constructor. Should never be called manually, is already
-created by :py:class:`QgsGui`.
+Constructor. Should never be called manually, is already created by
+:py:class:`QgsGui`.
 %End
     ~QgsProcessingGuiRegistry();
 
     void addAlgorithmConfigurationWidgetFactory( QgsProcessingAlgorithmConfigurationWidgetFactory *factory /Transfer/ );
 %Docstring
-Add a new configuration widget factory for customized algorithm configuration
-widgets. Ownership is taken.
+Add a new configuration widget factory for customized algorithm
+configuration widgets. Ownership is taken.
 
 .. versionadded:: 3.2
 %End
 
     void removeAlgorithmConfigurationWidgetFactory( QgsProcessingAlgorithmConfigurationWidgetFactory *factory );
 %Docstring
-Remove a configuration widget factory for customized algorithm configuration
-widgets.
+Remove a configuration widget factory for customized algorithm
+configuration widgets.
 
 .. versionadded:: 3.2
 %End
 
     QgsProcessingAlgorithmConfigurationWidget *algorithmConfigurationWidget( const QgsProcessingAlgorithm *algorithm ) const;
 %Docstring
-Gets the configuration widget for an ``algorithm``. This widget will be shown
-next to parameter widgets. Most algorithms do not have a configuration widget
-and in this case, ``None`` will be returned.
+Gets the configuration widget for an ``algorithm``. This widget will be
+shown next to parameter widgets. Most algorithms do not have a
+configuration widget and in this case, ``None`` will be returned.
 
 .. versionadded:: 3.2
 %End
 
     bool addParameterWidgetFactory( QgsProcessingParameterWidgetFactoryInterface *factory /Transfer/ );
 %Docstring
-Adds a parameter widget ``factory`` to the registry, allowing widget creation for parameters of the matching
-type via :py:func:`~QgsProcessingGuiRegistry.createParameterWidgetWrapper` and :py:func:`~QgsProcessingGuiRegistry.createModelerParameterWidget`.
+Adds a parameter widget ``factory`` to the registry, allowing widget
+creation for parameters of the matching type via
+:py:func:`~QgsProcessingGuiRegistry.createParameterWidgetWrapper` and
+:py:func:`~QgsProcessingGuiRegistry.createModelerParameterWidget`.
 
 Ownership of ``factory`` is transferred to the registry.
 
-Returns ``True`` if the factory was successfully added, or ``False`` if the factory could not be added. Each
-factory must return a unique value for :py:func:`QgsProcessingParameterWidgetFactoryInterface.parameterType()`,
-and attempting to add a new factory with a duplicate type will result in failure.
+Returns ``True`` if the factory was successfully added, or ``False`` if
+the factory could not be added. Each factory must return a unique value
+for
+:py:func:`QgsProcessingParameterWidgetFactoryInterface.parameterType()`,
+and attempting to add a new factory with a duplicate type will result in
+failure.
 
 .. seealso:: :py:func:`removeParameterWidgetFactory`
 
@@ -81,20 +146,55 @@ and attempting to add a new factory with a duplicate type will result in failure
 
     void removeParameterWidgetFactory( QgsProcessingParameterWidgetFactoryInterface *factory );
 %Docstring
-Removes a parameter widget ``factory`` from the registry. The factory will be deleted.
+Removes a parameter widget ``factory`` from the registry. The factory
+will be deleted.
 
 .. seealso:: :py:func:`addParameterWidgetFactory`
 
 .. versionadded:: 3.4
 %End
 
-    QgsAbstractProcessingParameterWidgetWrapper *createParameterWidgetWrapper( const QgsProcessingParameterDefinition *parameter, QgsProcessingGui::WidgetType type ) /Factory/;
+    void registerModelConfigWidgetFactory( QgsProcessingModelConfigWidgetFactory *factory );
 %Docstring
-Creates a new parameter widget wrapper for the given ``parameter``. The ``type`` argument
-dictates the type of dialog the wrapper should be created for. The caller takes ownership
-of the returned wrapper.
+Register a new factory class for creating panel widgets that can be
+shown in the Processing model designer dialog.
 
-If no factory is registered which handles the given ``parameter``, ``None`` will be returned.
+.. note::
+
+   Ownership of the factory is not transferred, and the factory must
+   be unregistered when plugin is unloaded.
+
+.. seealso:: :py:func:`unregisterModelConfigWidgetFactory`
+
+.. warning::
+
+   Not stable API
+
+.. versionadded:: 4.0
+%End
+
+    void unregisterModelConfigWidgetFactory( QgsProcessingModelConfigWidgetFactory *factory );
+%Docstring
+Unregister a previously registered factory for creating panel widgets
+that can be shown in the Processing model designer dialog.
+
+.. warning::
+
+   Not stable API
+
+.. seealso:: :py:func:`registerModelConfigWidgetFactory`
+
+.. versionadded:: 4.0
+%End
+
+    QgsAbstractProcessingParameterWidgetWrapper *createParameterWidgetWrapper( const QgsProcessingParameterDefinition *parameter, Qgis::ProcessingMode type ) /TransferBack/;
+%Docstring
+Creates a new parameter widget wrapper for the given ``parameter``. The
+``type`` argument dictates the type of dialog the wrapper should be
+created for. The caller takes ownership of the returned wrapper.
+
+If no factory is registered which handles the given ``parameter``,
+``None`` will be returned.
 
 .. seealso:: :py:func:`createModelerParameterWidget`
 
@@ -103,20 +203,23 @@ If no factory is registered which handles the given ``parameter``, ``None`` will
 .. versionadded:: 3.4
 %End
 
-    QgsProcessingModelerParameterWidget *createModelerParameterWidget( QgsProcessingModelAlgorithm *model,
-        const QString &childId,
-        const QgsProcessingParameterDefinition *parameter, QgsProcessingContext &context ) /Factory/;
+    QgsProcessingModelerParameterWidget *createModelerParameterWidget(
+      QgsProcessingModelAlgorithm *model, const QString &childId, const QgsProcessingParameterDefinition *parameter, QgsProcessingContext &context
+    ) /Factory/;
 %Docstring
-Creates a new modeler parameter widget for the given ``parameter``. This widget allows
-configuration of the parameter's value when used inside a Processing ``model``.
+Creates a new modeler parameter widget for the given ``parameter``. This
+widget allows configuration of the parameter's value when used inside a
+Processing ``model``.
 
-The ID of the child algorithm within the model must be specified via the ``childId``
-argument. This value corresponds to the :py:func:`QgsProcessingModelChildAlgorithm.childId()`
-string, which uniquely identifies which child algorithm the parameter is associated
+The ID of the child algorithm within the model must be specified via the
+``childId`` argument. This value corresponds to the
+:py:func:`QgsProcessingModelChildAlgorithm.childId()` string, which
+uniquely identifies which child algorithm the parameter is associated
 with inside the given ``model``.
 
-The caller takes ownership of the returned widget. If no factory is registered which
-handles the given ``parameter``, ``None`` will be returned.
+The caller takes ownership of the returned widget. If no factory is
+registered which handles the given ``parameter``, ``None`` will be
+returned.
 
 .. seealso:: :py:func:`createParameterWidgetWrapper`
 
@@ -125,39 +228,240 @@ handles the given ``parameter``, ``None`` will be returned.
 .. versionadded:: 3.4
 %End
 
-    QgsProcessingAbstractParameterDefinitionWidget *createParameterDefinitionWidget( const QString &type,
-        QgsProcessingContext &context,
-        const QgsProcessingParameterWidgetContext &widgetContext,
-        const QgsProcessingParameterDefinition *definition = 0,
-        const QgsProcessingAlgorithm *algorithm = 0 ) /Factory/;
+    QgsProcessingAbstractParameterDefinitionWidget *createParameterDefinitionWidget(
+      const QString &type,
+      QgsProcessingContext &context,
+      const QgsProcessingParameterWidgetContext &widgetContext,
+      const QgsProcessingParameterDefinition *definition = 0,
+      const QgsProcessingAlgorithm *algorithm = 0
+    ) /Factory/;
 %Docstring
-Creates a new parameter definition widget allowing for configuration of an instance of
-a specific parameter ``type``.
+Creates a new parameter definition widget allowing for configuration of
+an instance of a specific parameter ``type``.
 
-The ``context`` argument must specify a Processing context, which will be used
-by the widget to evaluate existing ``definition`` properties such as default values. Similarly,
-the ``widgetContext`` argument specifies the wider GUI context in which the widget
-will be used.
+The ``context`` argument must specify a Processing context, which will
+be used by the widget to evaluate existing ``definition`` properties
+such as default values. Similarly, the ``widgetContext`` argument
+specifies the wider GUI context in which the widget will be used.
 
-The optional ``definition`` argument may specify an existing parameter definition which
-will be reflected in the initial state of the returned widget. If ``definition`` is ``None``,
-then the returned widget will use default settings instead.
+The optional ``definition`` argument may specify an existing parameter
+definition which will be reflected in the initial state of the returned
+widget. If ``definition`` is ``None``, then the returned widget will use
+default settings instead.
 
-Additionally, the optional ``algorithm`` parameter may be used to specify the algorithm or model
-associated with the parameter.
+Additionally, the optional ``algorithm`` parameter may be used to
+specify the algorithm or model associated with the parameter.
 
-If ``None`` is returned for a particular parameter ``type``,
-it indicates that the parameter type cannot be configured via GUI.
+If ``None`` is returned for a particular parameter ``type``, it
+indicates that the parameter type cannot be configured via GUI.
 
 .. versionadded:: 3.10
 %End
 
+    QgsProcessingModelConfigWidget *createModelConfigWidgetForComponent( QgsProcessingModelComponent *component, QgsProcessingContext &context, const QgsProcessingParameterWidgetContext &widgetContext ) const /Factory/;
+%Docstring
+Creates a new widget for configuring a Processing model ``component``.
+
+May return ``None`` if configuring a the component is not supported.
+
+.. warning::
+
+   Not stable API
+
+.. versionadded:: 4.0
+%End
+
+    void registerWidgetContextGenerator( QgsProcessingWidgetContextGenerator *generator );
+%Docstring
+Register a Processing widget context ``generator`` class that will be
+used to retrieve a widget context when required.
+
+.. note::
+
+   This is intended for registration of a "top-level", application widget generator
+   which can return contexts with knowledge of the application map canvas, active project, etc.
+
+.. warning::
+
+   The ``generator`` must live for the lifetime of the application, or this method
+   must explicitly be called with a ``None`` argument to de-register the generator.
+
+.. seealso:: :py:func:`createWidgetContext`
+
+.. versionadded:: 4.4
+%End
+
+    virtual QgsProcessingParameterWidgetContext createWidgetContext();
+
+%Docstring
+Register a Processing widget context.
+
+.. note::
+
+   This returns a "top-level", application widget context
+   with knowledge of the application map canvas, active project, etc. Individual Processing GUI
+   subcomponents may start with this context, then further refine with lower-level specific components
+   (such as individual model-specific properties)
+
+.. seealso:: :py:func:`createWidgetContext`
+
+.. versionadded:: 4.4
+%End
+
+    void registerProviderToolboxAction( const QString &providerId, QgsProcessingToolboxAction *action /Transfer/ );
+%Docstring
+Registers a toolbox ``action`` for a provider.
+
+Ownership of ``action`` is transferred to the registry.
+
+.. seealso:: :py:func:`toolboxActionsForProvider`
+
+.. seealso:: :py:func:`deregisterProviderToolboxActions`
+
+.. versionadded:: 4.4
+%End
+
+    void deregisterProviderToolboxActions( const QString &providerId );
+%Docstring
+Deregisters all toolbox actions for a provider.
+
+Any previously registered actions for this provider will be deleted.
+
+.. seealso:: :py:func:`registerProviderToolboxAction`
+
+.. versionadded:: 4.4
+%End
+
+    QList< QgsProcessingToolboxAction * > toolboxActionsForProvider( const QString &providerId ) const;
+%Docstring
+Returns a list of all toolbox actions registered for a provider.
+
+.. seealso:: :py:func:`registerProviderToolboxAction`
+
+.. versionadded:: 4.4
+%End
+
+    void registerProviderToolboxContextAction( const QString &providerId, QgsProcessingToolboxContextAction *action /Transfer/ );
+%Docstring
+Registers a toolbox context menu ``action`` for a provider.
+
+Ownership of ``action`` is transferred to the registry.
+
+.. seealso:: :py:func:`toolboxContextActionsForProvider`
+
+.. seealso:: :py:func:`deregisterProviderToolboxContextActions`
+
+.. versionadded:: 4.4
+%End
+
+    void deregisterProviderToolboxContextActions( const QString &providerId );
+%Docstring
+Deregisters all toolbox context menu actions for a provider.
+
+Any previously registered actions for this provider will be deleted.
+
+.. seealso:: :py:func:`registerProviderToolboxContextAction`
+
+.. versionadded:: 4.4
+%End
+
+ void deregisterProviderToolboxContextAction( QgsProcessingToolboxContextAction *action /TransferBack/ ) /Deprecated="Since 4.4. Use deregisterProviderToolboxContextActions() instead."/;
+%Docstring
+Deregisters a context menu ``action``.
+
+The action will not be deleted, ownership will be returned to Python.
+
+.. deprecated:: 4.4
+
+   Use :py:func:`~QgsProcessingGuiRegistry.deregisterProviderToolboxContextActions` instead.
+%End
+
+    QList< QgsProcessingToolboxContextAction * > toolboxContextActionsForProvider( const QString &providerId ) const;
+%Docstring
+Returns a list of all toolbox context menu actions registered for a
+provider.
+
+.. seealso:: :py:func:`toolboxContextActions`
+
+.. seealso:: :py:func:`registerProviderToolboxContextAction`
+
+.. versionadded:: 4.4
+%End
+
+    QList< QgsProcessingToolboxContextAction * > toolboxContextActions() const;
+%Docstring
+Returns a list of all toolbox context menu actions registered.
+
+.. seealso:: :py:func:`toolboxContextActionsForProvider`
+
+.. versionadded:: 4.4
+%End
+
+    void setDialogFactory( QgsProcessingDialogFactory *factory /Transfer/ );
+%Docstring
+Sets the application's processing dialog ``factory``.
+
+Ownership of ``factory`` is transferred.
+
+.. warning::
+
+   This is not stable API, it is in place for temporary compatibility with Python code only.
+
+.. seealso:: :py:func:`dialogFactory`
+
+.. versionadded:: 4.4
+%End
+
+    QgsProcessingDialogFactory *dialogFactory();
+%Docstring
+Returns the application's processing dialog factory, if set.
+
+.. warning::
+
+   This is not stable API, it is in place for temporary compatibility with Python code only.
+
+.. seealso:: :py:func:`setDialogFactory`
+
+.. versionadded:: 4.4
+%End
+
+    void setContextFactory( QgsProcessingContextFactory *factory /Transfer/ );
+%Docstring
+Sets the application's Processing context ``factory``.
+
+Ownership of ``factory`` is transferred.
+
+.. warning::
+
+   This is not stable API, it is in place for temporary compatibility with Python code only.
+
+.. seealso:: :py:func:`contextFactory`
+
+.. versionadded:: 4.4
+%End
+
+    QgsProcessingContextFactory *contextFactory();
+%Docstring
+Returns the application's Processing context factory, if set.
+
+.. warning::
+
+   This is not stable API, it is in place for temporary compatibility with Python code only.
+
+.. seealso:: :py:func:`setContextFactory`
+
+.. versionadded:: 4.4
+%End
+
+  private:
+    QgsProcessingGuiRegistry( const QgsProcessingGuiRegistry &other );
 };
+
 
 /************************************************************************
  * This file has been generated automatically from                      *
  *                                                                      *
  * src/gui/processing/qgsprocessingguiregistry.h                        *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/

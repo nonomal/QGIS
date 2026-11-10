@@ -16,21 +16,27 @@
  ***************************************************************************/
 
 #include "qgstransformeffect.h"
+
+#include "qgspainting.h"
 #include "qgssymbollayerutils.h"
 #include "qgsunittypes.h"
+
 #include <QPicture>
+#include <QString>
 #include <QTransform>
 
-QgsPaintEffect *QgsTransformEffect::create( const QVariantMap &map )
+using namespace Qt::StringLiterals;
+
+std::unique_ptr<QgsPaintEffect> QgsTransformEffect::create( const QVariantMap &map )
 {
-  QgsTransformEffect *newEffect = new QgsTransformEffect();
+  auto newEffect = std::make_unique<QgsTransformEffect>();
   newEffect->readProperties( map );
   return newEffect;
 }
 
 void QgsTransformEffect::draw( QgsRenderContext &context )
 {
-  if ( !source() || !enabled() || !context.painter() )
+  if ( !enabled() || !context.painter() || source().isNull() )
     return;
 
   QPainter *painter = context.painter();
@@ -46,37 +52,37 @@ void QgsTransformEffect::draw( QgsRenderContext &context )
 QVariantMap QgsTransformEffect::properties() const
 {
   QVariantMap props;
-  props.insert( QStringLiteral( "reflect_x" ), mReflectX ? "1" : "0" );
-  props.insert( QStringLiteral( "reflect_y" ), mReflectY ? "1" : "0" );
-  props.insert( QStringLiteral( "scale_x" ), QString::number( mScaleX ) );
-  props.insert( QStringLiteral( "scale_y" ), QString::number( mScaleY ) );
-  props.insert( QStringLiteral( "rotation" ), QString::number( mRotation ) );
-  props.insert( QStringLiteral( "shear_x" ), QString::number( mShearX ) );
-  props.insert( QStringLiteral( "shear_y" ), QString::number( mShearY ) );
-  props.insert( QStringLiteral( "translate_x" ), QString::number( mTranslateX ) );
-  props.insert( QStringLiteral( "translate_y" ), QString::number( mTranslateY ) );
-  props.insert( QStringLiteral( "translate_unit" ), QgsUnitTypes::encodeUnit( mTranslateUnit ) );
-  props.insert( QStringLiteral( "translate_unit_scale" ), QgsSymbolLayerUtils::encodeMapUnitScale( mTranslateMapUnitScale ) );
-  props.insert( QStringLiteral( "enabled" ), mEnabled ? "1" : "0" );
-  props.insert( QStringLiteral( "draw_mode" ), QString::number( int( mDrawMode ) ) );
+  props.insert( u"reflect_x"_s, mReflectX ? "1" : "0" );
+  props.insert( u"reflect_y"_s, mReflectY ? "1" : "0" );
+  props.insert( u"scale_x"_s, QString::number( mScaleX ) );
+  props.insert( u"scale_y"_s, QString::number( mScaleY ) );
+  props.insert( u"rotation"_s, QString::number( mRotation ) );
+  props.insert( u"shear_x"_s, QString::number( mShearX ) );
+  props.insert( u"shear_y"_s, QString::number( mShearY ) );
+  props.insert( u"translate_x"_s, QString::number( mTranslateX ) );
+  props.insert( u"translate_y"_s, QString::number( mTranslateY ) );
+  props.insert( u"translate_unit"_s, QgsUnitTypes::encodeUnit( mTranslateUnit ) );
+  props.insert( u"translate_unit_scale"_s, QgsSymbolLayerUtils::encodeMapUnitScale( mTranslateMapUnitScale ) );
+  props.insert( u"enabled"_s, mEnabled ? "1" : "0" );
+  props.insert( u"draw_mode"_s, QString::number( int( mDrawMode ) ) );
   return props;
 }
 
 void QgsTransformEffect::readProperties( const QVariantMap &props )
 {
-  mEnabled = props.value( QStringLiteral( "enabled" ), QStringLiteral( "1" ) ).toInt();
-  mDrawMode = static_cast< QgsPaintEffect::DrawMode >( props.value( QStringLiteral( "draw_mode" ), QStringLiteral( "2" ) ).toInt() );
-  mReflectX = props.value( QStringLiteral( "reflect_x" ), QStringLiteral( "0" ) ).toInt();
-  mReflectY = props.value( QStringLiteral( "reflect_y" ), QStringLiteral( "0" ) ).toInt();
-  mScaleX = props.value( QStringLiteral( "scale_x" ), QStringLiteral( "1.0" ) ).toDouble();
-  mScaleY = props.value( QStringLiteral( "scale_y" ), QStringLiteral( "1.0" ) ).toDouble();
-  mRotation = props.value( QStringLiteral( "rotation" ), QStringLiteral( "0.0" ) ).toDouble();
-  mShearX = props.value( QStringLiteral( "shear_x" ), QStringLiteral( "0.0" ) ).toDouble();
-  mShearY = props.value( QStringLiteral( "shear_y" ), QStringLiteral( "0.0" ) ).toDouble();
-  mTranslateX = props.value( QStringLiteral( "translate_x" ), QStringLiteral( "0.0" ) ).toDouble();
-  mTranslateY = props.value( QStringLiteral( "translate_y" ), QStringLiteral( "0.0" ) ).toDouble();
-  mTranslateUnit = QgsUnitTypes::decodeRenderUnit( props.value( QStringLiteral( "translate_unit" ) ).toString() );
-  mTranslateMapUnitScale = QgsSymbolLayerUtils::decodeMapUnitScale( props.value( QStringLiteral( "translate_unit_scale" ) ).toString() );
+  mEnabled = props.value( u"enabled"_s, u"1"_s ).toInt();
+  mDrawMode = static_cast< QgsPaintEffect::DrawMode >( props.value( u"draw_mode"_s, u"2"_s ).toInt() );
+  mReflectX = props.value( u"reflect_x"_s, u"0"_s ).toInt();
+  mReflectY = props.value( u"reflect_y"_s, u"0"_s ).toInt();
+  mScaleX = props.value( u"scale_x"_s, u"1.0"_s ).toDouble();
+  mScaleY = props.value( u"scale_y"_s, u"1.0"_s ).toDouble();
+  mRotation = props.value( u"rotation"_s, u"0.0"_s ).toDouble();
+  mShearX = props.value( u"shear_x"_s, u"0.0"_s ).toDouble();
+  mShearY = props.value( u"shear_y"_s, u"0.0"_s ).toDouble();
+  mTranslateX = props.value( u"translate_x"_s, u"0.0"_s ).toDouble();
+  mTranslateY = props.value( u"translate_y"_s, u"0.0"_s ).toDouble();
+  mTranslateUnit = QgsUnitTypes::decodeRenderUnit( props.value( u"translate_unit"_s ).toString() );
+  mTranslateMapUnitScale = QgsSymbolLayerUtils::decodeMapUnitScale( props.value( u"translate_unit_scale"_s ).toString() );
 }
 
 QgsTransformEffect *QgsTransformEffect::clone() const
@@ -95,13 +101,14 @@ QTransform QgsTransformEffect::createTransform( const QgsRenderContext &context 
 {
   QTransform t;
 
-  if ( !source() )
+  const QPicture &pic = source();
+  if ( pic.isNull() )
     return t;
 
-  const int width = source()->boundingRect().width();
-  const int height = source()->boundingRect().height();
-  const int top = source()->boundingRect().top();
-  const int left = source()->boundingRect().left();
+  const int width = pic.boundingRect().width();
+  const int height = pic.boundingRect().height();
+  const int top = pic.boundingRect().top();
+  const int left = pic.boundingRect().left();
 
   //remember that the below operations are effectively performed in the opposite order
   //so, first the reflection applies, then scale, shear, rotate and lastly translation
@@ -109,8 +116,7 @@ QTransform QgsTransformEffect::createTransform( const QgsRenderContext &context 
   const double translateX = context.convertToPainterUnits( mTranslateX, mTranslateUnit, mTranslateMapUnitScale );
   const double translateY = context.convertToPainterUnits( mTranslateY, mTranslateUnit, mTranslateMapUnitScale );
 
-  t.translate( translateX + left + width / 2.0,
-               translateY + top + height / 2.0 );
+  t.translate( translateX + left + width / 2.0, translateY + top + height / 2.0 );
 
   t.rotate( mRotation );
   t.shear( mShearX, mShearY );
@@ -121,8 +127,7 @@ QTransform QgsTransformEffect::createTransform( const QgsRenderContext &context 
     t.scale( mReflectX ? -1 : 1, mReflectY ? -1 : 1 );
   }
 
-  t.translate( -left - width / 2.0,
-               -top - height / 2.0 );
+  t.translate( -left - width / 2.0, -top - height / 2.0 );
 
   return t;
 }

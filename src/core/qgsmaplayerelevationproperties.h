@@ -21,12 +21,12 @@
 
 #include "qgis_core.h"
 #include "qgis_sip.h"
-#include "qgsreadwritecontext.h"
-#include "qgsrange.h"
 #include "qgspropertycollection.h"
+#include "qgsrange.h"
+#include "qgsreadwritecontext.h"
 
-#include <QObject>
 #include <QDomElement>
+#include <QObject>
 
 class QgsMapLayer;
 
@@ -43,14 +43,11 @@ class QgsMapLayer;
  */
 class CORE_EXPORT QgsMapLayerElevationProperties : public QObject
 {
-#ifdef SIP_RUN
-#include "qgspointcloudlayerelevationproperties.h"
-#include "qgsrasterlayerelevationproperties.h"
-#include "qgsvectorlayerelevationproperties.h"
-#include "qgsmeshlayerelevationproperties.h"
-#include "qgstiledscenelayerelevationproperties.h"
-#endif
-
+    //SIP_TYPEHEADER_INCLUDE( "qgspointcloudlayerelevationproperties.h" );
+    //SIP_TYPEHEADER_INCLUDE( "qgsrasterlayerelevationproperties.h" );
+    //SIP_TYPEHEADER_INCLUDE( "qgsvectorlayerelevationproperties.h" );
+    //SIP_TYPEHEADER_INCLUDE( "qgsmeshlayerelevationproperties.h" );
+    //SIP_TYPEHEADER_INCLUDE( "qgstiledscenelayerelevationproperties.h" );
     Q_OBJECT
 
 #ifdef SIP_RUN
@@ -79,7 +76,7 @@ class CORE_EXPORT QgsMapLayerElevationProperties : public QObject
     {
       sipType = 0;
     }
-    SIP_END
+  SIP_END
 #endif
 
   public:
@@ -91,11 +88,11 @@ class CORE_EXPORT QgsMapLayerElevationProperties : public QObject
      * \since QGIS 3.26
      */
     enum class Property SIP_MONKEYPATCH_SCOPEENUM_UNNEST( QgsMapLayerElevationProperties, Property ) : int
-      {
-      ZOffset, //! Z offset
-      ExtrusionHeight, //!< Extrusion height
-      RasterPerBandLowerElevation, //!< Lower elevation for each raster band (since QGIS 3.38)
-      RasterPerBandUpperElevation, //!< Upper elevation for each raster band (since QGIS 3.38)
+    {
+      ZOffset,                     //!< Z offset
+      ExtrusionHeight,             //!< Extrusion height
+      RasterPerBandLowerElevation, //!< Lower elevation for each raster band \since QGIS 3.38
+      RasterPerBandUpperElevation, //!< Upper elevation for each raster band \since QGIS 3.38
     };
     // *INDENT-ON*
 
@@ -104,7 +101,7 @@ class CORE_EXPORT QgsMapLayerElevationProperties : public QObject
      */
     enum Flag SIP_ENUM_BASETYPE( IntFlag )
     {
-      FlagDontInvalidateCachedRendersWhenRangeChanges = 1  //!< Any cached rendering will not be invalidated when z range context is modified.
+      FlagDontInvalidateCachedRendersWhenRangeChanges = 1 //!< Any cached rendering will not be invalidated when z range context is modified.
     };
     Q_DECLARE_FLAGS( Flags, Flag )
 
@@ -172,6 +169,16 @@ class CORE_EXPORT QgsMapLayerElevationProperties : public QObject
      * May return an infinite range if the extent could not be calculated.
      */
     virtual QgsDoubleRange calculateZRange( QgsMapLayer *layer ) const;
+
+    /**
+     * Returns a list of significant elevation/z-values for the specified \a layer, using
+     * the settings defined by this elevation properties object.
+     *
+     * These values will be highlighted in elevation related widgets for the layer.
+     *
+     * \since QGIS 3.38
+     */
+    virtual QList< double > significantZValues( QgsMapLayer *layer ) const;
 
     /**
      * Returns TRUE if the layer should be visible by default in newly created elevation
@@ -343,12 +350,10 @@ class CORE_EXPORT QgsMapLayerElevationProperties : public QObject
     void copyCommonProperties( const QgsMapLayerElevationProperties *other );
 
   private:
-
     /**
      * Initializes property definitions.
      */
     static void initPropertyDefinitions();
-
 };
 
 #endif // QGSMAPLAYERELEVATIONPROPERTIES_H

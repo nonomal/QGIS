@@ -30,14 +30,14 @@ class QgsLineString;
  */
 class CORE_EXPORT QgsLineSegment2D
 {
-
   public:
-
+    // clang-format off
     /**
      * Constructor for a QgsLineSegment2D from the specified \a start point to
      * the \a end point.
      */
     QgsLineSegment2D( const QgsPointXY &start, const QgsPointXY &end ) SIP_HOLDGIL
+      // clang-format on
   : mStart( start )
     , mEnd( end )
     {}
@@ -220,13 +220,11 @@ class CORE_EXPORT QgsLineSegment2D
 
     // TODO c++20 - replace with = default
 
-    //! Equality operator
     bool operator==( const QgsLineSegment2D &other ) const SIP_HOLDGIL
     {
       return mStart == other.mStart && mEnd == other.mEnd;
     }
 
-    //! Inequality operator
     bool operator!=( const QgsLineSegment2D &other ) const SIP_HOLDGIL
     {
       return mStart != other.mStart || mEnd != other.mEnd;

@@ -20,17 +20,16 @@
 #ifndef QGSWCSSOURCESELECT_H
 #define QGSWCSSOURCESELECT_H
 
-#include "qgsowssourceselect.h"
+#include "qgsdataprovider.h"
 #include "qgsdatasourceuri.h"
 #include "qgsguiutils.h"
 #include "qgshelp.h"
-
-#include "qgswcscapabilities.h"
+#include "qgsowssourceselect.h"
 #include "qgsproviderregistry.h"
-#include "qgsdataprovider.h"
+#include "qgswcscapabilities.h"
 
-#include <QStringList>
 #include <QPushButton>
+#include <QStringList>
 
 class QgisApp;
 class QgsDataProvider;
@@ -54,12 +53,13 @@ class QgsWCSSourceSelect : public QgsOWSSourceSelect
 
   public:
     //! Constructor
-    QgsWCSSourceSelect( QWidget *parent = nullptr, Qt::WindowFlags fl = QgsGuiUtils::ModalDialogFlags, QgsProviderRegistry::WidgetMode widgetMode = QgsProviderRegistry::WidgetMode::None );
+    QgsWCSSourceSelect( QWidget *parent = nullptr, Qt::WindowFlags fl = QgsGuiUtils::ModalDialogFlags, QgsProviderRegistry::WidgetMode widgetMode = QgsProviderRegistry::WidgetMode::Standalone );
 
   private:
     QgsWcsCapabilities mCapabilities;
 
-    QString selectedIdentifier();
+    QString selectedIdentifier() const;
+    QString selectedTitle() const;
 
     // QgsWcsCapabilities virtual methods
     void populateLayerList() override;
@@ -78,5 +78,3 @@ class QgsWCSSourceSelect : public QgsOWSSourceSelect
     void showHelp();
 };
 #endif // QGSWCSSOURCESELECT_H
-
-

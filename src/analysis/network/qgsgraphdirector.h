@@ -16,22 +16,22 @@
 #ifndef QGSGRAPHDIRECTOR_H
 #define QGSGRAPHDIRECTOR_H
 
-#include <QObject>
-#include <QVector>
-#include <QList>
-
+#include "qgis_analysis.h"
 #include "qgis_sip.h"
 #include "qgsfeedback.h"
 #include "qgsnetworkstrategy.h"
-#include "qgis_analysis.h"
+
+#include <QList>
+#include <QObject>
+#include <QVector>
 
 class QgsGraphBuilderInterface;
 class QgsPoint;
 
 #ifdef SIP_RUN
-% ModuleHeaderCode
+//%ModuleHeaderCode
 #include <qgsvectorlayerdirector.h>
-% End
+//%End
 #endif
 
 /**
@@ -42,10 +42,9 @@ class QgsPoint;
  */
 class ANALYSIS_EXPORT QgsGraphDirector : public QObject
 {
-
 #ifdef SIP_RUN
     SIP_CONVERT_TO_SUBCLASS_CODE
-    if ( dynamic_cast< QgsVectorLayerDirector * >( sipCpp ) != NULL )
+    if ( dynamic_cast<QgsVectorLayerDirector *>( sipCpp ) != NULL )
       sipType = sipType_QgsVectorLayerDirector;
     else
       sipType = NULL;
@@ -55,11 +54,7 @@ class ANALYSIS_EXPORT QgsGraphDirector : public QObject
     Q_OBJECT
 
   public:
-
-    ~QgsGraphDirector() override
-    {
-      qDeleteAll( mStrategies );
-    }
+    ~QgsGraphDirector() override { qDeleteAll( mStrategies ); }
 
     /**
      * Make a graph using QgsGraphBuilder
@@ -70,10 +65,7 @@ class ANALYSIS_EXPORT QgsGraphDirector : public QObject
      * \param feedback feedback object for reporting progress
      * \note if snappedPoints[i] == QgsPointXY(0.0,0.0) then snapping failed.
      */
-    virtual void makeGraph( QgsGraphBuilderInterface *builder,
-                            const QVector< QgsPointXY > &additionalPoints,
-                            QVector< QgsPointXY > &snappedPoints SIP_OUT,
-                            QgsFeedback *feedback = nullptr ) const
+    virtual void makeGraph( QgsGraphBuilderInterface *builder, const QVector<QgsPointXY> &additionalPoints, QVector<QgsPointXY> &snappedPoints SIP_OUT, QgsFeedback *feedback = nullptr ) const
     {
       Q_UNUSED( builder )
       Q_UNUSED( additionalPoints )
@@ -82,10 +74,7 @@ class ANALYSIS_EXPORT QgsGraphDirector : public QObject
     }
 
     //! Add optimization strategy
-    void addStrategy( QgsNetworkStrategy *prop SIP_TRANSFER )
-    {
-      mStrategies.push_back( prop );
-    }
+    void addStrategy( QgsNetworkStrategy *prop SIP_TRANSFER ) { mStrategies.push_back( prop ); }
 
     //! Returns director name
     virtual QString name() const = 0;

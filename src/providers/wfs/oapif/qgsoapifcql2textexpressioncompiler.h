@@ -17,9 +17,8 @@
 #define QGSOAPIFCQL2TEXTEXPRESSIONCOMPILER_H
 
 #include "qgis_core.h"
-#include "qgsfields.h"
 #include "qgsexpressionnodeimpl.h"
-
+#include "qgsfields.h"
 #include "qgsoapifqueryablesrequest.h"
 
 class QgsExpression;
@@ -33,18 +32,15 @@ class QgsOapifCql2TextExpressionCompiler
 {
   public:
     QgsOapifCql2TextExpressionCompiler(
-      const QMap<QString, QgsOapifQueryablesRequest::Queryable> &queryables,
-      bool supportsLikeBetweenIn,
-      bool supportsCaseI,
-      bool supportsBasicSpatialOperators,
-      bool invertAxisOrientation );
+      const QMap<QString, QgsOapifQueryablesRequest::Queryable> &queryables, bool supportsLikeBetweenIn, bool supportsCaseI, bool supportsBasicSpatialOperators, bool invertAxisOrientation
+    );
 
     //! Possible results from expression compilation
     enum Result
     {
       Complete, //!< Expression was successfully compiled and can be completely delegated to provider
-      Partial, //!< Expression was partially compiled, but provider will return extra records and results must be double-checked using QGIS' expression engine
-      Fail //!< Provider cannot handle expression
+      Partial,  //!< Expression was partially compiled, but provider will return extra records and results must be double-checked using QGIS' expression engine
+      Fail      //!< Provider cannot handle expression
     };
 
     /**
@@ -63,7 +59,6 @@ class QgsOapifCql2TextExpressionCompiler
     bool geometryLiteralUsed() const { return mGeometryLiteralUsed; }
 
   private:
-
     Result compileNode( const QgsExpressionNode *node, QString &result );
 
     Result compileNodeFunction( const QgsExpressionNodeFunction *n, QString &result );
@@ -71,6 +66,9 @@ class QgsOapifCql2TextExpressionCompiler
     QString literalValue( const QVariant &value ) const;
 
     QString quotedIdentifier( const QString &identifier ) const;
+
+    //! Returns the primary geometry queryable, or the first geometry one, or an empty string if there is none
+    QString geometryQueryable() const;
 
     // Input
     const QMap<QString, QgsOapifQueryablesRequest::Queryable> &mQueryables;

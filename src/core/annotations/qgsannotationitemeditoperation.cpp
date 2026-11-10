@@ -17,13 +17,36 @@
 #include "qgsannotationitemeditoperation.h"
 
 //
+// QgsAnnotationItemEditContext
+//
+
+QgsRectangle QgsAnnotationItemEditContext::currentItemBounds() const
+{
+  return mCurrentItemBounds;
+}
+
+void QgsAnnotationItemEditContext::setCurrentItemBounds( const QgsRectangle &bounds )
+{
+  mCurrentItemBounds = bounds;
+}
+
+QgsRenderContext QgsAnnotationItemEditContext::renderContext() const
+{
+  return mRenderContext;
+}
+
+void QgsAnnotationItemEditContext::setRenderContext( const QgsRenderContext &context )
+{
+  mRenderContext = context;
+}
+
+
+//
 // QgsAbstractAnnotationItemEditOperation
 //
 QgsAbstractAnnotationItemEditOperation::QgsAbstractAnnotationItemEditOperation( const QString &itemId )
   : mItemId( itemId )
-{
-
-}
+{}
 
 QgsAbstractAnnotationItemEditOperation::~QgsAbstractAnnotationItemEditOperation() = default;
 
@@ -31,14 +54,16 @@ QgsAbstractAnnotationItemEditOperation::~QgsAbstractAnnotationItemEditOperation(
 //
 // QgsAnnotationItemEditOperationMoveNode
 //
-QgsAnnotationItemEditOperationMoveNode::QgsAnnotationItemEditOperationMoveNode( const QString &itemId, QgsVertexId nodeId, const QgsPoint &before, const QgsPoint &after )
+QgsAnnotationItemEditOperationMoveNode::QgsAnnotationItemEditOperationMoveNode(
+  const QString &itemId, QgsVertexId nodeId, const QgsPoint &before, const QgsPoint &after, double translatePixelsX, double translatePixelsY
+)
   : QgsAbstractAnnotationItemEditOperation( itemId )
   , mNodeId( nodeId )
   , mBefore( before )
   , mAfter( after )
-{
-
-}
+  , mTranslatePixelsX( translatePixelsX )
+  , mTranslatePixelsY( translatePixelsY )
+{}
 
 QgsAbstractAnnotationItemEditOperation::Type QgsAnnotationItemEditOperationMoveNode::type() const
 {
@@ -54,9 +79,7 @@ QgsAnnotationItemEditOperationDeleteNode::QgsAnnotationItemEditOperationDeleteNo
   : QgsAbstractAnnotationItemEditOperation( itemId )
   , mNodeId( nodeId )
   , mBefore( before )
-{
-
-}
+{}
 
 QgsAbstractAnnotationItemEditOperation::Type QgsAnnotationItemEditOperationDeleteNode::type() const
 {
@@ -67,17 +90,47 @@ QgsAbstractAnnotationItemEditOperation::Type QgsAnnotationItemEditOperationDelet
 // QgsAnnotationItemEditOperationTranslateItem
 //
 
-QgsAnnotationItemEditOperationTranslateItem::QgsAnnotationItemEditOperationTranslateItem( const QString &itemId, double translateX, double translateY )
+QgsAnnotationItemEditOperationTranslateItem::QgsAnnotationItemEditOperationTranslateItem( const QString &itemId, double translateX, double translateY, double translatePixelsX, double translatePixelsY )
   : QgsAbstractAnnotationItemEditOperation( itemId )
   , mTranslateX( translateX )
   , mTranslateY( translateY )
-{
-
-}
+  , mTranslatePixelsX( translatePixelsX )
+  , mTranslatePixelsY( translatePixelsY )
+{}
 
 QgsAbstractAnnotationItemEditOperation::Type QgsAnnotationItemEditOperationTranslateItem::type() const
 {
   return Type::TranslateItem;
+}
+
+
+//
+// QgsAnnotationItemEditOperationRotateItem
+//
+
+QgsAnnotationItemEditOperationRotateItem::QgsAnnotationItemEditOperationRotateItem( const QString &itemId, double angle )
+  : QgsAbstractAnnotationItemEditOperation( itemId )
+  , mAngle( angle )
+{}
+
+QgsAbstractAnnotationItemEditOperation::Type QgsAnnotationItemEditOperationRotateItem::type() const
+{
+  return Type::RotateItem;
+}
+
+
+//
+// QgsAnnotationItemEditOperationSetItemBounds
+//
+
+QgsAnnotationItemEditOperationSetItemBounds::QgsAnnotationItemEditOperationSetItemBounds( const QString &itemId, const QgsRectangle &bounds )
+  : QgsAbstractAnnotationItemEditOperation( itemId )
+  , mBounds( bounds )
+{}
+
+QgsAbstractAnnotationItemEditOperation::Type QgsAnnotationItemEditOperationSetItemBounds::type() const
+{
+  return Type::SetItemBounds;
 }
 
 
@@ -88,9 +141,7 @@ QgsAbstractAnnotationItemEditOperation::Type QgsAnnotationItemEditOperationTrans
 QgsAnnotationItemEditOperationAddNode::QgsAnnotationItemEditOperationAddNode( const QString &itemId, const QgsPoint &point )
   : QgsAbstractAnnotationItemEditOperation( itemId )
   , mPoint( point )
-{
-
-}
+{}
 
 QgsAbstractAnnotationItemEditOperation::Type QgsAnnotationItemEditOperationAddNode::type() const
 {

@@ -5,21 +5,22 @@ it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or
 (at your option) any later version.
 """
-__author__ = 'Nyall Dawson'
-__date__ = '08/11/2021'
-__copyright__ = 'Copyright 2021, The QGIS Project'
 
+__author__ = "Nyall Dawson"
+__date__ = "08/11/2021"
+__copyright__ = "Copyright 2021, The QGIS Project"
+
+
+import unittest
 
 from qgis.analysis import QgsGraph
 from qgis.core import QgsPointXY
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.testing import QgisTestCase, start_app
 
 start_app()
 
 
 class TestQgsGraph(QgisTestCase):
-
     def test_empty_graph(self):
         graph = QgsGraph()
         self.assertEqual(graph.vertexCount(), 0)
@@ -240,7 +241,9 @@ class TestQgsGraph(QgisTestCase):
         self.assertEqual(graph.vertex(v1).incomingEdges(), [edge_2])
         self.assertFalse(graph.vertex(v1).outgoingEdges())
         self.assertFalse(graph.vertex(v2).incomingEdges())
-        self.assertCountEqual(graph.vertex(v2).outgoingEdges(), [edge_2, edge_3, edge_4])
+        self.assertCountEqual(
+            graph.vertex(v2).outgoingEdges(), [edge_2, edge_3, edge_4]
+        )
 
         with self.assertRaises(IndexError):
             graph.removeEdge(edge_1)
@@ -327,5 +330,5 @@ class TestQgsGraph(QgisTestCase):
         self.assertEqual(graph.findOppositeEdge(edge_5), -1)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

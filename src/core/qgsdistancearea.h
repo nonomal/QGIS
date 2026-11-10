@@ -16,12 +16,13 @@
 #ifndef QGSDISTANCEAREA_H
 #define QGSDISTANCEAREA_H
 
-#include "qgis_core.h"
-#include <QVector>
-#include <QReadWriteLock>
-#include "qgscoordinatetransform.h"
 #include "qgis.h"
+#include "qgis_core.h"
+#include "qgscoordinatetransform.h"
 #include "qgsellipsoidutils.h"
+
+#include <QReadWriteLock>
+#include <QVector>
 
 class QgsGeometry;
 class QgsAbstractGeometry;
@@ -52,14 +53,13 @@ struct geod_geodesic;
 class CORE_EXPORT QgsDistanceArea
 {
   public:
-
-    //! Constructor
     QgsDistanceArea();
     ~QgsDistanceArea();
 
-    //! Copy constructor
     QgsDistanceArea( const QgsDistanceArea &other );
+    SIP_SKIP QgsDistanceArea( QgsDistanceArea &&other );
     QgsDistanceArea &operator=( const QgsDistanceArea &other );
+    QgsDistanceArea &operator=( QgsDistanceArea &&other );
 
     /**
      * Returns whether calculations will use the ellipsoid. Calculations will only use the
@@ -79,7 +79,7 @@ class CORE_EXPORT QgsDistanceArea
      * \see setSourceCrs()
      * \see ellipsoidCrs()
      */
-    QgsCoordinateReferenceSystem sourceCrs() const { return mCoordTransform.sourceCrs(); }
+    QgsCoordinateReferenceSystem sourceCrs() const { return sourceToEllipsoid().sourceCrs(); }
 
     /**
      * Returns the ellipsoid (destination) spatial reference system.
@@ -87,7 +87,7 @@ class CORE_EXPORT QgsDistanceArea
      * \see ellipsoid()
      * \since QGIS 3.6
      */
-    QgsCoordinateReferenceSystem ellipsoidCrs() const { return mCoordTransform.destinationCrs(); }
+    QgsCoordinateReferenceSystem ellipsoidCrs() const { return sourceToEllipsoid().destinationCrs(); }
 
     /**
      * Sets the \a ellipsoid by its acronym. Known ellipsoid acronyms can be
@@ -150,8 +150,9 @@ class CORE_EXPORT QgsDistanceArea
      * \see measureLength()
      * \see measurePerimeter()
      * \see areaUnits()
+     * \throws QgsCsException if a transformation error occurs while calculating the area
      */
-    double measureArea( const QgsGeometry &geometry ) const;
+    double measureArea( const QgsGeometry &geometry ) const SIP_THROW( QgsCsException );
 
     /**
      * Measures the length of a geometry.
@@ -161,8 +162,9 @@ class CORE_EXPORT QgsDistanceArea
      * \see lengthUnits()
      * \see measureArea()
      * \see measurePerimeter()
+     * \throws QgsCsException if a transformation error occurs while calculating the length
      */
-    double measureLength( const QgsGeometry &geometry ) const;
+    double measureLength( const QgsGeometry &geometry ) const SIP_THROW( QgsCsException );
 
     /**
      * Measures the perimeter of a polygon geometry.
@@ -172,25 +174,28 @@ class CORE_EXPORT QgsDistanceArea
      * \see lengthUnits()
      * \see measureArea()
      * \see measurePerimeter()
+     * \throws QgsCsException if a transformation error occurs while calculating the perimeter
      */
-    double measurePerimeter( const QgsGeometry &geometry ) const;
+    double measurePerimeter( const QgsGeometry &geometry ) const SIP_THROW( QgsCsException );
 
     /**
      * Measures the length of a line with multiple segments.
      * \param points list of points in line
      * \returns length of line. The units for the returned length can be retrieved by calling lengthUnits().
+     * \throws QgsCsException if a transformation error occurs while calculating the length
      * \see lengthUnits()
      */
-    double measureLine( const QVector<QgsPointXY> &points ) const;
+    double measureLine( const QVector<QgsPointXY> &points ) const SIP_THROW( QgsCsException );
 
     /**
      * Measures the distance between two points.
      * \param p1 start of line
      * \param p2 end of line
      * \returns distance between points. The units for the returned distance can be retrieved by calling lengthUnits().
+     * \throws QgsCsException if a transformation error occurs while calculating the length
      * \see lengthUnits()
      */
-    double measureLine( const QgsPointXY &p1, const QgsPointXY &p2 ) const;
+    double measureLine( const QgsPointXY &p1, const QgsPointXY &p2 ) const SIP_THROW( QgsCsException );
 
     /**
      * Calculates the distance from one point with distance in meters and azimuth (direction)
@@ -198,7 +203,7 @@ class CORE_EXPORT QgsDistanceArea
      * otherwise QgsPoint.project() will be called after QgsUnitTypes::fromUnitToUnitFactor() has been applied to the distance
      * \param p1 start point [can be Cartesian or Geographic]
      * \param distance must be in meters
-     * \param azimuth - azimuth in radians, clockwise from North
+     * \param azimuth azimuth in radians, clockwise from North
      * \param projectedPoint calculated projected point
      * \return distance in mapUnits
      * \see sourceCrs()
@@ -221,8 +226,10 @@ class CORE_EXPORT QgsDistanceArea
 
     /**
      * Measures the area of the polygon described by a set of points.
+     *
+     * \throws QgsCsException if a transformation error occurs while calculating the area.
      */
-    double measurePolygon( const QVector<QgsPointXY> &points ) const;
+    double measurePolygon( const QVector<QgsPointXY> &points ) const SIP_THROW( QgsCsException );
 
     /**
      * Computes the bearing (in radians) between two points.
@@ -281,9 +288,9 @@ class CORE_EXPORT QgsDistanceArea
      * Given a location, an azimuth and a distance, computes the
      * location of the projected point.
      *
-     * \param p1 - location of first geographic (latitude/longitude) point as degrees.
-     * \param distance - distance in meters.
-     * \param azimuth - azimuth in radians, clockwise from North
+     * \param p1 location of first geographic (latitude/longitude) point as degrees.
+     * \param distance distance in meters.
+     * \param azimuth azimuth in radians, clockwise from North
      * \return p2 - location of projected point as longitude/latitude.
      *
      */
@@ -354,11 +361,7 @@ class CORE_EXPORT QgsDistanceArea
     QgsGeometry splitGeometryAtAntimeridian( const QgsGeometry &geometry ) const;
 
   private:
-
-    /**
-     * Calculates area of polygon on ellipsoid
-     * algorithm has been taken from GRASS: gis/area_poly1.c
-     */
+    // Calculates area of polygon on ellipsoid
     double computePolygonArea( const QVector<QgsPointXY> &points ) const;
 
     double computePolygonFlatArea( const QVector<QgsPointXY> &points ) const;
@@ -378,8 +381,8 @@ class CORE_EXPORT QgsDistanceArea
       Length
     };
 
-    //! used for transforming coordinates from source CRS to ellipsoid's coordinates
-    QgsCoordinateTransform mCoordTransform;
+    //! cached transform from source CRS to ellipsoid CRS
+    mutable QgsCoordinateTransform mCachedSourceToEllipsoid;
 
     //! ellipsoid acronym (from table tbl_ellipsoids)
     QString mEllipsoid;
@@ -389,13 +392,21 @@ class CORE_EXPORT QgsDistanceArea
 
     mutable std::unique_ptr< geod_geodesic > mGeod;
 
+    QgsCoordinateReferenceSystem mDestinationCrs; // the ellipsoid CRS, which is the destination CRS for mCachedSourceToEllipsoid
+    QgsCoordinateReferenceSystem mSourceCrs;
+    QgsCoordinateTransformContext mCoordTransformContext;
+
+    mutable bool mCoordTransformDirty = false;
+
     // utility functions for polygon area measurement
 
     double measure( const QgsAbstractGeometry *geomV2, MeasureType type = Default ) const;
     double measureLine( const QgsCurve *curve ) const;
     double measurePolygon( const QgsCurve *curve ) const;
 
+    QgsCoordinateTransform sourceToEllipsoid() const;
+
+    friend class TestQgsDistanceArea;
 };
 
 #endif
-

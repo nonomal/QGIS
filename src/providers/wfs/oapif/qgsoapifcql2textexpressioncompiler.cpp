@@ -15,26 +15,26 @@
 
 #include "qgsoapifcql2textexpressioncompiler.h"
 
-#include "qgsexpressionnodeimpl.h"
-#include "qgsexpressionfunction.h"
 #include "qgsexpression.h"
+#include "qgsexpressionfunction.h"
+#include "qgsexpressionnodeimpl.h"
 #include "qgsgeometry.h"
 #include "qgslogger.h"
 #include "qgsvariantutils.h"
 
+#include <QString>
+
+using namespace Qt::StringLiterals;
+
 QgsOapifCql2TextExpressionCompiler::QgsOapifCql2TextExpressionCompiler(
-  const QMap<QString, QgsOapifQueryablesRequest::Queryable> &queryables,
-  bool supportsLikeBetweenIn,
-  bool supportsCaseI,
-  bool supportsBasicSpatialOperators,
-  bool invertAxisOrientation ):
-  mQueryables( queryables ),
-  mSupportsLikeBetweenIn( supportsLikeBetweenIn ),
-  mSupportsCaseI( supportsCaseI ),
-  mSupportsBasicSpatialOperators( supportsBasicSpatialOperators ),
-  mInvertAxisOrientation( invertAxisOrientation )
-{
-}
+  const QMap<QString, QgsOapifQueryablesRequest::Queryable> &queryables, bool supportsLikeBetweenIn, bool supportsCaseI, bool supportsBasicSpatialOperators, bool invertAxisOrientation
+)
+  : mQueryables( queryables )
+  , mSupportsLikeBetweenIn( supportsLikeBetweenIn )
+  , mSupportsCaseI( supportsCaseI )
+  , mSupportsBasicSpatialOperators( supportsBasicSpatialOperators )
+  , mInvertAxisOrientation( invertAxisOrientation )
+{}
 
 QgsOapifCql2TextExpressionCompiler::Result QgsOapifCql2TextExpressionCompiler::compile( const QgsExpression *exp )
 {
@@ -47,29 +47,29 @@ QgsOapifCql2TextExpressionCompiler::Result QgsOapifCql2TextExpressionCompiler::c
 QString QgsOapifCql2TextExpressionCompiler::literalValue( const QVariant &value ) const
 {
   if ( QgsVariantUtils::isNull( value ) )
-    return QStringLiteral( "NULL" );
+    return u"NULL"_s;
 
-  switch ( value.type() )
+  switch ( value.userType() )
   {
-    case QVariant::Int:
-    case QVariant::LongLong:
-    case QVariant::Double:
+    case QMetaType::Type::Int:
+    case QMetaType::Type::LongLong:
+    case QMetaType::Type::Double:
       return value.toString();
 
-    case QVariant::Bool:
-      return value.toBool() ? QStringLiteral( "TRUE" ) : QStringLiteral( "FALSE" );
+    case QMetaType::Type::Bool:
+      return value.toBool() ? u"TRUE"_s : u"FALSE"_s;
 
-    case QVariant::DateTime:
+    case QMetaType::Type::QDateTime:
       return value.toDateTime().toOffsetFromUtc( 0 ).toString( Qt::ISODateWithMs ).prepend( "TIMESTAMP('" ).append( "')" );
 
-    case QVariant::Date:
+    case QMetaType::Type::QDate:
       return value.toDate().toString( Qt::ISODate ).prepend( "DATE('" ).append( "')" );
 
-    case QVariant::String:
+    case QMetaType::Type::QString:
     default:
       QString v = value.toString();
-      v.replace( '\'', QLatin1String( "''" ) );
-      return v.replace( '\\', QLatin1String( "\\\\" ) ).prepend( '\'' ).append( '\'' );
+      v.replace( '\'', "''"_L1 );
+      return v.replace( '\\', "\\\\"_L1 ).prepend( '\'' ).append( '\'' );
   }
 }
 
@@ -89,9 +89,22 @@ QString QgsOapifCql2TextExpressionCompiler::quotedIdentifier( const QString &ide
     return identifier;
   }
   QString quoted = identifier;
-  quoted.replace( '"', QLatin1String( "\"\"" ) );
+  quoted.replace( '"', "\"\""_L1 );
   quoted = quoted.prepend( '\"' ).append( '\"' );
   return quoted;
+}
+
+QString QgsOapifCql2TextExpressionCompiler::geometryQueryable() const
+{
+  QString firstGeometry;
+  for ( auto it = mQueryables.constBegin(); it != mQueryables.constEnd(); ++it )
+  {
+    if ( it->mIsPrimaryGeometry )
+      return it.key();
+    if ( it->mIsGeometry && firstGeometry.isEmpty() )
+      firstGeometry = it.key();
+  }
+  return firstGeometry;
 }
 
 static bool isGeometryColumn( const QgsExpressionNode *node )
@@ -100,8 +113,8 @@ static bool isGeometryColumn( const QgsExpressionNode *node )
     return false;
 
   const QgsExpressionNodeFunction *fn = static_cast<const QgsExpressionNodeFunction *>( node );
-  QgsExpressionFunction *fd = QgsExpression::Functions()[fn->fnIndex()];
-  return fd->name() == QLatin1String( "$geometry" );
+  const QgsExpression::SharedFunctionPtr fd = fn->function();
+  return fd->name() == "$geometry"_L1;
 }
 
 static QgsGeometry geometryFromConstExpr( const QgsExpressionNode *node )
@@ -112,8 +125,9 @@ static QgsGeometry geometryFromConstExpr( const QgsExpressionNode *node )
   if ( node->nodeType() == QgsExpressionNode::ntFunction )
   {
     const QgsExpressionNodeFunction *fnNode = static_cast<const QgsExpressionNodeFunction *>( node );
-    QgsExpressionFunction *fnDef = QgsExpression::Functions()[fnNode->fnIndex()];
-    if ( fnDef->name() == QLatin1String( "geom_from_wkt" ) )
+    const QgsExpression::SharedFunctionPtr fnDef = fnNode->function();
+
+    if ( fnDef->name() == "geom_from_wkt"_L1 )
     {
       const QList<QgsExpressionNode *> &args = fnNode->args()->list();
       if ( args[0]->nodeType() == QgsExpressionNode::ntLiteral )
@@ -128,9 +142,9 @@ static QgsGeometry geometryFromConstExpr( const QgsExpressionNode *node )
 
 QgsOapifCql2TextExpressionCompiler::Result QgsOapifCql2TextExpressionCompiler::compileNodeFunction( const QgsExpressionNodeFunction *node, QString &result )
 {
-  QgsExpressionFunction *fd = QgsExpression::Functions()[node->fnIndex()];
+  const QgsExpression::SharedFunctionPtr fd = node->function();
 
-  if ( fd->name() == QLatin1String( "intersects_bbox" ) && mSupportsBasicSpatialOperators )
+  if ( fd->name() == "intersects_bbox"_L1 && mSupportsBasicSpatialOperators )
   {
     QList<QgsExpressionNode *> argNodes = node->args()->list();
     Q_ASSERT( argNodes.count() == 2 ); // binary spatial ops must have two args
@@ -138,15 +152,7 @@ QgsOapifCql2TextExpressionCompiler::Result QgsOapifCql2TextExpressionCompiler::c
     const QgsGeometry geom = geometryFromConstExpr( argNodes[1] );
     if ( !geom.isNull() && isGeometryColumn( argNodes[0] ) )
     {
-      QString geometryColumn;
-      for ( const auto &kv : mQueryables.toStdMap() )
-      {
-        if ( kv.second.mIsGeometry )
-        {
-          geometryColumn = kv.first;
-          break;
-        }
-      }
+      const QString geometryColumn = geometryQueryable();
       if ( geometryColumn.isEmpty() )
       {
         return Fail;
@@ -163,17 +169,17 @@ QgsOapifCql2TextExpressionCompiler::Result QgsOapifCql2TextExpressionCompiler::c
       coordString += qgsDoubleToString( rect.xMaximum() );
       coordString += ',';
       coordString += qgsDoubleToString( rect.yMaximum() );
-      result = QStringLiteral( "S_INTERSECTS(" );
+      result = u"S_INTERSECTS("_s;
       result += quotedIdentifier( geometryColumn );
-      result += QLatin1String( ",BBOX(" );
+      result += ",BBOX("_L1;
       result += coordString;
-      result += QLatin1String( "))" );
+      result += "))"_L1;
       mGeometryLiteralUsed = true;
       return Complete;
     }
   }
 
-  if ( fd->name() == QLatin1String( "intersects" ) && mSupportsBasicSpatialOperators )
+  if ( fd->name() == "intersects"_L1 && mSupportsBasicSpatialOperators )
   {
     QList<QgsExpressionNode *> argNodes = node->args()->list();
     Q_ASSERT( argNodes.count() == 2 ); // binary spatial ops must have two args
@@ -181,15 +187,7 @@ QgsOapifCql2TextExpressionCompiler::Result QgsOapifCql2TextExpressionCompiler::c
     const QgsGeometry geom = geometryFromConstExpr( argNodes[1] );
     if ( !geom.isNull() && geom.wkbType() == Qgis::WkbType::Point && isGeometryColumn( argNodes[0] ) )
     {
-      QString geometryColumn;
-      for ( const auto &kv : mQueryables.toStdMap() )
-      {
-        if ( kv.second.mIsGeometry )
-        {
-          geometryColumn = kv.first;
-          break;
-        }
-      }
+      const QString geometryColumn = geometryQueryable();
       if ( geometryColumn.isEmpty() )
       {
         return Fail;
@@ -200,17 +198,17 @@ QgsOapifCql2TextExpressionCompiler::Result QgsOapifCql2TextExpressionCompiler::c
       coordString += qgsDoubleToString( mInvertAxisOrientation ? point->y() : point->x() );
       coordString += ' ';
       coordString += qgsDoubleToString( mInvertAxisOrientation ? point->x() : point->y() );
-      result = QStringLiteral( "S_INTERSECTS(" );
+      result = u"S_INTERSECTS("_s;
       result += quotedIdentifier( geometryColumn );
-      result += QLatin1String( ",POINT(" );
+      result += ",POINT("_L1;
       result += coordString;
-      result += QLatin1String( "))" );
+      result += "))"_L1;
       mGeometryLiteralUsed = true;
       return Complete;
     }
   }
 
-  if ( fd->name() == QLatin1String( "make_datetime" ) )
+  if ( fd->name() == "make_datetime"_L1 )
   {
     QList<QgsExpressionNode *> argNodes = node->args()->list();
     if ( argNodes.count() == 6 )
@@ -221,18 +219,16 @@ QgsOapifCql2TextExpressionCompiler::Result QgsOapifCql2TextExpressionCompiler::c
         if ( argNodes[i]->nodeType() != QgsExpressionNode::ntLiteral )
           return Fail;
         const QgsExpressionNodeLiteral *n = static_cast<const QgsExpressionNodeLiteral *>( argNodes[i] );
-        if ( n->value().type() != QVariant::Int )
+        if ( n->value().userType() != QMetaType::Type::Int )
           return Fail;
         values.push_back( n->value().toInt() );
       }
-      result = QDateTime( QDate( values[0], values[1], values[2] ),
-                          QTime( values[3], values[4], values[5] ),
-                          Qt::UTC ).toString( Qt::ISODateWithMs ).prepend( "TIMESTAMP('" ).append( "')" );
+      result = QDateTime( QDate( values[0], values[1], values[2] ), QTime( values[3], values[4], values[5] ), Qt::UTC ).toString( Qt::ISODateWithMs ).prepend( "TIMESTAMP('" ).append( "')" );
       return Complete;
     }
   }
 
-  if ( fd->name() == QLatin1String( "make_date" ) )
+  if ( fd->name() == "make_date"_L1 )
   {
     QList<QgsExpressionNode *> argNodes = node->args()->list();
     if ( argNodes.count() == 3 )
@@ -243,7 +239,7 @@ QgsOapifCql2TextExpressionCompiler::Result QgsOapifCql2TextExpressionCompiler::c
         if ( argNodes[i]->nodeType() != QgsExpressionNode::ntLiteral )
           return Fail;
         const QgsExpressionNodeLiteral *n = static_cast<const QgsExpressionNodeLiteral *>( argNodes[i] );
-        if ( n->value().type() != QVariant::Int )
+        if ( n->value().userType() != QMetaType::Type::Int )
           return Fail;
         values.push_back( n->value().toInt() );
       }
@@ -306,37 +302,37 @@ QgsOapifCql2TextExpressionCompiler::Result QgsOapifCql2TextExpressionCompiler::c
       switch ( n->op() )
       {
         case QgsExpressionNodeBinaryOperator::boEQ:
-          op = QStringLiteral( "=" );
+          op = u"="_s;
           break;
 
         case QgsExpressionNodeBinaryOperator::boGE:
-          op = QStringLiteral( ">=" );
+          op = u">="_s;
           break;
 
         case QgsExpressionNodeBinaryOperator::boGT:
-          op = QStringLiteral( ">" );
+          op = u">"_s;
           break;
 
         case QgsExpressionNodeBinaryOperator::boLE:
-          op = QStringLiteral( "<=" );
+          op = u"<="_s;
           break;
 
         case QgsExpressionNodeBinaryOperator::boLT:
-          op = QStringLiteral( "<" );
+          op = u"<"_s;
           break;
 
         case QgsExpressionNodeBinaryOperator::boIs:
-          op = QStringLiteral( "IS" );
+          op = u"IS"_s;
           break;
 
         case QgsExpressionNodeBinaryOperator::boIsNot:
-          op = QStringLiteral( "IS NOT" );
+          op = u"IS NOT"_s;
           break;
 
         case QgsExpressionNodeBinaryOperator::boLike:
           if ( !mSupportsLikeBetweenIn )
             return Fail;
-          op = QStringLiteral( "LIKE" );
+          op = u"LIKE"_s;
           break;
 
         case QgsExpressionNodeBinaryOperator::boILike:
@@ -345,13 +341,13 @@ QgsOapifCql2TextExpressionCompiler::Result QgsOapifCql2TextExpressionCompiler::c
           if ( !mSupportsCaseI )
             return Fail;
           isCaseI = true;
-          op = QStringLiteral( "LIKE" );
+          op = u"LIKE"_s;
           break;
 
         case QgsExpressionNodeBinaryOperator::boNotLike:
           if ( !mSupportsLikeBetweenIn )
             return Fail;
-          op = QStringLiteral( "NOT LIKE" );
+          op = u"NOT LIKE"_s;
           break;
 
         case QgsExpressionNodeBinaryOperator::boNotILike:
@@ -360,50 +356,50 @@ QgsOapifCql2TextExpressionCompiler::Result QgsOapifCql2TextExpressionCompiler::c
           if ( !mSupportsCaseI )
             return Fail;
           isCaseI = true;
-          op = QStringLiteral( "NOT LIKE" );
+          op = u"NOT LIKE"_s;
           break;
 
         case QgsExpressionNodeBinaryOperator::boOr:
-          op = QStringLiteral( "OR" );
+          op = u"OR"_s;
           break;
 
         case QgsExpressionNodeBinaryOperator::boAnd:
-          op = QStringLiteral( "AND" );
+          op = u"AND"_s;
           break;
 
         case QgsExpressionNodeBinaryOperator::boNE:
-          op = QStringLiteral( "<>" );
+          op = u"<>"_s;
           break;
 
         case QgsExpressionNodeBinaryOperator::boMul:
-          op = QStringLiteral( "*" );
+          op = u"*"_s;
           break;
 
         case QgsExpressionNodeBinaryOperator::boPlus:
-          op = QStringLiteral( "+" );
+          op = u"+"_s;
           break;
 
         case QgsExpressionNodeBinaryOperator::boMinus:
-          op = QStringLiteral( "-" );
+          op = u"-"_s;
           break;
 
         case QgsExpressionNodeBinaryOperator::boDiv:
-          op = QStringLiteral( "/" );
+          op = u"/"_s;
           break;
 
         case QgsExpressionNodeBinaryOperator::boMod:
-          op = QStringLiteral( "%" );
+          op = u"%"_s;
           break;
 
         case QgsExpressionNodeBinaryOperator::boConcat:
           return Fail;
 
         case QgsExpressionNodeBinaryOperator::boIntDiv:
-          op = QStringLiteral( "/" );
+          op = u"/"_s;
           break;
 
         case QgsExpressionNodeBinaryOperator::boPow:
-          op = QStringLiteral( "^" );
+          op = u"^"_s;
           break;
 
         case QgsExpressionNodeBinaryOperator::boRegexp:
@@ -417,12 +413,11 @@ QgsOapifCql2TextExpressionCompiler::Result QgsOapifCql2TextExpressionCompiler::c
       // Special case to handle "datetimefield OP 'YYYY-MM-DDTHH:MM:SS'"
       // or "datefield OP 'YYYY-MM-DD'"
       // that can be suggested by the query builder
-      if ( n->opLeft()->nodeType() == QgsExpressionNode::ntColumnRef &&
-           n->opRight()->nodeType() == QgsExpressionNode::ntLiteral )
+      if ( n->opLeft()->nodeType() == QgsExpressionNode::ntColumnRef && n->opRight()->nodeType() == QgsExpressionNode::ntLiteral )
       {
         const QgsExpressionNodeColumnRef *nLeft = static_cast<const QgsExpressionNodeColumnRef *>( n->opLeft() );
         const QgsExpressionNodeLiteral *nRight = static_cast<const QgsExpressionNodeLiteral *>( n->opRight() );
-        if ( nRight->value().type() == QVariant::String )
+        if ( nRight->value().userType() == QMetaType::Type::QString )
         {
           QString columnFormat;
           for ( const auto &kv : mQueryables.toStdMap() )
@@ -495,12 +490,12 @@ QgsOapifCql2TextExpressionCompiler::Result QgsOapifCql2TextExpressionCompiler::c
       if ( compileNode( n->lowerBound(), s ) != Complete )
         return Fail;
 
-      res.append( n->negate() ? QStringLiteral( " NOT BETWEEN %1" ).arg( s ) : QStringLiteral( " BETWEEN %1" ).arg( s ) );
+      res.append( n->negate() ? u" NOT BETWEEN %1"_s.arg( s ) : u" BETWEEN %1"_s.arg( s ) );
 
       if ( compileNode( n->higherBound(), s ) != Complete )
         return Fail;
 
-      res.append( QStringLiteral( " AND %1" ).arg( s ) );
+      res.append( u" AND %1"_s.arg( s ) );
       result = res;
       return Complete;
     }
@@ -529,7 +524,7 @@ QgsOapifCql2TextExpressionCompiler::Result QgsOapifCql2TextExpressionCompiler::c
       }
       if ( columnName.isEmpty() )
       {
-        QgsDebugMsgLevel( QStringLiteral( "%1 is not a queryable" ).arg( n->name() ), 4 );
+        QgsDebugMsgLevel( u"%1 is not a queryable"_s.arg( n->name() ), 4 );
         return Fail;
       }
 
@@ -558,7 +553,7 @@ QgsOapifCql2TextExpressionCompiler::Result QgsOapifCql2TextExpressionCompiler::c
       if ( compileNode( n->node(), nd ) != Complete )
         return Fail;
 
-      result = QStringLiteral( "%1 %2IN (%3)" ).arg( nd, n->isNotIn() ? QStringLiteral( "NOT " ) : QString(), list.join( ',' ) );
+      result = u"%1 %2IN (%3)"_s.arg( nd, n->isNotIn() ? u"NOT "_s : QString(), list.join( ',' ) );
       return Complete;
     }
 
@@ -575,4 +570,3 @@ QgsOapifCql2TextExpressionCompiler::Result QgsOapifCql2TextExpressionCompiler::c
 
   return Fail;
 }
-

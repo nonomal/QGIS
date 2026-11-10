@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 """
 ***************************************************************************
     qgstaskwrapper.py
@@ -17,12 +15,10 @@
 ***************************************************************************
 """
 
-
 from qgis._core import QgsTask
 
 
 class QgsTaskWrapper(QgsTask):
-
     def __init__(self, description, flags, function, on_finished, *args, **kwargs):
         QgsTask.__init__(self, description, flags)
         self.args = args
@@ -47,7 +43,7 @@ class QgsTaskWrapper(QgsTask):
             return
 
         if not result and self.exception is None:
-            self.exception = Exception('Task canceled')
+            self.exception = Exception("Task canceled")
 
         try:
             if self.returned_values:

@@ -3,8 +3,10 @@
  *                                                                      *
  * src/core/browser/qgsrelationshipsitem.h                              *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/
+
+
 
 
 
@@ -20,24 +22,25 @@ Contains a collection of relationship items.
 #include "qgsrelationshipsitem.h"
 %End
   public:
-
-    QgsRelationshipsItem( QgsDataItem *parent /TransferThis/,
-                          const QString &path,
-                          const QString &connectionUri,
-                          const QString &providerKey,
-                          const QString &schema = QString(),
-                          const QString &tableName = QString() );
+    QgsRelationshipsItem(
+      QgsDataItem *parent /TransferThis/, const QString &path, const QString &connectionUri, const QString &providerKey, const QString &schema = QString(), const QString &tableName = QString()
+    );
 %Docstring
-Constructor for QgsRelationshipsItem, with the specified ``parent`` item.
+Constructor for QgsRelationshipsItem, with the specified ``parent``
+item.
 
-The ``path`` argument gives the item path in the browser tree. The ``path`` string can take any form,
-but :py:class:`QgsDataItem` items pointing to different logical locations should always use a different item ``path``.
-The ``connectionUri`` argument is the connection part of the layer URI that it is used internally to create
-a connection and retrieve fields information.
-The ``providerKey`` string can be used to specify the key for the :py:class:`QgsDataItemProvider` that created this item.
+The ``path`` argument gives the item path in the browser tree. The
+``path`` string can take any form, but :py:class:`QgsDataItem` items
+pointing to different logical locations should always use a different
+item ``path``. The ``connectionUri`` argument is the connection part of
+the layer URI that it is used internally to create a connection and
+retrieve fields information. The ``providerKey`` string can be used to
+specify the key for the :py:class:`QgsDataItemProvider` that created
+this item.
 
-The optional ``schema`` and ``tableName`` arguments can be used to restrict the visible relationships to
-those with a matching parent table.
+The optional ``schema`` and ``tableName`` arguments can be used to
+restrict the visible relationships to those with a matching parent
+table.
 %End
 
     ~QgsRelationshipsItem();
@@ -48,7 +51,7 @@ those with a matching parent table.
     sipRes = PyUnicode_FromString( str.toUtf8().constData() );
 %End
 
-    virtual QVector<QgsDataItem *> createChildren();
+        virtual QVector<QgsDataItem *> createChildren();
 
 
     virtual QIcon icon();
@@ -88,11 +91,10 @@ A browser item representing a relationship.
 #include "qgsrelationshipsitem.h"
 %End
   public:
-
-    QgsRelationshipItem( QgsDataItem *parent /TransferThis/,
-                         const QgsWeakRelation &relation );
+    QgsRelationshipItem( QgsDataItem *parent /TransferThis/, const QgsWeakRelation &relation );
 %Docstring
-Constructor for QgsRelationshipItem, with the specified ``parent`` item and ``relation``.
+Constructor for QgsRelationshipItem, with the specified ``parent`` item
+and ``relation``.
 
 .. note::
 
@@ -107,7 +109,7 @@ Constructor for QgsRelationshipItem, with the specified ``parent`` item and ``re
     sipRes = PyUnicode_FromString( str.toUtf8().constData() );
 %End
 
-    virtual QIcon icon();
+        virtual QIcon icon();
 
 
     const QgsWeakRelation &relation() const;
@@ -117,12 +119,10 @@ Returns the associated relationship.
 
 };
 
-
-
 /************************************************************************
  * This file has been generated automatically from                      *
  *                                                                      *
  * src/core/browser/qgsrelationshipsitem.h                              *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/

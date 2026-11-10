@@ -18,14 +18,14 @@
 #ifndef QGSCHECKABLECOMBOBOX_H
 #define QGSCHECKABLECOMBOBOX_H
 
+#include "qgis.h"
+#include "qgis_gui.h"
+#include "qgis_sip.h"
+
 #include <QComboBox>
 #include <QMenu>
 #include <QStandardItemModel>
 #include <QStyledItemDelegate>
-
-#include "qgis_sip.h"
-#include "qgis_gui.h"
-#include "qgis.h"
 
 class QEvent;
 
@@ -42,7 +42,6 @@ class QgsCheckableItemModel : public QStandardItemModel
     Q_OBJECT
 
   public:
-
     /**
      * Constructor for QgsCheckableItemModel.
      * \param parent parent object
@@ -95,7 +94,6 @@ class QgsCheckBoxDelegate : public QStyledItemDelegate
     Q_OBJECT
 
   public:
-
     /**
      * Constructor for QgsCheckBoxDelegate.
      * \param parent parent object
@@ -127,7 +125,6 @@ class GUI_EXPORT QgsCheckableComboBox : public QComboBox
     Q_PROPERTY( QStringList checkedItems READ checkedItems WRITE setCheckedItems )
 
   public:
-
     /**
      * Constructor for QgsCheckableComboBox.
      */
@@ -199,6 +196,43 @@ class GUI_EXPORT QgsCheckableComboBox : public QComboBox
      */
     void setItemCheckState( int index, Qt::CheckState state );
 
+#ifndef SIP_RUN
+    /**
+     * Sets item check state using a QFlags value.
+     *
+     * \note Requires that items have been added with user data corresponding to all enum flag values.
+     *
+     * \since QGIS 4.4
+     */
+    template<class T> void setCheckedItemsFromFlags( const QFlags<T> &value )
+    {
+      const QMetaEnum metaEnum = QMetaEnum::fromType<T>();
+      for ( int idx = 0; idx < metaEnum.keyCount(); ++idx )
+      {
+        setItemCheckState( findData( QVariant::fromValue( metaEnum.value( idx ) ) ), value.testFlag( static_cast< T >( metaEnum.value( idx ) ) ) ? Qt::CheckState::Checked : Qt::CheckState::Unchecked );
+      }
+    }
+
+    /**
+     * Returns enum flags corresponding to the checked items.
+     *
+     * \since QGIS 4.4
+     */
+    template<class T> QFlags<T> flagsFromCheckedItems() const
+    {
+      QFlags<T> res;
+      for ( int i = 0; i < count(); ++i )
+      {
+        if ( itemCheckState( i ) == Qt::CheckState::Checked )
+        {
+          res.setFlag( itemData( i ).value< T >(), true );
+        }
+      }
+      return res;
+    }
+
+#endif
+
     /**
      * Toggles the item check state
      * \param index item index
@@ -212,7 +246,7 @@ class GUI_EXPORT QgsCheckableComboBox : public QComboBox
      * \see QgsCheckableItemModel
      * \since QGIS 3.16
      */
-    QgsCheckableItemModel *model() const SIP_SKIP {return mModel;}
+    QgsCheckableItemModel *model() const SIP_SKIP { return mModel; }
 
     /**
      * Hides the list of items in the combobox if it is currently
@@ -242,7 +276,6 @@ class GUI_EXPORT QgsCheckableComboBox : public QComboBox
     void setCheckedItems( const QStringList &items );
 
   protected:
-
     /**
      * Handler for widget resizing
      */

@@ -18,12 +18,22 @@
 #ifndef QGSPROCESSINGPROVIDER_H
 #define QGSPROCESSINGPROVIDER_H
 
-#include "qgis_core.h"
 #include "qgis.h"
+#include "qgis_core.h"
 #include "qgsprocessingalgorithm.h"
+
 #include <QIcon>
 
-/**
+#ifdef SIP_RUN
+// clang-format off
+% ModuleHeaderCode
+#include <qgsprocessingmodelprovider.h>
+#include <qgsprocessingprojectmodelprovider.h>
+    % End
+// clang-format on
+#endif
+
+  /**
  * \class QgsProcessingProvider
  * \ingroup core
  * \brief Abstract base class for processing providers.
@@ -31,12 +41,22 @@
  * An algorithm provider is a set of related algorithms, typically from the same external application or related
  * to a common area of analysis.
  */
-class CORE_EXPORT QgsProcessingProvider : public QObject
+  class CORE_EXPORT QgsProcessingProvider : public QObject
 {
+#ifdef SIP_RUN
+    SIP_CONVERT_TO_SUBCLASS_CODE
+    if ( qobject_cast<QgsProcessingProjectModelProvider *>( sipCpp ) )
+      sipType = sipType_QgsProcessingProjectModelProvider;
+    else if ( qobject_cast<QgsProcessingModelProvider *>( sipCpp ) )
+      sipType = sipType_QgsProcessingModelProvider;
+    else
+      sipType = nullptr;
+    SIP_END
+#endif
+
     Q_OBJECT
 
   public:
-
     /**
      * Constructor for QgsProcessingProvider.
      */
@@ -44,16 +64,16 @@ class CORE_EXPORT QgsProcessingProvider : public QObject
 
     ~QgsProcessingProvider() override;
 
-    //! Providers cannot be copied
     QgsProcessingProvider( const QgsProcessingProvider &other ) = delete;
-    //! Providers cannot be copied
     QgsProcessingProvider &operator=( const QgsProcessingProvider &other ) = delete;
 
+    // clang-format off
     /**
      * Returns an icon for the provider.
      * \see svgIconPath()
      */
     virtual QIcon icon() const SIP_HOLDGIL;
+    // clang-format on
 
     /**
      * Returns a path to an SVG version of the provider's icon.
@@ -144,8 +164,25 @@ class CORE_EXPORT QgsProcessingProvider : public QObject
      * \see supportedOutputVectorLayerExtensions()
      * \see supportedOutputPointCloudLayerExtensions()
      * \see supportedOutputVectorTileLayerExtensions()
+     *
+     * \note Since QGIS 4.0, this method is no longer virtual and use internally
+     * supportedOutputRasterLayerFormatAndExtensions() instead.
      */
-    virtual QStringList supportedOutputRasterLayerExtensions() const;
+    QStringList supportedOutputRasterLayerExtensions() const;
+
+    /**
+     * Returns a list of (format, file extension) supported by this provider.
+     *
+     * \since QGIS 4.0
+     */
+    virtual QList<QPair<QString, QString>> supportedOutputRasterLayerFormatAndExtensions() const;
+
+    /**
+     * Returns a list of (format, file extension) supported by GDAL
+     *
+     * \since QGIS 4.0
+     */
+    static QList<QPair<QString, QString>> supportedOutputRasterLayerFormatAndExtensionsDefault() SIP_SKIP;
 
     /**
      * Returns a list of the vector format file extensions supported by this provider.
@@ -230,19 +267,33 @@ class CORE_EXPORT QgsProcessingProvider : public QObject
     virtual QString defaultVectorFileExtension( bool hasGeometry = true ) const;
 
     /**
-     * Returns the default file extension to use for raster outputs created by the
+     * Returns the default file format to use for raster outputs created by the
      * provider.
      *
      * The default implementation returns the user's default Processing raster output format
-     * setting, if it's supported by the provider (see supportedOutputRasterLayerExtensions()).
+     * setting, if it's supported by the provider (see supportedOutputRasterLayerFormatAndExtensions()).
      * Otherwise the first reported supported raster format will be used.
      *
-     * \see supportedOutputRasterLayerExtensions()
+     * \see supportedOutputRasterLayerFormatAndExtensions()
+     * \see defaultRasterFileExtension()
+     *
+     * \since QGIS 4.0
+     */
+    virtual QString defaultRasterFileFormat() const;
+
+    /**
+     * Returns the default file extension to use for raster outputs created by the
+     * provider.
+     *
+     * Starting with QGIS 4.0, this method is no longer virtual, and relies on
+     * defaultRasterFileFormat()
+     *
+     * \see defaultRasterFileFormat()
      * \see defaultVectorFileExtension()
      * \see defaultPointCloudFileExtension()
      * \see defaultVectorTileFileExtension()
      */
-    virtual QString defaultRasterFileExtension() const;
+    QString defaultRasterFileExtension() const;
 
     /**
      * Returns the default file extension to use for point cloud outputs created by the

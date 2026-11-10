@@ -16,18 +16,18 @@
 #ifndef QGSCOLORRAMP_H
 #define QGSCOLORRAMP_H
 
-#include "qgis_core.h"
-#include <QColor>
 #include "qgis.h"
+#include "qgis_core.h"
+
+#include <QColor>
 
 /**
  * \ingroup core
  * \class QgsColorRamp
- * \brief Abstract base class for color ramps
+ * \brief Abstract base class for color ramps.
  */
 class CORE_EXPORT QgsColorRamp
 {
-
 #ifdef SIP_RUN
     SIP_CONVERT_TO_SUBCLASS_CODE
     if ( sipCpp->type() == QgsGradientColorRamp::typeString() )
@@ -44,7 +44,7 @@ class CORE_EXPORT QgsColorRamp
       sipType = sipType_QgsCptCityColorRamp;
     else
       sipType = 0;
-    SIP_END
+  SIP_END
 #endif
   public:
 

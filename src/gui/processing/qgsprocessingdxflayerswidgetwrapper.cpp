@@ -15,6 +15,11 @@
 
 #include "qgsprocessingdxflayerswidgetwrapper.h"
 
+#include "qgspanelwidget.h"
+#include "qgsprocessingoutputs.h"
+#include "qgsprocessingparameterdxflayers.h"
+#include "qgsprocessingparameters.h"
+
 #include <QBoxLayout>
 #include <QLineEdit>
 #include <QMessageBox>
@@ -22,10 +27,7 @@
 #include <QStandardItemModel>
 #include <QToolButton>
 
-#include "qgspanelwidget.h"
-#include "qgsprocessingparameters.h"
-#include "qgsprocessingoutputs.h"
-#include "qgsprocessingparameterdxflayers.h"
+#include "moc_qgsprocessingdxflayerswidgetwrapper.cpp"
 
 /// @cond private
 
@@ -66,10 +68,10 @@ QgsProcessingDxfLayerDetailsWidget::QgsProcessingDxfLayerDetailsWidget( const QV
     mGroupBoxBlocks->setVisible( false );
   }
 
-  connect( mFieldsComboBox, &QgsFieldComboBox::fieldChanged, this, &QgsPanelWidget::widgetChanged );
-  connect( mOverriddenName, &QLineEdit::textChanged, this, &QgsPanelWidget::widgetChanged );
-  connect( mGroupBoxBlocks, &QGroupBox::toggled, this, &QgsPanelWidget::widgetChanged );
-  connect( mSpinBoxBlocks, &QSpinBox::textChanged, this, &QgsPanelWidget::widgetChanged );
+  connect( mFieldsComboBox, &QgsFieldComboBox::fieldChanged, this, &QgsPanelWidget::changed );
+  connect( mOverriddenName, &QLineEdit::textChanged, this, &QgsPanelWidget::changed );
+  connect( mGroupBoxBlocks, &QGroupBox::toggled, this, &QgsPanelWidget::changed );
+  connect( mSpinBoxBlocks, &QSpinBox::textChanged, this, &QgsPanelWidget::changed );
 }
 
 QVariant QgsProcessingDxfLayerDetailsWidget::value() const
@@ -84,10 +86,7 @@ QVariant QgsProcessingDxfLayerDetailsWidget::value() const
 // QgsProcessingDxfLayersPanelWidget
 //
 
-QgsProcessingDxfLayersPanelWidget::QgsProcessingDxfLayersPanelWidget(
-  const QVariant &value,
-  QgsProject *project,
-  QWidget *parent )
+QgsProcessingDxfLayersPanelWidget::QgsProcessingDxfLayersPanelWidget( const QVariant &value, QgsProject *project, QWidget *parent )
   : QgsProcessingMultipleSelectionPanelWidget( QVariantList(), QVariantList(), parent )
   , mProject( project )
 {
@@ -106,13 +105,13 @@ QgsProcessingDxfLayersPanelWidget::QgsProcessingDxfLayersPanelWidget(
   {
     const QgsDxfExport::DxfLayer layer = QgsProcessingParameterDxfLayers::variantMapAsLayer( v.toMap(), mContext );
     if ( !layer.layer() )
-      continue;  // skip any invalid layers
+      continue; // skip any invalid layers
 
     addOption( v, titleForLayer( layer ), true );
     seenVectorLayers.insert( layer.layer() );
   }
 
-  const QList<QgsVectorLayer *> options = QgsProcessingUtils::compatibleVectorLayers( project, QList< int >() << static_cast<int>( Qgis::ProcessingSourceType::VectorAnyGeometry ) );
+  const QList<QgsVectorLayer *> options = QgsProcessingUtils::compatibleVectorLayers( project, QList<int>() << static_cast<int>( Qgis::ProcessingSourceType::VectorAnyGeometry ) );
   for ( const QgsVectorLayer *layer : options )
   {
     if ( seenVectorLayers.contains( layer ) )
@@ -149,10 +148,7 @@ void QgsProcessingDxfLayersPanelWidget::configureLayer()
     widget->setPanelTitle( tr( "Configure Layer" ) );
     widget->buttonBox()->hide();
 
-    connect( widget, &QgsProcessingDxfLayerDetailsWidget::widgetChanged, this, [ = ]()
-    {
-      setItemValue( item, widget->value() );
-    } );
+    connect( widget, &QgsProcessingDxfLayerDetailsWidget::changed, this, [this, item, widget]() { setItemValue( item, widget->value() ); } );
     panel->openPanel( widget );
   }
   else
@@ -232,7 +228,7 @@ QgsProcessingDxfLayersWidget::QgsProcessingDxfLayersWidget( QWidget *parent )
 void QgsProcessingDxfLayersWidget::setValue( const QVariant &value )
 {
   if ( value.isValid() )
-    mValue = value.type() == QVariant::List ? value.toList() : QVariantList() << value;
+    mValue = value.userType() == QMetaType::Type::QVariantList ? value.toList() : QVariantList() << value;
   else
     mValue.clear();
 
@@ -252,10 +248,7 @@ void QgsProcessingDxfLayersWidget::showDialog()
   {
     QgsProcessingDxfLayersPanelWidget *widget = new QgsProcessingDxfLayersPanelWidget( mValue, mProject );
     widget->setPanelTitle( tr( "Input layers" ) );
-    connect( widget, &QgsProcessingMultipleSelectionPanelWidget::selectionChanged, this, [ = ]()
-    {
-      setValue( widget->selectedOptions() );
-    } );
+    connect( widget, &QgsProcessingMultipleSelectionPanelWidget::selectionChanged, this, [this, widget]() { setValue( widget->selectedOptions() ); } );
     connect( widget, &QgsProcessingMultipleSelectionPanelWidget::acceptClicked, widget, &QgsPanelWidget::acceptPanel );
     panel->openPanel( widget );
   }
@@ -287,17 +280,16 @@ void QgsProcessingDxfLayersWidget::updateSummaryText()
 // QgsProcessingDxfLayersWidgetWrapper
 //
 
-QgsProcessingDxfLayersWidgetWrapper::QgsProcessingDxfLayersWidgetWrapper( const QgsProcessingParameterDefinition *parameter, QgsProcessingGui::WidgetType type, QWidget *parent )
+QgsProcessingDxfLayersWidgetWrapper::QgsProcessingDxfLayersWidgetWrapper( const QgsProcessingParameterDefinition *parameter, Qgis::ProcessingMode type, QWidget *parent )
   : QgsAbstractProcessingParameterWidgetWrapper( parameter, type, parent )
-{
-}
+{}
 
 QString QgsProcessingDxfLayersWidgetWrapper::parameterType() const
 {
   return QgsProcessingParameterDxfLayers::typeName();
 }
 
-QgsAbstractProcessingParameterWidgetWrapper *QgsProcessingDxfLayersWidgetWrapper::createWidgetWrapper( const QgsProcessingParameterDefinition *parameter, QgsProcessingGui::WidgetType type )
+QgsAbstractProcessingParameterWidgetWrapper *QgsProcessingDxfLayersWidgetWrapper::createWidgetWrapper( const QgsProcessingParameterDefinition *parameter, Qgis::ProcessingMode type )
 {
   return new QgsProcessingDxfLayersWidgetWrapper( parameter, type );
 }
@@ -306,10 +298,7 @@ QWidget *QgsProcessingDxfLayersWidgetWrapper::createWidget()
 {
   mPanel = new QgsProcessingDxfLayersWidget( nullptr );
   mPanel->setProject( widgetContext().project() );
-  connect( mPanel, &QgsProcessingDxfLayersWidget::changed, this, [ = ]
-  {
-    emit widgetValueHasChanged( this );
-  } );
+  connect( mPanel, &QgsProcessingDxfLayersWidget::changed, this, [this] { emit widgetValueHasChanged( this ); } );
   return mPanel;
 }
 
@@ -334,27 +323,6 @@ void QgsProcessingDxfLayersWidgetWrapper::setWidgetValue( const QVariant &value,
 QVariant QgsProcessingDxfLayersWidgetWrapper::widgetValue() const
 {
   return mPanel ? mPanel->value() : QVariant();
-}
-
-QStringList QgsProcessingDxfLayersWidgetWrapper::compatibleParameterTypes() const
-{
-  return QStringList()
-         << QgsProcessingParameterMultipleLayers::typeName()
-         << QgsProcessingParameterMapLayer::typeName()
-         << QgsProcessingParameterVectorLayer::typeName()
-         << QgsProcessingParameterFeatureSource::typeName()
-         << QgsProcessingParameterFile::typeName()
-         << QgsProcessingParameterString::typeName();
-}
-
-QStringList QgsProcessingDxfLayersWidgetWrapper::compatibleOutputTypes() const
-{
-  return QStringList()
-         << QgsProcessingOutputString::typeName()
-         << QgsProcessingOutputMapLayer::typeName()
-         << QgsProcessingOutputVectorLayer::typeName()
-         << QgsProcessingOutputMultipleLayers::typeName()
-         << QgsProcessingOutputFile::typeName();
 }
 
 /// @endcond

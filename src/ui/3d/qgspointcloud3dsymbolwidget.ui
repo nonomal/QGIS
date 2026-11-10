@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>581</width>
-    <height>553</height>
+    <height>728</height>
    </rect>
   </property>
   <layout class="QGridLayout" name="gridLayout">
@@ -34,14 +34,8 @@
      <property name="checkable">
       <bool>false</bool>
      </property>
-     <layout class="QGridLayout" name="gridLayout_5" columnstretch="1,0">
-      <property name="leftMargin">
-       <number>0</number>
-      </property>
-      <property name="rightMargin">
-       <number>3</number>
-      </property>
-      <item row="1" column="0">
+     <layout class="QVBoxLayout" name="verticalLayout_2">
+      <item>
        <layout class="QGridLayout" name="gridLayout_7">
         <item row="0" column="0">
          <widget class="QLabel" name="labelPointSize">
@@ -120,14 +114,7 @@
         </item>
        </layout>
       </item>
-      <item row="4" column="0" colspan="2">
-       <widget class="QCheckBox" name="mShowBoundingBoxesCheckBox">
-        <property name="text">
-         <string>Show bounding boxes</string>
-        </property>
-       </widget>
-      </item>
-      <item row="2" column="0">
+      <item>
        <widget class="QgsCollapsibleGroupBox" name="mTriangulateGroupBox">
         <property name="title">
          <string>Render as a Surface (Triangulate)</string>
@@ -188,13 +175,63 @@
         </layout>
        </widget>
       </item>
+      <item>
+       <widget class="QCheckBox" name="mShowBoundingBoxesCheckBox">
+        <property name="text">
+         <string>Show bounding boxes</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QgsCollapsibleGroupBox" name="mVpcGroupBox">
+        <property name="title">
+         <string>Virtual Point Cloud Options</string>
+        </property>
+        <property name="checkable">
+         <bool>false</bool>
+        </property>
+        <property name="checked">
+         <bool>false</bool>
+        </property>
+        <layout class="QGridLayout" name="gridLayout_5">
+         <item row="1" column="0">
+          <widget class="QLabel" name="label">
+           <property name="text">
+            <string>Overview switching scale</string>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="0">
+          <widget class="QLabel" name="label_4">
+           <property name="text">
+            <string>When zoomed out</string>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="1" colspan="2">
+          <widget class="QComboBox" name="mZoomOutOptions"/>
+         </item>
+         <item row="1" column="1" colspan="2">
+          <widget class="QComboBox" name="mOverviewSwitchingScale">
+           <property name="toolTip">
+            <string>Sets the screen space error threshold at which detailed 3D point cloud tiles are rendered instead of their bounding boxes.
+
+Normal means tiles switch to detailed rendering once they occupy a noticeable portion of the screen.
+
+Select Earlier to load detailed tiles at a greater distance (zoomed out), or Later to switch only when zoomed in very close.</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+      </item>
      </layout>
     </widget>
    </item>
    <item row="2" column="0" colspan="3">
     <widget class="QgsStackedWidget" name="mStackedWidget">
      <property name="currentIndex">
-      <number>0</number>
+      <number>5</number>
      </property>
      <widget class="QWidget" name="noRendererPage"/>
      <widget class="QWidget" name="follow2DRendererPage">
@@ -214,7 +251,7 @@
           <string>See 2D Symbology settings</string>
          </property>
          <property name="alignment">
-          <set>Qt::AlignCenter</set>
+          <set>Qt::AlignmentFlag::AlignCenter</set>
          </property>
         </widget>
        </item>
@@ -244,7 +281,7 @@
        <item row="1" column="1">
         <spacer name="verticalSpacer_2">
          <property name="orientation">
-          <enum>Qt::Vertical</enum>
+          <enum>Qt::Orientation::Vertical</enum>
          </property>
          <property name="sizeHint" stdset="0">
           <size>
@@ -398,7 +435,7 @@ enhancement</string>
             <string>Min</string>
            </property>
            <property name="alignment">
-            <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+            <set>Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft|Qt::AlignmentFlag::AlignVCenter</set>
            </property>
           </widget>
          </item>
@@ -414,7 +451,7 @@ enhancement</string>
             <string>Max</string>
            </property>
            <property name="alignment">
-            <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+            <set>Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft|Qt::AlignmentFlag::AlignVCenter</set>
            </property>
           </widget>
          </item>
@@ -440,7 +477,7 @@ enhancement</string>
             <string>Min</string>
            </property>
            <property name="alignment">
-            <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+            <set>Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft|Qt::AlignmentFlag::AlignVCenter</set>
            </property>
           </widget>
          </item>
@@ -456,7 +493,7 @@ enhancement</string>
             <string>Max</string>
            </property>
            <property name="alignment">
-            <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+            <set>Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft|Qt::AlignmentFlag::AlignVCenter</set>
            </property>
           </widget>
          </item>
@@ -475,7 +512,7 @@ enhancement</string>
             <string>Min</string>
            </property>
            <property name="alignment">
-            <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+            <set>Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft|Qt::AlignmentFlag::AlignVCenter</set>
            </property>
           </widget>
          </item>
@@ -491,7 +528,7 @@ enhancement</string>
             <string>Max</string>
            </property>
            <property name="alignment">
-            <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+            <set>Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft|Qt::AlignmentFlag::AlignVCenter</set>
            </property>
           </widget>
          </item>
@@ -524,7 +561,7 @@ enhancement</string>
             <string>Blue band</string>
            </property>
            <property name="alignment">
-            <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+            <set>Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft|Qt::AlignmentFlag::AlignVCenter</set>
            </property>
           </widget>
          </item>
@@ -554,7 +591,7 @@ enhancement</string>
             <string>Green band</string>
            </property>
            <property name="alignment">
-            <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+            <set>Qt::AlignmentFlag::AlignLeading|Qt::AlignmentFlag::AlignLeft|Qt::AlignmentFlag::AlignVCenter</set>
            </property>
           </widget>
          </item>
@@ -570,7 +607,7 @@ enhancement</string>
        <item>
         <spacer name="verticalSpacer">
          <property name="orientation">
-          <enum>Qt::Vertical</enum>
+          <enum>Qt::Orientation::Vertical</enum>
          </property>
          <property name="sizeHint" stdset="0">
           <size>
@@ -610,15 +647,15 @@ enhancement</string>
  </widget>
  <customwidgets>
   <customwidget>
+   <class>QgsDoubleSpinBox</class>
+   <extends>QDoubleSpinBox</extends>
+   <header>qgsdoublespinbox.h</header>
+  </customwidget>
+  <customwidget>
    <class>QgsCollapsibleGroupBox</class>
    <extends>QGroupBox</extends>
    <header>qgscollapsiblegroupbox.h</header>
    <container>1</container>
-  </customwidget>
-  <customwidget>
-   <class>QgsDoubleSpinBox</class>
-   <extends>QDoubleSpinBox</extends>
-   <header>qgsdoublespinbox.h</header>
   </customwidget>
   <customwidget>
    <class>QgsColorButton</class>

@@ -13,21 +13,23 @@
  *                                                                         *
  ***************************************************************************/
 #include "qgstabbarproxystyle.h"
+
+#include "qgspainting.h"
+
+#include <QDebug>
 #include <QPainter>
 #include <QStyleOption>
-#include <QDebug>
 
+#include "moc_qgstabbarproxystyle.cpp"
 
 ///@cond PRIVATE
 
 QgsTabBarProxyStyle::QgsTabBarProxyStyle( QTabBar *tabBar )
   : QgsProxyStyle( tabBar )
-{
-}
+{}
 
 void QgsTabBarProxyStyle::drawControl( ControlElement element, const QStyleOption *option, QPainter *painter, const QWidget *widget ) const
 {
-
   QTabBar *tabBar { qobject_cast<QTabBar *>( parent() ) };
 
   if ( tabBar )
@@ -36,26 +38,24 @@ void QgsTabBarProxyStyle::drawControl( ControlElement element, const QStyleOptio
     {
       if ( const QStyleOptionTab *tab = qstyleoption_cast<const QStyleOptionTab *>( option ) )
       {
-        painter->save();
+        QgsScopedQPainterState painterState( painter );
         const QgsAttributeEditorElement::LabelStyle &style { mTabStyles.value( tabBar->tabAt( option->rect.center() ) ) };
         if ( style.overrideFont )
         {
           painter->setFont( style.font );
         }
         QStyleOptionTab opt { *tab };
-        if ( style.overrideColor && style.color.isValid( ) )
+        if ( style.overrideColor && style.color.isValid() )
         {
           opt.palette.setBrush( QPalette::WindowText, style.color );
         }
         QProxyStyle::drawControl( element, &opt, painter, widget );
-        painter->restore();
         return;
       }
     }
   }
 
   QProxyStyle::drawControl( element, option, painter, widget );
-
 }
 
 void QgsTabBarProxyStyle::addStyle( int tabIndex, const QgsAttributeEditorElement::LabelStyle &style )
@@ -71,8 +71,7 @@ const QMap<int, QgsAttributeEditorElement::LabelStyle> &QgsTabBarProxyStyle::tab
 
 QgsTabBar::QgsTabBar( QWidget *parent )
   : QTabBar( parent )
-{
-}
+{}
 
 void QgsTabBar::setTabBarStyle( QgsTabBarProxyStyle *tabStyle )
 {
@@ -104,7 +103,6 @@ QSize QgsTabBar::tabSizeHint( int index ) const
     return QTabBar::tabSizeHint( index );
   }
 }
-
 
 
 ///@endcond

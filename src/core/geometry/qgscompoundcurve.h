@@ -22,12 +22,16 @@
 #include "qgis_sip.h"
 #include "qgscurve.h"
 
+#include <QString>
+
+using namespace Qt::StringLiterals;
+
 /**
  * \ingroup core
  * \class QgsCompoundCurve
- * \brief Compound curve geometry type
+ * \brief Compound curve geometry type.
  */
-class CORE_EXPORT QgsCompoundCurve: public QgsCurve
+class CORE_EXPORT QgsCompoundCurve : public QgsCurve
 {
   public:
     QgsCompoundCurve();
@@ -57,7 +61,6 @@ class CORE_EXPORT QgsCompoundCurve: public QgsCurve
           {
             return false;
           }
-
         }
         else
         {
@@ -65,7 +68,6 @@ class CORE_EXPORT QgsCompoundCurve: public QgsCurve
           {
             return false;
           }
-
         }
       }
 
@@ -73,7 +75,9 @@ class CORE_EXPORT QgsCompoundCurve: public QgsCurve
     }
 #endif
   public:
+    // clang-format off
     bool fuzzyEqual( const QgsAbstractGeometry &other, double epsilon = 1e-8 ) const override SIP_HOLDGIL
+      // clang-format on
     {
       return fuzzyHelper( other, epsilon, false );
     }
@@ -101,7 +105,7 @@ class CORE_EXPORT QgsCompoundCurve: public QgsCurve
     QString asWkt( int precision = 17 ) const override;
     QDomElement asGml2( QDomDocument &doc, int precision = 17, const QString &ns = "gml", QgsAbstractGeometry::AxisOrder axisOrder = QgsAbstractGeometry::AxisOrder::XY ) const override;
     QDomElement asGml3( QDomDocument &doc, int precision = 17, const QString &ns = "gml", QgsAbstractGeometry::AxisOrder axisOrder = QgsAbstractGeometry::AxisOrder::XY ) const override;
-    json asJsonObject( int precision = 17 ) const override SIP_SKIP;
+    json asJsonObject( int precision = 17, Qgis::GeoJsonProfile profile = Qgis::GeoJsonProfile::Legacy ) const override SIP_SKIP;
 
     //curve interface
     double length() const override SIP_HOLDGIL;
@@ -112,6 +116,7 @@ class CORE_EXPORT QgsCompoundCurve: public QgsCurve
     bool isEmpty() const override SIP_HOLDGIL;
     bool isValid( QString &error SIP_OUT, Qgis::GeometryValidityFlags flags = Qgis::GeometryValidityFlags() ) const override;
     int indexOf( const QgsPoint &point ) const final;
+    bool isSimpleCurve() const override SIP_HOLDGIL;
 
     /**
      * Returns a new line string geometry corresponding to a segmentized approximation
@@ -121,9 +126,13 @@ class CORE_EXPORT QgsCompoundCurve: public QgsCurve
     */
     QgsLineString *curveToLine( double tolerance = M_PI_2 / 90, SegmentationToleranceType toleranceType = MaximumAngle ) const override SIP_FACTORY;
 
-    QgsCompoundCurve *snappedToGrid( double hSpacing, double vSpacing, double dSpacing = 0, double mSpacing = 0 ) const override SIP_FACTORY;
+    QgsCompoundCurve *snappedToGrid( double hSpacing, double vSpacing, double dSpacing = 0, double mSpacing = 0, bool removeRedundantPoints = false ) const override SIP_FACTORY;
+    QgsAbstractGeometry *simplifyByDistance( double tolerance ) const override SIP_FACTORY;
     bool removeDuplicateNodes( double epsilon = 4 * std::numeric_limits<double>::epsilon(), bool useZValues = false ) override;
+
+    using QgsCurve::boundingBoxIntersects;
     bool boundingBoxIntersects( const QgsBox3D &box3d ) const override SIP_HOLDGIL;
+
     const QgsAbstractGeometry *simplifiedTypeRef() const override SIP_HOLDGIL;
 
     /**
@@ -183,10 +192,11 @@ class CORE_EXPORT QgsCompoundCurve: public QgsCurve
     void drawAsPolygon( QPainter &p ) const override;
     bool insertVertex( QgsVertexId position, const QgsPoint &vertex ) override;
     bool moveVertex( QgsVertexId position, const QgsPoint &newPos ) override;
-    bool deleteVertex( QgsVertexId position ) override;
+    bool deleteVertices( const QSet<QgsVertexId> &positions ) override;
     double closestSegment( const QgsPoint &pt, QgsPoint &segmentPt SIP_OUT, QgsVertexId &vertexAfter SIP_OUT, int *leftOf SIP_OUT = nullptr, double epsilon = 4 * std::numeric_limits<double>::epsilon() ) const override;
     bool pointAt( int node, QgsPoint &point, Qgis::VertexType &type ) const override;
     void sumUpArea( double &sum SIP_OUT ) const override;
+    void sumUpArea3D( double &sum SIP_OUT ) const override;
 
     //! Appends first point if not already closed.
     void close();
@@ -194,6 +204,7 @@ class CORE_EXPORT QgsCompoundCurve: public QgsCurve
     bool hasCurvedSegments() const override;
     double vertexAngle( QgsVertexId vertex ) const override;
     double segmentLength( QgsVertexId startVertex ) const override;
+    double distanceBetweenVertices( QgsVertexId fromVertex, QgsVertexId toVertex ) const override;
     QgsCompoundCurve *reversed() const override SIP_FACTORY;
     QgsPoint *interpolatePoint( double distance ) const override SIP_FACTORY;
     QgsCompoundCurve *curveSubstring( double startDistance, double endDistance ) const override SIP_FACTORY;
@@ -222,12 +233,29 @@ class CORE_EXPORT QgsCompoundCurve: public QgsCurve
      * Cast the \a geom to a QgsCompoundCurve.
      * Should be used by qgsgeometry_cast<QgsCompoundCurve *>( geometry ).
      *
-     * \note Not available in Python. Objects will be automatically be converted to the appropriate target type.
+     * Objects will be automatically converted to the appropriate target type.
+     *
+     * \note Not available in Python.
      */
-    inline static const QgsCompoundCurve *cast( const QgsAbstractGeometry *geom )
+    inline static const QgsCompoundCurve *cast( const QgsAbstractGeometry *geom ) // cppcheck-suppress duplInheritedMember
     {
       if ( geom && QgsWkbTypes::flatType( geom->wkbType() ) == Qgis::WkbType::CompoundCurve )
         return static_cast<const QgsCompoundCurve *>( geom );
+      return nullptr;
+    }
+
+    /**
+     * Cast the \a geom to a QgsCompoundCurve.
+     * Should be used by qgsgeometry_cast<QgsCompoundCurve *>( geometry ).
+     *
+     * Objects will be automatically converted to the appropriate target type.
+     *
+     * \note Not available in Python.
+     */
+    inline static QgsCompoundCurve *cast( QgsAbstractGeometry *geom ) // cppcheck-suppress duplInheritedMember
+    {
+      if ( geom && QgsWkbTypes::flatType( geom->wkbType() ) == Qgis::WkbType::CompoundCurve )
+        return static_cast<QgsCompoundCurve *>( geom );
       return nullptr;
     }
 #endif
@@ -235,14 +263,16 @@ class CORE_EXPORT QgsCompoundCurve: public QgsCurve
     QgsCompoundCurve *createEmptyWithSameType() const override SIP_FACTORY;
 
 #ifdef SIP_RUN
+// clang-format off
     SIP_PYOBJECT __repr__();
     % MethodCode
     QString wkt = sipCpp->asWkt();
     if ( wkt.length() > 1000 )
-      wkt = wkt.left( 1000 ) + QStringLiteral( "..." );
-    QString str = QStringLiteral( "<QgsCompoundCurve: %1>" ).arg( wkt );
+      wkt = wkt.left( 1000 ) + u"..."_s;
+    QString str = u"<QgsCompoundCurve: %1>"_s.arg( wkt );
     sipRes = PyUnicode_FromString( str.toUtf8().constData() );
     % End
+// clang-format on
 #endif
 
   protected:

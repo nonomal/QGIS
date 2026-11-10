@@ -18,10 +18,11 @@
 #ifndef QGSALGORITHMZONALSTATISTICSFEATUREBASED_H
 #define QGSALGORITHMZONALSTATISTICSFEATUREBASED_H
 
-#define SIP_NO_FILE
 
 #include "qgis_sip.h"
 #include "qgsprocessingalgorithm.h"
+
+#define SIP_NO_FILE
 
 ///@cond PRIVATE
 
@@ -30,9 +31,7 @@
  */
 class QgsZonalStatisticsFeatureBasedAlgorithm : public QgsProcessingFeatureBasedAlgorithm
 {
-
   public:
-
     QgsZonalStatisticsFeatureBasedAlgorithm() = default;
     QString name() const override;
     QString displayName() const override;
@@ -40,22 +39,21 @@ class QgsZonalStatisticsFeatureBasedAlgorithm : public QgsProcessingFeatureBased
     QString group() const override;
     QString groupId() const override;
     QString shortHelpString() const override;
+    QString shortDescription() const override;
     QList<int> inputLayerTypes() const override;
-
+    bool supportInPlaceEdit( const QgsMapLayer *layer ) const override;
     QgsZonalStatisticsFeatureBasedAlgorithm *createInstance() const override SIP_FACTORY;
 
   protected:
-
     void initParameters( const QVariantMap &configuration = QVariantMap() ) override;
     QString outputName() const override;
     QgsFields outputFields( const QgsFields &inputFields ) const override;
 
     bool prepareAlgorithm( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
-    QgsFeatureList processFeature( const QgsFeature &feature,  QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
-    bool supportInPlaceEdit( const QgsMapLayer *layer ) const override;
+    QgsFeatureList processFeature( const QgsFeature &feature, QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
 
   private:
-    std::unique_ptr< QgsRasterInterface > mRaster;
+    std::unique_ptr<QgsRasterInterface> mRaster;
     int mBand = 1;
     QString mPrefix;
     Qgis::ZonalStatistics mStats = Qgis::ZonalStatistic::All;

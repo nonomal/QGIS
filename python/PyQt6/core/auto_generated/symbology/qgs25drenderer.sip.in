@@ -3,13 +3,16 @@
  *                                                                      *
  * src/core/symbology/qgs25drenderer.h                                  *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/
 
 
 
 class Qgs25DRenderer : QgsFeatureRenderer
 {
+%Docstring(signature="appended")
+A vector renderer which represents 3D features in an isometric view.
+%End
 
 %TypeHeaderCode
 #include "qgs25drenderer.h"
@@ -17,7 +20,7 @@ class Qgs25DRenderer : QgsFeatureRenderer
   public:
     Qgs25DRenderer();
 
-    static QgsFeatureRenderer *create( QDomElement &element, const QgsReadWriteContext &context ) /Factory/;
+    static std::unique_ptr<QgsFeatureRenderer> create( QDomElement &element, const QgsReadWriteContext &context );
 %Docstring
 Create a new 2.5D renderer from XML
 
@@ -26,6 +29,7 @@ Create a new 2.5D renderer from XML
 %End
     virtual QDomElement save( QDomDocument &doc, const QgsReadWriteContext &context );
 
+    virtual Qgis::FeatureRendererFlags flags() const;
 
     virtual void startRender( QgsRenderContext &context, const QgsFields &fields );
 
@@ -94,7 +98,7 @@ Gets the shadow's spread distance in map units
 Set the shadow's spread distance in map units
 %End
 
-    static Qgs25DRenderer *convertFromRenderer( QgsFeatureRenderer *renderer ) /Factory/;
+    static std::unique_ptr<Qgs25DRenderer> convertFromRenderer( QgsFeatureRenderer *renderer );
 %Docstring
 Try to convert from an existing renderer. If it is not of the same type
 we assume that the internals are not compatible and create a new default
@@ -118,5 +122,5 @@ Enable or disable the shadow
  *                                                                      *
  * src/core/symbology/qgs25drenderer.h                                  *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/

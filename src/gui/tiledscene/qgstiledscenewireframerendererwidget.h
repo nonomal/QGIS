@@ -18,19 +18,21 @@
 #ifndef QGSTILEDSCENEWIREFRAMERENDERERWIDGET_H
 #define QGSTILEDSCENEWIREFRAMERENDERERWIDGET_H
 
-#include "qgstiledscenerendererwidget.h"
 #include "ui_qgstiledscenewireframerendererwidgetbase.h"
+
 #include "qgis_gui.h"
+#include "qgstiledscenerendererwidget.h"
+
+#define SIP_NO_FILE
 
 class QgsTiledSceneLayer;
 class QgsStyle;
 class QgsTiledSceneRenderer;
 
-#define SIP_NO_FILE
 
 ///@cond PRIVATE
 
-class GUI_EXPORT QgsTiledSceneWireframeRendererWidget: public QgsTiledSceneRendererWidget, private Ui::QgsTiledSceneWireframeRendererWidgetBase
+class GUI_EXPORT QgsTiledSceneWireframeRendererWidget : public QgsTiledSceneRendererWidget, private Ui::QgsTiledSceneWireframeRendererWidgetBase
 {
     Q_OBJECT
 
@@ -48,7 +50,6 @@ class GUI_EXPORT QgsTiledSceneWireframeRendererWidget: public QgsTiledSceneRende
     void setFromRenderer( const QgsTiledSceneRenderer *r );
 
     bool mBlockChangedSignal = false;
-
 };
 
 ///@endcond

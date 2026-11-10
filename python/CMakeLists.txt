@@ -44,16 +44,6 @@ macro(PY_COMPILE TARGET_NAME RESOURCE_PATHS)
   endif()
 endmacro(PY_COMPILE)
 
-# Macro to auto migrate resources
-macro(PY_2TO3 TARGET_NAME RESOURCE_PATHS)
-  add_custom_command(TARGET ${TARGET_NAME}
-    POST_BUILD
-    COMMAND "${Python_EXECUTABLE}" "${CMAKE_SOURCE_DIR}/scripts/2to3" --no-diffs -w ${RESOURCE_PATHS}
-    WORKING_DIRECTORY "${CMAKE_BINARY_DIR}"
-    COMMENT "Porting ${RESOURCE_PATHS} to Python 3 and Qt5"
-  )
-endmacro(PY_2TO3)
-
 add_subdirectory(plugins)
 if (WITH_GUI)
   add_subdirectory(qsci_apis)
@@ -64,48 +54,6 @@ add_subdirectory(PyQt)
 add_subdirectory(ext-libs)
 add_subdirectory(testing)
 add_subdirectory(processing)
-
-include_directories(SYSTEM
-  ${Python_INCLUDE_DIRS}
-  ${SIP_INCLUDE_DIR}
-  ${QT_QTCORE_INCLUDE_DIR}
-  ${QT_QTGUI_INCLUDE_DIR}
-  ${QT_QTNETWORK_INCLUDE_DIR}
-  ${QT_QTSERIALPORT_INCLUDE_DIR}
-  ${QT_QTSVG_INCLUDE_DIR}
-  ${QT_QTXML_INCLUDE_DIR}
-  ${QWT_INCLUDE_DIR}
-  ${QCA_INCLUDE_DIR}
-  ${QTKEYCHAIN_INCLUDE_DIR}
-  ${SQLITE3_INCLUDE_DIR}
-  ${SPATIALINDEX_INCLUDE_DIR}
-)
-
-if (${SIP_VERSION_STR} VERSION_LESS 5)
-  include_directories(SYSTEM
-    ${SIP_INCLUDE_DIR}
-  )
-endif()
-
-if (WITH_GUI)
-  include_directories(SYSTEM
-    ${QSCINTILLA_INCLUDE_DIR}
-  )
-endif()
-
-include_directories(
-  ${CMAKE_SOURCE_DIR}/src/plugins
-
-  ${CMAKE_BINARY_DIR}  # qgsconfig.h, qgsversion.h
-  ${CMAKE_BINARY_DIR}/src/ui
-  ${CMAKE_BINARY_DIR}/src/analysis
-)
-
-if (WITH_GUI)
-  include_directories(
-
-  )
-endif()
 
 if(NOT ENABLE_TESTS)
   set(SIP_DISABLE_FEATURES ${SIP_DISABLE_FEATURES} TESTS)
@@ -120,48 +68,18 @@ else()
   set(SIP_DISABLE_FEATURES ${SIP_DISABLE_FEATURES} ARM)
 endif()
 
-# SIP 4.19.7+ can:
-# * prepend auto-generated Python signature to existing Docstrings
-# * document template based classes
-set(DOCSTRINGSTEMPLATE "//")
-if(${SIP_VERSION_STR} VERSION_GREATER 4.19.6)
-  set(DEFAULTDOCSTRINGSIGNATURE "%DefaultDocstringSignature \"prepended\"")
-  set(DOCSTRINGSTEMPLATE "")
-endif()
+SET(QSCI_SIP_MOD_NAME Qsci/qscimod6.sip)
+SET(BINDING_FILES_ROOT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/PyQt6)
+ SET(pyqtdist "PyQt6")
 
-if(${SIP_VERSION_STR} VERSION_GREATER 4.19.0)
-  set(SIP_FINAL "final")
-else()
-  set(SIP_FINAL "")
-endif()
-
-IF(BUILD_WITH_QT6)
-  SET(QSCI_SIP_MOD_NAME Qsci/qscimod6.sip)
-  SET(BINDING_FILES_ROOT_DIR ${CMAKE_CURRENT_SOURCE_DIR}/PyQt6)
-ELSE()
-  SET(QSCI_SIP_MOD_NAME Qsci/qscimod5.sip)
-  SET(BINDING_FILES_ROOT_DIR ${CMAKE_CURRENT_SOURCE_DIR})
-ENDIF()
-
-set(QGIS_PYTHON_DIR ${Python_SITEARCH}/qgis)
+set(QGIS_PYTHON_DIR ${QGIS_PYTHON_INSTALL_DIR}/qgis)
 
 # core module
 file(GLOB_RECURSE sip_files_core ${BINDING_FILES_ROOT_DIR}/core/*.sip ${BINDING_FILES_ROOT_DIR}/core/*.sip.in)
 set(SIP_EXTRA_FILES_DEPEND ${sip_files_core})
-set(SIP_EXTRA_OPTIONS ${PYQT_SIP_FLAGS} -g -o -a ${CMAKE_BINARY_DIR}/python/qgis.core.api)
-if((${SIP_VERSION_STR} VERSION_EQUAL 4.19.11) OR (${SIP_VERSION_STR} VERSION_GREATER 4.19.11))
-  set(SIP_EXTRA_OPTIONS ${SIP_EXTRA_OPTIONS} -n ${PYQT_SIP_IMPORT})
-endif()
-if(SIP_BUILD_EXECUTABLE)
-  install(FILES ${CMAKE_BINARY_DIR}/python/core/build/_core/_core.pyi DESTINATION ${QGIS_PYTHON_DIR})
-elseif((${SIP_VERSION_STR} VERSION_EQUAL 4.18) OR (${SIP_VERSION_STR} VERSION_GREATER 4.18))
-  set(SIP_EXTRA_OPTIONS ${SIP_EXTRA_OPTIONS} -y ${QGIS_PYTHON_OUTPUT_DIRECTORY}/_core.pyi)
-  install(FILES ${QGIS_PYTHON_OUTPUT_DIRECTORY}/_core.pyi DESTINATION ${QGIS_PYTHON_DIR})
-endif()
+install(FILES ${CMAKE_BINARY_DIR}/python/core/build/_core/_core.pyi DESTINATION ${QGIS_PYTHON_DIR})
 
-if((${PYQT_VERSION_STR} VERSION_EQUAL 5.15) OR (${PYQT_VERSION_STR} VERSION_GREATER 5.15))
-  set(SIP_DISABLE_FEATURES ${SIP_DISABLE_FEATURES} VECTOR_MAPPED_TYPE)
-endif()
+set(SIP_DISABLE_FEATURES ${SIP_DISABLE_FEATURES} VECTOR_MAPPED_TYPE)
 
 if(NOT WITH_GUI)
   set(SIP_DISABLE_FEATURES ${SIP_DISABLE_FEATURES} HAVE_GUI)
@@ -179,23 +97,133 @@ if(NOT WITH_QTWEBENGINE)
   set(SIP_DISABLE_FEATURES ${SIP_DISABLE_FEATURES} HAVE_WEBENGINE_SIP)
 endif()
 
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/core/project.py.in ${CMAKE_CURRENT_BINARY_DIR}/core/project.py @ONLY)
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/core/pyproject.toml.in ${CMAKE_CURRENT_BINARY_DIR}/core/pyproject.toml @ONLY)
+if(NOT WITH_SFCGAL)
+    message(STATUS "SFCGAL not enabled - disabling bindings")
+    set(SIP_DISABLE_FEATURES ${SIP_DISABLE_FEATURES} HAVE_SFCGAL_SIP)
+endif()
+
+# sip 6.11 has support for the Movable Mapped Type Annotation
+# Including the annotation with older sip versions will throw a parser error,
+# so we need to generate a file without it for older versions
+if(${SIP_VERSION_STR} VERSION_LESS 6.11.0)
+  set(SIP_DISABLE_FEATURES ${SIP_DISABLE_FEATURES} MOVABLE_MAPPED_TYPE)
+else()
+  set(SIP_MOVABLE_STR "Movable,")
+endif()
+if(Qt6Core_VERSION_MINOR LESS 5)
+# https://github.com/qgis/QGIS/issues/57760
+# https://www.riverbankcomputing.com/pipermail/pyqt/2024-June/045923.html
+set(SIP_QLIST_QINT64 [[
+%MappedType QList<qint64>
+    /TypeHintIn="Iterable[int]",
+    TypeHintOut="List[int]", TypeHintValue="[]"/
+{
+%TypeHeaderCode
+#include <QList>
+    %End
+
+    %ConvertFromTypeCode
+        // Create the list.
+        PyObject *l;
+
+if ((l = PyList_New(sipCpp->size())) == NULL)
+    return NULL;
+
+// Set the list elements.
+QList<qint64>::iterator it = sipCpp->begin();
+for (int i = 0; it != sipCpp->end(); ++it, ++i)
+{
+    PyObject *tobj;
+
+    if ((tobj = PyLong_FromLongLong(*it)) == NULL)
+    {
+      Py_DECREF(l);
+      return NULL;
+    }
+    PyList_SET_ITEM(l, i, tobj);
+}
+
+return l;
+%End
+
+    %ConvertToTypeCode
+    // Check the type if that is all that is required.
+    if (sipIsErr == NULL)
+    return PyList_Check(sipPy);
+
+QList<qint64> *qlist = new QList<qint64>;
+
+for (int i = 0; i < PyList_GET_SIZE(sipPy); ++i)
+{
+    *qlist << PyLong_AsLongLong(PyList_GET_ITEM(sipPy, i));
+}
+
+*sipCppPtr = qlist;
+return sipGetState(sipTransferObj);
+%End
+};
+]])
+endif()
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/PyQt6/core/conversions.sip.in ${CMAKE_CURRENT_BINARY_DIR}/PyQt6/core/conversions.sip @ONLY)
+
+# Deprecated annotation supports message only since version 6.9.0 with abi-version 12.16 / 13.9 and above
+if(${SIP_VERSION_STR} VERSION_LESS 6.9.0)
+  set(sipabi "")
+else()
+  set(sipabi "\n[tool.sip.project]\nabi-version = \"13.9\"")
+endif()
+
+# SPDX license expressions and license-files (PEP 639) are only supported since version 6.11.0,
+# older versions require the license table form
+if(${SIP_VERSION_STR} VERSION_LESS 6.11.0)
+  set(siplicense "license = \{file = \"${CMAKE_SOURCE_DIR}/COPYING\"\}")
+else()
+  set(siplicense "license = \"GPL-2.0-Only\"\nlicense-files = [\"${CMAKE_SOURCE_DIR}/COPYING\"]")
+endif()
+
+set(toml "
+# Specify the build system.
+[build-system]
+requires = [\"sip >=5.0.0, <7\", \"PyQt-builder >=1.6, <2\"]
+build-backend = \"sipbuild.api\"
+${sipabi}
+
+")
+
+if(${SIP_VERSION_STR} VERSION_LESS 6.8.0)
+  set(toml "${toml}
+[tool.sip.metadata]
+name = \"QGIS\"
+version = \"${COMPLETE_VERSION}\"
+summary = \"Python bindings for QGIS\"
+home-page = \"https://qgis.org\"
+author = \"The QGIS Community\"
+license = \"GPL v2\"
+requires-dist = \"${pyqtdist}\"
+")
+else()
+  set(toml "${toml}
+[project]
+name = \"QGIS\"
+version = \"${COMPLETE_VERSION}\"
+description = \"Python bindings for QGIS\"
+authors = [ \{name = \"The QGIS Community\"\} ]
+${siplicense}
+dependencies = [\"${pyqtdist}\"]
+
+[project.urls]
+Homepage = \"https://qgis.org\"
+")
+endif()
+
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/PyQt6/core/project.py.in ${CMAKE_CURRENT_BINARY_DIR}/core/project.py @ONLY)
+file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/core/pyproject.toml.temp" "${toml}")
+execute_process(COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_CURRENT_BINARY_DIR}/core/pyproject.toml.temp ${CMAKE_CURRENT_BINARY_DIR}/core/pyproject.toml)
 GENERATE_SIP_PYTHON_MODULE_CODE(qgis._core core/core.sip "${sip_files_core}" cpp_files)
 BUILD_SIP_PYTHON_MODULE(qgis._core core/core.sip ${cpp_files} "" qgis_core)
 set(SIP_CORE_CPP_FILES ${cpp_files})
 
-# TODO QGIS 4 : remove this hack when we switch completely to Qt 6 which supports only c++17
-if( ${QT_VERSION_MAJOR} EQUAL 5 AND ( "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" ) )
-  # Bad hack to fix compilation with gcc 11 - for some reason it's ignoring
-  # the c++ standard version set for the target in BUILD_SIP_PYTHON_MODULE!
-  add_definitions(-std=c++14)
-endif()
-
-if((UNIX OR MINGW) AND SIP_VERSION_STR VERSION_GREATER_EQUAL 4.10 AND SIP_VERSION_STR VERSION_LESS 5.0)
-  set(SIP_EXTRA_OPTIONS -P ${SIP_EXTRA_OPTIONS})
-  add_definitions(-Dprotected=public)
-elseif((UNIX OR MINGW) AND SIP_VERSION_STR VERSION_GREATER_EQUAL 5.0)
+if(UNIX OR MINGW)
   add_definitions(-Dprotected=public)
 endif()
 
@@ -203,10 +231,6 @@ set (PY_MODULES core)
 
 if(WITH_ANALYSIS)
   set(PY_MODULES ${PY_MODULES} analysis)
-
-  if (NOT WITH_PDAL OR (WITH_PDAL AND NOT PDAL_2_5_OR_HIGHER))
-    set(SIP_DISABLE_FEATURES ${SIP_DISABLE_FEATURES} HAVE_PDAL_PROVIDER)
-  endif()
 endif()
 
 # gui module
@@ -215,18 +239,9 @@ if (WITH_GUI)
 
   file(GLOB_RECURSE sip_files_gui ${BINDING_FILES_ROOT_DIR}/gui/*.sip ${BINDING_FILES_ROOT_DIR}/gui/*.sip.in)
   set(SIP_EXTRA_FILES_DEPEND ${sip_files_core} ${sip_files_gui})
-  set(SIP_EXTRA_OPTIONS ${PYQT_SIP_FLAGS} -g -o -a ${CMAKE_BINARY_DIR}/python/qgis.gui.api)
-  if((${SIP_VERSION_STR} VERSION_EQUAL 4.19.11) OR (${SIP_VERSION_STR} VERSION_GREATER 4.19.11))
-    set(SIP_EXTRA_OPTIONS ${SIP_EXTRA_OPTIONS} -n ${PYQT_SIP_IMPORT})
-  endif()
-  if(SIP_BUILD_EXECUTABLE)
-    install(FILES ${CMAKE_CURRENT_BINARY_DIR}/gui/build/_gui/_gui.pyi DESTINATION ${QGIS_PYTHON_DIR})
-  elseif((${SIP_VERSION_STR} VERSION_EQUAL 4.18) OR (${SIP_VERSION_STR} VERSION_GREATER 4.18))
-    set(SIP_EXTRA_OPTIONS ${SIP_EXTRA_OPTIONS} -y ${QGIS_PYTHON_OUTPUT_DIRECTORY}/_gui.pyi)
-    install(FILES ${QGIS_PYTHON_OUTPUT_DIRECTORY}/_gui.pyi DESTINATION ${QGIS_PYTHON_DIR})
-  endif()
+  install(FILES ${CMAKE_CURRENT_BINARY_DIR}/gui/build/_gui/_gui.pyi DESTINATION ${QGIS_PYTHON_DIR})
   if(QSCI_SIP_DIR)
-    set(SIP_EXTRA_OPTIONS ${SIP_EXTRA_OPTIONS} -I ${QSCI_SIP_DIR})
+    set(SIP_BUILD_EXTRA_OPTIONS ${SIP_BUILD_EXTRA_OPTIONS} --include-dir=${QSCI_SIP_DIR})
   else()
     message(STATUS "Qsci sip file not found - disabling bindings for derived classes")
     set(SIP_DISABLE_FEATURES ${SIP_DISABLE_FEATURES} HAVE_QSCI_SIP)
@@ -237,62 +252,46 @@ if (WITH_GUI)
     set(SIP_DISABLE_FEATURES ${SIP_DISABLE_FEATURES} HAVE_QTGAMEPAD)
   endif()
 
-  configure_file(${CMAKE_CURRENT_SOURCE_DIR}/gui/project.py.in ${CMAKE_CURRENT_BINARY_DIR}/gui/project.py @ONLY)
-  configure_file(${CMAKE_CURRENT_SOURCE_DIR}/gui/pyproject.toml.in ${CMAKE_CURRENT_BINARY_DIR}/gui/pyproject.toml @ONLY)
+  configure_file(${CMAKE_CURRENT_SOURCE_DIR}/PyQt6/gui/project.py.in ${CMAKE_CURRENT_BINARY_DIR}/gui/project.py @ONLY)
+  file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/gui/pyproject.toml.temp" "${toml}")
+  execute_process(COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_CURRENT_BINARY_DIR}/gui/pyproject.toml.temp ${CMAKE_CURRENT_BINARY_DIR}/gui/pyproject.toml)
   GENERATE_SIP_PYTHON_MODULE_CODE(qgis._gui gui/gui.sip "${sip_files_gui}" cpp_files)
   BUILD_SIP_PYTHON_MODULE(qgis._gui gui/gui.sip ${cpp_files} "" qgis_core qgis_gui)
 endif()
 
 # 3D module
 if (WITH_3D)
-  include_directories(
-    ${QT5_3DEXTRA_INCLUDE_DIR}
-  )
   set(PY_MODULES ${PY_MODULES} 3d)
 
   file(GLOB_RECURSE sip_files_3d ${BINDING_FILES_ROOT_DIR}/3d/*.sip ${BINDING_FILES_ROOT_DIR}/3d/*.sip.in)
   set(SIP_EXTRA_FILES_DEPEND ${sip_files_core} ${sip_files_3d})
-  set(SIP_EXTRA_OPTIONS ${PYQT_SIP_FLAGS} -g -o -a ${CMAKE_BINARY_DIR}/python/qgis.3d.api)
-  if((${SIP_VERSION_STR} VERSION_EQUAL 4.19.11) OR (${SIP_VERSION_STR} VERSION_GREATER 4.19.11))
-    set(SIP_EXTRA_OPTIONS ${SIP_EXTRA_OPTIONS} -n ${PYQT_SIP_IMPORT})
-  endif()
-  if(SIP_BUILD_EXECUTABLE)
-    install(FILES ${CMAKE_CURRENT_BINARY_DIR}/3d/build/_3d/_3d.pyi DESTINATION ${QGIS_PYTHON_DIR})
-  elseif((${SIP_VERSION_STR} VERSION_EQUAL 4.18) OR (${SIP_VERSION_STR} VERSION_GREATER 4.18))
-    set(SIP_EXTRA_OPTIONS ${SIP_EXTRA_OPTIONS} -y ${QGIS_PYTHON_OUTPUT_DIRECTORY}/_qgis3d.pyi)
-    install(FILES ${QGIS_PYTHON_OUTPUT_DIRECTORY}/_qgis3d.pyi DESTINATION ${QGIS_PYTHON_DIR})
-  endif()
+  install(FILES ${CMAKE_CURRENT_BINARY_DIR}/3d/build/_3d_p/_3d_p.pyi DESTINATION ${QGIS_PYTHON_DIR})
 
-  configure_file(${CMAKE_CURRENT_SOURCE_DIR}/3d/project.py.in ${CMAKE_CURRENT_BINARY_DIR}/3d/project.py @ONLY)
-  configure_file(${CMAKE_CURRENT_SOURCE_DIR}/3d/pyproject.toml.in ${CMAKE_CURRENT_BINARY_DIR}/3d/pyproject.toml @ONLY)
-  GENERATE_SIP_PYTHON_MODULE_CODE(qgis._3d 3d/3d.sip "${sip_files_3d}" cpp_files)
-  BUILD_SIP_PYTHON_MODULE(qgis._3d 3d/3d.sip ${cpp_files} "" qgis_core qgis_3d)
+  configure_file(${CMAKE_CURRENT_SOURCE_DIR}/PyQt6/3d/project.py.in ${CMAKE_CURRENT_BINARY_DIR}/3d/project.py @ONLY)
+  file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/3d/pyproject.toml.temp" "${toml}")
+  execute_process(COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_CURRENT_BINARY_DIR}/3d/pyproject.toml.temp ${CMAKE_CURRENT_BINARY_DIR}/3d/pyproject.toml)
+  SET(SIP_CONCAT_PARTS 8) # 3D doesn't have enough .sip files to fill 15+ .cpp files
+  GENERATE_SIP_PYTHON_MODULE_CODE(qgis._3d_p 3d/3d.sip "${sip_files_3d}" cpp_files)
+  BUILD_SIP_PYTHON_MODULE(qgis._3d_p 3d/3d.sip ${cpp_files} "" qgis_core qgis_3d)
 endif()
 
 # server module
 if (WITH_SERVER AND WITH_SERVER_PLUGINS)
   include_directories(
     ../src/server
-   ${CMAKE_BINARY_DIR}/src/server
+    ${CMAKE_BINARY_DIR}/src/server
   )
 
   set(PY_MODULES ${PY_MODULES} server)
 
   file(GLOB_RECURSE sip_files_server ${BINDING_FILES_ROOT_DIR}/server/*.sip ${BINDING_FILES_ROOT_DIR}/server/*.sip.in)
   set(SIP_EXTRA_FILES_DEPEND ${sip_files_core} ${sip_files_server})
-  set(SIP_EXTRA_OPTIONS ${PYQT_SIP_FLAGS} -g -o -a ${CMAKE_BINARY_DIR}/python/qgis.server.api)
-  if((${SIP_VERSION_STR} VERSION_EQUAL 4.19.11) OR (${SIP_VERSION_STR} VERSION_GREATER 4.19.11))
-    set(SIP_EXTRA_OPTIONS ${SIP_EXTRA_OPTIONS} -n ${PYQT_SIP_IMPORT})
-  endif()
-  if(SIP_BUILD_EXECUTABLE)
-    install(FILES ${CMAKE_CURRENT_BINARY_DIR}/server/build/_server/_server.pyi DESTINATION ${QGIS_PYTHON_DIR})
-  elseif((${SIP_VERSION_STR} VERSION_EQUAL 4.18) OR (${SIP_VERSION_STR} VERSION_GREATER 4.18))
-    set(SIP_EXTRA_OPTIONS ${SIP_EXTRA_OPTIONS} -y ${QGIS_PYTHON_OUTPUT_DIRECTORY}/_server.pyi)
-    install(FILES ${QGIS_PYTHON_OUTPUT_DIRECTORY}/_server.pyi DESTINATION ${QGIS_PYTHON_DIR})
-  endif()
+  install(FILES ${CMAKE_CURRENT_BINARY_DIR}/server/build/_server/_server.pyi DESTINATION ${QGIS_PYTHON_DIR})
 
-  configure_file(${CMAKE_CURRENT_SOURCE_DIR}/server/project.py.in ${CMAKE_CURRENT_BINARY_DIR}/server/project.py @ONLY)
-  configure_file(${CMAKE_CURRENT_SOURCE_DIR}/server/pyproject.toml.in ${CMAKE_CURRENT_BINARY_DIR}/server/pyproject.toml @ONLY)
+  configure_file(${CMAKE_CURRENT_SOURCE_DIR}/PyQt6/server/project.py.in ${CMAKE_CURRENT_BINARY_DIR}/server/project.py @ONLY)
+  file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/server/pyproject.toml.temp" "${toml}")
+  execute_process(COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_CURRENT_BINARY_DIR}/server/pyproject.toml.temp ${CMAKE_CURRENT_BINARY_DIR}/server/pyproject.toml)
+  SET(SIP_CONCAT_PARTS 10)
   GENERATE_SIP_PYTHON_MODULE_CODE(qgis._server server/server.sip "${sip_files_server}" cpp_files)
   BUILD_SIP_PYTHON_MODULE(qgis._server server/server.sip ${cpp_files} "" qgis_core qgis_server)
 endif()
@@ -307,29 +306,19 @@ if(WITH_ANALYSIS)
     ${CMAKE_BINARY_DIR}/src/analysis/raster
     ${CMAKE_BINARY_DIR}/src/analysis/network
     ${CMAKE_BINARY_DIR}/src/analysis/interpolation
-
-    if (WITH_PDAL AND NOT PDAL_2_5_OR_HIGHER)
-       ${CMAKE_SOURCE_DIR}/src/analysis/processing/pdal
-    endif()
-  )
+    ${CMAKE_SOURCE_DIR}/src/analysis/processing/pdal
+    )
 
   # analysis module
   file(GLOB_RECURSE sip_files_analysis ${BINDING_FILES_ROOT_DIR}/analysis/*.sip ${BINDING_FILES_ROOT_DIR}/analysis/*.sip.in)
 
   set(SIP_EXTRA_FILES_DEPEND ${sip_files_core} ${sip_files_analysis})
-  set(SIP_EXTRA_OPTIONS ${PYQT_SIP_FLAGS} -g -o -a ${CMAKE_BINARY_DIR}/python/qgis.analysis.api)
-  if((${SIP_VERSION_STR} VERSION_EQUAL 4.19.11) OR (${SIP_VERSION_STR} VERSION_GREATER 4.19.11))
-    set(SIP_EXTRA_OPTIONS ${SIP_EXTRA_OPTIONS} -n ${PYQT_SIP_IMPORT})
-  endif()
-  if(SIP_BUILD_EXECUTABLE)
-    install(FILES ${CMAKE_CURRENT_BINARY_DIR}/analysis/build/_analysis/_analysis.pyi DESTINATION ${QGIS_PYTHON_DIR})
-  elseif((${SIP_VERSION_STR} VERSION_EQUAL 4.18) OR (${SIP_VERSION_STR} VERSION_GREATER 4.18))
-    set(SIP_EXTRA_OPTIONS ${SIP_EXTRA_OPTIONS} -y ${QGIS_PYTHON_OUTPUT_DIRECTORY}/_analysis.pyi)
-    install(FILES ${QGIS_PYTHON_OUTPUT_DIRECTORY}/_analysis.pyi DESTINATION ${QGIS_PYTHON_DIR})
-  endif()
+  install(FILES ${CMAKE_CURRENT_BINARY_DIR}/analysis/build/_analysis/_analysis.pyi DESTINATION ${QGIS_PYTHON_DIR})
 
-  configure_file(${CMAKE_CURRENT_SOURCE_DIR}/analysis/project.py.in ${CMAKE_CURRENT_BINARY_DIR}/analysis/project.py @ONLY)
-  configure_file(${CMAKE_CURRENT_SOURCE_DIR}/analysis/pyproject.toml.in ${CMAKE_CURRENT_BINARY_DIR}/analysis/pyproject.toml @ONLY)
+  configure_file(${CMAKE_CURRENT_SOURCE_DIR}/PyQt6/analysis/project.py.in ${CMAKE_CURRENT_BINARY_DIR}/analysis/project.py @ONLY)
+  file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/analysis/pyproject.toml.temp" "${toml}")
+  execute_process(COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_CURRENT_BINARY_DIR}/analysis/pyproject.toml.temp ${CMAKE_CURRENT_BINARY_DIR}/analysis/pyproject.toml)
+  SET(SIP_CONCAT_PARTS 9)
   GENERATE_SIP_PYTHON_MODULE_CODE(qgis._analysis analysis/analysis.sip "${sip_files_analysis}" cpp_files)
   BUILD_SIP_PYTHON_MODULE(qgis._analysis analysis/analysis.sip ${cpp_files} "" qgis_core qgis_analysis)
 endif()
@@ -345,12 +334,12 @@ if(WITH_QSCIAPI)
   set(api_modules)
   set(api_files)
   foreach(module ${PY_MODULES})
-    set(api_modules ${api_modules} python_module_qgis__${module})
-    if(NOT SIP_BUILD_EXECUTABLE)
-      set(api_files ${api_files} "${CMAKE_BINARY_DIR}/python/qgis.${module}.api")
-    else()
-      set(api_files ${api_files} "${CMAKE_BINARY_DIR}/python/${module}/build/QGIS.api")
+    set(module_out ${module})
+    if(${module} EQUAL "3d")
+      set(module_out "3d_p")
     endif()
+    set(api_modules ${api_modules} python_module_qgis__${module_out})
+    set(api_files ${api_files} "${CMAKE_BINARY_DIR}/python/${module}/build/QGIS.api")
   endforeach()
 
   # run update/concatenate command
@@ -368,18 +357,21 @@ if(WITH_QSCIAPI)
      set(_python ${Python_EXECUTABLE})
   endif()
 
-  configure_file("${APIS_SRC_DIR}/generate_console_pap.py.in" ${CMAKE_BINARY_DIR}/generate_console_pap.py)
+  if (QSCI_SIP_DIR)
+    configure_file("${APIS_SRC_DIR}/generate_console_pap.py.in" ${CMAKE_BINARY_DIR}/generate_console_pap.py)
 
-  add_custom_command(
-    OUTPUT "${QGIS_PYTHON_PAP_FILE}"
-    DEPENDS "${QGIS_PYTHON_API_FILE}"
-    COMMAND ${_python} "${CMAKE_BINARY_DIR}/generate_console_pap.py" -platform offscreen "${QGIS_PYTHON_PAP_FILE}" "${APIS_SRC_DIR}" "${APIS_OUT_DIR}"
-    WORKING_DIRECTORY "${CMAKE_BINARY_DIR}"
-    COMMENT "Generating pap file for console auto-completion" VERBATIM)
+    add_custom_command(
+      OUTPUT "${QGIS_PYTHON_PAP_FILE}"
+      DEPENDS "${QGIS_PYTHON_API_FILE}"
+      COMMAND ${_python} "${CMAKE_BINARY_DIR}/generate_console_pap.py" -platform offscreen "${QGIS_PYTHON_PAP_FILE}" "${APIS_SRC_DIR}" "${APIS_OUT_DIR}"
+      WORKING_DIRECTORY "${CMAKE_BINARY_DIR}"
+      COMMENT "Generating pap file for console auto-completion" VERBATIM)
 
-  ADD_QGIS_RESOURCES("${APIS_OUT_DIR}" "python/qsci_apis" DEST_DATA_FILES "PyQGIS.api;PyQGIS.pap")
+    ADD_QGIS_RESOURCES("${APIS_OUT_DIR}" "python/qsci_apis" DEST_DATA_FILES "PyQGIS.api;PyQGIS.pap")
 
-  add_custom_target(pyqgis-pap ALL DEPENDS ${QGIS_PYTHON_API_FILE} ${QGIS_PYTHON_PAP_FILE} ${DEST_DATA_FILES})
+    add_custom_target(pyqgis-pap ALL DEPENDS ${QGIS_PYTHON_API_FILE} ${QGIS_PYTHON_PAP_FILE} ${DEST_DATA_FILES})
+  endif()
+
 endif()
 
 if(WITH_CUSTOM_WIDGETS)
@@ -403,14 +395,25 @@ foreach(pyfile ${PY_FILES})
     COMMAND ${CMAKE_COMMAND} -E make_directory "${QGIS_PYTHON_OUTPUT_DIRECTORY}"
     COMMAND ${CMAKE_COMMAND} -E copy ${pyfile} "${QGIS_PYTHON_OUTPUT_DIRECTORY}"
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-    DEPENDS ${pyfile}
+    # DEPENDS ${pyfile}
   )
   PY_COMPILE(pyutils "${QGIS_PYTHON_OUTPUT_DIRECTORY}/${pyfile}")
 endforeach(pyfile)
 
 foreach(module ${PY_MODULES})
+  set(module_out ${module})
+  if(${module} EQUAL "3d")
+    set(module_out "3d_p")
+  endif()
+  set(module_name ${module})
+  if(${module} EQUAL "3d")
+    set(module_name "_3d")
+  endif()
   add_custom_target(py${module} ALL)
-  add_dependencies(py${module} python_module_qgis__${module})
+  add_dependencies(py${module} python_module_qgis__${module_out})
+
+  # to let ccache find auto_generated
+  include_directories(${CMAKE_BINARY_DIR}/python/${module})
 
   # concat auto_additions/*.py in _module_/__init__.py
   file(GLOB PY_FILES_AUTO_ADDITIONS ${BINDING_FILES_ROOT_DIR}/${module}/auto_additions/*.py)
@@ -419,14 +422,14 @@ foreach(module ${PY_MODULES})
     file(READ ${pyfile} CONTENTS)
     string(APPEND MONKEYPATCH_INJECTIONS "${CONTENTS}")
   endforeach(pyfile)
-  configure_file(${BINDING_FILES_ROOT_DIR}/${module}/__init__.py.in ${QGIS_PYTHON_OUTPUT_DIRECTORY}/${module}/__init__.py @ONLY)
-  install(FILES ${QGIS_PYTHON_OUTPUT_DIRECTORY}/${module}/__init__.py DESTINATION "${QGIS_PYTHON_DIR}/${module}")
+  configure_file(${BINDING_FILES_ROOT_DIR}/${module}/__init__.py.in ${QGIS_PYTHON_OUTPUT_DIRECTORY}/${module_name}/__init__.py @ONLY)
+  install(FILES ${QGIS_PYTHON_OUTPUT_DIRECTORY}/${module_name}/__init__.py DESTINATION "${QGIS_PYTHON_DIR}/${module_name}")
 
   file(GLOB PY_FILES ${BINDING_FILES_ROOT_DIR}/${module}/*.py)
-  install(FILES ${PY_FILES} DESTINATION "${QGIS_PYTHON_DIR}/${module}")
+  install(FILES ${PY_FILES} DESTINATION "${QGIS_PYTHON_DIR}/${module_name}")
   file(GLOB PY_FILES_ADDITIONS ${BINDING_FILES_ROOT_DIR}/${module}/additions/*.py)
 
-  install(FILES ${PY_FILES_ADDITIONS} DESTINATION "${QGIS_PYTHON_DIR}/${module}/additions")
+  install(FILES ${PY_FILES_ADDITIONS} DESTINATION "${QGIS_PYTHON_DIR}/${module_name}/additions")
   set(PY_FILES ${PY_FILES} ${PY_FILES_ADDITIONS})
   foreach(pyfile ${PY_FILES})
     file(RELATIVE_PATH rel_pyfile ${BINDING_FILES_ROOT_DIR} ${pyfile})
@@ -437,10 +440,13 @@ foreach(module ${PY_MODULES})
       COMMAND ${CMAKE_COMMAND} -E make_directory "${QGIS_PYTHON_OUTPUT_DIRECTORY}/${subdir}"
       COMMAND ${CMAKE_COMMAND} -E copy ${pyfile} "${QGIS_PYTHON_OUTPUT_DIRECTORY}/${subdir}"
       WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-      DEPENDS ${PY_FILES}
+      # DEPENDS ${PY_FILES}
     )
   endforeach(pyfile)
-  PY_COMPILE(py${module} "${QGIS_PYTHON_OUTPUT_DIRECTORY}/${module}")
+  PY_COMPILE(py${module} "${QGIS_PYTHON_OUTPUT_DIRECTORY}/${module_name}")
+
+  # install class map file
+  install(FILES ${BINDING_FILES_ROOT_DIR}/${module}/class_map.yaml DESTINATION "${QGIS_PYTHON_DIR}/${module_name}")
 
   # install source sip files
   if(SIP_GLOBAL_INSTALL)
@@ -448,4 +454,14 @@ foreach(module ${PY_MODULES})
     install(FILES ${sip_files} DESTINATION ${SIP_DEFAULT_SIP_DIR}/qgis/${module})
     install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/${module}/auto_generated DESTINATION ${SIP_DEFAULT_SIP_DIR}/qgis/${module})
   endif()
+
+  if(SIP_BUILD_EXECUTABLE)
+    add_custom_command(TARGET py${module}
+      POST_BUILD
+      COMMAND ${CMAKE_COMMAND} -E copy "${CMAKE_CURRENT_BINARY_DIR}/${module}/build/_${module_out}/_${module_out}.pyi" "${QGIS_PYTHON_OUTPUT_DIRECTORY}"
+    )
+  endif()
 endforeach(module)
+
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/METADATA.in ${CMAKE_CURRENT_BINARY_DIR}/METADATA @ONLY)
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/METADATA DESTINATION "${QGIS_PYTHON_INSTALL_DIR}/qgis-${COMPLETE_VERSION}.dist-info/")

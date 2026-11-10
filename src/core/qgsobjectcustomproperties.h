@@ -18,9 +18,10 @@
 #ifndef QGSOBJECTCUSTOMPROPERTIES_H
 #define QGSOBJECTCUSTOMPROPERTIES_H
 
+#include "qgis_core.h"
+
 #include <QMap>
 #include <QVariant>
-#include "qgis_core.h"
 
 class QDomDocument;
 class QDomNode;
@@ -34,10 +35,6 @@ class QDomNode;
 class CORE_EXPORT QgsObjectCustomProperties
 {
   public:
-
-    /**
-     * Constructor for QgsObjectCustomProperties.
-     */
     QgsObjectCustomProperties() = default;
 
     /**
@@ -89,7 +86,6 @@ class CORE_EXPORT QgsObjectCustomProperties
 
   protected:
     QMap<QString, QVariant> mMap;
-
 };
 
 #endif // QGSOBJECTCUSTOMPROPERTIES_H

@@ -18,10 +18,11 @@
 #ifndef QGSALGORITHMASSIGNPROJECTION_H
 #define QGSALGORITHMASSIGNPROJECTION_H
 
-#define SIP_NO_FILE
 
 #include "qgis_sip.h"
 #include "qgsprocessingalgorithm.h"
+
+#define SIP_NO_FILE
 
 ///@cond PRIVATE
 
@@ -30,9 +31,7 @@
  */
 class QgsAssignProjectionAlgorithm : public QgsProcessingFeatureBasedAlgorithm
 {
-
   public:
-
     QgsAssignProjectionAlgorithm() = default;
     QString name() const override;
     QString displayName() const override;
@@ -40,27 +39,23 @@ class QgsAssignProjectionAlgorithm : public QgsProcessingFeatureBasedAlgorithm
     QString group() const override;
     QString groupId() const override;
     QString shortHelpString() const override;
+    QString shortDescription() const override;
     QgsAssignProjectionAlgorithm *createInstance() const override SIP_FACTORY;
     bool supportInPlaceEdit( const QgsMapLayer *layer ) const override;
 
   protected:
-
     void initParameters( const QVariantMap &configuration = QVariantMap() ) override;
     QgsCoordinateReferenceSystem outputCrs( const QgsCoordinateReferenceSystem & ) const override { return mDestCrs; }
     QString outputName() const override;
     Qgis::ProcessingFeatureSourceFlags sourceFlags() const override;
 
     bool prepareAlgorithm( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
-    QgsFeatureList processFeature( const QgsFeature &feature,  QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
+    QgsFeatureList processFeature( const QgsFeature &feature, QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
 
   private:
-
     QgsCoordinateReferenceSystem mDestCrs;
-
 };
 
 ///@endcond PRIVATE
 
 #endif // QGSALGORITHMASSIGNPROJECTION_H
-
-

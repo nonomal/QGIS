@@ -16,13 +16,14 @@
 #ifndef QGSCALLOUTSREGISTRY_H
 #define QGSCALLOUTSREGISTRY_H
 
-#include "qgis_core.h"
 #include "qgis.h"
+#include "qgis_core.h"
 #include "qgsreadwritecontext.h"
+
 #include <QIcon>
 
 class QgsPathResolver;
-class QgsVectorLayer;
+class QgsMapLayer;
 class QgsCalloutWidget SIP_EXTERNAL;
 class QgsCallout;
 class QDomElement;
@@ -39,7 +40,6 @@ class QDomElement;
 class CORE_EXPORT QgsCalloutAbstractMetadata
 {
   public:
-
     /**
      * Constructor for QgsCalloutAbstractMetadata, with the specified \a name.
      *
@@ -91,7 +91,7 @@ class CORE_EXPORT QgsCalloutAbstractMetadata
      *
      * Ownership of the widget is transferred to the caller.
      */
-    virtual QgsCalloutWidget *createCalloutWidget( QgsVectorLayer * );
+    virtual QgsCalloutWidget *createCalloutWidget( QgsMapLayer * );
 
   protected:
     QString mName;
@@ -99,8 +99,8 @@ class CORE_EXPORT QgsCalloutAbstractMetadata
     QIcon mIcon;
 };
 
-typedef QgsCallout *( *QgsCalloutCreateFunc )( const QVariantMap &, const QgsReadWriteContext & ) SIP_SKIP;
-typedef QgsCalloutWidget *( *QgsCalloutWidgetFunc )( QgsVectorLayer * ) SIP_SKIP;
+typedef std::unique_ptr<QgsCallout> ( *QgsCalloutCreateFunc )( const QVariantMap &, const QgsReadWriteContext & ) SIP_SKIP;
+typedef QgsCalloutWidget *( *QgsCalloutWidgetFunc )( QgsMapLayer * ) SIP_SKIP;
 
 /**
  * \ingroup core
@@ -110,27 +110,25 @@ typedef QgsCalloutWidget *( *QgsCalloutWidgetFunc )( QgsVectorLayer * ) SIP_SKIP
 class CORE_EXPORT QgsCalloutMetadata : public QgsCalloutAbstractMetadata
 {
   public:
-
+#ifndef SIP_RUN
     //! \note not available in Python bindings
-    QgsCalloutMetadata( const QString &name, const QString &visibleName,
-                        const QIcon &icon,
-                        QgsCalloutCreateFunc pfCreate,
-                        QgsCalloutWidgetFunc pfWidget = nullptr ) SIP_SKIP
-  : QgsCalloutAbstractMetadata( name, visibleName, icon )
-    , mCreateFunc( pfCreate )
-    , mWidgetFunc( pfWidget )
+    QgsCalloutMetadata( const QString &name, const QString &visibleName, const QIcon &icon, QgsCalloutCreateFunc pfCreate, QgsCalloutWidgetFunc pfWidget = nullptr )
+      : QgsCalloutAbstractMetadata( name, visibleName, icon )
+      , mCreateFunc( pfCreate )
+      , mWidgetFunc( pfWidget )
     {}
 
     //! \note not available in Python bindings
-    QgsCalloutCreateFunc createFunction() const { return mCreateFunc; } SIP_SKIP
+    QgsCalloutCreateFunc createFunction() const { return mCreateFunc; }
     //! \note not available in Python bindings
-    QgsCalloutWidgetFunc widgetFunction() const { return mWidgetFunc; } SIP_SKIP
+    QgsCalloutWidgetFunc widgetFunction() const { return mWidgetFunc; }
 
     //! \note not available in Python bindings
-    void setWidgetFunction( QgsCalloutWidgetFunc f ) { mWidgetFunc = f; } SIP_SKIP
+    void setWidgetFunction( QgsCalloutWidgetFunc f ) { mWidgetFunc = f; }
+#endif
 
     QgsCallout *createCallout( const QVariantMap &properties, const QgsReadWriteContext &context ) override SIP_FACTORY;
-    QgsCalloutWidget *createCalloutWidget( QgsVectorLayer *vl ) override SIP_FACTORY;
+    QgsCalloutWidget *createCalloutWidget( QgsMapLayer *vl ) override SIP_FACTORY;
 
   protected:
     QgsCalloutCreateFunc mCreateFunc;
@@ -155,13 +153,10 @@ class CORE_EXPORT QgsCalloutMetadata : public QgsCalloutAbstractMetadata
 class CORE_EXPORT QgsCalloutRegistry
 {
   public:
-
     QgsCalloutRegistry();
     ~QgsCalloutRegistry();
 
-    //! QgsCalloutRegistry cannot be copied.
     QgsCalloutRegistry( const QgsCalloutRegistry &rh ) = delete;
-    //! QgsCalloutRegistry cannot be copied.
     QgsCalloutRegistry &operator=( const QgsCalloutRegistry &rh ) = delete;
 
     /**
@@ -181,14 +176,14 @@ class CORE_EXPORT QgsCalloutRegistry
      *
      * The caller takes ownership of the callout.
      */
-    QgsCallout *createCallout( const QString &type, const QVariantMap &properties = QVariantMap(), const QgsReadWriteContext &context = QgsReadWriteContext() ) const SIP_FACTORY;
+    std::unique_ptr<QgsCallout> createCallout( const QString &type, const QVariantMap &properties = QVariantMap(), const QgsReadWriteContext &context = QgsReadWriteContext() ) const;
 
     /**
      * Creates a new instance of a callout of the specified \a type, using the properties from a DOM \a element.
      *
      * The caller takes ownership of the callout.
      */
-    QgsCallout *createCallout( const QString &type, const QDomElement &element, const QgsReadWriteContext &context ) const SIP_FACTORY;
+    std::unique_ptr<QgsCallout> createCallout( const QString &type, const QDomElement &element, const QgsReadWriteContext &context ) const;
 
     /**
      * Returns a list of all available callout types.
@@ -200,7 +195,7 @@ class CORE_EXPORT QgsCalloutRegistry
      *
      * The caller takes ownership of the callout.
      */
-    static QgsCallout *defaultCallout() SIP_FACTORY;
+    static std::unique_ptr<QgsCallout> defaultCallout();
 
   private:
 #ifdef SIP_RUN

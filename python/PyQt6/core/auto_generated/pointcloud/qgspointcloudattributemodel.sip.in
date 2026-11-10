@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/pointcloud/qgspointcloudattributemodel.h                    *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/
 
 
@@ -14,7 +14,6 @@
 class QgsPointCloudAttributeModel : QAbstractItemModel
 {
 %Docstring(signature="appended")
-
 A model for display of available attributes from a point cloud.
 
 .. versionadded:: 3.18
@@ -24,7 +23,6 @@ A model for display of available attributes from a point cloud.
 #include "qgspointcloudattributemodel.h"
 %End
   public:
-
 
     enum class CustomRole /BaseType=IntEnum/
     {
@@ -38,7 +36,8 @@ A model for display of available attributes from a point cloud.
 
     explicit QgsPointCloudAttributeModel( QObject *parent /TransferThis/ = 0 );
 %Docstring
-Constructor for QgsPointCloudAttributeModel, with the specified ``parent`` object.
+Constructor for QgsPointCloudAttributeModel, with the specified
+``parent`` object.
 %End
 
     void setLayer( QgsPointCloudLayer *layer );
@@ -73,7 +72,8 @@ Returns the attributes associated with the model.
 
     void setAllowEmptyAttributeName( bool allowEmpty );
 %Docstring
-Sets whether an optional empty attribute ("not set") option is present in the model.
+Sets whether an optional empty attribute ("not set") option is present
+in the model.
 
 .. seealso:: :py:func:`allowEmptyAttributeName`
 %End
@@ -85,7 +85,8 @@ Returns the index corresponding to a given attribute ``name``.
 
     bool allowEmptyAttributeName() const;
 %Docstring
-Returns ``True`` if the model allows the empty attribute ("not set") choice.
+Returns ``True`` if the model allows the empty attribute ("not set")
+choice.
 
 .. seealso:: :py:func:`setAllowEmptyAttributeName`
 %End
@@ -103,8 +104,8 @@ Returns ``True`` if the model allows the empty attribute ("not set") choice.
 
     static QString attributeToolTip( const QgsPointCloudAttribute &attribute );
 %Docstring
-Returns a HTML formatted tooltip string for a ``attribute``, containing details
-like the attribute name and type.
+Returns a HTML formatted tooltip string for a ``attribute``, containing
+details like the attribute name and type.
 %End
 
     static QIcon iconForAttributeType( QgsPointCloudAttribute::DataType type );
@@ -118,8 +119,8 @@ Returns an icon corresponding to an attribute ``type``
 class QgsPointCloudAttributeProxyModel : QSortFilterProxyModel
 {
 %Docstring(signature="appended")
-
-A proxy model for filtering available attributes from a point cloud attribute model.
+A proxy model for filtering available attributes from a point cloud
+attribute model.
 
 .. versionadded:: 3.18
 %End
@@ -128,7 +129,6 @@ A proxy model for filtering available attributes from a point cloud attribute mo
 #include "qgspointcloudattributemodel.h"
 %End
   public:
-
     enum Filter /BaseType=IntEnum/
     {
       Char,
@@ -144,13 +144,14 @@ A proxy model for filtering available attributes from a point cloud attribute mo
 
     explicit QgsPointCloudAttributeProxyModel( QgsPointCloudAttributeModel *source, QObject *parent /TransferThis/ = 0 );
 %Docstring
-Constructor for QgsPointCloudAttributeProxyModel, with the specified ``source``
-model and ``parent`` object.
+Constructor for QgsPointCloudAttributeProxyModel, with the specified
+``source`` model and ``parent`` object.
 %End
 
     QgsPointCloudAttributeModel *sourceAttributeModel();
 %Docstring
-Returns the :py:class:`QgsPointCloudAttributeModel` used in this QSortFilterProxyModel.
+Returns the :py:class:`QgsPointCloudAttributeModel` used in this
+QSortFilterProxyModel.
 %End
 
     QgsPointCloudAttributeProxyModel *setFilters( QgsPointCloudAttributeProxyModel::Filters filters );
@@ -182,5 +183,5 @@ QFlags<QgsPointCloudAttributeProxyModel::Filter> operator|(QgsPointCloudAttribut
  *                                                                      *
  * src/core/pointcloud/qgspointcloudattributemodel.h                    *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/

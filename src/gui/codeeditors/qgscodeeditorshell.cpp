@@ -16,19 +16,15 @@
 
 #include "qgscodeeditorshell.h"
 
-#include <QWidget>
-#include <QString>
 #include <QFont>
+#include <QString>
+#include <QWidget>
 #include <Qsci/qscilexerjson.h>
 
+#include "moc_qgscodeeditorshell.cpp"
 
 QgsCodeEditorShell::QgsCodeEditorShell( QWidget *parent, Mode mode, Qgis::ScriptLanguage language )
-  : QgsCodeEditor( parent,
-                   QString(),
-                   false,
-                   false,
-                   QgsCodeEditor::Flag::CodeFolding,
-                   mode )
+  : QgsCodeEditor( parent, QString(), false, false, QgsCodeEditor::Flag::CodeFolding, mode )
   , mLanguage( language )
 {
   if ( mLanguage != Qgis::ScriptLanguage::Bash && mLanguage != Qgis::ScriptLanguage::Batch )
@@ -176,9 +172,7 @@ void QgsCodeEditorShell::initializeLexer()
 /// @cond PRIVATE
 QgsQsciLexerBash::QgsQsciLexerBash( QObject *parent )
   : QsciLexer( parent )
-{
-
-}
+{}
 
 const char *QgsQsciLexerBash::language() const
 {
@@ -243,12 +237,9 @@ const char *QgsQsciLexerBash::keywords( int set ) const
 }
 
 
-
 QgsQsciLexerBatch::QgsQsciLexerBatch( QObject *parent )
   : QsciLexer( parent )
-{
-
-}
+{}
 
 const char *QgsQsciLexerBatch::language() const
 {

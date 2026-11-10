@@ -3,17 +3,20 @@
  *                                                                      *
  * src/core/symbology/qgsvectorfieldsymbollayer.h                       *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/
 
 
 
 
 
-class QgsVectorFieldSymbolLayer: QgsMarkerSymbolLayer
+
+
+class QgsVectorFieldSymbolLayer : QgsMarkerSymbolLayer
 {
 %Docstring(signature="appended")
-A symbol layer class for displaying displacement arrows based on point layer attributes.
+A symbol layer class for displaying displacement arrows based on point
+layer attributes.
 %End
 
 %TypeHeaderCode
@@ -42,11 +45,11 @@ A symbol layer class for displaying displacement arrows based on point layer att
     QgsVectorFieldSymbolLayer();
     ~QgsVectorFieldSymbolLayer();
 
-    static QgsSymbolLayer *create( const QVariantMap &properties = QVariantMap() );
+    static std::unique_ptr<QgsSymbolLayer> create( const QVariantMap &properties = QVariantMap() );
 %Docstring
 Creates the symbol layer
 %End
-    static QgsSymbolLayer *createFromSld( QDomElement &element );
+    static std::unique_ptr<QgsSymbolLayer> createFromSld( QDomElement &element );
 
     virtual QString layerType() const;
 
@@ -73,8 +76,9 @@ Creates the symbol layer
 
     virtual bool usesMapUnits() const;
 
+ virtual void toSld( QDomDocument &doc, QDomElement &element, const QVariantMap &props ) const /Deprecated/;
 
-    virtual void toSld( QDomDocument &doc, QDomElement &element, const QVariantMap &props ) const;
+    virtual bool toSld( QDomDocument &doc, QDomElement &element, QgsSldExportContext &context ) const;
 
 
     virtual void drawPreviewIcon( QgsSymbolRenderContext &context, QSize size );
@@ -133,12 +137,10 @@ Returns the units for the distance.
     QgsVectorFieldSymbolLayer( const QgsVectorFieldSymbolLayer &other );
 };
 
-
-
 /************************************************************************
  * This file has been generated automatically from                      *
  *                                                                      *
  * src/core/symbology/qgsvectorfieldsymbollayer.h                       *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/

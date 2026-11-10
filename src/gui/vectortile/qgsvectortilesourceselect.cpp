@@ -15,21 +15,27 @@
  *                                                                         *
  ***************************************************************************/
 
-#include "qgshelp.h"
-#include "qgsgui.h"
-#include "qgsmanageconnectionsdialog.h"
 #include "qgsvectortilesourceselect.h"
-#include "qgsvectortileconnection.h"
-#include "qgsvectortileconnectiondialog.h"
+
 #include "qgsarcgisvectortileconnectiondialog.h"
+#include "qgsgui.h"
+#include "qgshelp.h"
+#include "qgsmanageconnectionsdialog.h"
 #include "qgsprovidermetadata.h"
 #include "qgsproviderutils.h"
+#include "qgsvectortileconnection.h"
+#include "qgsvectortileconnectiondialog.h"
 
+#include <QAction>
 #include <QFileDialog>
+#include <QMenu>
 #include <QMessageBox>
 #include <QPushButton>
-#include <QMenu>
-#include <QAction>
+#include <QString>
+
+#include "moc_qgsvectortilesourceselect.cpp"
+
+using namespace Qt::StringLiterals;
 
 ///@cond PRIVATE
 
@@ -45,14 +51,12 @@ QgsVectorTileSourceSelect::QgsVectorTileSourceSelect( QWidget *parent, Qt::Windo
   mRadioSourceService->setChecked( true );
   mStackedWidget->setCurrentIndex( 1 );
 
-  connect( mRadioSourceFile, &QRadioButton::toggled, this, [this]
-  {
+  connect( mRadioSourceFile, &QRadioButton::toggled, this, [this] {
     mStackedWidget->setCurrentIndex( 0 );
 
     emit enableButtons( !mFileWidget->filePath().isEmpty() );
   } );
-  connect( mRadioSourceService, &QRadioButton::toggled, this, [this]
-  {
+  connect( mRadioSourceService, &QRadioButton::toggled, this, [this] {
     mStackedWidget->setCurrentIndex( 1 );
 
     emit enableButtons( !cmbConnections->currentText().isEmpty() );
@@ -85,10 +89,7 @@ QgsVectorTileSourceSelect::QgsVectorTileSourceSelect( QWidget *parent, Qt::Windo
   mFileWidget->setFilter( QgsProviderRegistry::instance()->fileVectorTileFilters() );
   mFileWidget->setStorageMode( QgsFileWidget::GetFile );
   mFileWidget->setOptions( QFileDialog::HideNameFilterDetails );
-  connect( mFileWidget, &QgsFileWidget::fileChanged, this, [ = ]( const QString & path )
-  {
-    emit enableButtons( !path.isEmpty() );
-  } );
+  connect( mFileWidget, &QgsFileWidget::fileChanged, this, [this]( const QString &path ) { emit enableButtons( !path.isEmpty() ); } );
 }
 
 void QgsVectorTileSourceSelect::btnNew_clicked()
@@ -153,8 +154,7 @@ void QgsVectorTileSourceSelect::btnEdit_clicked()
 
 void QgsVectorTileSourceSelect::btnDelete_clicked()
 {
-  const QString msg = tr( "Are you sure you want to remove the %1 connection and all associated settings?" )
-                      .arg( cmbConnections->currentText() );
+  const QString msg = tr( "Are you sure you want to remove the %1 connection and all associated settings?" ).arg( cmbConnections->currentText() );
   if ( QMessageBox::Yes != QMessageBox::question( this, tr( "Confirm Delete" ), msg, QMessageBox::Yes | QMessageBox::No ) )
     return;
 
@@ -172,8 +172,7 @@ void QgsVectorTileSourceSelect::btnSave_clicked()
 
 void QgsVectorTileSourceSelect::btnLoad_clicked()
 {
-  const QString fileName = QFileDialog::getOpenFileName( this, tr( "Load Connections" ), QDir::homePath(),
-                           tr( "XML files (*.xml *.XML)" ) );
+  const QString fileName = QFileDialog::getOpenFileName( this, tr( "Load Connections" ), QDir::homePath(), tr( "XML files (*.xml *.XML)" ) );
   if ( fileName.isEmpty() )
   {
     return;
@@ -197,7 +196,7 @@ void QgsVectorTileSourceSelect::addButtonClicked()
   else if ( mRadioSourceFile->isChecked() )
   {
     const QString filePath = mFileWidget->filePath();
-    const QList< QgsProviderRegistry::ProviderCandidateDetails > providers = QgsProviderRegistry::instance()->preferredProvidersForUri( filePath );
+    const QList<QgsProviderRegistry::ProviderCandidateDetails> providers = QgsProviderRegistry::instance()->preferredProvidersForUri( filePath );
     QString providerKey;
     for ( const QgsProviderRegistry::ProviderCandidateDetails &details : providers )
     {
@@ -208,7 +207,7 @@ void QgsVectorTileSourceSelect::addButtonClicked()
     }
 
     QVariantMap parts;
-    parts.insert( QStringLiteral( "path" ), filePath );
+    parts.insert( u"path"_s, filePath );
     const QString uri = QgsProviderRegistry::instance()->encodeUri( providerKey, parts );
 
     Q_NOWARN_DEPRECATED_PUSH
@@ -258,7 +257,7 @@ void QgsVectorTileSourceSelect::cmbConnections_currentTextChanged( const QString
 
 void QgsVectorTileSourceSelect::showHelp()
 {
-  QgsHelp::openHelp( QStringLiteral( "managing_data_source/opening_data.html#using-vector-tiles-services" ) );
+  QgsHelp::openHelp( u"managing_data_source/opening_data.html#using-vector-tiles-services"_s );
 }
 
 ///@endcond

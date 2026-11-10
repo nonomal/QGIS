@@ -16,22 +16,22 @@
 #ifndef QGSLAYERTREEVIEWDEFAULTACTIONS_H
 #define QGSLAYERTREEVIEWDEFAULTACTIONS_H
 
-#include <QObject>
 #include "qgis.h"
 #include "qgis_gui.h"
+
+#include <QObject>
 
 class QAction;
 
 class QgsLayerTreeGroup;
-class QgsLayerTreeView;
+class QgsLayerTreeViewBase;
 class QgsMapCanvas;
 class QgsMapLayer;
 
 
 /**
  * \ingroup gui
- * \brief The QgsLayerTreeViewDefaultActions class serves as a factory of actions
- * that can be used together with a layer tree view.
+ * \brief Serves as a factory of actions that can be used together with a layer tree view.
  *
  * \see QgsLayerTreeView
  */
@@ -39,12 +39,51 @@ class GUI_EXPORT QgsLayerTreeViewDefaultActions : public QObject
 {
     Q_OBJECT
   public:
-    QgsLayerTreeViewDefaultActions( QgsLayerTreeView *view );
+    /**
+     * Constructor for QgsLayerTreeViewDefaultActions, creating actions for a \a view.
+     *
+     * The object will be parented to the specified \a view.
+     */
+    QgsLayerTreeViewDefaultActions( QgsLayerTreeViewBase *view );
 
+    /**
+     * Returns a new action which adds a group.
+     */
     QAction *actionAddGroup( QObject *parent = nullptr ) SIP_FACTORY;
+
+    /**
+     * Returns a new action which removes either a group or layer, depending on the selected node.
+     *
+     * If a group is removed, all children for that group will also be removed.
+     *
+     * \see actionRemoveGroupPromoteLayers()
+     */
     QAction *actionRemoveGroupOrLayer( QObject *parent = nullptr ) SIP_FACTORY;
+
+    /**
+     * Returns a new action which removes a group.
+     *
+     * Any existing children in the group will be moved up to the parent of
+     * the removed group.
+     *
+     * \see actionRemoveGroupOrLayer()
+     * \since QGIS 4.0
+     */
+    QAction *actionRemoveGroupPromoteLayers( QObject *parent = nullptr ) SIP_FACTORY;
+
+    /**
+     * Returns a new action for toggling whether a layer is shown in the map overview.
+     */
     QAction *actionShowInOverview( QObject *parent = nullptr ) SIP_FACTORY;
+
+    /**
+     * Returns a new action for renaming a group or layer, depending on the selected node.
+     */
     QAction *actionRenameGroupOrLayer( QObject *parent = nullptr ) SIP_FACTORY;
+
+    /**
+     * Returns a new action for toggling whether the feature count is shown for a layer.
+     */
     QAction *actionShowFeatureCount( QObject *parent = nullptr ) SIP_FACTORY;
 
     //! Action to check a group and all its children
@@ -58,7 +97,7 @@ class GUI_EXPORT QgsLayerTreeViewDefaultActions : public QObject
 
     /**
      * Action to zoom to the active layer from the layer tree.
-     * \deprecated since QGIS 3.18, use actionZoomToLayers()
+     * \deprecated QGIS 3.18. Use actionZoomToLayers().
      */
     Q_DECL_DEPRECATED QAction *actionZoomToLayer( QgsMapCanvas *canvas, QObject *parent = nullptr ) SIP_FACTORY SIP_DEPRECATED;
 
@@ -76,7 +115,7 @@ class GUI_EXPORT QgsLayerTreeViewDefaultActions : public QObject
     QAction *actionZoomToGroup( QgsMapCanvas *canvas, QObject *parent = nullptr ) SIP_FACTORY;
 
     /**
-     * \deprecated since QGIS 3.2, use actionMoveOutOfGroup()
+     * \deprecated QGIS 3.2. Use actionMoveOutOfGroup().
      */
     Q_DECL_DEPRECATED QAction *actionMakeTopLevel( QObject *parent = nullptr ) SIP_FACTORY;
 
@@ -106,7 +145,7 @@ class GUI_EXPORT QgsLayerTreeViewDefaultActions : public QObject
 
     /**
     * Zooms a map \a canvas to the extent of the active layer in the layer tree.
-    * \deprecated since QGIS 3.18, use zoomToLayers()
+    * \deprecated QGIS 3.18. Use zoomToLayers().
     */
     Q_DECL_DEPRECATED void zoomToLayer( QgsMapCanvas *canvas ) SIP_DEPRECATED;
 
@@ -130,12 +169,21 @@ class GUI_EXPORT QgsLayerTreeViewDefaultActions : public QObject
 
   protected slots:
     void removeGroupOrLayer();
+
+    /**
+     * Removes the selected group node, promoting all child nodes up into the removed
+     * group's parent node.
+     *
+     * \since QGIS 4.0
+     */
+    void removeGroupPromoteLayers();
+
     void renameGroupOrLayer();
     void showFeatureCount();
 
     /**
      * Zooms to the extent of the active layer in the layer tree.
-     * \deprecated since QGIS 3.18, use zoomToLayers()
+     * \deprecated QGIS 3.18. Use zoomToLayers().
      */
     Q_DECL_DEPRECATED void zoomToLayer() SIP_DEPRECATED;
 
@@ -153,7 +201,7 @@ class GUI_EXPORT QgsLayerTreeViewDefaultActions : public QObject
     void zoomToGroup();
 
     /**
-     * \deprecated since QGIS 3.2, use moveOutOfGroup()
+     * \deprecated QGIS 3.2. Use moveOutOfGroup().
      */
     Q_DECL_DEPRECATED void makeTopLevel() SIP_DEPRECATED;
 
@@ -194,7 +242,7 @@ class GUI_EXPORT QgsLayerTreeViewDefaultActions : public QObject
     QString uniqueGroupName( QgsLayerTreeGroup *parentGroup );
 
   protected:
-    QgsLayerTreeView *mView = nullptr;
+    QgsLayerTreeViewBase *mView = nullptr;
 };
 
 

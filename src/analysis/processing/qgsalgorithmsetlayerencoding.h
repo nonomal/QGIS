@@ -18,10 +18,11 @@
 #ifndef QGSALGORITHMSETLAYERENCODING_H
 #define QGSALGORITHMSETLAYERENCODING_H
 
-#define SIP_NO_FILE
 
 #include "qgis_sip.h"
 #include "qgsprocessingalgorithm.h"
+
+#define SIP_NO_FILE
 
 ///@cond PRIVATE
 
@@ -30,9 +31,7 @@
  */
 class QgsSetLayerEncodingAlgorithm : public QgsProcessingAlgorithm
 {
-
   public:
-
     QgsSetLayerEncodingAlgorithm() = default;
     void initAlgorithm( const QVariantMap &configuration = QVariantMap() ) override;
     QString name() const override;
@@ -45,10 +44,8 @@ class QgsSetLayerEncodingAlgorithm : public QgsProcessingAlgorithm
     QgsSetLayerEncodingAlgorithm *createInstance() const override SIP_FACTORY;
 
   protected:
-
     bool prepareAlgorithm( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
-    QVariantMap processAlgorithm( const QVariantMap &parameters,
-                                  QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
+    QVariantMap processAlgorithm( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
 
   private:
     QString mOutputId;

@@ -19,19 +19,17 @@
 
 #include "qgsvectortilelabeling.h"
 
-
 class QgsPalLayerSettings;
 
 /**
  * \ingroup core
- * \brief Configuration of a single style within QgsVectorTileBasicLabeling
+ * \brief Configuration of a single style within QgsVectorTileBasicLabeling.
  *
  * \since QGIS 3.14
  */
 class CORE_EXPORT QgsVectorTileBasicLabelingStyle
 {
   public:
-
     //! Sets labeling configuration of this style
     void setLabelSettings( const QgsPalLayerSettings &settings ) { mLabelSettings = settings; }
     //! Returns labeling configuration of this style
@@ -116,10 +114,7 @@ class CORE_EXPORT QgsVectorTileBasicLabelingStyle
 
 
     //! Returns whether the style is active at given zoom level (also checks "enabled" flag)
-    bool isActive( int zoomLevel ) const
-    {
-      return mEnabled && ( mMinZoomLevel == -1 || zoomLevel >= mMinZoomLevel ) && ( mMaxZoomLevel == -1 || zoomLevel <= mMaxZoomLevel );
-    }
+    bool isActive( int zoomLevel ) const { return mEnabled && ( mMinZoomLevel == -1 || zoomLevel >= mMinZoomLevel ) && ( mMaxZoomLevel == -1 || zoomLevel <= mMaxZoomLevel ); }
 
     //! Writes object content to given DOM element
     void writeXml( QDomElement &elem, const QgsReadWriteContext &context ) const;
@@ -129,7 +124,7 @@ class CORE_EXPORT QgsVectorTileBasicLabelingStyle
   private:
     QString mStyleName;
     QString mLayerName;
-    Qgis::GeometryType mGeometryType;
+    Qgis::GeometryType mGeometryType = Qgis::GeometryType::Unknown;
     bool mEnabled = true;
     QString mExpression;
     int mMinZoomLevel = -1;
@@ -141,7 +136,9 @@ class CORE_EXPORT QgsVectorTileBasicLabelingStyle
 
 /**
  * \ingroup core
- * \brief Basic labeling configuration for vector tile layers. It contains a definition
+ * \brief Basic labeling configuration for vector tile layers.
+ *
+ * It contains a definition
  * of a list of labeling styles, where each labeling style is a combination of
  * sub-layer name, geometry type, filter expression, zoom range and label settings.
  *

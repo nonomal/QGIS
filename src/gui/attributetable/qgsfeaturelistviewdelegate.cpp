@@ -13,26 +13,30 @@
  *                                                                         *
  ***************************************************************************/
 #include "qgsfeaturelistviewdelegate.h"
-#include "qgsvectorlayer.h"
+
+#include "qgsapplication.h"
 #include "qgsattributetablemodel.h"
 #include "qgsfeaturelistmodel.h"
-#include "qgsapplication.h"
-#include "qgsvectorlayereditbuffer.h"
 #include "qgsfeatureselectionmodel.h"
+#include "qgsvectorlayer.h"
+#include "qgsvectorlayereditbuffer.h"
 
-#include <QHBoxLayout>
-#include <QPushButton>
-#include <QLabel>
 #include <QApplication>
+#include <QHBoxLayout>
+#include <QLabel>
 #include <QMouseEvent>
 #include <QObject>
+#include <QPushButton>
+#include <QString>
+
+#include "moc_qgsfeaturelistviewdelegate.cpp"
+
+using namespace Qt::StringLiterals;
 
 QgsFeatureListViewDelegate::QgsFeatureListViewDelegate( QgsFeatureListModel *listModel, QObject *parent )
   : QItemDelegate( parent )
   , mListModel( listModel )
-  , mCurrentFeatureEdited( false )
-{
-}
+{}
 
 QgsFeatureListViewDelegate::Element QgsFeatureListViewDelegate::positionToElement( QPoint pos )
 {
@@ -83,10 +87,10 @@ void QgsFeatureListViewDelegate::paint( QPainter *painter, const QStyleOptionVie
 
   static QPixmap sSelectedIcon;
   if ( sSelectedIcon.isNull() )
-    sSelectedIcon = QgsApplication::getThemePixmap( QStringLiteral( "/mIconSelected.svg" ) );
+    sSelectedIcon = QgsApplication::getThemePixmap( u"/mIconSelected.svg"_s );
   static QPixmap sDeselectedIcon;
   if ( sDeselectedIcon.isNull() )
-    sDeselectedIcon = QgsApplication::getThemePixmap( QStringLiteral( "/mIconDeselected.svg" ) );
+    sDeselectedIcon = QgsApplication::getThemePixmap( u"/mIconDeselected.svg"_s );
 
   const QString text = index.model()->data( index, Qt::EditRole ).toString();
   const QgsFeatureListModel::FeatureInfo featInfo = index.model()->data( index, QgsFeatureListModel::Role::FeatureInfoRole ).value<QgsFeatureListModel::FeatureInfo>();
@@ -110,7 +114,7 @@ void QgsFeatureListViewDelegate::paint( QPainter *painter, const QStyleOptionVie
   const QVariant conditionalIcon = index.model()->data( index, Qt::DecorationRole );
   if ( conditionalIcon.isValid() )
   {
-    const QPixmap pixmap = conditionalIcon.value< QPixmap >();
+    const QPixmap pixmap = conditionalIcon.value<QPixmap>();
     iconLayoutBounds.moveLeft( iconLayoutBounds.x() + icon.width() + QFontMetrics( textOption.font ).horizontalAdvance( 'X' ) );
     iconLayoutBounds.setTop( option.rect.y() + ( option.rect.height() - pixmap.height() ) / 2.0 );
     iconLayoutBounds.setHeight( pixmap.height() );
@@ -124,12 +128,12 @@ void QgsFeatureListViewDelegate::paint( QPainter *painter, const QStyleOptionVie
   const QVariant font = index.model()->data( index, Qt::FontRole );
   if ( font.isValid() )
   {
-    textOption.font = font.value< QFont >();
+    textOption.font = font.value<QFont>();
   }
   const QVariant textColor = index.model()->data( index, Qt::ForegroundRole );
   if ( textColor.isValid() )
   {
-    textOption.palette.setColor( QPalette::Text, textColor.value< QColor >() );
+    textOption.palette.setColor( QPalette::Text, textColor.value<QColor>() );
   }
 
   if ( featInfo.isNew )

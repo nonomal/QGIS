@@ -16,14 +16,16 @@
 #ifndef QGSGRADIENTCOLORRAMPDIALOG_H
 #define QGSGRADIENTCOLORRAMPDIALOG_H
 
-#include <QDialog>
-#include "qgis_sip.h"
-
 #include "ui_qgsgradientcolorrampdialogbase.h"
-#include "qgshelp.h"
+
 #include "qgis_gui.h"
+#include "qgis_sip.h"
+#include "qgshelp.h"
+
+#include <QDialog>
 
 class QgsGradientColorRamp;
+class QgsSettingsEntryBool;
 class QwtPlot;
 class QwtPlotCurve;
 class QwtPlotMarker;
@@ -40,6 +42,10 @@ class GUI_EXPORT QgsGradientColorRampDialog : public QDialog, private Ui::QgsGra
     Q_PROPERTY( QgsGradientColorRamp ramp READ ramp WRITE setRamp )
 
   public:
+    static const QgsSettingsEntryBool *settingsPlotHue SIP_SKIP;
+    static const QgsSettingsEntryBool *settingsPlotLightness SIP_SKIP;
+    static const QgsSettingsEntryBool *settingsPlotSaturation SIP_SKIP;
+    static const QgsSettingsEntryBool *settingsPlotAlpha SIP_SKIP;
 
     /**
      * Constructor for QgsGradientColorRampDialog.
@@ -106,21 +112,23 @@ class GUI_EXPORT QgsGradientColorRampDialog : public QDialog, private Ui::QgsGra
     void showHelp();
 
   private:
-
     QgsGradientColorRamp mRamp;
     QwtPlotCurve *mLightnessCurve = nullptr;
     QwtPlotCurve *mSaturationCurve = nullptr;
     QwtPlotCurve *mHueCurve = nullptr;
     QwtPlotCurve *mAlphaCurve = nullptr;
-    QList< QwtPlotMarker * > mMarkers;
+    QList<QwtPlotMarker *> mMarkers;
     QgsGradientPlotEventFilter *mPlotFilter = nullptr;
-    int mCurrentPlotColorComponent;
-    int mCurrentPlotMarkerIndex;
+    int mCurrentPlotColorComponent = -1;
+    int mCurrentPlotMarkerIndex = 0;
     int mBlockChanges = 0;
 
     void updatePlot();
     void addPlotMarker( double x, double y, const QColor &color, bool isSelected = false );
     void addMarkersForColor( double x, const QColor &color, bool isSelected = false );
+
+    // Returns TRUE if it's possible to edit direction regarding given colorSpec
+    static bool hasDirection( QColor::Spec colorSpec );
 };
 
 
@@ -130,12 +138,11 @@ class GUI_EXPORT QgsGradientColorRampDialog : public QDialog, private Ui::QgsGra
 // For private only, not part of stable api or exposed to Python bindings
 //
 /// @cond PRIVATE
-class GUI_EXPORT QgsGradientPlotEventFilter: public QObject
+class GUI_EXPORT QgsGradientPlotEventFilter : public QObject
 {
     Q_OBJECT
 
   public:
-
     QgsGradientPlotEventFilter( QwtPlot *plot );
 
     bool eventFilter( QObject *object, QEvent *event ) override;
@@ -147,7 +154,6 @@ class GUI_EXPORT QgsGradientPlotEventFilter: public QObject
     void mouseMove( QPointF );
 
   private:
-
     QwtPlot *mPlot = nullptr;
     QPointF mapPoint( QPointF point ) const;
 };

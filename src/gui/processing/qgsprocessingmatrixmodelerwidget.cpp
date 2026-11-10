@@ -14,11 +14,15 @@
  ***************************************************************************/
 
 #include "qgsprocessingmatrixmodelerwidget.h"
+
 #include "qgsgui.h"
+
 #include <QInputDialog>
-#include <QMessageBox>
 #include <QLineEdit>
+#include <QMessageBox>
 #include <QToolButton>
+
+#include "moc_qgsprocessingmatrixmodelerwidget.cpp"
 
 ///@cond NOT_STABLE
 
@@ -28,7 +32,7 @@ QgsProcessingMatrixModelerWidget::QgsProcessingMatrixModelerWidget( QWidget *par
   setupUi( this );
 
   mModel = new QStandardItemModel( this );
-  mModel->appendColumn( QList< QStandardItem * >() << new QStandardItem( '0' ) );
+  mModel->appendColumn( QList<QStandardItem *>() << new QStandardItem( '0' ) );
   mTableView->setModel( mModel );
 
   connect( mButtonAddColumn, &QToolButton::clicked, this, &QgsProcessingMatrixModelerWidget::addColumn );
@@ -41,62 +45,72 @@ QgsProcessingMatrixModelerWidget::QgsProcessingMatrixModelerWidget( QWidget *par
 
 void QgsProcessingMatrixModelerWidget::addColumn()
 {
-  QList< QStandardItem * > items;
+  QList<QStandardItem *> items;
   for ( int i = 0; i < mModel->rowCount(); ++i )
     items << new QStandardItem( '0' );
 
   mModel->appendColumn( items );
+
+  emit changed();
 }
 
 void QgsProcessingMatrixModelerWidget::removeColumns()
 {
   QModelIndexList selected = mTableView->selectionModel()->selectedColumns();
-  std::sort( selected.begin(), selected.end(), []( const QModelIndex & a, const QModelIndex & b ) { return b < a; } );
+  std::sort( selected.begin(), selected.end(), []( const QModelIndex &a, const QModelIndex &b ) { return b < a; } );
 
   mTableView->setUpdatesEnabled( false );
   for ( QModelIndex i : std::as_const( selected ) )
     mModel->removeColumns( i.column(), 1 );
 
   mTableView->setUpdatesEnabled( true );
+
+  emit changed();
 }
 
 void QgsProcessingMatrixModelerWidget::addRow()
 {
-  QList< QStandardItem * > items;
+  QList<QStandardItem *> items;
   for ( int i = 0; i < mModel->columnCount(); ++i )
     items << new QStandardItem( '0' );
 
   mModel->appendRow( items );
+
+  emit changed();
 }
 
 void QgsProcessingMatrixModelerWidget::removeRows()
 {
   QModelIndexList selected = mTableView->selectionModel()->selectedRows();
-  std::sort( selected.begin(), selected.end(), []( const QModelIndex & a, const QModelIndex & b ) { return b < a; } );
+  std::sort( selected.begin(), selected.end(), []( const QModelIndex &a, const QModelIndex &b ) { return b < a; } );
 
   mTableView->setUpdatesEnabled( false );
   for ( QModelIndex i : std::as_const( selected ) )
     mModel->removeRows( i.row(), 1 );
 
   mTableView->setUpdatesEnabled( true );
+
+  emit changed();
 }
 
 void QgsProcessingMatrixModelerWidget::clearTable()
 {
-  if ( QMessageBox::question( nullptr, tr( "Clear table" ),
-                              tr( "Are you sure you want to clear table?" ),
-                              QMessageBox::Yes | QMessageBox::No, QMessageBox::No ) == QMessageBox::Yes )
+  if ( QMessageBox::question( nullptr, tr( "Clear table" ), tr( "Are you sure you want to clear table?" ), QMessageBox::Yes | QMessageBox::No, QMessageBox::No ) == QMessageBox::Yes )
+  {
     mModel->clear();
+    emit changed();
+  }
 }
 
 void QgsProcessingMatrixModelerWidget::changeHeader( int index )
 {
   bool ok;
-  QString text = QInputDialog::getText( nullptr, tr( "Enter column name" ),
-                                        tr( "Column name" ), QLineEdit::Normal,
-                                        QString(), &ok );
+  QString text = QInputDialog::getText( nullptr, tr( "Enter column name" ), tr( "Column name" ), QLineEdit::Normal, QString(), &ok );
   if ( ok && !text.isEmpty() )
+  {
     mModel->setHeaderData( index, Qt::Horizontal, text );
+    emit changed();
+  }
 }
 
 QStringList QgsProcessingMatrixModelerWidget::headers() const
@@ -147,6 +161,7 @@ void QgsProcessingMatrixModelerWidget::setValue( const QStringList &headers, con
     }
   }
   mTableView->setModel( mModel );
+  emit changed();
 }
 
 bool QgsProcessingMatrixModelerWidget::fixedRows() const
@@ -157,6 +172,7 @@ bool QgsProcessingMatrixModelerWidget::fixedRows() const
 void QgsProcessingMatrixModelerWidget::setFixedRows( bool fixedRows )
 {
   mFixedRows->setChecked( fixedRows );
+  emit changed();
 }
 
 ///@endcond

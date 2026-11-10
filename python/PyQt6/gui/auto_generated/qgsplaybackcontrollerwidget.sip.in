@@ -3,15 +3,18 @@
  *                                                                      *
  * src/gui/qgsplaybackcontrollerwidget.h                                *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/
+
+
 
 
 
 class QgsPlaybackControllerWidget : QWidget
 {
 %Docstring(signature="appended")
-A compound widget containing a set of buttons for controlling media playback.
+A compound widget containing a set of buttons for controlling media
+playback.
 
 .. versionadded:: 3.36
 %End
@@ -20,10 +23,10 @@ A compound widget containing a set of buttons for controlling media playback.
 #include "qgsplaybackcontrollerwidget.h"
 %End
   public:
-
     explicit QgsPlaybackControllerWidget( QWidget *parent /TransferThis/ = 0 );
 %Docstring
-Constructor for QgsPlaybackControllerWidget, with the specified ``parent`` widget.
+Constructor for QgsPlaybackControllerWidget, with the specified
+``parent`` widget.
 %End
 
     QPushButton *button( Qgis::PlaybackOperation operation );
@@ -57,5 +60,5 @@ Emitted when a playback operation is triggered.
  *                                                                      *
  * src/gui/qgsplaybackcontrollerwidget.h                                *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/

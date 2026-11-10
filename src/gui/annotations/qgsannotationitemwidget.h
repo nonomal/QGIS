@@ -21,6 +21,9 @@
 #include "qgssymbolwidgetcontext.h"
 
 class QgsAnnotationItem;
+class QgsAnnotationLayer;
+class QgsRenderedAnnotationItemDetails;
+class QComboBox;
 
 /**
  * \class QgsAnnotationItemBaseWidget
@@ -32,12 +35,11 @@ class QgsAnnotationItem;
  *
  * \since QGIS 3.22
 */
-class GUI_EXPORT QgsAnnotationItemBaseWidget: public QgsPanelWidget
+class GUI_EXPORT QgsAnnotationItemBaseWidget : public QgsPanelWidget
 {
     Q_OBJECT
 
   public:
-
     /**
      * Constructor for QgsAnnotationItemBaseWidget.
      */
@@ -62,6 +64,46 @@ class GUI_EXPORT QgsAnnotationItemBaseWidget: public QgsPanelWidget
      * to show the properties of \a item.
      */
     bool setItem( QgsAnnotationItem *item );
+
+    /**
+     * Populates a \a comboBox with the available options for rendering an item
+     * with respect to the rotation of the map (see Qgis::SymbolRotationMode).
+     *
+     * \since QGIS 4.4
+     */
+    static void populateRotationModeComboBox( QComboBox *comboBox );
+
+    /**
+     * Sets the associated annotation map \a layer.
+     *
+     * \see layer()
+     * \since QGIS 3.40
+     */
+    virtual void setLayer( QgsAnnotationLayer *layer );
+
+    /**
+     * Returns the associated annotation map layer.
+     *
+     * \see setLayer()
+     * \since QGIS 3.40
+     */
+    QgsAnnotationLayer *layer();
+
+    /**
+     * Sets the associated annotation item \a id.
+     *
+     * \see itemId()
+     * \since QGIS 3.40
+     */
+    void setItemId( const QString &id );
+
+    /**
+     * Returns the associated annotation item id.
+     *
+     * \see setItemId()
+     * \since QGIS 3.40
+     */
+    QString itemId() const;
 
     /**
      * Sets the \a context in which the widget is shown, e.g., the associated map canvas and expression contexts.
@@ -90,7 +132,6 @@ class GUI_EXPORT QgsAnnotationItemBaseWidget: public QgsPanelWidget
     void itemChanged();
 
   protected:
-
     /**
      * Attempts to update the widget to show the properties
      * for the specified \a item.
@@ -102,8 +143,18 @@ class GUI_EXPORT QgsAnnotationItemBaseWidget: public QgsPanelWidget
      */
     virtual bool setNewItem( QgsAnnotationItem *item );
 
+    /**
+     * Retrieve rendered annotation details for the associated annotation, if available.
+     *
+     * \since QGIS 3.40
+     */
+    const QgsRenderedAnnotationItemDetails *renderedItemDetails();
+
     //! Context in which widget is shown
     QgsSymbolWidgetContext mContext;
+
+    QPointer<QgsAnnotationLayer> mLayer;
+    QString mItemId;
 };
 
 #endif // QGSANNOTATIONITEMWIDGET_H

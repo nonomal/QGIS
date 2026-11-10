@@ -14,35 +14,44 @@
  ***************************************************************************/
 
 #include "qgssymbolbutton.h"
-#include "qgspanelwidget.h"
-#include "qgsexpressioncontext.h"
-#include "qgsexpressioncontextgenerator.h"
-#include "qgsvectorlayer.h"
-#include "qgssymbolselectordialog.h"
-#include "qgsstyle.h"
-#include "qgscolorwidgets.h"
+
+#include "qgsapplication.h"
+#include "qgscolordialog.h"
+#include "qgscolorpickerhelper.h"
 #include "qgscolorschemeregistry.h"
 #include "qgscolorswatchgrid.h"
-#include "qgssymbollayerutils.h"
-#include "qgsapplication.h"
-#include "qgsguiutils.h"
+#include "qgscolorwidgets.h"
+#include "qgsexpressioncontext.h"
+#include "qgsexpressioncontextgenerator.h"
 #include "qgsexpressioncontextutils.h"
-#include "qgsgui.h"
-#include "qgscolordialog.h"
 #include "qgsfillsymbol.h"
+#include "qgsgui.h"
+#include "qgsguiutils.h"
 #include "qgslinesymbol.h"
 #include "qgsmarkersymbol.h"
+#include "qgspanelwidget.h"
+#include "qgsstyle.h"
+#include "qgssymbollayerutils.h"
+#include "qgssymbolselectordialog.h"
+#include "qgsvectorlayer.h"
 
-#include <QMenu>
+#include <QBuffer>
 #include <QClipboard>
 #include <QDrag>
-#include <QBuffer>
+#include <QMenu>
+#include <QMimeData>
+#include <QString>
+
+#include "moc_qgssymbolbutton.cpp"
+
+using namespace Qt::StringLiterals;
 
 QgsSymbolButton::QgsSymbolButton( QWidget *parent, const QString &dialogTitle )
   : QToolButton( parent )
   , mDialogTitle( dialogTitle.isEmpty() ? tr( "Symbol Settings" ) : dialogTitle )
+  , mPickerHelper( new QgsColorPickerHelper( this ) )
 {
-  mSymbol.reset( QgsFillSymbol::createSimple( QVariantMap() ) );
+  mSymbol = QgsFillSymbol::createSimple( QVariantMap() );
 
   setAcceptDrops( true );
   connect( this, &QAbstractButton::clicked, this, &QgsSymbolButton::showSettingsDialog );
@@ -54,27 +63,39 @@ QgsSymbolButton::QgsSymbolButton( QWidget *parent, const QString &dialogTitle )
   setPopupMode( QToolButton::MenuButtonPopup );
 
   updateSizeHint();
+
+  connect( mPickerHelper, &QgsColorPickerHelper::colorPicked, this, &QgsSymbolButton::onColorPicked );
+  connect( mPickerHelper, &QgsColorPickerHelper::canceled, this, &QgsSymbolButton::colorPickingCanceled );
+  connect( mPickerHelper, &QgsColorPickerHelper::colorHovered, this, &QgsSymbolButton::onColorHovered );
 }
 
 void QgsSymbolButton::updateSizeHint()
 {
   //make sure height of button looks good under different platforms
   const QSize size = QToolButton::minimumSizeHint();
-  const int fontHeight = static_cast< int >( Qgis::UI_SCALE_FACTOR * fontMetrics().height() * 1.4 );
+  const int fontHeight = static_cast<int>( Qgis::UI_SCALE_FACTOR * fontMetrics().height() * 1.4 );
   switch ( mType )
   {
     case Qgis::SymbolType::Marker:
-      if ( mSymbol )
+      if ( mFixedSizeConstraints )
       {
-        mSizeHint = QSize( size.width(), std::max( size.height(), fontHeight * 3 ) );
-        setMaximumWidth( mSizeHint.height() * 1.5 );
-        setMinimumWidth( maximumWidth() );
+        if ( mSymbol )
+        {
+          mSizeHint = QSize( size.width(), std::max( size.height(), fontHeight * 3 ) );
+          setMaximumWidth( mSizeHint.height() * 1.5 );
+          setMinimumWidth( maximumWidth() );
+        }
+        else
+        {
+          mSizeHint = QSize( size.width(), fontHeight );
+          setMaximumWidth( 999999 );
+          mSizeHint.setWidth( QToolButton::sizeHint().width() );
+        }
       }
       else
       {
-        mSizeHint = QSize( size.width(), fontHeight );
         setMaximumWidth( 999999 );
-        mSizeHint.setWidth( QToolButton::sizeHint().width() );
+        mSizeHint = QSize( size.width(), std::max( size.height(), fontHeight ) );
       }
       break;
 
@@ -85,7 +106,7 @@ void QgsSymbolButton::updateSizeHint()
       break;
   }
 
-  setMinimumHeight( mSizeHint.height( ) );
+  setMinimumHeight( mSizeHint.height() );
 
   updateGeometry();
 }
@@ -109,15 +130,15 @@ void QgsSymbolButton::setSymbolType( Qgis::SymbolType type )
     switch ( type )
     {
       case Qgis::SymbolType::Marker:
-        mSymbol.reset( QgsMarkerSymbol::createSimple( QVariantMap() ) );
+        mSymbol = QgsMarkerSymbol::createSimple( QVariantMap() );
         break;
 
       case Qgis::SymbolType::Line:
-        mSymbol.reset( QgsLineSymbol::createSimple( QVariantMap() ) );
+        mSymbol = QgsLineSymbol::createSimple( QVariantMap() );
         break;
 
       case Qgis::SymbolType::Fill:
-        mSymbol.reset( QgsFillSymbol::createSimple( QVariantMap() ) );
+        mSymbol = QgsFillSymbol::createSimple( QVariantMap() );
         break;
 
       case Qgis::SymbolType::Hybrid:
@@ -133,13 +154,13 @@ void QgsSymbolButton::showSettingsDialog()
 {
   QgsExpressionContext context;
   if ( mExpressionContextGenerator )
-    context  = mExpressionContextGenerator->createExpressionContext();
+    context = mExpressionContextGenerator->createExpressionContext();
   else
   {
     context.appendScopes( QgsExpressionContextUtils::globalProjectLayerScopes( mLayer.data() ) );
   }
 
-  std::unique_ptr< QgsSymbol > newSymbol;
+  std::unique_ptr<QgsSymbol> newSymbol;
   if ( mSymbol )
   {
     newSymbol.reset( mSymbol->clone() );
@@ -149,13 +170,13 @@ void QgsSymbolButton::showSettingsDialog()
     switch ( mType )
     {
       case Qgis::SymbolType::Marker:
-        newSymbol.reset( QgsSymbol::defaultSymbol( Qgis::GeometryType::Point ) );
+        newSymbol = QgsSymbol::defaultSymbol( Qgis::GeometryType::Point );
         break;
       case Qgis::SymbolType::Line:
-        newSymbol.reset( QgsSymbol::defaultSymbol( Qgis::GeometryType::Line ) );
+        newSymbol = QgsSymbol::defaultSymbol( Qgis::GeometryType::Line );
         break;
       case Qgis::SymbolType::Fill:
-        newSymbol.reset( QgsSymbol::defaultSymbol( Qgis::GeometryType::Polygon ) );
+        newSymbol = QgsSymbol::defaultSymbol( Qgis::GeometryType::Polygon );
         break;
       case Qgis::SymbolType::Hybrid:
         break;
@@ -173,7 +194,7 @@ void QgsSymbolButton::showSettingsDialog()
     QgsSymbolSelectorWidget *widget = QgsSymbolSelectorWidget::createWidgetWithSymbolOwnership( std::move( newSymbol ), QgsStyle::defaultStyle(), mLayer, panel );
     widget->setPanelTitle( mDialogTitle );
     widget->setContext( symbolContext );
-    connect( widget, &QgsPanelWidget::widgetChanged, this, [ = ] { updateSymbolFromWidget( widget ); } );
+    connect( widget, &QgsPanelWidget::changed, this, [this, widget] { updateSymbolFromWidget( widget ); } );
     panel->openPanel( widget );
   }
   else
@@ -267,19 +288,19 @@ void QgsSymbolButton::setColor( const QColor &color )
 
 void QgsSymbolButton::copySymbol()
 {
-  QApplication::clipboard()->setMimeData( QgsSymbolLayerUtils::symbolToMimeData( mSymbol.get() ) );
+  QApplication::clipboard()->setMimeData( QgsSymbolLayerUtils::symbolToMimeData( mSymbol.get() ).release() );
 }
 
 void QgsSymbolButton::pasteSymbol()
 {
-  std::unique_ptr< QgsSymbol > symbol( QgsSymbolLayerUtils::symbolFromMimeData( QApplication::clipboard()->mimeData() ) );
+  std::unique_ptr<QgsSymbol> symbol( QgsSymbolLayerUtils::symbolFromMimeData( QApplication::clipboard()->mimeData() ) );
   if ( symbol && symbol->type() == mType )
     setSymbol( symbol.release() );
 }
 
 void QgsSymbolButton::copyColor()
 {
-  QApplication::clipboard()->setMimeData( QgsSymbolLayerUtils::colorToMimeData( mSymbol->color() ) );
+  QApplication::clipboard()->setMimeData( QgsSymbolLayerUtils::colorToMimeData( mSymbol->color() ).release() );
 }
 
 void QgsSymbolButton::pasteColor()
@@ -296,34 +317,26 @@ void QgsSymbolButton::pasteColor()
 
 void QgsSymbolButton::mousePressEvent( QMouseEvent *e )
 {
-  if ( mPickingColor )
-  {
-    //don't show dialog if in color picker mode
-    e->accept();
-    return;
-  }
-
-  if ( e->button() == Qt::RightButton )
-  {
-    QToolButton::showMenu();
-    return;
-  }
-  else if ( e->button() == Qt::LeftButton )
+  if ( e->button() == Qt::LeftButton )
   {
     mDragStartPosition = e->pos();
   }
   QToolButton::mousePressEvent( e );
 }
 
+void QgsSymbolButton::contextMenuEvent( QContextMenuEvent *e )
+{
+  showMenu();
+  e->accept();
+}
+
+void QgsSymbolButton::onColorHovered( const QColor &color )
+{
+  updatePreview( color );
+}
+
 void QgsSymbolButton::mouseMoveEvent( QMouseEvent *e )
 {
-  if ( mPickingColor )
-  {
-    updatePreview( QgsGui::sampleColor( e->globalPos() ) );
-    e->accept();
-    return;
-  }
-
   //handle dragging colors/symbols from button
 
   if ( !( e->buttons() & Qt::LeftButton ) )
@@ -342,36 +355,10 @@ void QgsSymbolButton::mouseMoveEvent( QMouseEvent *e )
 
   //user is dragging
   QDrag *drag = new QDrag( this );
-  drag->setMimeData( QgsSymbolLayerUtils::colorToMimeData( mSymbol->color() ) );
+  drag->setMimeData( QgsSymbolLayerUtils::colorToMimeData( mSymbol->color() ).release() );
   drag->setPixmap( QgsColorWidget::createDragIcon( mSymbol->color() ) );
   drag->exec( Qt::CopyAction );
   setDown( false );
-}
-
-void QgsSymbolButton::mouseReleaseEvent( QMouseEvent *e )
-{
-  if ( mPickingColor )
-  {
-    //end color picking operation by sampling the color under cursor
-    stopPicking( e->globalPos() );
-    e->accept();
-    return;
-  }
-
-  QToolButton::mouseReleaseEvent( e );
-}
-
-void QgsSymbolButton::keyPressEvent( QKeyEvent *e )
-{
-  if ( !mPickingColor )
-  {
-    //if not picking a color, use default tool button behavior
-    QToolButton::keyPressEvent( e );
-    return;
-  }
-
-  //cancel picking, sampling the color if space was pressed
-  stopPicking( QCursor::pos(), e->key() == Qt::Key_Space );
 }
 
 void QgsSymbolButton::dragEnterEvent( QDragEnterEvent *e )
@@ -420,8 +407,7 @@ void QgsSymbolButton::wheelEvent( QWheelEvent *event )
   if ( isEnabled() && mSymbol )
   {
     bool symbolChanged = false;
-    const double increment = ( ( event->modifiers() & Qt::ControlModifier ) ? 0.1 : 1 ) *
-                             ( event->angleDelta().y() > 0 ? 1 : -1 );
+    const double increment = ( ( event->modifiers() & Qt::ControlModifier ) ? 0.1 : 1 ) * ( event->angleDelta().y() > 0 ? 1 : -1 );
     switch ( mSymbol->type() )
     {
       case Qgis::SymbolType::Marker:
@@ -489,7 +475,7 @@ void QgsSymbolButton::prepareMenu()
   QAction *pasteSymbolAction = new QAction( tr( "Paste Symbol" ), this );
   //enable or disable paste action based on current clipboard contents. We always show the paste
   //action, even if it's disabled, to give hint to the user that pasting symbols is possible
-  std::unique_ptr< QgsSymbol > tempSymbol( QgsSymbolLayerUtils::symbolFromMimeData( QApplication::clipboard()->mimeData() ) );
+  std::unique_ptr<QgsSymbol> tempSymbol( QgsSymbolLayerUtils::symbolFromMimeData( QApplication::clipboard()->mimeData() ) );
   if ( tempSymbol && tempSymbol->type() == mType )
   {
     pasteSymbolAction->setIcon( QgsSymbolLayerUtils::symbolPreviewIcon( tempSymbol.get(), QSize( iconSize, iconSize ), 1, nullptr, QgsScreenProperties( screen() ) ) );
@@ -535,23 +521,21 @@ void QgsSymbolButton::prepareMenu()
     alphaRamp->setColor( alphaColor );
     QgsColorWidgetAction *alphaAction = new QgsColorWidgetAction( alphaRamp, mMenu, mMenu );
     alphaAction->setDismissOnColorSelection( false );
-    connect( alphaAction, &QgsColorWidgetAction::colorChanged, this, [ = ]( const QColor & color )
-    {
+    connect( alphaAction, &QgsColorWidgetAction::colorChanged, this, [this]( const QColor &color ) {
       const double opacity = color.alphaF();
       mSymbol->setOpacity( opacity );
       updatePreview();
       emit changed();
     } );
-    connect( colorAction, &QgsColorWidgetAction::colorChanged, alphaRamp, [alphaRamp]( const QColor & color ) { alphaRamp->setColor( color, false ); }
-           );
+    connect( colorAction, &QgsColorWidgetAction::colorChanged, alphaRamp, [alphaRamp]( const QColor &color ) { alphaRamp->setColor( color, false ); } );
     mMenu->addAction( alphaAction );
 
     //get schemes with ShowInColorButtonMenu flag set
-    QList< QgsColorScheme * > schemeList = QgsApplication::colorSchemeRegistry()->schemes( QgsColorScheme::ShowInColorButtonMenu );
-    QList< QgsColorScheme * >::iterator it = schemeList.begin();
+    QList<QgsColorScheme *> schemeList = QgsApplication::colorSchemeRegistry()->schemes( QgsColorScheme::ShowInColorButtonMenu );
+    QList<QgsColorScheme *>::iterator it = schemeList.begin();
     for ( ; it != schemeList.end(); ++it )
     {
-      QgsColorSwatchGridAction *colorAction = new QgsColorSwatchGridAction( *it, mMenu, QStringLiteral( "symbology" ), this );
+      QgsColorSwatchGridAction *colorAction = new QgsColorSwatchGridAction( *it, mMenu, u"symbology"_s, this );
       colorAction->setBaseColor( mSymbol->color() );
       mMenu->addAction( colorAction );
       connect( colorAction, &QgsColorSwatchGridAction::colorChanged, this, &QgsSymbolButton::setColor );
@@ -597,14 +581,8 @@ void QgsSymbolButton::addRecentColor( const QColor &color )
 
 void QgsSymbolButton::activatePicker()
 {
-  //activate picker color
-  QApplication::setOverrideCursor( QgsApplication::getThemeCursor( QgsApplication::Cursor::Sampler ) );
-  grabMouse();
-  grabKeyboard();
-  mPickingColor = true;
-  setMouseTracking( true );
+  mPickerHelper->activate();
 }
-
 
 void QgsSymbolButton::changeEvent( QEvent *e )
 {
@@ -640,8 +618,7 @@ void QgsSymbolButton::updatePreview( const QColor &color, QgsSymbol *tempSymbol 
       //calculate size of push button part of widget (ie, without the menu dropdown button part)
       QStyleOptionToolButton opt;
       initStyleOption( &opt );
-      const QRect buttonSize = QApplication::style()->subControlRect( QStyle::CC_ToolButton, &opt, QStyle::SC_ToolButton,
-                               this );
+      const QRect buttonSize = QApplication::style()->subControlRect( QStyle::CC_ToolButton, &opt, QStyle::SC_ToolButton, this );
       //make sure height of icon looks good under different platforms
 #ifdef Q_OS_WIN
       mIconSize = QSize( buttonSize.width() - 10, height() - 6 );
@@ -666,7 +643,7 @@ void QgsSymbolButton::updatePreview( const QColor &color, QgsSymbol *tempSymbol 
     return;
   }
 
-  std::unique_ptr< QgsSymbol > previewSymbol;
+  std::unique_ptr<QgsSymbol> previewSymbol;
 
   if ( tempSymbol )
   {
@@ -680,7 +657,7 @@ void QgsSymbolButton::updatePreview( const QColor &color, QgsSymbol *tempSymbol 
   {
     setIconSize( currentIconSize );
     setIcon( QIcon() );
-    setToolTip( QString( ) );
+    setToolTip( QString() );
     return;
   }
 
@@ -694,14 +671,14 @@ void QgsSymbolButton::updatePreview( const QColor &color, QgsSymbol *tempSymbol 
 
   // set tooltip
   // create very large preview image
-  const int width = static_cast< int >( Qgis::UI_SCALE_FACTOR * fontMetrics().horizontalAdvance( 'X' ) * 23 );
-  const int height = static_cast< int >( width / 1.61803398875 ); // golden ratio
+  const int width = static_cast<int>( Qgis::UI_SCALE_FACTOR * fontMetrics().horizontalAdvance( 'X' ) * 23 );
+  const int height = static_cast<int>( width / 1.61803398875 ); // golden ratio
 
   const QPixmap pm = QgsSymbolLayerUtils::symbolPreviewPixmap( previewSymbol.get(), QSize( width, height ), height / 20, nullptr, false, nullptr, nullptr, QgsScreenProperties( screen() ) );
   QByteArray data;
   QBuffer buffer( &data );
   pm.save( &buffer, "PNG", 100 );
-  setToolTip( QStringLiteral( "<img src='data:image/png;base64, %3' width=\"%4\">" ).arg( QString( data.toBase64() ) ).arg( width ) );
+  setToolTip( u"<img src='data:image/png;base64, %3' width=\"%4\">"_s.arg( QString( data.toBase64() ) ).arg( width ) );
 }
 
 bool QgsSymbolButton::colorFromMimeData( const QMimeData *mimeData, QColor &resultColor, bool &hasAlpha )
@@ -739,25 +716,16 @@ QPixmap QgsSymbolButton::createColorIcon( const QColor &color ) const
   return pixmap;
 }
 
-void QgsSymbolButton::stopPicking( QPoint eventPos, bool samplingColor )
+
+void QgsSymbolButton::onColorPicked( const QColor &color )
 {
-  //release mouse and keyboard, and reset cursor
-  releaseMouse();
-  releaseKeyboard();
-  QgsApplication::restoreOverrideCursor();
-  setMouseTracking( false );
-  mPickingColor = false;
+  setColor( color );
+  addRecentColor( color );
+}
 
-  if ( !samplingColor )
-  {
-    //not sampling color, restore old icon
-    updatePreview();
-    return;
-  }
-
-  const QColor newColor = QgsGui::sampleColor( eventPos );
-  setColor( newColor );
-  addRecentColor( newColor );
+void QgsSymbolButton::colorPickingCanceled()
+{
+  updatePreview();
 }
 
 void QgsSymbolButton::showColorDialog()
@@ -778,8 +746,7 @@ void QgsSymbolButton::showColorDialog()
       colorWidget->setPreviousColor( currentColor );
     }
 
-    connect( colorWidget, &QgsCompoundColorWidget::currentColorChanged, this, [ = ]( const QColor & newColor )
-    {
+    connect( colorWidget, &QgsCompoundColorWidget::currentColorChanged, this, [this]( const QColor &newColor ) {
       if ( newColor.isValid() )
       {
         setColor( newColor );
@@ -825,6 +792,18 @@ void QgsSymbolButton::setShowNull( bool showNull )
 bool QgsSymbolButton::showNull() const
 {
   return mShowNull;
+}
+
+void QgsSymbolButton::setFixedSizeConstraints( bool fixedSizeConstraints )
+{
+  mFixedSizeConstraints = fixedSizeConstraints;
+
+  updateSizeHint();
+}
+
+bool QgsSymbolButton::fixedSizeConstraints() const
+{
+  return mFixedSizeConstraints;
 }
 
 bool QgsSymbolButton::isNull() const

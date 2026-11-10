@@ -15,16 +15,21 @@
  *                                                                         *
  ***************************************************************************/
 
-#include "qgis.h"
 #include "qgsmeshdataprovider.h"
+
+#include "qgis.h"
 #include "qgsmeshdataprovidertemporalcapabilities.h"
 #include "qgsthreadingutils.h"
 
-QgsMeshDataProvider::QgsMeshDataProvider( const QString &uri, const QgsDataProvider::ProviderOptions &options,
-    QgsDataProvider::ReadFlags flags )
+#include <QString>
+
+#include "moc_qgsmeshdataprovider.cpp"
+
+using namespace Qt::StringLiterals;
+
+QgsMeshDataProvider::QgsMeshDataProvider( const QString &uri, const QgsDataProvider::ProviderOptions &options, Qgis::DataProviderReadFlags flags )
   : QgsDataProvider( uri, options, flags )
-{
-}
+{}
 
 QgsMeshDataProviderTemporalCapabilities *QgsMeshDataProvider::temporalCapabilities()
 {
@@ -58,9 +63,8 @@ QgsMeshDriverMetadata QgsMeshDataProvider::driverMetadata() const
 }
 
 QgsMeshDatasetIndex QgsMeshDatasetSourceInterface::datasetIndexAtTime(
-  const QDateTime &referenceTime,
-  int groupIndex, qint64 time,
-  QgsMeshDataProviderTemporalCapabilities::MatchingTemporalDatasetMethod method ) const
+  const QDateTime &referenceTime, int groupIndex, qint64 time, QgsMeshDataProviderTemporalCapabilities::MatchingTemporalDatasetMethod method
+) const
 {
   const QDateTime requestDateTime = referenceTime.addMSecs( time );
   qint64 providerTime;
@@ -112,8 +116,9 @@ QList<QgsMeshDatasetIndex> QgsMeshDatasetSourceInterface::datasetIndexInTimeInte
   return ret;
 }
 
-QgsMeshDatasetSourceInterface::QgsMeshDatasetSourceInterface():
-  mTemporalCapabilities( std::make_unique<QgsMeshDataProviderTemporalCapabilities>() ) {}
+QgsMeshDatasetSourceInterface::QgsMeshDatasetSourceInterface()
+  : mTemporalCapabilities( std::make_unique<QgsMeshDataProviderTemporalCapabilities>() )
+{}
 
 int QgsMeshDatasetSourceInterface::datasetCount( QgsMeshDatasetIndex index ) const
 {
@@ -126,16 +131,13 @@ QgsMeshDatasetGroupMetadata QgsMeshDatasetSourceInterface::datasetGroupMetadata(
 }
 
 bool QgsMeshDatasetSourceInterface::persistDatasetGroup(
-  const QString &path,
-  const QgsMeshDatasetGroupMetadata &meta,
-  const QVector<QgsMeshDataBlock> &datasetValues,
-  const QVector<QgsMeshDataBlock> &datasetActive,
-  const QVector<double> &times )
+  const QString &path, const QgsMeshDatasetGroupMetadata &meta, const QVector<QgsMeshDataBlock> &datasetValues, const QVector<QgsMeshDataBlock> &datasetActive, const QVector<double> &times
+)
 {
   // Form DRIVER:filename
   QString filename = path;
   // ASCII dat supports face, edge and vertex datasets
-  QString driverName = QStringLiteral( "DAT" );
+  QString driverName = u"DAT"_s;
   QStringList parts = path.split( ':' );
   if ( parts.size() > 1 )
   {
@@ -192,6 +194,50 @@ bool QgsMesh::compareFaces( const QgsMeshFace &face1, const QgsMeshFace &face2 )
       return false;
 
   return true;
+}
+
+void QgsMesh::calculateZMinMax() const
+{
+  mZMin = std::numeric_limits<double>::max();
+  mZMax = -std::numeric_limits<double>::max();
+
+  for ( qsizetype i = 0; i < vertices.size(); ++i )
+  {
+    const double z = vertices[i].z();
+    if ( std::isnan( z ) )
+      continue;
+    if ( z < mZMin )
+      mZMin = z;
+    if ( z > mZMax )
+      mZMax = z;
+  }
+}
+
+double QgsMesh::minimumElevation() const
+{
+  if ( !zMinMaxIsValid() )
+    calculateZMinMax();
+
+  return mZMin;
+}
+
+double QgsMesh::maximumElevation() const
+{
+  if ( !zMinMaxIsValid() )
+    calculateZMinMax();
+
+  return mZMax;
+}
+
+void QgsMesh::invalidateZMinMax()
+{
+  mZMin = std::numeric_limits<double>::quiet_NaN();
+  mZMax = std::numeric_limits<double>::quiet_NaN();
+}
+
+bool QgsMesh::zMinMaxIsValid() const
+{
+  return !std::isnan( mZMin ) && !std::isnan( mZMax );
 }
 
 bool QgsMesh::contains( const QgsMesh::ElementType &type ) const

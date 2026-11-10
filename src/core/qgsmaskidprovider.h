@@ -18,6 +18,7 @@
 
 #include "qgis_core.h"
 #include "qgssymbollayerreference.h"
+
 #include <QList>
 #include <QSet>
 
@@ -25,7 +26,7 @@
  * \ingroup core
  * \class QgsMaskIdProvider
  *
- * \brief This class allows the creation of mask ids based on the different label layers and to give a mask id from a label layer.
+ * \brief Allows the creation of mask ids based on the different label layers and to give a mask id from a label layer.
  *
  * Some rendering operations may need multiple mask images. This is the case for label rendering in which we can
  * have different mask images: one different for each labeling rule for instance.
@@ -39,7 +40,6 @@
 class CORE_EXPORT QgsMaskIdProvider
 {
   public:
-
     /**
      * Inserts a label layer to the provider and returns its associated mask id.
      * \param layerId id of the vector layer that carries these labels
@@ -61,7 +61,6 @@ class CORE_EXPORT QgsMaskIdProvider
     int size() const;
 
   private:
-
     /**
      * Storage of symbol layer references sets. The index in the list gives the associated mask id.
      */

@@ -18,10 +18,11 @@
 #ifndef QGSALGORITHMAPPLYLAYERSTYLE_H
 #define QGSALGORITHMAPPLYLAYERSTYLE_H
 
-#define SIP_NO_FILE
 
 #include "qgis_sip.h"
 #include "qgsprocessingalgorithm.h"
+
+#define SIP_NO_FILE
 
 ///@cond PRIVATE
 
@@ -38,17 +39,15 @@ class QgsApplyLayerStyleAlgorithm : public QgsProcessingAlgorithm
     QString group() const override;
     QString groupId() const override;
     QString shortHelpString() const override;
+    QString shortDescription() const override;
     void initAlgorithm( const QVariantMap &configuration = QVariantMap() ) override;
     QgsApplyLayerStyleAlgorithm *createInstance() const override SIP_FACTORY;
 
   protected:
-
     bool prepareAlgorithm( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
-    QVariantMap processAlgorithm( const QVariantMap &parameters,
-                                  QgsProcessingContext &context, QgsProcessingFeedback * ) override;
+    QVariantMap processAlgorithm( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback * ) override;
 
   private:
-
     QString mLayerId;
 };
 

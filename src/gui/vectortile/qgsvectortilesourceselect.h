@@ -19,10 +19,12 @@
 #define QGSVECTORTILESOURCESELECT_H
 
 ///@cond PRIVATE
-#define SIP_NO_FILE
+
+#include "ui_qgsvectortilesourceselectbase.h"
 
 #include "qgsabstractdatasourcewidget.h"
-#include "ui_qgsvectortilesourceselectbase.h"
+
+#define SIP_NO_FILE
 
 /*!
  * \brief   Dialog to create connections to vector tile servers.
@@ -39,7 +41,7 @@ class QgsVectorTileSourceSelect : public QgsAbstractDataSourceWidget, private Ui
 
   public:
     //! Constructor
-    QgsVectorTileSourceSelect( QWidget *parent = nullptr, Qt::WindowFlags fl = QgsGuiUtils::ModalDialogFlags, QgsProviderRegistry::WidgetMode widgetMode = QgsProviderRegistry::WidgetMode::None );
+    QgsVectorTileSourceSelect( QWidget *parent = nullptr, Qt::WindowFlags fl = QgsGuiUtils::ModalDialogFlags, QgsProviderRegistry::WidgetMode widgetMode = QgsProviderRegistry::WidgetMode::Standalone );
 
     //! Determines the layers the user selected
     void addButtonClicked() override;

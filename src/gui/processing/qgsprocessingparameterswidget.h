@@ -16,11 +16,15 @@
 #ifndef QGSPROCESSINGPARAMETERSWIDGET_H
 #define QGSPROCESSINGPARAMETERSWIDGET_H
 
+#include "ui_qgsprocessingparameterswidgetbase.h"
+
 #include "qgis.h"
 #include "qgis_gui.h"
-#include "ui_qgsprocessingparameterswidgetbase.h"
-#include <QWidget>
+#include "qgsprocessingcontext.h"
 #include "qgsprocessingwidgetwrapper.h"
+
+#include <QPointer>
+#include <QWidget>
 
 class QgsProcessingAlgorithm;
 class QgsProcessingParameterDefinition;
@@ -33,23 +37,75 @@ class QgsProcessingParameterDefinition;
  * \note Not stable API
  * \since QGIS 3.14
  */
-class GUI_EXPORT QgsProcessingParametersWidget : public QgsPanelWidget, public QgsProcessingParametersGenerator, private Ui::QgsProcessingParametersWidgetBase
+class GUI_EXPORT QgsProcessingParametersWidget : public QgsPanelWidget, public QgsProcessingParametersGenerator, public QgsProcessingContextGenerator, private Ui::QgsProcessingParametersWidgetBase
 {
     Q_OBJECT
 
   public:
-
     /**
      * Constructor for QgsProcessingParametersWidget, for the specified \a algorithm.
      */
-    QgsProcessingParametersWidget( const QgsProcessingAlgorithm *algorithm, QWidget *parent SIP_TRANSFERTHIS = nullptr );
+    QgsProcessingParametersWidget( const QgsProcessingAlgorithm *algorithm, bool inPlace, QgsMapLayer *activeLayer, QgsMessageBar *messageBar, QWidget *parent SIP_TRANSFERTHIS = nullptr );
+    ~QgsProcessingParametersWidget() override;
+
+    /**
+     * Creates all parameter widgets. Must be called manually AFTER fully setting up the widget properties, e.g. registerProcessingContextGenerator()
+     */
+    void initWidgets();
 
     const QgsProcessingAlgorithm *algorithm() const;
+    QgsProcessingContext *processingContext() const override;
+    QVariantMap createProcessingParameters( QgsProcessingParametersGenerator::Flags flags = QgsProcessingParametersGenerator::Flags() ) override;
+
+    /**
+     * Registers a Processing context \a generator class that will be used to retrieve
+     * a Processing context for the widget when required.
+     *
+     * \since QGIS 4.4
+     */
+    void registerProcessingContextGenerator( QgsProcessingContextGenerator *generator );
+
+    /**
+     * Validates the parameter values currently shown in the widget.
+     *
+     * \since QGIS 4.4
+     */
+    QList< QgsProcessingParametersGenerator::ParameterValidationResult > validate() const;
+
+    /**
+     * Validates and returns the parameter values representing the current state of the widget.
+     *
+     * \param flags flags controlling how parameter values are generated
+     * \param validationResults will be set to results of the validation
+     *
+     * \returns map of current parameter values
+     *
+     * \since QGIS 4.4
+     */
+    QVariantMap createAndValidateParameters( QgsProcessingParametersGenerator::Flags flags, QList< QgsProcessingParametersGenerator::ParameterValidationResult > &validationResults SIP_OUT ) const;
+
+    /**
+     * Sets parameter values to show in the panel.
+     *
+     * \since QGIS 4.4
+     */
+    void setParameters( const QVariantMap &parameters );
+
+    /**
+     * Returns the wrapper for the parameter with matching \a name, or NULLPTR if none exists.
+     *
+     * \since QGIS 4.4
+     */
+    QgsAbstractProcessingParameterWidgetWrapper *wrapper( const QString &name ) const;
+
+    /**
+     * Returns a list of all widget wrappers contained by the panel widget.
+     *
+     * \since QGIS 4.4
+     */
+    QList< QgsAbstractProcessingParameterWidgetWrapper * > wrappers() const;
 
   protected:
-
-    virtual void initWidgets();
-
     void addParameterWidget( const QgsProcessingParameterDefinition *parameter, QWidget *widget SIP_TRANSFER, int stretch = 0 );
     void addParameterLabel( const QgsProcessingParameterDefinition *parameter, QWidget *label SIP_TRANSFER );
 
@@ -58,9 +114,21 @@ class GUI_EXPORT QgsProcessingParametersWidget : public QgsPanelWidget, public Q
 
     void addExtraWidget( QWidget *widget SIP_TRANSFER );
 
+  private slots:
+
+    void parameterChanged();
+
   private:
+    QgsProcessingContextGenerator *mContextGenerator = nullptr;
 
     const QgsProcessingAlgorithm *mAlgorithm = nullptr;
+    bool mInPlace = false;
+    QPointer< QgsMapLayer > mActiveLayer;
+    QgsMessageBar *mMessageBar = nullptr;
+
+    QVariantMap mExtraParameters;
+
+    QMap< QString, QgsAbstractProcessingParameterWidgetWrapper * > mWrappers;
 
     friend class TestProcessingGui;
 };

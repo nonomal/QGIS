@@ -17,17 +17,28 @@
 #define QGSVECTORTILECONNECTIONDIALOG_H
 
 ///@cond PRIVATE
-#define SIP_NO_FILE
-
-#include <QDialog>
 
 #include "ui_qgsvectortileconnectiondialog.h"
 
+#include "qgssettingsentryenumflag.h"
+
+#include <QDialog>
+
+#define SIP_NO_FILE
 
 class QgsVectorTileConnectionDialog : public QDialog, public Ui::QgsVectorTileConnectionDialog
 {
     Q_OBJECT
   public:
+    enum class LoadingMode : int
+    {
+      Url,
+      Style
+    };
+    Q_ENUM( LoadingMode )
+
+    static const QgsSettingsEntryEnumFlag<QgsVectorTileConnectionDialog::LoadingMode> *settingsLastLoadingMode;
+
     explicit QgsVectorTileConnectionDialog( QWidget *parent = nullptr );
 
     void setConnection( const QString &name, const QString &uri );
@@ -39,7 +50,6 @@ class QgsVectorTileConnectionDialog : public QDialog, public Ui::QgsVectorTileCo
 
   private slots:
     void updateOkButtonState();
-
 };
 
 ///@endcond

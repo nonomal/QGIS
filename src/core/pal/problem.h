@@ -30,16 +30,18 @@
 #ifndef PAL_PROBLEM_H
 #define PAL_PROBLEM_H
 
-#define SIP_NO_FILE
 
-
-#include "qgis_core.h"
 #include <list>
-#include <QList>
-#include "palrtree.h"
-#include "qgsrendercontext.h"
 #include <memory>
 #include <vector>
+
+#include "palrtree.h"
+#include "qgis_core.h"
+#include "qgsrendercontext.h"
+
+#include <QList>
+
+#define SIP_NO_FILE
 
 namespace pal
 {
@@ -57,10 +59,10 @@ namespace pal
 
   struct Chain
   {
-    int degree;
-    double delta;
-    int *feat = nullptr;
-    int *label = nullptr;
+      int degree;
+      double delta;
+      std::vector< int > feat;
+      std::vector< int > label;
   };
 
   /**
@@ -74,7 +76,6 @@ namespace pal
       friend class Pal;
 
     public:
-
       /**
        * Constructor for Problem.
        *
@@ -86,9 +87,7 @@ namespace pal
 
       ~Problem();
 
-      //! Problem cannot be copied
       Problem( const Problem &other ) = delete;
-      //! Problem cannot be copied
       Problem &operator=( const Problem &other ) = delete;
 
       /**
@@ -105,13 +104,16 @@ namespace pal
       /**
        * Returns the number of candidates generated for the \a feature at the specified index.
        */
-      int featureCandidateCount( int feature ) const { return mFeatNbLp[feature]; }
+      int featureCandidateCount( int feature ) const { return mCandidateCountForFeature[feature]; }
 
       /**
        * Returns the candidate corresponding to the specified \a feature and \a candidate index.
        */
-      LabelPosition *featureCandidate( int feature, int candidate ) const { return mLabelPositions[ mFeatStartId[feature] + candidate ].get(); }
+      LabelPosition *featureCandidate( int feature, int candidate ) const { return mLabelPositions[mFirstCandidateIndexForFeature[feature] + candidate].get(); }
 
+      /**
+       * Gets called AFTER extractProblem.
+       */
       void reduce();
 
       /**
@@ -144,10 +146,7 @@ namespace pal
        *
        * Ownership of positions added to this list is transferred to the problem.
        */
-      std::vector< std::unique_ptr< LabelPosition > > *positionsWithNoCandidates()
-      {
-        return &mPositionsWithNoCandidates;
-      }
+      std::vector< std::unique_ptr< LabelPosition > > *positionsWithNoCandidates() { return &mPositionsWithNoCandidates; }
 
       /**
        * Returns the index containing all label candidates.
@@ -155,7 +154,6 @@ namespace pal
       PalRtree< LabelPosition > &allCandidatesIndex() { return mAllCandidatesIndex; }
 
     private:
-
       /**
        * Returns TRUE if a labelling candidate \a lp1 conflicts with \a lp2.
        */
@@ -194,7 +192,7 @@ namespace pal
       /**
        * Map extent (xmin, ymin, xmax, ymax)
        */
-      double mMapExtentBounds[4] = {0, 0, 0, 0};
+      double mMapExtentBounds[4] = { 0, 0, 0, 0 };
 
       std::vector< std::unique_ptr< LabelPosition > > mLabelPositions;
 
@@ -203,27 +201,27 @@ namespace pal
 
       std::vector< std::unique_ptr< LabelPosition > > mPositionsWithNoCandidates;
 
-      std::vector< int > mFeatStartId;
-      std::vector< int > mFeatNbLp;
-      std::vector< double > mInactiveCost;
+      //! Index of the position in mLabelPositions which corresponds to the first candidate for a feature, array index corresponds to label feature index
+      std::vector< int > mFirstCandidateIndexForFeature;
+      //! Total number of registered candidates for each feature, array index corresponds to label feature index
+      std::vector< int > mCandidateCountForFeature;
+      //! Cost for excluding (ie not labeling) a feature, array index corresponds to label feature index
+      std::vector< double > mUnlabeledCostForFeature;
 
       class Sol
       {
         public:
-
           //! Placeholder list for active labels. Will contain label id for active labels, or -1 for empty positions in list
           std::vector< int > activeLabelIds;
 
-          void init( std::size_t featureCount )
-          {
-            activeLabelIds.resize( featureCount, -1 );
-          }
+          void init( std::size_t featureCount ) { activeLabelIds.resize( featureCount, -1 ); }
       };
 
       Sol mSol;
       double mNbOverlap = 0.0;
 
-      Chain *chain( int seed );
+      // seed is actually a feature ID, maybe it should be renamed?
+      std::unique_ptr< Chain > chain( int seed );
 
       Pal *pal = nullptr;
 
@@ -231,6 +229,6 @@ namespace pal
       void ignoreLabel( const LabelPosition *lp, pal::PriorityQueue &list, PalRtree<LabelPosition> &candidatesIndex );
   };
 
-} // namespace
+} //namespace pal
 
 #endif

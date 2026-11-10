@@ -16,27 +16,31 @@
 #ifndef QGSDUALVIEW_H
 #define QGSDUALVIEW_H
 
-#include <QStackedWidget>
-
 #include "ui_qgsdualviewbase.h"
 
-#include "qgsattributeeditorcontext.h"
-#include "qgsattributetablefiltermodel.h"
-#include "qgsattributeform.h"
 #include "qgis_gui.h"
+#include "qgis_sip.h"
+#include "qgsattributeeditorcontext.h"
+#include "qgsattributeform.h"
 
 #include <QPointer>
+#include <QStackedWidget>
 #include <QUuid>
 
 class QgsFeatureRequest;
 class QgsMapLayerAction;
 class QgsScrollArea;
 class QgsFieldConditionalFormatWidget;
+class QgsSettingsEntryBool;
+class QgsSettingsEntryInteger;
+class QgsSettingsEntryVariant;
 
 /**
  * \ingroup gui
  * \brief This widget is used to show the attributes of a set of features of a QgsVectorLayer.
+ *
  * The attributes can be edited.
+ *
  * It supports two different layouts: the table layout, in which the attributes for the features
  * are shown in a table and the editor layout, where the features are shown as a selectable list
  * and the attributes for the currently selected feature are shown in a form.
@@ -46,6 +50,9 @@ class GUI_EXPORT QgsDualView : public QStackedWidget, private Ui::QgsDualViewBas
     Q_OBJECT
 
   public:
+    static const QgsSettingsEntryBool *settingsFeatureListHighlightFeature SIP_SKIP;
+
+    static const QgsSettingsEntryInteger *settingsAttributeTableRowCache SIP_SKIP;
 
     /**
      * The view modes, in which this widget can present information.
@@ -73,8 +80,8 @@ class GUI_EXPORT QgsDualView : public QStackedWidget, private Ui::QgsDualViewBas
     //! Action on the map canvas when browsing the list of features
     enum FeatureListBrowsingAction
     {
-      NoAction = 0, //!< No action is done
-      PanToFeature, //!< The map is panned to the center of the feature bounding-box
+      NoAction = 0,  //!< No action is done
+      PanToFeature,  //!< The map is panned to the center of the feature bounding-box
       ZoomToFeature, //!< The map is zoomed to contained the feature bounding-box
     };
     Q_ENUM( FeatureListBrowsingAction )
@@ -98,11 +105,14 @@ class GUI_EXPORT QgsDualView : public QStackedWidget, private Ui::QgsDualViewBas
      *                   FALSE, limited features can later be loaded using setFilterMode()
      * \param showFirstFeature whether to initially show the first feature form upon initializing the dual view
      */
-    void init( QgsVectorLayer *layer,
-               QgsMapCanvas *mapCanvas,
-               const QgsFeatureRequest &request = QgsFeatureRequest(),
-               const QgsAttributeEditorContext &context = QgsAttributeEditorContext(),
-               bool loadFeatures = true, bool showFirstFeature = true );
+    void init(
+      QgsVectorLayer *layer,
+      QgsMapCanvas *mapCanvas,
+      const QgsFeatureRequest &request = QgsFeatureRequest(),
+      const QgsAttributeEditorContext &context = QgsAttributeEditorContext(),
+      bool loadFeatures = true,
+      bool showFirstFeature = true
+    );
 
     /**
      * Change the current view mode.
@@ -123,14 +133,14 @@ class GUI_EXPORT QgsDualView : public QStackedWidget, private Ui::QgsDualViewBas
      *
      * \param filterMode
      */
-    void setFilterMode( QgsAttributeTableFilterModel::FilterMode filterMode );
+    void setFilterMode( Qgis::AttributeTableFilterMode filterMode );
 
     /**
      * Gets the filter mode
      *
      * \returns the filter mode
      */
-    QgsAttributeTableFilterModel::FilterMode filterMode() { return mFilterModel->filterMode(); }
+    Qgis::AttributeTableFilterMode filterMode() const;
 
     /**
      * Toggle the selectedOnTop flag. If enabled, selected features will be moved to top.
@@ -160,7 +170,7 @@ class GUI_EXPORT QgsDualView : public QStackedWidget, private Ui::QgsDualViewBas
      *
      * \param filteredFeatures  A list of feature ids
      *
-     * \deprecated since filterFeatures is handled in the attribute filter model itself
+     * \deprecated QGIS 3.40. Since filterFeatures is handled in the attribute filter model itself.
     */
     Q_DECL_DEPRECATED void setFilteredFeatures( const QgsFeatureIds &filteredFeatures );
 
@@ -175,7 +185,7 @@ class GUI_EXPORT QgsDualView : public QStackedWidget, private Ui::QgsDualViewBas
     /**
      * Gets a list of currently visible feature ids.
      */
-    QgsFeatureIds filteredFeatures() { return mFilterModel->filteredFeatures(); }
+    QgsFeatureIds filteredFeatures() const;
 
     /**
      * Returns the model which has the information about all features (not only filtered)
@@ -272,7 +282,7 @@ class GUI_EXPORT QgsDualView : public QStackedWidget, private Ui::QgsDualViewBas
     /**
      * Cancel the progress dialog (if any)
      */
-    void cancelProgress( );
+    void cancelProgress();
 
     /**
      * Called in embedded forms when an \a attribute \a value in the parent form has changed.
@@ -347,6 +357,8 @@ class GUI_EXPORT QgsDualView : public QStackedWidget, private Ui::QgsDualViewBas
 
     void hideColumn();
 
+    void fieldCalculator();
+
     void resizeColumn();
 
     void resizeAllColumns();
@@ -401,7 +413,6 @@ class GUI_EXPORT QgsDualView : public QStackedWidget, private Ui::QgsDualViewBas
     void filterError( const QString &errorMessage );
 
   private:
-
     /**
      * Initialize the attribute form to a given \a feature.
      *
@@ -427,6 +438,9 @@ class GUI_EXPORT QgsDualView : public QStackedWidget, private Ui::QgsDualViewBas
     //! Returns TRUE if the expression dialog has been accepted
     bool modifySort();
 
+    static const std::unique_ptr<QgsSettingsEntryVariant> conditionalFormattingSplitterState;
+    static const std::unique_ptr<QgsSettingsEntryVariant> attributeEditorSplitterState;
+
     QgsFieldConditionalFormatWidget *mConditionalFormatWidget = nullptr;
     QgsAttributeEditorContext mEditorContext;
     QgsAttributeTableModel *mMasterModel = nullptr;
@@ -438,7 +452,7 @@ class GUI_EXPORT QgsDualView : public QStackedWidget, private Ui::QgsDualViewBas
     QAction *mLastDisplayExpressionAction = nullptr;
     QMenu *mHorizontalHeaderMenu = nullptr;
     QgsVectorLayerCache *mLayerCache = nullptr;
-    QPointer< QgsVectorLayer > mLayer = nullptr;
+    QPointer<QgsVectorLayer> mLayer = nullptr;
     QProgressDialog *mProgressDlg = nullptr;
     QgsIFeatureSelectionManager *mFeatureSelectionManager = nullptr;
     QString mDisplayExpression;
@@ -448,6 +462,8 @@ class GUI_EXPORT QgsDualView : public QStackedWidget, private Ui::QgsDualViewBas
     bool mBrowsingAutoPanScaleAllowed = true;
     ViewMode mPreviousView = AttributeTable;
 
+    bool mSkipDisplayExpressionChangedSignal = false;
+
     friend class TestQgsDualView;
     friend class TestQgsAttributeTable;
 };
@@ -455,13 +471,13 @@ class GUI_EXPORT QgsDualView : public QStackedWidget, private Ui::QgsDualViewBas
 /**
  * \ingroup gui
  * \class QgsAttributeTableAction
+ * \brief A QAction subclass for map layer actions shown in an attribute table.
  */
 class GUI_EXPORT QgsAttributeTableAction : public QAction
 {
     Q_OBJECT
 
   public:
-
     /**
      * Create a new attribute table action.
      *
@@ -486,6 +502,7 @@ class GUI_EXPORT QgsAttributeTableAction : public QAction
 /**
  * \ingroup gui
  * \class QgsAttributeTableMapLayerAction
+ * \brief A QAction for attribute table map layer actions.
  */
 class GUI_EXPORT QgsAttributeTableMapLayerAction : public QAction
 {

@@ -3,14 +3,20 @@
  *                                                                      *
  * src/gui/qgslonglongvalidator.h                                       *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/
+
+
+
 
 
 
 
 class QgsLongLongValidator : QValidator
 {
+%Docstring(signature="appended")
+A QValidator which allows validation of long long values.
+%End
 
 %TypeHeaderCode
 #include "qgslonglongvalidator.h"
@@ -37,5 +43,5 @@ class QgsLongLongValidator : QValidator
  *                                                                      *
  * src/gui/qgslonglongvalidator.h                                       *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/

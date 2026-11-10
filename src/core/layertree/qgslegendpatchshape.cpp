@@ -16,18 +16,18 @@ email                : nyall dot dawson at gmail dot com
  ***************************************************************************/
 
 #include "qgslegendpatchshape.h"
-#include "qgsmultilinestring.h"
-#include "qgslinestring.h"
-#include "qgspolygon.h"
+
 #include "qgsstyle.h"
+
+#include <QString>
+
+using namespace Qt::StringLiterals;
 
 QgsLegendPatchShape::QgsLegendPatchShape( Qgis::SymbolType type, const QgsGeometry &geometry, bool preserveAspectRatio )
   : mSymbolType( type )
   , mGeometry( geometry )
   , mPreserveAspectRatio( preserveAspectRatio )
-{
-
-}
+{}
 
 bool QgsLegendPatchShape::isNull() const
 {
@@ -64,33 +64,6 @@ void QgsLegendPatchShape::setScaleToOutputSize( bool scale )
   mScaleToTargetSize = scale;
 }
 
-QPolygonF lineStringToQPolygonF( const QgsLineString *line )
-{
-  const double *srcX = line->xData();
-  const double *srcY = line->yData();
-  const int count = line->numPoints();
-  QPolygonF thisRes( count );
-  QPointF *dest = thisRes.data();
-  for ( int i = 0; i < count; ++i )
-  {
-    *dest++ = QPointF( *srcX++, *srcY++ );
-  }
-  return thisRes;
-}
-
-QPolygonF curveToPolygonF( const QgsCurve *curve )
-{
-  if ( const QgsLineString *line = qgsgeometry_cast< const QgsLineString * >( curve ) )
-  {
-    return lineStringToQPolygonF( line );
-  }
-  else
-  {
-    const std::unique_ptr< QgsLineString > straightened( curve->curveToLine() );
-    return lineStringToQPolygonF( straightened.get() );
-  }
-}
-
 QgsGeometry QgsLegendPatchShape::scaledGeometry( QSizeF size ) const
 {
   QgsGeometry geom = mGeometry;
@@ -112,10 +85,7 @@ QgsGeometry QgsLegendPatchShape::scaledGeometry( QSizeF size ) const
     }
 
     // important -- the transform needs to flip from north-up to painter style "increasing y down" coordinates
-    const QPolygonF targetRectPoly = QPolygonF() << QPointF( dx, dy + size.height() )
-                                     << QPointF( dx + size.width(), dy + size.height() )
-                                     << QPointF( dx + size.width(), dy )
-                                     << QPointF( dx, dy );
+    const QPolygonF targetRectPoly = QPolygonF() << QPointF( dx, dy + size.height() ) << QPointF( dx + size.width(), dy + size.height() ) << QPointF( dx + size.width(), dy ) << QPointF( dx, dy );
     QTransform t;
 
     if ( bounds.width() > 0 && bounds.height() > 0 )
@@ -146,84 +116,28 @@ QList<QList<QPolygonF> > QgsLegendPatchShape::toQPolygonF( Qgis::SymbolType type
     return QgsStyle::defaultStyle()->defaultPatchAsQPolygonF( type, size );
 
   const QgsGeometry geom = scaledGeometry( size );
-
-  switch ( mSymbolType )
+  if ( type == Qgis::SymbolType::Marker && ( QgsWkbTypes::flatType( geom.wkbType() ) != Qgis::WkbType::MultiPoint ) )
   {
-    case Qgis::SymbolType::Marker:
-    {
-      QPolygonF points;
-
-      if ( QgsWkbTypes::flatType( mGeometry.wkbType() ) == Qgis::WkbType::MultiPoint )
-      {
-        const QgsGeometry patch = geom;
-        for ( auto it = patch.vertices_begin(); it != patch.vertices_end(); ++it )
-          points << QPointF( ( *it ).x(), ( *it ).y() );
-      }
-      else
-      {
-        points << QPointF( static_cast< int >( size.width() ) / 2, static_cast< int >( size.height() ) / 2 );
-      }
-      return QList< QList<QPolygonF> >() << ( QList< QPolygonF >() << points );
-    }
-
-    case Qgis::SymbolType::Line:
-    {
-      QList< QList<QPolygonF> > res;
-      const QgsGeometry patch = geom;
-      if ( QgsWkbTypes::geometryType( mGeometry.wkbType() ) == Qgis::GeometryType::Line )
-      {
-        for ( auto it = patch.const_parts_begin(); it != patch.const_parts_end(); ++it )
-        {
-          res << ( QList< QPolygonF >() << curveToPolygonF( qgsgeometry_cast< const QgsCurve * >( *it ) ) );
-        }
-      }
-      return res;
-    }
-
-    case Qgis::SymbolType::Fill:
-    {
-      QList< QList<QPolygonF> > res;
-
-      const QgsGeometry patch = geom;
-      for ( auto it = patch.const_parts_begin(); it != patch.const_parts_end(); ++it )
-      {
-        QList<QPolygonF> thisPart;
-        const QgsCurvePolygon *surface = qgsgeometry_cast< const QgsCurvePolygon * >( *it );
-        if ( !surface )
-          continue;
-
-        if ( !surface->exteriorRing() )
-          continue;
-
-        thisPart << curveToPolygonF( surface->exteriorRing() );
-
-        for ( int i = 0; i < surface->numInteriorRings(); ++i )
-          thisPart << curveToPolygonF( surface->interiorRing( i ) );
-        res << thisPart;
-      }
-
-      return res;
-    }
-
-    case Qgis::SymbolType::Hybrid:
-      return QList< QList<QPolygonF> >();
+    QPolygonF points;
+    points << QPointF( size.width() / 2, size.height() / 2 );
+    return QList< QList<QPolygonF> >() << ( QList< QPolygonF >() << points );
   }
 
-  return QList< QList<QPolygonF> >();
+  return QgsSymbolLayerUtils::toQPolygonF( geom, type );
 }
 
 void QgsLegendPatchShape::readXml( const QDomElement &element, const QgsReadWriteContext & )
 {
-  mGeometry = QgsGeometry::fromWkt( element.attribute( QStringLiteral( "wkt" ) ) );
-  mPreserveAspectRatio = element.attribute( QStringLiteral( "preserveAspect" ) ).toInt();
-  mSymbolType = static_cast< Qgis::SymbolType >( element.attribute( QStringLiteral( "type" ) ).toInt() );
+  mGeometry = QgsGeometry::fromWkt( element.attribute( u"wkt"_s ) );
+  mPreserveAspectRatio = element.attribute( u"preserveAspect"_s ).toInt();
+  mSymbolType = static_cast< Qgis::SymbolType >( element.attribute( u"type"_s ).toInt() );
 }
 
 void QgsLegendPatchShape::writeXml( QDomElement &element, QDomDocument &, const QgsReadWriteContext & ) const
 {
-  element.setAttribute( QStringLiteral( "wkt" ), mGeometry.isNull() ? QString() : mGeometry.asWkt( ) );
-  element.setAttribute( QStringLiteral( "preserveAspect" ), mPreserveAspectRatio ? QStringLiteral( "1" ) : QStringLiteral( "0" ) );
-  element.setAttribute( QStringLiteral( "type" ), QString::number( static_cast< int >( mSymbolType ) ) );
+  element.setAttribute( u"wkt"_s, mGeometry.isNull() ? QString() : mGeometry.asWkt() );
+  element.setAttribute( u"preserveAspect"_s, mPreserveAspectRatio ? u"1"_s : u"0"_s );
+  element.setAttribute( u"type"_s, QString::number( static_cast< int >( mSymbolType ) ) );
 }
 
 Qgis::SymbolType QgsLegendPatchShape::symbolType() const

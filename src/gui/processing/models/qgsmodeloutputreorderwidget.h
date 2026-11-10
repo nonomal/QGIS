@@ -16,13 +16,16 @@
 #ifndef QGSMODELOUTPUTREORDERWIDGET_H
 #define QGSMODELOUTPUTREORDERWIDGET_H
 
-#define SIP_NO_FILE
+
+#include "ui_qgsmodeloutputreorderwidgetbase.h"
 
 #include "qgis.h"
 #include "qgis_gui.h"
-#include "ui_qgsmodeloutputreorderwidgetbase.h"
 #include "qgsprocessingmodeloutput.h"
+
 #include <QDialog>
+
+#define SIP_NO_FILE
 
 class QStandardItemModel;
 class QgsProcessingModelAlgorithm;
@@ -40,7 +43,6 @@ class GUI_EXPORT QgsModelOutputReorderWidget : public QWidget, private Ui::QgsMo
     Q_OBJECT
 
   public:
-
     /**
      * Constructor for QgsModelOutputReorderWidget.
      */
@@ -62,9 +64,8 @@ class GUI_EXPORT QgsModelOutputReorderWidget : public QWidget, private Ui::QgsMo
     QString outputGroup() const;
 
   private:
-
     QgsProcessingModelAlgorithm *mModel;
-    QList< QgsProcessingModelOutput > mOutputs;
+    QList<QgsProcessingModelOutput> mOutputs;
     QStandardItemModel *mItemModel = nullptr;
 };
 
@@ -80,7 +81,6 @@ class GUI_EXPORT QgsModelOutputReorderDialog : public QDialog
     Q_OBJECT
 
   public:
-
     /**
      * Constructor for QgsModelOutputReorderDialog.
      */
@@ -102,7 +102,6 @@ class GUI_EXPORT QgsModelOutputReorderDialog : public QDialog
     QString outputGroup() const;
 
   private:
-
     QgsModelOutputReorderWidget *mWidget = nullptr;
 };
 

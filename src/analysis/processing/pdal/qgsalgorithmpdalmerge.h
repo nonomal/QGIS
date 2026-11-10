@@ -18,10 +18,11 @@
 #ifndef QGSALGORITHMPDALMERGE_H
 #define QGSALGORITHMPDALMERGE_H
 
-#define SIP_NO_FILE
 
 #include "qgis_sip.h"
 #include "qgspdalalgorithmbase.h"
+
+#define SIP_NO_FILE
 
 ///@cond PRIVATE
 
@@ -30,9 +31,7 @@
  */
 class QgsPdalMergeAlgorithm : public QgsPdalAlgorithmBase
 {
-
   public:
-
     QgsPdalMergeAlgorithm() = default;
     void initAlgorithm( const QVariantMap &configuration = QVariantMap() ) override;
     QString name() const override;
@@ -41,10 +40,10 @@ class QgsPdalMergeAlgorithm : public QgsPdalAlgorithmBase
     QString groupId() const override;
     QStringList tags() const override;
     QString shortHelpString() const override;
+    QString shortDescription() const override;
     QgsPdalMergeAlgorithm *createInstance() const override SIP_FACTORY;
 
-    QStringList createArgumentLists( const QVariantMap &parameters,
-                                     QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
+    QStringList createArgumentLists( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
 
     friend class TestQgsProcessingPdalAlgs;
 };

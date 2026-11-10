@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/raster/qgsexiftools.h                                       *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/
 
 
@@ -24,17 +24,18 @@ Contains utilities for working with EXIF tags in images.
     static const QMetaObject staticMetaObject;
 
   public:
-
     static QVariantMap readTags( const QString &imagePath );
 %Docstring
-Returns a map object containing all exif tags stored in the image at ``imagePath``.
+Returns a map object containing all exif tags stored in the image at
+``imagePath``.
 
 .. versionadded:: 3.22
 %End
 
     static QVariant readTag( const QString &imagePath, const QString &key );
 %Docstring
-Returns the value of of an exif tag ``key`` stored in the image at ``imagePath``.
+Returns the value of an exif tag ``key`` stored in the image at
+``imagePath``.
 
 .. versionadded:: 3.22
 %End
@@ -45,8 +46,8 @@ Returns the geotagged coordinate stored in the image at ``imagePath``.
 
 If a geotag was found, ``ok`` will be set to ``True``.
 
-If the image contains an elevation tag then the returned point will contain
-the elevation as a z value.
+If the image contains an elevation tag then the returned point will
+contain the elevation as a z value.
 
 .. seealso:: :py:func:`geoTagImage`
 %End
@@ -59,18 +60,14 @@ Returns ``True`` if the image at ``imagePath`` contains a valid geotag.
 %End
 
     class GeoTagDetails
-{
+    {
 %Docstring(signature="appended")
 Extended image geotag details.
 
 .. versionadded:: 3.6
 %End
 
-%TypeHeaderCode
-#include "qgsexiftools.h"
-%End
       public:
-
         GeoTagDetails();
 
         double elevation;
@@ -80,9 +77,11 @@ Extended image geotag details.
 %Docstring
 Writes geotags to the image at ``imagePath``.
 
-The ``location`` argument indicates the GPS location to write to the image, as a WGS84 latitude/longitude coordinate.
+The ``location`` argument indicates the GPS location to write to the
+image, as a WGS84 latitude/longitude coordinate.
 
-If desired, extended GPS tags (such as elevation) can be specified via the ``details`` argument.
+If desired, extended GPS tags (such as elevation) can be specified via
+the ``details`` argument.
 
 Returns ``True`` if writing was successful.
 
@@ -101,7 +100,6 @@ Writes a tag to the image at imagePath.
 
 .. versionadded:: 3.30
 %End
-
 };
 
 /************************************************************************
@@ -109,5 +107,5 @@ Writes a tag to the image at imagePath.
  *                                                                      *
  * src/core/raster/qgsexiftools.h                                       *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/

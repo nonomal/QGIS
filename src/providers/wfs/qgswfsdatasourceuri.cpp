@@ -13,13 +13,16 @@
  *                                                                         *
  ***************************************************************************/
 
-#include "QtGlobal"
-
-#include "qgswfsconstants.h"
 #include "qgswfsdatasourceuri.h"
-#include "qgsmessagelog.h"
 
+#include "qgsmessagelog.h"
+#include "qgswfsconstants.h"
+
+#include <QString>
 #include <QUrlQuery>
+#include <QtGlobal>
+
+using namespace Qt::StringLiterals;
 
 QgsWFSDataSourceURI::QgsWFSDataSourceURI( const QString &uri )
   : mURI( uri )
@@ -28,17 +31,14 @@ QgsWFSDataSourceURI::QgsWFSDataSourceURI( const QString &uri )
 
   // Compatibility with QGIS < 2.16 layer URI of the format
   // http://example.com/?SERVICE=WFS&VERSION=1.0.0&REQUEST=GetFeature&TYPENAME=x&SRSNAME=y&username=foo&password=
-  if ( !mURI.hasParam( QgsWFSConstants::URI_PARAM_URL ) &&
-       ( uri.startsWith( QLatin1String( "http://" ) ) ||
-         uri.startsWith( QLatin1String( "https://" ) ) ) )
+  if ( !mURI.hasParam( QgsWFSConstants::URI_PARAM_URL ) && ( uri.startsWith( "http://"_L1 ) || uri.startsWith( "https://"_L1 ) ) )
   {
     mDeprecatedURI = true;
-    static const QSet<QString> sFilter
-    {
-      QStringLiteral( "service" ),
+    static const QSet<QString> sFilter {
+      u"service"_s,
       QgsWFSConstants::URI_PARAM_VERSION,
       QgsWFSConstants::URI_PARAM_TYPENAME,
-      QStringLiteral( "request" ),
+      u"request"_s,
       QgsWFSConstants::URI_PARAM_BBOX,
       QgsWFSConstants::URI_PARAM_SRSNAME,
       QgsWFSConstants::URI_PARAM_FILTER,
@@ -51,7 +51,7 @@ QgsWFSDataSourceURI::QgsWFSDataSourceURI( const QString &uri )
     QUrl url( uri );
     QUrlQuery query( url );
     // Transform all param keys to lowercase
-    const QList<QPair<QString, QString> > items( query.queryItems() );
+    const QList<QPair<QString, QString>> items( query.queryItems() );
     for ( const queryItem &item : items )
     {
       query.removeQueryItem( item.first );
@@ -102,7 +102,7 @@ QgsWFSDataSourceURI::QgsWFSDataSourceURI( const QString &uri )
 
     setFilter( filter );
     if ( !bbox.isEmpty() )
-      mURI.setParam( QgsWFSConstants::URI_PARAM_RESTRICT_TO_REQUEST_BBOX, QStringLiteral( "1" ) );
+      mURI.setParam( QgsWFSConstants::URI_PARAM_RESTRICT_TO_REQUEST_BBOX, u"1"_s );
   }
   else if ( mURI.hasParam( QgsWFSConstants::URI_PARAM_URL ) )
   {
@@ -113,7 +113,7 @@ QgsWFSDataSourceURI::QgsWFSDataSourceURI( const QString &uri )
     do
     {
       somethingChanged = false;
-      const QList<QPair<QString, QString> > items( query.queryItems() );
+      const QList<QPair<QString, QString>> items( query.queryItems() );
       for ( const queryItem &item : items )
       {
         const QString lowerName( item.first.toLower() );
@@ -125,11 +125,7 @@ QgsWFSDataSourceURI::QgsWFSDataSourceURI( const QString &uri )
           URLModified = true;
           break;
         }
-        else if ( lowerName == QLatin1String( "service" ) ||
-                  lowerName == QLatin1String( "request" ) ||
-                  lowerName == QLatin1String( "typename" ) ||
-                  lowerName == QLatin1String( "typenames" ) ||
-                  lowerName == QLatin1String( "version" ) )
+        else if ( lowerName == "service"_L1 || lowerName == "request"_L1 || lowerName == "typename"_L1 || lowerName == "typenames"_L1 || lowerName == "version"_L1 )
         {
           query.removeQueryItem( item.first );
           somethingChanged = true;
@@ -137,8 +133,7 @@ QgsWFSDataSourceURI::QgsWFSDataSourceURI( const QString &uri )
           break;
         }
       }
-    }
-    while ( somethingChanged );
+    } while ( somethingChanged );
     url.setQuery( query );
     if ( URLModified )
     {
@@ -157,8 +152,7 @@ QgsWFSDataSourceURI::QgsWFSDataSourceURI( const QgsWFSDataSourceURI &other )
   , mGetEndpoints( other.mGetEndpoints )
   , mPostEndpoints( other.mPostEndpoints )
   , mDeprecatedURI( other.mDeprecatedURI )
-{
-}
+{}
 
 QgsWFSDataSourceURI &QgsWFSDataSourceURI::operator=( const QgsWFSDataSourceURI &other )
 {
@@ -172,14 +166,12 @@ QgsWFSDataSourceURI &QgsWFSDataSourceURI::operator=( const QgsWFSDataSourceURI &
 
 bool QgsWFSDataSourceURI::isValid() const
 {
-  return mURI.hasParam( QgsWFSConstants::URI_PARAM_URL ) &&
-         mURI.hasParam( QgsWFSConstants::URI_PARAM_TYPENAME );
+  return mURI.hasParam( QgsWFSConstants::URI_PARAM_URL ) && mURI.hasParam( QgsWFSConstants::URI_PARAM_TYPENAME );
 }
 
 QSet<QString> QgsWFSDataSourceURI::unknownParamKeys() const
 {
-  static const QSet<QString> knownKeys
-  {
+  static const QSet<QString> knownKeys {
     QgsWFSConstants::URI_PARAM_URL,
     QgsWFSConstants::URI_PARAM_USERNAME,
     QgsWFSConstants::URI_PARAM_USER,
@@ -201,8 +193,12 @@ QSet<QString> QgsWFSDataSourceURI::unknownParamKeys() const
     QgsWFSConstants::URI_PARAM_PAGE_SIZE,
     QgsWFSConstants::URI_PARAM_WFST_1_1_PREFER_COORDINATES,
     QgsWFSConstants::URI_PARAM_SKIP_INITIAL_GET_FEATURE,
+    QgsWFSConstants::URI_PARAM_FORCE_INITIAL_GET_FEATURE,
     QgsWFSConstants::URI_PARAM_GEOMETRY_TYPE_FILTER,
     QgsWFSConstants::URI_PARAM_SQL,
+    QgsWFSConstants::URI_PARAM_HTTPMETHOD,
+    QgsWFSConstants::URI_PARAM_FEATURE_MODE,
+    QgsWFSConstants::URI_PARAM_DISABLE_DECOMPRESSED_SAFETY_CHECK_THRESHOLD,
   };
 
   QSet<QString> l_unknownParamKeys;
@@ -220,18 +216,18 @@ QString QgsWFSDataSourceURI::uri( bool expandAuthConfig ) const
 {
   QgsDataSourceUri theURI( mURI );
   // Add authcfg param back into the uri (must be non-empty value)
-  if ( ! mAuth.mAuthCfg.isEmpty() )
+  if ( !mAuth.mAuthCfg.isEmpty() )
   {
     theURI.setAuthConfigId( mAuth.mAuthCfg );
   }
   else
   {
     // Add any older username/password auth params back in (allow empty values)
-    if ( ! mAuth.mUserName.isNull() )
+    if ( !mAuth.mUserName.isNull() )
     {
       theURI.setUsername( mAuth.mUserName );
     }
-    if ( ! mAuth.mPassword.isNull() )
+    if ( !mAuth.mPassword.isNull() )
     {
       theURI.setPassword( mAuth.mPassword );
     }
@@ -246,25 +242,44 @@ QUrl QgsWFSDataSourceURI::baseURL( bool bIncludeServiceWFS ) const
   QUrlQuery query( url );
   if ( bIncludeServiceWFS )
   {
-    query.addQueryItem( QStringLiteral( "SERVICE" ), QStringLiteral( "WFS" ) );
+    query.addQueryItem( u"SERVICE"_s, u"WFS"_s );
   }
   url.setQuery( query );
   return url;
 }
 
-QUrl QgsWFSDataSourceURI::requestUrl( const QString &request, const Method &method ) const
+QUrl QgsWFSDataSourceURI::requestUrl( const QString &request, Qgis::HttpMethod method ) const
 {
   QUrl url;
   QUrlQuery urlQuery;
   switch ( method )
   {
-    case Post:
-      url = QUrl( mPostEndpoints.contains( request ) ?
-                  mPostEndpoints[ request ] : mURI.param( QgsWFSConstants::URI_PARAM_URL ) );
+    case Qgis::HttpMethod::Post:
+    {
+      url = QUrl( mPostEndpoints.contains( request ) ? mPostEndpoints[request] : mURI.param( QgsWFSConstants::URI_PARAM_URL ) );
       urlQuery = QUrlQuery( url );
+
+      const QList<QPair<QString, QString>> items = urlQuery.queryItems();
+      bool hasService = false;
+      bool hasRequest = false;
+      for ( const auto &item : items )
+      {
+        if ( item.first.toUpper() == "SERVICE"_L1 )
+          hasService = true;
+        if ( item.first.toUpper() == "REQUEST"_L1 )
+          hasRequest = true;
+      }
+
+      // add service / request parameters only if they don't exist in the explicitly defined post URL
+      if ( !hasService )
+        urlQuery.addQueryItem( u"SERVICE"_s, u"WFS"_s );
+      if ( !hasRequest && !request.isEmpty() )
+        urlQuery.addQueryItem( u"REQUEST"_s, request );
+
       break;
-    default:
-    case Get:
+    }
+
+    case Qgis::HttpMethod::Get:
     {
       const auto defaultUrl( QUrl( mURI.param( QgsWFSConstants::URI_PARAM_URL ) ) );
       if ( mGetEndpoints.contains( request ) )
@@ -273,7 +288,7 @@ QUrl QgsWFSDataSourceURI::requestUrl( const QString &request, const Method &meth
         // DCP endpoint, then re-inject them.
         // I'm not completely sure this is the job of the client to do that.
         // One could argue that the server should expose them in the DCP endpoint.
-        url = QUrl( mGetEndpoints[ request ] );
+        url = QUrl( mGetEndpoints[request] );
         urlQuery = QUrlQuery( url );
         // OGC case insensitive keys KVP: see https://github.com/qgis/QGIS/issues/34148
         QSet<QString> upperCaseQueryItemKeys;
@@ -297,14 +312,26 @@ QUrl QgsWFSDataSourceURI::requestUrl( const QString &request, const Method &meth
         url = defaultUrl;
         urlQuery = QUrlQuery( url );
       }
+      urlQuery.addQueryItem( u"SERVICE"_s, u"WFS"_s );
+      if ( !request.isEmpty() )
+        urlQuery.addQueryItem( u"REQUEST"_s, request );
       break;
     }
+
+    case Qgis::HttpMethod::Head:
+    case Qgis::HttpMethod::Put:
+    case Qgis::HttpMethod::Delete:
+      // not supported, impossible to reach
+      break;
   }
-  urlQuery.addQueryItem( QStringLiteral( "SERVICE" ), QStringLiteral( "WFS" ) );
-  if ( method == Method::Get && ! request.isEmpty() )
-    urlQuery.addQueryItem( QStringLiteral( "REQUEST" ), request );
+
   url.setQuery( urlQuery );
   return url;
+}
+
+bool QgsWFSDataSourceURI::disableDecompressedSafetyCheckThreshold() const
+{
+  return mURI.hasParam( QgsWFSConstants::URI_PARAM_DISABLE_DECOMPRESSED_SAFETY_CHECK_THRESHOLD );
 }
 
 QString QgsWFSDataSourceURI::version() const
@@ -339,9 +366,9 @@ QgsWFSDataSourceURI::PagingStatus QgsWFSDataSourceURI::pagingStatus() const
   if ( !mURI.hasParam( QgsWFSConstants::URI_PARAM_PAGING_ENABLED ) )
     return PagingStatus::DEFAULT;
   const QString val = mURI.param( QgsWFSConstants::URI_PARAM_PAGING_ENABLED );
-  if ( val == QLatin1String( "true" ) || val == QLatin1String( "enabled" ) )
+  if ( val == "true"_L1 || val == "enabled"_L1 )
     return PagingStatus::ENABLED;
-  else if ( val == QLatin1String( "false" ) || val ==  QLatin1String( "disabled" ) )
+  else if ( val == "false"_L1 || val == "disabled"_L1 )
     return PagingStatus::DISABLED;
   else
     return PagingStatus::DEFAULT;
@@ -391,6 +418,11 @@ void QgsWFSDataSourceURI::setFilter( const QString &filter )
   }
 }
 
+bool QgsWFSDataSourceURI::forceInitialGetFeature() const
+{
+  return mURI.hasParam( QgsWFSConstants::URI_PARAM_FORCE_INITIAL_GET_FEATURE ) && mURI.param( QgsWFSConstants::URI_PARAM_FORCE_INITIAL_GET_FEATURE ).toUpper() == "TRUE"_L1;
+}
+
 bool QgsWFSDataSourceURI::hasGeometryTypeFilter() const
 {
   return mURI.hasParam( QgsWFSConstants::URI_PARAM_GEOMETRY_TYPE_FILTER );
@@ -423,14 +455,26 @@ void QgsWFSDataSourceURI::setOutputFormat( const QString &outputFormat )
     mURI.setParam( QgsWFSConstants::URI_PARAM_OUTPUTFORMAT, outputFormat );
 }
 
+Qgis::HttpMethod QgsWFSDataSourceURI::httpMethod() const
+{
+  if ( !mURI.hasParam( QgsWFSConstants::URI_PARAM_HTTPMETHOD ) )
+    return Qgis::HttpMethod::Get;
+
+  const QString method = mURI.param( QgsWFSConstants::URI_PARAM_HTTPMETHOD );
+  if ( method.compare( "post"_L1, Qt::CaseInsensitive ) == 0 )
+    return Qgis::HttpMethod::Post;
+
+  // default
+  return Qgis::HttpMethod::Get;
+}
+
 bool QgsWFSDataSourceURI::isRestrictedToRequestBBOX() const
 {
-  if ( mURI.hasParam( QgsWFSConstants::URI_PARAM_RESTRICT_TO_REQUEST_BBOX ) &&
-       mURI.param( QgsWFSConstants::URI_PARAM_RESTRICT_TO_REQUEST_BBOX ).toInt() == 1 )
+  if ( mURI.hasParam( QgsWFSConstants::URI_PARAM_RESTRICT_TO_REQUEST_BBOX ) && mURI.param( QgsWFSConstants::URI_PARAM_RESTRICT_TO_REQUEST_BBOX ).toInt() == 1 )
     return true;
 
   // accept previously used version with typo
-  if ( mURI.hasParam( QStringLiteral( "retrictToRequestBBOX" ) ) && mURI.param( QStringLiteral( "retrictToRequestBBOX" ) ).toInt() == 1 )
+  if ( mURI.hasParam( u"retrictToRequestBBOX"_s ) && mURI.param( u"retrictToRequestBBOX"_s ).toInt() == 1 ) // spellok
     return true;
 
   return false;
@@ -459,23 +503,37 @@ bool QgsWFSDataSourceURI::hideDownloadProgressDialog() const
 
 bool QgsWFSDataSourceURI::preferCoordinatesForWfst11() const
 {
-  return mURI.hasParam( QgsWFSConstants::URI_PARAM_WFST_1_1_PREFER_COORDINATES ) &&
-         mURI.param( QgsWFSConstants::URI_PARAM_WFST_1_1_PREFER_COORDINATES ).toUpper() == QLatin1String( "TRUE" );
+  return mURI.hasParam( QgsWFSConstants::URI_PARAM_WFST_1_1_PREFER_COORDINATES ) && mURI.param( QgsWFSConstants::URI_PARAM_WFST_1_1_PREFER_COORDINATES ).toUpper() == "TRUE"_L1;
 }
 
 bool QgsWFSDataSourceURI::skipInitialGetFeature() const
 {
   if ( !mURI.hasParam( QgsWFSConstants::URI_PARAM_SKIP_INITIAL_GET_FEATURE ) )
     return false;
-  return mURI.param( QgsWFSConstants::URI_PARAM_SKIP_INITIAL_GET_FEATURE ).toUpper() == QLatin1String( "TRUE" );
+  return mURI.param( QgsWFSConstants::URI_PARAM_SKIP_INITIAL_GET_FEATURE ).toUpper() == "TRUE"_L1;
 }
 
-QString QgsWFSDataSourceURI::build( const QString &baseUri,
-                                    const QString &typeName,
-                                    const QString &crsString,
-                                    const QString &sql,
-                                    const QString &filter,
-                                    bool restrictToCurrentViewExtent )
+QgsWFSDataSourceURI::FeatureMode QgsWFSDataSourceURI::featureMode() const
+{
+  if ( !mURI.hasParam( QgsWFSConstants::URI_PARAM_FEATURE_MODE ) )
+    return FeatureMode::Default;
+  const QString val = mURI.param( QgsWFSConstants::URI_PARAM_FEATURE_MODE );
+  if ( val == "default"_L1 )
+    return FeatureMode::Default;
+  else if ( val == "simpleFeatures"_L1 )
+    return FeatureMode::SimpleFeatures;
+  else if ( val == "complexFeatures"_L1 )
+    return FeatureMode::ComplexFeatures;
+  else
+  {
+    QgsMessageLog::logMessage( QObject::tr( "Unknown value for featureMode URI parameter '%1'" ).arg( val ), QObject::tr( "WFS" ) );
+    return FeatureMode::Default;
+  }
+}
+
+QString QgsWFSDataSourceURI::build(
+  const QString &baseUri, const QString &typeName, const QString &crsString, const QString &sql, const QString &filter, bool restrictToCurrentViewExtent, const QString &featureFormat
+)
 {
   QgsWFSDataSourceURI uri( baseUri );
   uri.setTypeName( typeName );
@@ -483,10 +541,14 @@ QString QgsWFSDataSourceURI::build( const QString &baseUri,
   uri.setSql( sql );
   uri.setFilter( filter );
   if ( restrictToCurrentViewExtent )
-    uri.mURI.setParam( QgsWFSConstants::URI_PARAM_RESTRICT_TO_REQUEST_BBOX, QStringLiteral( "1" ) );
-  if ( uri.version() == QLatin1String( "OGC_API_FEATURES" ) )
+    uri.mURI.setParam( QgsWFSConstants::URI_PARAM_RESTRICT_TO_REQUEST_BBOX, u"1"_s );
+  if ( uri.version() == "OGC_API_FEATURES"_L1 )
   {
     uri.setVersion( QString() );
+  }
+  if ( !featureFormat.isEmpty() && featureFormat != "default"_L1 )
+  {
+    uri.setOutputFormat( featureFormat );
   }
   return uri.uri();
 }

@@ -15,17 +15,18 @@
 #ifndef QGSPOSTGRESDATAITEMS_H
 #define QGSPOSTGRESDATAITEMS_H
 
-#include <QMainWindow>
-
 #include "qgsconnectionsitem.h"
+#include "qgsdatabaseschemaitem.h"
 #include "qgsdatacollectionitem.h"
 #include "qgsdataitemprovider.h"
-#include "qgsdatabaseschemaitem.h"
 #include "qgslayeritem.h"
-
-#include "qgspostgresconn.h"
 #include "qgsmimedatautils.h"
+#include "qgspostgresconn.h"
+#include "qgspostgresprojectstorage.h"
+#include "qgsprojectitem.h"
 #include "qgswkbtypes.h"
+
+#include <QMainWindow>
 
 class QgsPGRootItem;
 class QgsPGConnectionItem;
@@ -54,9 +55,7 @@ class QgsPGConnectionItem : public QgsDataCollectionItem
 
     QVector<QgsDataItem *> createChildren() override;
     bool equal( const QgsDataItem *other ) override;
-
-    using QgsDataCollectionItem::handleDrop;
-    bool handleDrop( const QMimeData *data, const QString &toSchema );
+    QgsDataSourceUri connectionUri() const;
 
   signals:
     void addGeometryColumn( const QgsPostgresLayerProperty & );
@@ -65,7 +64,6 @@ class QgsPGConnectionItem : public QgsDataCollectionItem
 
     // refresh specified schema or all schemas if schema name is empty
     void refreshSchema( const QString &schema );
-
 };
 
 class QgsPGSchemaItem : public QgsDatabaseSchemaItem
@@ -78,10 +76,25 @@ class QgsPGSchemaItem : public QgsDatabaseSchemaItem
 
     QString connectionName() const { return mConnectionName; }
 
+    /**
+     * Set if versioning of QGIS projects is enabled for this schema.
+     *
+     * \since QGIS 4.0
+     */
+    void setProjectVersioningEnabled( const bool enabled ) { mProjectVersioningEnabled = enabled; }
+
+    /**
+     * Returns if versioning of QGIS projects is enabled for this schema.
+     *
+     * \since QGIS 4.0
+     */
+    bool projectVersioningEnabled() const { return mProjectVersioningEnabled; }
+
   private:
     QgsPGLayerItem *createLayer( QgsPostgresLayerProperty layerProperty );
 
     QString mConnectionName;
+    bool mProjectVersioningEnabled = false;
 
     // QgsDataItem interface
   public:
@@ -99,15 +112,17 @@ class QgsPGLayerItem : public QgsLayerItem
 
     QString comments() const override;
 
+    bool equal( const QgsDataItem *other ) override;
+
     const QgsPostgresLayerProperty &layerInfo() const { return mLayerProperty; }
 
     QVector<QgsDataItem *> createChildren() override;
 
+    Qgis::LayerItemCapabilities layerCapabilities() const override;
+
   private:
     QgsPostgresLayerProperty mLayerProperty;
-
 };
-
 
 
 //! Provider for Postgres data item
@@ -121,6 +136,46 @@ class QgsPostgresDataItemProvider : public QgsDataItemProvider
     Qgis::DataItemProviderCapabilities capabilities() const override;
 
     QgsDataItem *createDataItem( const QString &pathIn, QgsDataItem *parentItem ) override;
+};
+
+/*
+ * Class representing QgsProject stored in Postgres database
+ *
+ * \since QGIS 3.44
+ */
+class QgsPGProjectItem : public QgsProjectItem
+{
+    Q_OBJECT
+  public:
+    QgsPGProjectItem( QgsDataItem *parent, const QString name, const QgsPostgresProjectUri &postgresProjectUri, const QString &connectionName );
+
+    QString schemaName() const { return mProjectUri.schemaName; }
+    QgsPostgresProjectUri postgresProjectUri() const { return mProjectUri; }
+
+    QString uriWithNewName( const QString &newProjectName );
+
+    /*
+    * Returns the name of the Postgres connection.
+    *
+    * \since QGIS 4.0
+    */
+    QString connectionName() const { return mConnectionName; }
+
+    using QgsProjectItem::refresh;
+    void refresh() override;
+
+    /*
+    * Returns the tooltip text for a project item from its last modified \a time, \a user and \a comment.
+    *
+    * \since QGIS 4.4
+    */
+    static QString formatTooltip( const QString &time, const QString &user, const QString &comment );
+
+  private:
+    void refreshTooltip();
+
+    QgsPostgresProjectUri mProjectUri;
+    QString mConnectionName;
 };
 
 #endif // QGSPOSTGRESDATAITEMS_H

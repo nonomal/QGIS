@@ -19,21 +19,18 @@
 #include "qgis.h"
 #include "qgscategorizedsymbolrenderer.h"
 #include "qgsrenderer.h"
-#include "qgssymbol.h"
-
-#include "qgscategorizedsymbolrenderer.h"
 #include "qgsrendererwidget.h"
+#include "qgssymbol.h"
 
 class QgsGrassEditRenderer : public QgsFeatureRenderer
 {
   public:
-
     QgsGrassEditRenderer();
 
     ~QgsGrassEditRenderer() override;
 
     QgsSymbol *symbolForFeature( const QgsFeature &feature, QgsRenderContext &context ) const override;
-
+    Qgis::FeatureRendererFlags flags() const override;
     void startRender( QgsRenderContext &context, const QgsFields &fields ) override;
 
     void stopRender( QgsRenderContext &context ) override;
@@ -54,7 +51,7 @@ class QgsGrassEditRenderer : public QgsFeatureRenderer
 
     QDomElement save( QDomDocument &doc, const QgsReadWriteContext &context ) override;
 
-    static QgsFeatureRenderer *create( QDomElement &element, const QgsReadWriteContext &context );
+    static std::unique_ptr<QgsFeatureRenderer> create( QDomElement &element, const QgsReadWriteContext &context );
 
   protected:
     QgsFeatureRenderer *mLineRenderer = nullptr;

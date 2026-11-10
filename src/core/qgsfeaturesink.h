@@ -32,7 +32,6 @@
 class CORE_EXPORT QgsFeatureSink
 {
   public:
-
     /**
      * Flags that can be set on a QgsFeatureSink. Not all sinks may implement all flags.
      *
@@ -79,6 +78,13 @@ class CORE_EXPORT QgsFeatureSink
     Q_DECLARE_FLAGS( Flags, Flag )
 
     virtual ~QgsFeatureSink() = default;
+
+    /**
+     * Finalizes the sink, flushing any buffered features to the destination.
+     *
+     * \since QGIS 3.42
+     */
+    virtual void finalize();
 
     /**
      * Adds a single \a feature to the sink. Feature addition behavior is controlled by the specified \a flags.

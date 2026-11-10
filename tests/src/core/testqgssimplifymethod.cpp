@@ -12,44 +12,38 @@
  *   (at your option) any later version.                                   *
  *                                                                         *
  ***************************************************************************/
-#include "qgstest.h"
-
-#include <QObject>
-#include <QString>
-#include <QStringList>
-#include <QLocale>
-
 #include <memory>
 
 #include "qgssimplifymethod.h"
+#include "qgstest.h"
 
-class TestQgsSimplifyMethod: public QObject
+#include <QLocale>
+#include <QObject>
+#include <QString>
+#include <QStringList>
+
+using namespace Qt::StringLiterals;
+
+class TestQgsSimplifyMethod : public QObject
 {
     Q_OBJECT
 
   private slots:
-    void initTestCase();// will be called before the first testfunction is executed.
-    void cleanupTestCase();// will be called after the last testfunction was executed.
-    void init();// will be called before each testfunction is executed.
-    void cleanup();// will be called after every testfunction.
-    void testCreate();//test creating a simplify method
-    void testEqualityInequality();//test equality operator
+    void initTestCase();           // will be called before the first testfunction is executed.
+    void cleanupTestCase();        // will be called after the last testfunction was executed.
+    void init();                   // will be called before each testfunction is executed.
+    void cleanup();                // will be called after every testfunction.
+    void testCreate();             //test creating a simplify method
+    void testEqualityInequality(); //test equality operator
 
   private:
 };
 
 void TestQgsSimplifyMethod::initTestCase()
-{
-  // Set up the QgsSettings environment
-  QCoreApplication::setOrganizationName( QStringLiteral( "QGIS" ) );
-  QCoreApplication::setOrganizationDomain( QStringLiteral( "qgis.org" ) );
-  QCoreApplication::setApplicationName( QStringLiteral( "QGIS-TEST" ) );
-}
+{}
 
 void TestQgsSimplifyMethod::cleanupTestCase()
-{
-
-}
+{}
 
 void TestQgsSimplifyMethod::init()
 {

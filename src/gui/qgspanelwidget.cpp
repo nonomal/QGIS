@@ -12,18 +12,48 @@
  *   (at your option) any later version.                                   *
  *                                                                         *
  ***************************************************************************/
+#include "qgspanelwidget.h"
+
+#include "qgslogger.h"
+#include "qgssettings.h"
+
+#include <QDialog>
 #include <QDialogButtonBox>
 #include <QPushButton>
-#include <QDialog>
+#include <QString>
 #include <QVBoxLayout>
 
-#include "qgssettings.h"
-#include "qgspanelwidget.h"
-#include "qgslogger.h"
+#include "moc_qgspanelwidget.cpp"
+
+using namespace Qt::StringLiterals;
 
 QgsPanelWidget::QgsPanelWidget( QWidget *parent )
   : QWidget( parent )
 {
+  // Forward the changed signal to the deprecated one, for backwards compatibility.
+  // TODO QGIS 5.0 remove
+  Q_NOWARN_DEPRECATED_PUSH
+  connect( this, &QgsPanelWidget::changed, this, [this] {
+    if ( mForwardChangedSignal )
+    {
+      return;
+    }
+    mForwardChangedSignal = true;
+    emit widgetChanged();
+    mForwardChangedSignal = false;
+  } );
+
+  // Forward the deprecated signal to the new one for subclasses which still use the deprecated one
+  connect( this, &QgsPanelWidget::widgetChanged, this, [this] {
+    if ( mForwardChangedSignal )
+    {
+      return;
+    }
+    mForwardChangedSignal = true;
+    emit changed();
+    mForwardChangedSignal = false;
+  } );
+  Q_NOWARN_DEPRECATED_POP
 }
 
 void QgsPanelWidget::connectChildPanels( const QList<QgsPanelWidget *> &panels )
@@ -38,7 +68,7 @@ void QgsPanelWidget::connectChildPanels( const QList<QgsPanelWidget *> &panels )
 void QgsPanelWidget::connectChildPanel( QgsPanelWidget *panel )
 {
   connect( panel, &QgsPanelWidget::showPanel, this, &QgsPanelWidget::openPanel );
-  connect( panel, &QgsPanelWidget::widgetChanged, this, &QgsPanelWidget::widgetChanged );
+  connect( panel, &QgsPanelWidget::changed, this, &QgsPanelWidget::changed );
 }
 
 void QgsPanelWidget::setDockMode( bool dockMode )
@@ -56,7 +86,7 @@ QgsPanelWidget *QgsPanelWidget::findParentPanel( QWidget *widget )
   QWidget *p = widget;
   while ( p )
   {
-    if ( QgsPanelWidget *panel = qobject_cast< QgsPanelWidget * >( p ) )
+    if ( QgsPanelWidget *panel = qobject_cast<QgsPanelWidget *>( p ) )
       return panel;
 
     if ( p->window() == p )
@@ -94,7 +124,7 @@ void QgsPanelWidget::openPanel( QgsPanelWidget *panel )
   {
     // Show the dialog version if no one is connected
     QDialog *dlg = new QDialog();
-    const QString key = QStringLiteral( "/UI/paneldialog/%1" ).arg( panel->panelTitle() );
+    const QString key = u"/UI/paneldialog/%1"_s.arg( panel->panelTitle() );
     QgsSettings settings;
     dlg->restoreGeometry( settings.value( key ).toByteArray() );
     dlg->setWindowTitle( panel->panelTitle() );

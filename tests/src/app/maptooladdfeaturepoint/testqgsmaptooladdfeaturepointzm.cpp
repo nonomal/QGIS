@@ -13,24 +13,26 @@
  *                                                                         *
  ***************************************************************************/
 
-#include "qgstest.h"
-
 #include "qgisapp.h"
 #include "qgsadvanceddigitizingdockwidget.h"
 #include "qgsgeometry.h"
 #include "qgsmapcanvas.h"
 #include "qgsmapcanvassnappingutils.h"
-#include "qgssnappingconfig.h"
-#include "qgssnappingutils.h"
-#include "qgsmaptooladdfeature.h"
 #include "qgsmapcanvastracer.h"
+#include "qgsmapmouseevent.h"
+#include "qgsmaptooladdfeature.h"
 #include "qgsproject.h"
 #include "qgssettings.h"
 #include "qgssettingsregistrycore.h"
+#include "qgssnappingconfig.h"
+#include "qgssnappingutils.h"
+#include "qgstest.h"
 #include "qgsvectorlayer.h"
-#include "qgsmapmouseevent.h"
 #include "testqgsmaptoolutils.h"
 
+#include <QString>
+
+using namespace Qt::StringLiterals;
 
 /**
  * \ingroup UnitTests
@@ -43,8 +45,8 @@ class TestQgsMapToolAddFeaturePointZM : public QObject
     TestQgsMapToolAddFeaturePointZM();
 
   private slots:
-    void initTestCase();// will be called before the first testfunction is executed.
-    void cleanupTestCase();// will be called after the last testfunction was executed.
+    void initTestCase();    // will be called before the first testfunction is executed.
+    void cleanupTestCase(); // will be called after the last testfunction was executed.
 
     void testPointZM();
 
@@ -66,16 +68,11 @@ void TestQgsMapToolAddFeaturePointZM::initTestCase()
   QgsApplication::init();
   QgsApplication::initQgis();
 
-  // Set up the QSettings environment
-  QCoreApplication::setOrganizationName( QStringLiteral( "QGIS" ) );
-  QCoreApplication::setOrganizationDomain( QStringLiteral( "qgis.org" ) );
-  QCoreApplication::setApplicationName( QStringLiteral( "QGIS-TEST" ) );
-
   mQgisApp = new QgisApp();
 
   mCanvas = new QgsMapCanvas();
 
-  mCanvas->setDestinationCrs( QgsCoordinateReferenceSystem( QStringLiteral( "EPSG:27700" ) ) );
+  mCanvas->setDestinationCrs( QgsCoordinateReferenceSystem( u"EPSG:27700"_s ) );
 
   mCanvas->setFrameStyle( QFrame::NoFrame );
   mCanvas->resize( 512, 512 );
@@ -84,7 +81,7 @@ void TestQgsMapToolAddFeaturePointZM::initTestCase()
   mCanvas->hide();
 
   // make testing ZM layer
-  mLayerPointZM = new QgsVectorLayer( QStringLiteral( "PointZM?crs=EPSG:27700" ), QStringLiteral( "layer point ZM" ), QStringLiteral( "memory" ) );
+  mLayerPointZM = new QgsVectorLayer( u"PointZM?crs=EPSG:27700"_s, u"layer point ZM"_s, u"memory"_s );
   QVERIFY( mLayerPointZM->isValid() );
   QgsProject::instance()->addMapLayers( QList<QgsMapLayer *>() << mLayerPointZM );
 
@@ -94,7 +91,7 @@ void TestQgsMapToolAddFeaturePointZM::initTestCase()
   pointFZM.setGeometry( QgsGeometry::fromWkt( pointWktZM ) );
 
   mLayerPointZM->addFeature( pointFZM );
-  QCOMPARE( mLayerPointZM->featureCount(), ( long )1 );
+  QCOMPARE( mLayerPointZM->featureCount(), ( long ) 1 );
 
   // create the tool
   mCaptureTool = new QgsMapToolAddFeature( mCanvas, QgisApp::instance()->cadDockWidget(), QgsMapToolCapture::CapturePoint );
@@ -126,9 +123,9 @@ void TestQgsMapToolAddFeaturePointZM::testPointZM()
   utils.mouseClick( 4, 0, Qt::LeftButton, Qt::KeyboardModifiers(), true );
   QgsFeatureId newFid = utils.newFeatureId( oldFids );
 
-  QCOMPARE( mLayerPointZM->featureCount(), ( long )2 );
+  QCOMPARE( mLayerPointZM->featureCount(), ( long ) 2 );
 
-  QString wkt = "PointZM (4 0 123 333)";
+  QString wkt = "Point ZM (4 0 123 333)";
   QCOMPARE( mLayerPointZM->getFeature( newFid ).geometry().asWkt(), wkt );
 
   mLayerPointZM->undoStack()->undo();
@@ -142,7 +139,7 @@ void TestQgsMapToolAddFeaturePointZM::testPointZM()
   utils.mouseClick( 6, 6, Qt::LeftButton, Qt::KeyboardModifiers(), true );
   newFid = utils.newFeatureId( oldFids );
 
-  wkt = "PointZM (6 6 345 123)";
+  wkt = "Point ZM (6 6 345 123)";
   QCOMPARE( mLayerPointZM->getFeature( newFid ).geometry().asWkt(), wkt );
 
   mLayerPointZM->undoStack()->undo();

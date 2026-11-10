@@ -18,10 +18,11 @@
 #ifndef QGSALGORITHMRASTERSTATISTICS_H
 #define QGSALGORITHMRASTERSTATISTICS_H
 
-#define SIP_NO_FILE
 
 #include "qgis_sip.h"
 #include "qgsprocessingalgorithm.h"
+
+#define SIP_NO_FILE
 
 ///@cond PRIVATE
 
@@ -30,9 +31,7 @@
  */
 class QgsRasterStatisticsAlgorithm : public QgsProcessingAlgorithm
 {
-
   public:
-
     QgsRasterStatisticsAlgorithm() = default;
     QString name() const override;
     QString displayName() const override;
@@ -40,13 +39,12 @@ class QgsRasterStatisticsAlgorithm : public QgsProcessingAlgorithm
     QString group() const override;
     QString groupId() const override;
     QString shortHelpString() const override;
+    QString shortDescription() const override;
     void initAlgorithm( const QVariantMap &configuration = QVariantMap() ) override;
     QgsRasterStatisticsAlgorithm *createInstance() const override SIP_FACTORY;
 
   protected:
-
-    QVariantMap processAlgorithm( const QVariantMap &parameters,
-                                  QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
+    QVariantMap processAlgorithm( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
 };
 
 ///@endcond PRIVATE

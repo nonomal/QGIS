@@ -3,8 +3,9 @@
  *                                                                      *
  * src/core/providers/memory/qgsmemoryproviderutils.h                   *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/
+
 
 
 
@@ -20,15 +21,16 @@ Utility functions for use with the memory vector data provider.
 #include "qgsmemoryproviderutils.h"
 %End
   public:
-
-    static QgsVectorLayer *createMemoryLayer( const QString &name,
-        const QgsFields &fields,
-        Qgis::WkbType geometryType = Qgis::WkbType::NoGeometry,
-        const QgsCoordinateReferenceSystem &crs = QgsCoordinateReferenceSystem(),
-        bool loadDefaultStyle = true ) /Factory/;
+    static QgsVectorLayer *createMemoryLayer(
+      const QString &name,
+      const QgsFields &fields,
+      Qgis::WkbType geometryType = Qgis::WkbType::NoGeometry,
+      const QgsCoordinateReferenceSystem &crs = QgsCoordinateReferenceSystem(),
+      bool loadDefaultStyle = true
+    ) /Factory/;
 %Docstring
-Creates a new memory layer using the specified parameters. The caller takes responsibility
-for deleting the newly created layer.
+Creates a new memory layer using the specified parameters. The caller
+takes responsibility for deleting the newly created layer.
 
 :param name: layer name
 :param fields: fields for layer
@@ -38,12 +40,10 @@ for deleting the newly created layer.
 %End
 };
 
-
-
 /************************************************************************
  * This file has been generated automatically from                      *
  *                                                                      *
  * src/core/providers/memory/qgsmemoryproviderutils.h                   *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/

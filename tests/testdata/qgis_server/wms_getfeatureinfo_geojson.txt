@@ -5,12 +5,13 @@ Content-Type: application/geo+json; charset=utf-8
   "crs":
     {
       "properties": {
-        "name": "urn:ogc:def:crs:EPSG:0:3857"
+        "name": "urn:ogc:def:crs:EPSG::3857"
       },
       "type": "name"
     },
   "features": [
     {
+      "featureType": "testlayer èé",
       "geometry": null,
       "id": "testlayer èé.2",
       "properties": {

@@ -14,18 +14,21 @@
  ***************************************************************************/
 
 
+#include "qgsapplication.h"
+#include "qgsfiledownloader.h"
 #include "qgstest.h"
-#include <QObject>
-#include <QTemporaryFile>
-#include <QTemporaryDir>
-#include <QUrl>
+
 #include <QEventLoop>
+#include <QObject>
+#include <QString>
+#include <QTemporaryDir>
+#include <QTemporaryFile>
 #include <QTimer>
+#include <QUrl>
 
-#include <qgsapplication.h>
-#include <qgsfiledownloader.h>
+using namespace Qt::StringLiterals;
 
-class TestQgsFileDownloader: public QObject
+class TestQgsFileDownloader : public QObject
 {
     Q_OBJECT
   public:
@@ -33,26 +36,17 @@ class TestQgsFileDownloader: public QObject
 
   public slots:
     //! Called when the download has completed successfully
-    void downloadCompleted()
-    {
-      mCompleted = true;
-    }
+    void downloadCompleted() { mCompleted = true; }
     //! Called when the download exits
-    void downloadExited()
-    {
-      mExited = true;
-    }
+    void downloadExited() { mExited = true; }
     //! Called when the download was canceled by the user
-    void downloadCanceled()
-    {
-      mCanceled = true;
-    }
+    void downloadCanceled() { mCanceled = true; }
     //! Called when an error makes the download fail
     void downloadError( QStringList errorMessages )
     {
       mError = true;
       errorMessages.sort();
-      mErrorMessage = errorMessages.join( QLatin1Char( ';' ) );
+      mErrorMessage = errorMessages.join( ';'_L1 );
     }
     //! Called when data ready to be processed
     void downloadProgress( qint64 bytesReceived, qint64 bytesTotal )
@@ -63,10 +57,10 @@ class TestQgsFileDownloader: public QObject
     }
 
   private slots:
-    void initTestCase(); // will be called before the first testfunction is executed.
+    void initTestCase();    // will be called before the first testfunction is executed.
     void cleanupTestCase(); // will be called after the last testfunction was executed.
-    void init(); // will be called before each testfunction is executed.
-    void cleanup(); // will be called after every testfunction.
+    void init();            // will be called before each testfunction is executed.
+    void cleanup();         // will be called after every testfunction.
 
     void testValidDownload();
     void testInValidDownload();
@@ -84,11 +78,11 @@ class TestQgsFileDownloader: public QObject
     void makeCall( QUrl url, QString fileName, bool cancel = false );
     QTemporaryFile *mTempFile = nullptr;
     QString mErrorMessage;
-    bool mCanceled =  false ;
-    bool mProgress =  false ;
-    bool mError =  false ;
-    bool mCompleted =  false ;
-    bool mExited =  false ;
+    bool mCanceled = false;
+    bool mProgress = false;
+    bool mError = false;
+    bool mCompleted = false;
+    bool mExited = false;
     QgsFileDownloader *mFileDownloader = nullptr;
 };
 
@@ -109,14 +103,12 @@ void TestQgsFileDownloader::makeCall( QUrl url, QString fileName, bool cancel )
     QTimer::singleShot( 1000, mFileDownloader, &QgsFileDownloader::cancelDownload );
 
   loop.exec();
-
 }
 
 void TestQgsFileDownloader::initTestCase()
 {
   QgsApplication::init();
   QgsApplication::initQgis();
-
 }
 
 void TestQgsFileDownloader::cleanupTestCase()
@@ -138,7 +130,6 @@ void TestQgsFileDownloader::init()
 }
 
 
-
 void TestQgsFileDownloader::cleanup()
 {
   delete mTempFile;
@@ -146,8 +137,8 @@ void TestQgsFileDownloader::cleanup()
 
 void TestQgsFileDownloader::testValidDownload()
 {
-  QVERIFY( ! mTempFile->fileName().isEmpty() );
-  makeCall( QUrl( QStringLiteral( "http://www.qgis.org" ) ), mTempFile->fileName() );
+  QVERIFY( !mTempFile->fileName().isEmpty() );
+  makeCall( QUrl( u"http://www.qgis.org"_s ), mTempFile->fileName() );
   QVERIFY( mExited );
   QVERIFY( mCompleted );
   QVERIFY( mProgress );
@@ -158,8 +149,8 @@ void TestQgsFileDownloader::testValidDownload()
 
 void TestQgsFileDownloader::testInValidDownload()
 {
-  QVERIFY( ! mTempFile->fileName().isEmpty() );
-  makeCall( QUrl( QStringLiteral( "http://www.doesnotexistofthatimsure.qgis" ) ), mTempFile->fileName() );
+  QVERIFY( !mTempFile->fileName().isEmpty() );
+  makeCall( QUrl( u"http://www.doesnotexistofthatimsure.qgis"_s ), mTempFile->fileName() );
   QVERIFY( mExited );
   QVERIFY( !mCompleted );
   QVERIFY( mError );
@@ -170,8 +161,8 @@ void TestQgsFileDownloader::testInValidDownload()
 
 void TestQgsFileDownloader::testCanceledDownload()
 {
-  QVERIFY( ! mTempFile->fileName().isEmpty() );
-  makeCall( QUrl( QStringLiteral( "https://github.com/qgis/QGIS/archive/master.zip" ) ), mTempFile->fileName(), true );
+  QVERIFY( !mTempFile->fileName().isEmpty() );
+  makeCall( QUrl( u"https://github.com/qgis/QGIS/archive/master.zip"_s ), mTempFile->fileName(), true );
   QVERIFY( mExited );
   QVERIFY( !mCompleted );
   QVERIFY( !mError );
@@ -182,7 +173,7 @@ void TestQgsFileDownloader::testCanceledDownload()
 
 void TestQgsFileDownloader::testInvalidFile()
 {
-  makeCall( QUrl( QStringLiteral( "https://github.com/qgis/QGIS/archive/master.zip" ) ), QString() );
+  makeCall( QUrl( u"https://github.com/qgis/QGIS/archive/master.zip"_s ), QString() );
   QVERIFY( mExited );
   QVERIFY( !mCompleted );
   QVERIFY( mError );
@@ -192,8 +183,8 @@ void TestQgsFileDownloader::testInvalidFile()
 
 void TestQgsFileDownloader::testInvalidUrl()
 {
-  QVERIFY( ! mTempFile->fileName().isEmpty() );
-  makeCall( QUrl( QStringLiteral( "xyz://www" ) ), mTempFile->fileName() );
+  QVERIFY( !mTempFile->fileName().isEmpty() );
+  makeCall( QUrl( u"xyz://www"_s ), mTempFile->fileName() );
   QVERIFY( mExited );
   QVERIFY( !mCompleted );
   QVERIFY( mError );
@@ -203,7 +194,7 @@ void TestQgsFileDownloader::testInvalidUrl()
 
 void TestQgsFileDownloader::testBlankUrl()
 {
-  QVERIFY( ! mTempFile->fileName().isEmpty() );
+  QVERIFY( !mTempFile->fileName().isEmpty() );
   makeCall( QUrl( QString() ), mTempFile->fileName() );
   QVERIFY( mExited );
   QVERIFY( !mCompleted );
@@ -218,17 +209,29 @@ void TestQgsFileDownloader::testSslError_data()
   QTest::addColumn<QString>( "url" );
   QTest::addColumn<QString>( "result" );
 
-  QTest::newRow( "expired" ) << "https://expired.badssl.com/"
-                             << "SSL Errors: ;The certificate has expired";
-  QTest::newRow( "self-signed" ) << "https://self-signed.badssl.com/"
-                                 << "SSL Errors: ;The certificate is self-signed, and untrusted";
+  // badssl.com is really unstable, so prefer setting up a local instance if you want to reproduce
+  // like it's done in CI. To do so, see tests folder README.md, section "Local badssl server"
+
+  QString expiredUrl = qgetenv( "QGIS_BADSSL_URL_EXPIRED" );
+  if ( expiredUrl.isEmpty() )
+    expiredUrl = u"https://expired.badssl.com/"_s;
+
+  QString selfSignedUrl = qgetenv( "QGIS_BADSSL_URL_SELFSIGNED" );
+  if ( selfSignedUrl.isEmpty() )
+    selfSignedUrl = u"https://self-signed.badssl.com/"_s;
+
+  QTest::newRow( "expired" ) << expiredUrl << "SSL Errors: ;The certificate has expired";
+  QTest::newRow( "self-signed" ) << selfSignedUrl << "SSL Errors: ;The certificate is self-signed, and untrusted";
 }
 
 void TestQgsFileDownloader::testSslError()
 {
   QFETCH( QString, url );
   QFETCH( QString, result );
-  QVERIFY( ! mTempFile->fileName().isEmpty() );
+
+  qDebug() << "url:" << url;
+
+  QVERIFY( !mTempFile->fileName().isEmpty() );
   makeCall( QUrl( url ), mTempFile->fileName() );
   QCOMPARE( mErrorMessage, result );
   QVERIFY( !mCompleted );
@@ -239,16 +242,16 @@ void TestQgsFileDownloader::testSslError()
 void TestQgsFileDownloader::testLacksWritePermissionsError()
 {
   const QTemporaryDir dir;
-  QFile tmpDir( dir.path( ) );
-  tmpDir.setPermissions( tmpDir.permissions() & ~( QFile::Permission::WriteGroup |  QFile::Permission::WriteUser | QFile::Permission::WriteOther | QFile::Permission::WriteOwner ) );
-  QVERIFY( ! tmpDir.isWritable() );
-  const QString fileName( dir.path() + '/' + QStringLiteral( "tmp.bin" ) );
-  makeCall( QUrl( QStringLiteral( "http://www.qgis.org" ) ), fileName );
+  QFile tmpDir( dir.path() );
+  tmpDir.setPermissions( tmpDir.permissions() & ~( QFile::Permission::WriteGroup | QFile::Permission::WriteUser | QFile::Permission::WriteOther | QFile::Permission::WriteOwner ) );
+  QVERIFY( !tmpDir.isWritable() );
+  const QString fileName( dir.path() + '/' + u"tmp.bin"_s );
+  makeCall( QUrl( u"http://www.qgis.org"_s ), fileName );
   QVERIFY( mExited );
   QVERIFY( !mCompleted );
   QVERIFY( mError );
   QVERIFY( !mCanceled );
-  QVERIFY( ! QFileInfo::exists( fileName ) );
+  QVERIFY( !QFileInfo::exists( fileName ) );
 }
 
 
@@ -257,5 +260,3 @@ void TestQgsFileDownloader::testLacksWritePermissionsError()
 
 QGSTEST_MAIN( TestQgsFileDownloader )
 #include "testqgsfiledownloader.moc"
-
-

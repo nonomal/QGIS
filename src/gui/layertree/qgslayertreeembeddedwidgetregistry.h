@@ -16,11 +16,11 @@
 #ifndef QGSLAYERTREEEMBEDDEDWIDGETREGISTRY_H
 #define QGSLAYERTREEEMBEDDEDWIDGETREGISTRY_H
 
-#include <QMap>
 #include "qgis.h"
-#include <QWidget>
 #include "qgis_gui.h"
 
+#include <QMap>
+#include <QWidget>
 
 class QgsMapLayer;
 
@@ -28,6 +28,7 @@ class QgsMapLayer;
  * \ingroup gui
  * \class QgsLayerTreeEmbeddedWidgetProvider
  * \brief Provider interface to be implemented in order to introduce new kinds of embedded widgets for use in layer tree.
+ *
  * Embedded widgets are assigned per individual map layers and they are shown before any legend entries.
  * \see QgsLayerTreeEmbeddedWidgetRegistry
  */
@@ -57,6 +58,7 @@ class GUI_EXPORT QgsLayerTreeEmbeddedWidgetProvider
  * \ingroup gui
  * \class QgsLayerTreeEmbeddedWidgetRegistry
  * \brief Registry of widgets that may be embedded into layer tree view.
+ *
  * Embedded widgets are assigned per individual map layers and they are shown before any legend entries.
  * Layer tree must have UseEmbeddedWidgets flag enabled in order to show assigned widgets.
  *
@@ -68,7 +70,6 @@ class GUI_EXPORT QgsLayerTreeEmbeddedWidgetProvider
 class GUI_EXPORT QgsLayerTreeEmbeddedWidgetRegistry
 {
   public:
-
     /**
      * Constructor for QgsLayerTreeEmbeddedWidgetRegistry/
      *
@@ -79,9 +80,7 @@ class GUI_EXPORT QgsLayerTreeEmbeddedWidgetRegistry
 
     ~QgsLayerTreeEmbeddedWidgetRegistry();
 
-    //! QgsLayerTreeEmbeddedWidgetRegistry cannot be copied.
     QgsLayerTreeEmbeddedWidgetRegistry( const QgsLayerTreeEmbeddedWidgetRegistry &other ) = delete;
-    //! QgsLayerTreeEmbeddedWidgetRegistry cannot be copied.
     QgsLayerTreeEmbeddedWidgetRegistry &operator=( const QgsLayerTreeEmbeddedWidgetRegistry &other ) = delete;
 
     //! Returns list of all registered providers
@@ -103,7 +102,6 @@ class GUI_EXPORT QgsLayerTreeEmbeddedWidgetRegistry
     bool removeProvider( const QString &providerId );
 
   protected:
-
     //! storage of all the providers
     QMap<QString, QgsLayerTreeEmbeddedWidgetProvider *> mProviders;
 
@@ -111,7 +109,6 @@ class GUI_EXPORT QgsLayerTreeEmbeddedWidgetRegistry
 #ifdef SIP_RUN
     QgsLayerTreeEmbeddedWidgetRegistry( const QgsLayerTreeEmbeddedWidgetRegistry &other );
 #endif
-
 };
 
 

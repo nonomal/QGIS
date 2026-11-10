@@ -17,13 +17,15 @@
  ***************************************************************************/
 
 #include "qgsabstractdatasourcewidget.h"
+
 #include <QPushButton>
 
-QgsAbstractDataSourceWidget::QgsAbstractDataSourceWidget( QWidget *parent, Qt::WindowFlags fl, QgsProviderRegistry::WidgetMode widgetMode ):
-  QDialog( parent, fl ),
-  mWidgetMode( widgetMode )
-{
-}
+#include "moc_qgsabstractdatasourcewidget.cpp"
+
+QgsAbstractDataSourceWidget::QgsAbstractDataSourceWidget( QWidget *parent, Qt::WindowFlags fl, QgsProviderRegistry::WidgetMode widgetMode )
+  : QDialog( parent, fl )
+  , mWidgetMode( widgetMode )
+{}
 
 QgsProviderRegistry::WidgetMode QgsAbstractDataSourceWidget::widgetMode() const
 {
@@ -38,7 +40,7 @@ QgsBrowserModel *QgsAbstractDataSourceWidget::browserModel()
 void QgsAbstractDataSourceWidget::setupButtons( QDialogButtonBox *buttonBox )
 {
   buttonBox->setStandardButtons( QDialogButtonBox::Apply | QDialogButtonBox::Close | QDialogButtonBox::Help );
-#ifdef Q_OS_MACX
+#ifdef Q_OS_MACOS
   buttonBox->setStyleSheet( "* { button-layout: 2 }" );
 #endif
   mAddButton = buttonBox->button( QDialogButtonBox::Apply );
@@ -59,12 +61,10 @@ void QgsAbstractDataSourceWidget::setBrowserModel( QgsBrowserModel *model )
 }
 
 void QgsAbstractDataSourceWidget::addButtonClicked()
-{
-}
+{}
 
 void QgsAbstractDataSourceWidget::reset()
-{
-}
+{}
 
 bool QgsAbstractDataSourceWidget::configureFromUri( const QString &uri )
 {

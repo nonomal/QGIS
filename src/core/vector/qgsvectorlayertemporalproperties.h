@@ -19,11 +19,11 @@
 #ifndef QGSVECTORLAYERTEMPORALPROPERTIES_H
 #define QGSVECTORLAYERTEMPORALPROPERTIES_H
 
-#include "qgis_core.h"
 #include "qgis.h"
+#include "qgis_core.h"
 #include "qgis_sip.h"
-#include "qgsrange.h"
 #include "qgsmaplayertemporalproperties.h"
+#include "qgsrange.h"
 
 class QgsVectorLayer;
 class QgsFields;
@@ -32,14 +32,13 @@ class QgsFields;
  * \class QgsVectorLayerTemporalContext
  * \ingroup core
  * \brief Encapsulates the context in which a QgsVectorLayer's temporal capabilities
- * will be applied
+ * will be applied.
  *
  * \since QGIS 3.14
  */
 class CORE_EXPORT QgsVectorLayerTemporalContext
 {
   public:
-
     /**
      * Returns the associated layer.
      *
@@ -55,7 +54,6 @@ class CORE_EXPORT QgsVectorLayerTemporalContext
     void setLayer( QgsVectorLayer *layer );
 
   private:
-
     QgsVectorLayer *mLayer = nullptr;
 };
 
@@ -71,7 +69,6 @@ class CORE_EXPORT QgsVectorLayerTemporalProperties : public QgsMapLayerTemporalP
     Q_OBJECT
 
   public:
-
     /**
      * Constructor for QgsVectorLayerTemporalProperties, with the specified \a parent object.
      *
@@ -340,7 +337,6 @@ class CORE_EXPORT QgsVectorLayerTemporalProperties : public QgsMapLayerTemporalP
     void setDefaultsFromDataProviderTemporalCapabilities( const QgsDataProviderTemporalCapabilities *capabilities ) override;
 
   private:
-
     //! Temporal layer mode.
     Qgis::VectorTemporalMode mMode = Qgis::VectorTemporalMode::FixedTemporalRange;
 
@@ -361,7 +357,6 @@ class CORE_EXPORT QgsVectorLayerTemporalProperties : public QgsMapLayerTemporalP
 
     QString mStartExpression;
     QString mEndExpression;
-
 };
 
 #endif // QGSVECTORLAYERTEMPORALPROPERTIES_H

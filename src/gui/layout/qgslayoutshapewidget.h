@@ -19,12 +19,14 @@
 #define QGSLAYOUTSHAPEWIDGET_H
 
 // We don't want to expose this in the public API
-#define SIP_NO_FILE
+
+#include "ui_qgslayoutshapewidgetbase.h"
 
 #include "qgis_gui.h"
-#include "ui_qgslayoutshapewidgetbase.h"
-#include "qgslayoutitemwidget.h"
 #include "qgslayoutitemshape.h"
+#include "qgslayoutitemwidget.h"
+
+#define SIP_NO_FILE
 
 /**
  * \ingroup gui
@@ -33,7 +35,7 @@
  * \note This class is not a part of public API
  * \since QGIS 3.12
  */
-class GUI_EXPORT QgsLayoutShapeWidget: public QgsLayoutItemBaseWidget, private Ui::QgsLayoutShapeWidgetBase
+class GUI_EXPORT QgsLayoutShapeWidget : public QgsLayoutItemBaseWidget, private Ui::QgsLayoutShapeWidgetBase
 {
     Q_OBJECT
   public:
@@ -42,12 +44,11 @@ class GUI_EXPORT QgsLayoutShapeWidget: public QgsLayoutItemBaseWidget, private U
     void setMasterLayout( QgsMasterLayoutInterface *masterLayout ) override;
 
   protected:
-
     bool setNewItem( QgsLayoutItem *item ) override;
 
 
   private:
-    QPointer< QgsLayoutItemShape > mShape;
+    QPointer<QgsLayoutItemShape> mShape;
     QgsLayoutItemPropertiesWidget *mItemPropertiesWidget = nullptr;
 
     //! Blocks / unblocks the signal of all GUI elements

@@ -17,26 +17,39 @@
  ***************************************************************************/
 
 #include "qgslightsource.h"
-#include "qgspointlightsettings.h"
+
 #include "qgsdirectionallightsettings.h"
+#include "qgspointlightsettings.h"
+#include "qgssunlightsettings.h"
+
+#include <QString>
+#include <QUuid>
+
+using namespace Qt::StringLiterals;
+
+QgsLightSource::QgsLightSource()
+  : mId( QUuid::createUuid().toString( QUuid::StringFormat::WithoutBraces ) )
+{}
 
 QgsLightSource::~QgsLightSource() = default;
 
 void QgsLightSource::resolveReferences( const QgsProject & )
-{
-
-}
+{}
 
 QgsLightSource *QgsLightSource::createFromXml( const QDomElement &element, const QgsReadWriteContext &context )
 {
-  std::unique_ptr< QgsLightSource > res;
-  if ( element.nodeName() == QLatin1String( "point-light" ) )
+  std::unique_ptr<QgsLightSource> res;
+  if ( element.nodeName() == "point-light"_L1 )
   {
-    res = std::make_unique< QgsPointLightSettings >();
+    res = std::make_unique<QgsPointLightSettings>();
   }
-  else if ( element.nodeName() == QLatin1String( "directional-light" ) )
+  else if ( element.nodeName() == "directional-light"_L1 )
   {
-    res = std::make_unique< QgsDirectionalLightSettings >();
+    res = std::make_unique<QgsDirectionalLightSettings>();
+  }
+  else if ( element.nodeName() == "sun-light"_L1 )
+  {
+    res = std::make_unique<QgsSunLightSettings>();
   }
 
   if ( res )

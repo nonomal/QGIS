@@ -22,7 +22,7 @@
 
 /**
  * \ingroup gui
- * \brief The QgsAbstractDbTableModel class is a pure virtual model class for results in a database source widget selector
+ * \brief Pure virtual model class for results in a database source widget selector.
  * \since QGIS 3.24
  */
 class CORE_EXPORT QgsAbstractDbTableModel : public QStandardItemModel
@@ -41,7 +41,11 @@ class CORE_EXPORT QgsAbstractDbTableModel : public QStandardItemModel
     virtual int defaultSearchColumn() const = 0;
 
     //! Returns if the column should be searchable at the given index
-    virtual bool searchableColumn( int column ) const {Q_UNUSED( column ) return true;}
+    virtual bool searchableColumn( int column ) const
+    {
+      Q_UNUSED( column )
+      return true;
+    }
 
     //! Sets an sql statement that belongs to a cell specified by a model index
     virtual void setSql( const QModelIndex &index, const QString &sql ) = 0;

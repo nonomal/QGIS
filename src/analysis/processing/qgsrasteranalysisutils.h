@@ -16,12 +16,13 @@
 #ifndef QGSRASTERANALYSISUTILS_H
 #define QGSRASTERANALYSISUTILS_H
 
-#include "qgis_analysis.h"
-#include "qgis.h"
-
 #include <functional>
 #include <memory>
 #include <vector>
+
+#include "qgis.h"
+#include "qgis_analysis.h"
+#include "qgspointxy.h"
 
 #define SIP_NO_FILE
 
@@ -42,17 +43,37 @@ namespace QgsRasterAnalysisUtils
   /**
    * Analyzes which cells need to be considered to completely cover the bounding box of a feature.
   */
-  void cellInfoForBBox( const QgsRectangle &rasterBBox, const QgsRectangle &featureBBox, double cellSizeX, double cellSizeY, int &nCellsX, int &nCellsY,
-                        int rasterWidth, int rasterHeight,
-                        QgsRectangle &rasterBlockExtent );
+  void cellInfoForBBox(
+    const QgsRectangle &rasterBBox, const QgsRectangle &featureBBox, double cellSizeX, double cellSizeY, int &nCellsX, int &nCellsY, int rasterWidth, int rasterHeight, QgsRectangle &rasterBlockExtent
+  );
 
   //! Returns statistics by considering the pixels where the center point is within the polygon (fast)
-  void statisticsFromMiddlePointTest( QgsRasterInterface *rasterInterface, int rasterBand, const QgsGeometry &poly, int nCellsX, int nCellsY,
-                                      double cellSizeX, double cellSizeY, const QgsRectangle &rasterBBox, const std::function<void( double )> &addValue, bool skipNodata = true );
+  void statisticsFromMiddlePointTest(
+    QgsRasterInterface *rasterInterface,
+    int rasterBand,
+    const QgsGeometry &poly,
+    int nCellsX,
+    int nCellsY,
+    double cellSizeX,
+    double cellSizeY,
+    const QgsRectangle &rasterBBox,
+    const std::function<void( double, const QgsPointXY & )> &addValue,
+    bool skipNodata = true
+  );
 
   //! Returns statistics with precise pixel - polygon intersection test (slow)
-  void statisticsFromPreciseIntersection( QgsRasterInterface *rasterInterface, int rasterBand, const QgsGeometry &poly, int nCellsX, int nCellsY,
-                                          double cellSizeX, double cellSizeY, const QgsRectangle &rasterBBox, const std::function<void( double, double )> &addValue, bool skipNodata = true );
+  void statisticsFromPreciseIntersection(
+    QgsRasterInterface *rasterInterface,
+    int rasterBand,
+    const QgsGeometry &poly,
+    int nCellsX,
+    int nCellsY,
+    double cellSizeX,
+    double cellSizeY,
+    const QgsRectangle &rasterBBox,
+    const std::function<void( double, double, const QgsPointXY & )> &addValue,
+    bool skipNodata = true
+  );
 
   //! Tests whether a pixel's value should be included in the result
   bool validPixel( double value );
@@ -67,9 +88,7 @@ namespace QgsRasterAnalysisUtils
    * Returns a new processing enum parameter for choice of raster data types.
    * \see rasterTypeChoiceToDataType()
    */
-  std::unique_ptr< QgsProcessingParameterDefinition > createRasterTypeParameter( const QString &name,
-      const QString &description,
-      Qgis::DataType defaultType = Qgis::DataType::Float32 );
+  std::unique_ptr<QgsProcessingParameterDefinition> createRasterTypeParameter( const QString &name, const QString &description, Qgis::DataType defaultType = Qgis::DataType::Float32 );
 
   /**
    * Converts the value of a raster type parameter to the corresponding data type.
@@ -79,22 +98,32 @@ namespace QgsRasterAnalysisUtils
 
   struct RasterLogicInput
   {
-    std::unique_ptr< QgsRasterInterface > sourceDataProvider;
-    std::unique_ptr< QgsRasterProjector> projector;
-    QgsRasterInterface *interface = nullptr;
-    bool hasNoDataValue = false;
-    std::vector< int > bands { 1 };
+      std::unique_ptr<QgsRasterInterface> sourceDataProvider;
+      std::unique_ptr<QgsRasterProjector> projector;
+      QgsRasterInterface *interface = nullptr;
+      bool hasNoDataValue = false;
+      std::vector<int> bands { 1 };
   };
 
-  ANALYSIS_EXPORT void applyRasterLogicOperator( const std::vector< QgsRasterAnalysisUtils::RasterLogicInput > &inputs, QgsRasterDataProvider *destinationRaster, double outputNoDataValue, const bool treatNoDataAsFalse,
-      int width, int height, const QgsRectangle &extent, QgsFeedback *feedback,
-      std::function<void( const std::vector< std::unique_ptr< QgsRasterBlock > > &, bool &, bool &, int, int, bool )> &applyLogicFunc,
-      qgssize &noDataCount, qgssize &trueCount, qgssize &falseCount );
+  ANALYSIS_EXPORT void applyRasterLogicOperator(
+    const std::vector<QgsRasterAnalysisUtils::RasterLogicInput> &inputs,
+    std::unique_ptr<QgsRasterDataProvider> destinationRaster,
+    double outputNoDataValue,
+    const bool treatNoDataAsFalse,
+    int width,
+    int height,
+    const QgsRectangle &extent,
+    QgsFeedback *feedback,
+    std::function<void( const std::vector<std::unique_ptr<QgsRasterBlock>> &, bool &, bool &, int, int, bool )> &applyLogicFunc,
+    qgssize &noDataCount,
+    qgssize &trueCount,
+    qgssize &falseCount
+  );
 
   /**
    * Returns a vector of double values obtained from a stack of input QgsRasterBlocks
    */
-  std::vector<double> getCellValuesFromBlockStack( const std::vector< std::unique_ptr< QgsRasterBlock > > &inputBlocks, int &row, int &col, bool &noDataInStack );
+  std::vector<double> getCellValuesFromBlockStack( const std::vector<std::unique_ptr<QgsRasterBlock>> &inputBlocks, int &row, int &col, bool &noDataInStack );
 
   /**
    * Enum of cell value statistic methods to be used with QgsProcessingParameterEnum
@@ -212,7 +241,92 @@ namespace QgsRasterAnalysisUtils
    */
   double interpolatedPercentRankExc( std::vector<double> &cellValues, int stackSize, double value, double noDataValue );
 
-}
+  /**
+   * Calculates the Euclidean distance from a central grid cell to an adjacent neighbor
+   * cell in a specified direction, accounting for rectangular cell dimensions.
+   *
+   * Neighbor directions follow SAGA's 8-neighbor clockwise convention starting at North:
+   *
+   * - 0 = North
+   * - 1 = North-East
+   * - 2 = East
+   * - 3 = South-East
+   * - 4 = South
+   * - 5 = South-West
+   * - 6 = West
+   * - 7 = North-West
+   *
+   * \param direction Neighbor direction index (0 to 7).
+   * \param cellSizeX Cell width in map units.
+   * \param cellSizeY Cell height in map units.
+   *
+   * \returns The distance to the neighbor cell in map units.
+   *
+   * \since QGIS 4.4
+   */
+  ANALYSIS_EXPORT double neighborCellDistance( int direction, double cellSizeX, double cellSizeY );
+
+  /**
+   * Computes the column and row indices for an adjacent neighbor cell in a specified direction,
+   * and determines whether the resulting cell falls within valid grid extent boundaries.
+   *
+   * Neighbor directions follow SAGA's 8-neighbor clockwise convention starting at North:
+   *
+   * - 0 = North
+   * - 1 = North-East
+   * - 2 = East
+   * - 3 = South-East
+   * - 4 = South
+   * - 5 = South-West
+   * - 6 = West
+   * - 7 = North-West
+   *
+   * \param direction Direction to the neighbor cell (0 to 7).
+   * \param column Origin cell column index.
+   * \param row Origin cell row index.
+   * \param neighborColumn will be set to the column index of the neighbor cell.
+   * \param neighborRow will be set to the row index of the neighbor cell.
+   * \param columns Total number of columns in the grid.
+   * \param rows Total number of rows in the grid.
+   *
+   * \returns TRUE if the neighbor cell lies strictly within grid boundaries
+   *
+   * \since QGIS 4.4
+   */
+  ANALYSIS_EXPORT bool neighborCellCoordinates( int direction, int row, int column, int &neighborRow, int &neighborColumn, int rows, int columns );
+
+  /**
+   * Identifies the neighbor direction corresponding to the maximum surface gradient
+   * from a central cell using the Deterministic 8 (D8) flow routing model.
+   *
+   * Evaluates all 8 adjacent neighbor cells in the raster block to find the direction of steepest
+   * downslope drop (or steepest upslope rise if \a downhill is FALSE).
+   *
+   * - 0 = North
+   * - 1 = North-East
+   * - 2 = East
+   * - 3 = South-East
+   * - 4 = South
+   * - 5 = South-West
+   * - 6 = West
+   * - 7 = North-West
+   *
+   * \param demBlock Raster block containing elevation surface values.
+   * \param rows total number of rows in raster block.
+   * \param row Central cell row index.
+   * \param column Central cell column index.
+   * \param cellSizeX Cell width in map units.
+   * \param cellSizeY Cell height in map units.
+   * \param downhill If TRUE, finds the steepest downslope direction. If FALSE, finds the steepest upslope direction.
+   * \param noEdges If TRUE returns -3 if the central cell or any adjacent neighbor lies on the outer boundary of the raster block or borders a NoData cell.
+   *
+   * \returns the Direction index (0 to 7) corresponding to the steepest gradient, or -1 for sink/pit cells, -2 if no valid gradient
+   *         exists (e.g. flat terrain), or -3 for NoData cell, or edge cell when \a noEdges is TRUE.
+   */
+  ANALYSIS_EXPORT int steepestGradientDirection( const QgsRasterBlock *demBlock, int row, int column, double cellSizeX, double cellSizeY, bool downhill = true, bool noEdges = true );
+
+
+} //namespace QgsRasterAnalysisUtils
 
 
 ///@endcond PRIVATE

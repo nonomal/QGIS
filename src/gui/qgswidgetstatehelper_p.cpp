@@ -14,24 +14,25 @@
  *                                                                         *
  ***************************************************************************/
 #include "qgswidgetstatehelper_p.h"
-#include <QWindow>
-#include <QWidget>
-#include <QEvent>
-#include <QObject>
-#include <QVariant>
+
 #include "qgsguiutils.h"
 #include "qgslogger.h"
 
-QgsWidgetStateHelper::QgsWidgetStateHelper( QObject *parent ) : QObject( parent )
-{
+#include <QEvent>
+#include <QObject>
+#include <QVariant>
+#include <QWidget>
+#include <QWindow>
 
-}
+#include "moc_qgswidgetstatehelper_p.cpp"
+
+QgsWidgetStateHelper::QgsWidgetStateHelper( QObject *parent )
+  : QObject( parent )
+{}
 
 bool QgsWidgetStateHelper::eventFilter( QObject *object, QEvent *event )
 {
-  if ( event->type() == QEvent::Close ||
-       event->type() == QEvent::Destroy ||
-       event->type() == QEvent::Hide )
+  if ( event->type() == QEvent::Close || event->type() == QEvent::Destroy || event->type() == QEvent::Hide )
   {
     QWidget *widget = qobject_cast<QWidget *>( object );
 
@@ -41,11 +42,17 @@ bool QgsWidgetStateHelper::eventFilter( QObject *object, QEvent *event )
       const QString name = widgetSafeName( widget );
       const QString key = mKeys[name];
       QgsGuiUtils::saveGeometry( widget, key );
+      widget->setProperty( "widgetStateHelperWasShown", QVariant( false ) );
     }
   }
   else if ( event->type() == QEvent::Show )
   {
     QWidget *widget = qobject_cast<QWidget *>( object );
+
+    // Skip geometry restore if the widget has already been shown once.
+    if ( widget->property( "widgetStateHelperWasShown" ).toBool() )
+      return QObject::eventFilter( object, event );
+
     const QString name = widgetSafeName( widget );
 
     // If window is already maximized by Window Manager,

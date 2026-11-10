@@ -19,17 +19,22 @@
 
 #include "qgsfieldvalidator.h"
 
-#include <QValidator>
-#include <QRegularExpression>
-#include <QRegularExpressionValidator>
-#include <QDate>
-#include <QVariant>
-
-#include "qgssettings.h"
+#include "qgsapplication.h"
+#include "qgsfields.h"
 #include "qgslogger.h"
 #include "qgslonglongvalidator.h"
-#include "qgsfields.h"
-#include "qgsapplication.h"
+#include "qgssettings.h"
+
+#include <QDate>
+#include <QRegularExpression>
+#include <QRegularExpressionValidator>
+#include <QString>
+#include <QValidator>
+#include <QVariant>
+
+#include "moc_qgsfieldvalidator.cpp"
+
+using namespace Qt::StringLiterals;
 
 QgsFieldValidator::QgsFieldValidator( QObject *parent, const QgsField &field, const QString &defaultValue, const QString &dateFormat )
   : QValidator( parent )
@@ -39,11 +44,11 @@ QgsFieldValidator::QgsFieldValidator( QObject *parent, const QgsField &field, co
 {
   switch ( mField.type() )
   {
-    case QVariant::Int:
+    case QMetaType::Type::Int:
     {
       if ( mField.length() > 0 )
       {
-        const QString re = QStringLiteral( "-?\\d{0,%1}" ).arg( mField.length() );
+        const QString re = u"-?\\d{0,%1}"_s.arg( mField.length() );
         mValidator = new QRegularExpressionValidator( QRegularExpression( re ), parent );
       }
       else
@@ -53,7 +58,7 @@ QgsFieldValidator::QgsFieldValidator( QObject *parent, const QgsField &field, co
     }
     break;
 
-    case QVariant::Double:
+    case QMetaType::Type::Double:
     {
       if ( mField.length() > 0 && mField.precision() > 0 )
       {
@@ -61,17 +66,17 @@ QgsFieldValidator::QgsFieldValidator( QObject *parent, const QgsField &field, co
         // Also accept locale's decimalPoint if it's not a dot
         if ( QLocale().decimalPoint() != '.' )
         {
-          re = QStringLiteral( "-?\\d{0,%1}([\\.%2]\\d{0,%3})?" ).arg( mField.length() - mField.precision() ).arg( QLocale().decimalPoint() ).arg( mField.precision() );
+          re = u"-?\\d{0,%1}([\\.%2]\\d{0,%3})?"_s.arg( mField.length() - mField.precision() ).arg( QLocale().decimalPoint() ).arg( mField.precision() );
         }
         else
         {
-          re = QStringLiteral( "-?\\d{0,%1}([\\.,]\\d{0,%2})?" ).arg( mField.length() - mField.precision() ).arg( mField.precision() );
+          re = u"-?\\d{0,%1}([\\.,]\\d{0,%2})?"_s.arg( mField.length() - mField.precision() ).arg( mField.precision() );
         }
         mValidator = new QRegularExpressionValidator( QRegularExpression( re ), parent );
       }
       else if ( mField.length() > 0 && mField.precision() == 0 )
       {
-        const QString re = QStringLiteral( "-?\\d{0,%1}" ).arg( mField.length() );
+        const QString re = u"-?\\d{0,%1}"_s.arg( mField.length() );
         mValidator = new QRegularExpressionValidator( QRegularExpression( re ), parent );
       }
       else if ( mField.precision() > 0 )
@@ -80,11 +85,11 @@ QgsFieldValidator::QgsFieldValidator( QObject *parent, const QgsField &field, co
         // Also accept locale's decimalPoint if it's not a dot
         if ( QLocale().decimalPoint() != '.' )
         {
-          re = QStringLiteral( "-?\\d*([\\.%1]\\d{0,%2})?" ).arg( QLocale().decimalPoint(), mField.precision() );
+          re = u"-?\\d*([\\.%1]\\d{0,%2})?"_s.arg( QLocale().decimalPoint(), mField.precision() );
         }
         else
         {
-          re = QStringLiteral( "-?\\d*([\\.]\\d{0,%1})?" ).arg( mField.precision() );
+          re = u"-?\\d*([\\.]\\d{0,%1})?"_s.arg( mField.precision() );
         }
         mValidator = new QRegularExpressionValidator( QRegularExpression( re ), parent );
       }
@@ -95,7 +100,7 @@ QgsFieldValidator::QgsFieldValidator( QObject *parent, const QgsField &field, co
     }
     break;
 
-    case QVariant::LongLong :
+    case QMetaType::Type::LongLong:
       mValidator = new QgsLongLongValidator( parent );
       break;
 
@@ -107,20 +112,12 @@ QgsFieldValidator::QgsFieldValidator( QObject *parent, const QgsField &field, co
 }
 
 QgsFieldValidator::~QgsFieldValidator()
-{
-  delete mValidator;
-}
+{}
 
 QValidator::State QgsFieldValidator::validate( QString &s, int &i ) const
 {
   // empty values are considered NULL for numbers and dates and are acceptable
-  if ( s.isEmpty() &&
-       ( mField.type() == QVariant::Double
-         || mField.type() == QVariant::Int
-         || mField.type() == QVariant::LongLong
-         || mField.type() == QVariant::Date
-       )
-     )
+  if ( s.isEmpty() && ( mField.type() == QMetaType::Type::Double || mField.type() == QMetaType::Type::Int || mField.type() == QMetaType::Type::LongLong || mField.type() == QMetaType::Type::QDate ) )
   {
     return Acceptable;
   }
@@ -134,7 +131,7 @@ QValidator::State QgsFieldValidator::validate( QString &s, int &i ) const
     const QValidator::State result = mValidator->validate( s, i );
     return result;
   }
-  else if ( mField.type() == QVariant::String )
+  else if ( mField.type() == QMetaType::Type::QString )
   {
     if ( s == mNullValue )
       return Acceptable;
@@ -151,25 +148,21 @@ QValidator::State QgsFieldValidator::validate( QString &s, int &i ) const
       return Invalid;
     }
   }
-  else if ( mField.type() == QVariant::Date )
+  else if ( mField.type() == QMetaType::Type::QDate )
   {
     return QDate::fromString( s, mDateFormat ).isValid() ? Acceptable : Intermediate;
   }
-  else if ( mField.type() == QVariant::Map )
+  else if ( mField.type() == QMetaType::Type::QVariantMap )
   {
     return Acceptable;
   }
-  else if ( mField.type() == QVariant::UserType && mField.typeName().compare( QLatin1String( "geometry" ), Qt::CaseInsensitive ) == 0 )
+  else if ( mField.type() == QMetaType::Type::User && mField.typeName().compare( "geometry"_L1, Qt::CaseInsensitive ) == 0 )
   {
     return Acceptable;
   }
   else
   {
-    QgsDebugError(
-      QStringLiteral( "unsupported type %1 (%2) for validation" )
-      .arg( mField.type() )
-      .arg( mField.typeName() )
-    );
+    QgsDebugError( u"unsupported type %1 (%2) for validation"_s.arg( mField.type() ).arg( mField.typeName() ) );
     return Invalid;
   }
 
@@ -182,12 +175,12 @@ void QgsFieldValidator::fixup( QString &s ) const
   {
     mValidator->fixup( s );
   }
-  else if ( mField.type() == QVariant::String && mField.length() > 0 && s.size() > mField.length() && s != mDefaultValue )
+  else if ( mField.type() == QMetaType::Type::QString && mField.length() > 0 && s.size() > mField.length() && s != mDefaultValue )
   {
     // if the value is longer, this must be a partial NULL representation
     s = mNullValue;
   }
-  else if ( mField.type() == QVariant::Date )
+  else if ( mField.type() == QMetaType::Type::QDate )
   {
     // invalid dates will also translate to NULL
     s = QString();

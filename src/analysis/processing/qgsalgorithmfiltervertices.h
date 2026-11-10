@@ -18,11 +18,12 @@
 #ifndef QGSALGORITHMFILTERVERTICES_H
 #define QGSALGORITHMFILTERVERTICES_H
 
-#define SIP_NO_FILE
 
 #include "qgis_sip.h"
-#include "qgsprocessingalgorithm.h"
 #include "qgsmaptopixelgeometrysimplifier.h"
+#include "qgsprocessingalgorithm.h"
+
+#define SIP_NO_FILE
 
 ///@cond PRIVATE
 
@@ -31,21 +32,19 @@
  */
 class QgsFilterVerticesAlgorithmBase : public QgsProcessingFeatureBasedAlgorithm
 {
-
   public:
-
-    QString group() const override final;
-    QString groupId() const override final;
-    void initParameters( const QVariantMap &configuration = QVariantMap() ) override final;
-    QString shortHelpString() const override final;
+    QString group() const final;
+    QString groupId() const final;
+    void initParameters( const QVariantMap &configuration = QVariantMap() ) final;
+    QString shortHelpString() const final;
+    QString shortDescription() const override;
 
   protected:
-    QString outputName() const override final;
-    bool prepareAlgorithm( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override final;
-    QgsFeatureList processFeature( const QgsFeature &feature,  QgsProcessingContext &, QgsProcessingFeedback *feedback ) override final;
+    QString outputName() const final;
+    bool prepareAlgorithm( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback ) final;
+    QgsFeatureList processFeature( const QgsFeature &feature, QgsProcessingContext &, QgsProcessingFeedback *feedback ) final;
 
   private:
-
     double mMin = 0.0;
     bool mDynamicMin = false;
     QgsProperty mMinProperty;
@@ -63,9 +62,7 @@ class QgsFilterVerticesAlgorithmBase : public QgsProcessingFeatureBasedAlgorithm
  */
 class QgsFilterVerticesByM : public QgsFilterVerticesAlgorithmBase
 {
-
   public:
-
     QgsFilterVerticesByM() = default;
     QString name() const override;
     QString displayName() const override;
@@ -74,7 +71,6 @@ class QgsFilterVerticesByM : public QgsFilterVerticesAlgorithmBase
     bool supportInPlaceEdit( const QgsMapLayer *layer ) const override;
 
   private:
-
     QString componentString() const override;
     void filter( QgsGeometry &geometry, double min, double max ) const override;
 };
@@ -84,9 +80,7 @@ class QgsFilterVerticesByM : public QgsFilterVerticesAlgorithmBase
  */
 class QgsFilterVerticesByZ : public QgsFilterVerticesAlgorithmBase
 {
-
   public:
-
     QgsFilterVerticesByZ() = default;
     QString name() const override;
     QString displayName() const override;
@@ -95,7 +89,6 @@ class QgsFilterVerticesByZ : public QgsFilterVerticesAlgorithmBase
     bool supportInPlaceEdit( const QgsMapLayer *layer ) const override;
 
   private:
-
     QString componentString() const override;
     void filter( QgsGeometry &geometry, double min, double max ) const override;
 };

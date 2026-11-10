@@ -14,9 +14,12 @@
  ***************************************************************************/
 
 #include "qgssymbolanimationsettingswidget.h"
+
 #include "qgssymbol.h"
 
 #include <QDialogButtonBox>
+
+#include "moc_qgssymbolanimationsettingswidget.cpp"
 
 QgsSymbolAnimationSettingsWidget::QgsSymbolAnimationSettingsWidget( QWidget *parent )
   : QgsPanelWidget( parent )
@@ -26,15 +29,13 @@ QgsSymbolAnimationSettingsWidget::QgsSymbolAnimationSettingsWidget( QWidget *par
   mFrameRateSpin->setClearValue( 10 );
   mFrameRateSpin->setShowClearButton( true );
 
-  connect( mFrameRateSpin, qOverload< double >( &QDoubleSpinBox::valueChanged ), this, [ this ]
-  {
+  connect( mFrameRateSpin, qOverload<double>( &QDoubleSpinBox::valueChanged ), this, [this] {
     if ( !mBlockUpdates )
-      emit widgetChanged();
+      emit changed();
   } );
-  connect( mIsAnimatedGroup, &QGroupBox::toggled, this, [ this ]
-  {
+  connect( mIsAnimatedGroup, &QGroupBox::toggled, this, [this] {
     if ( !mBlockUpdates )
-      emit widgetChanged();
+      emit changed();
   } );
 }
 
@@ -63,7 +64,7 @@ QgsSymbolAnimationSettingsDialog::QgsSymbolAnimationSettingsDialog( QWidget *par
   : QDialog( parent, f )
 {
   QVBoxLayout *vLayout = new QVBoxLayout();
-  mWidget = new QgsSymbolAnimationSettingsWidget( );
+  mWidget = new QgsSymbolAnimationSettingsWidget();
   vLayout->addWidget( mWidget );
   QDialogButtonBox *bbox = new QDialogButtonBox( QDialogButtonBox::Ok | QDialogButtonBox::Cancel, Qt::Horizontal );
   connect( bbox, &QDialogButtonBox::accepted, this, &QgsSymbolAnimationSettingsDialog::accept );
@@ -82,4 +83,3 @@ QgsSymbolAnimationSettings QgsSymbolAnimationSettingsDialog::animationSettings()
 {
   return mWidget->animationSettings();
 }
-

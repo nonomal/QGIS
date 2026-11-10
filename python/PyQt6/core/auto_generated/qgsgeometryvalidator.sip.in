@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/qgsgeometryvalidator.h                                      *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/
 
 
@@ -12,12 +12,14 @@
 
 class QgsGeometryValidator : QThread
 {
+%Docstring(signature="appended")
+Validates geometries using the QGIS geometry validation model.
+%End
 
 %TypeHeaderCode
 #include "qgsgeometryvalidator.h"
 %End
   public:
-
     QgsGeometryValidator( const QgsGeometry &geometry, QVector<QgsGeometry::Error> *errors = 0, Qgis::GeometryValidationEngine method = Qgis::GeometryValidationEngine::QgisInternal );
 %Docstring
 Constructor for QgsGeometryValidator.
@@ -30,8 +32,18 @@ Constructor for QgsGeometryValidator.
 
     static void validateGeometry( const QgsGeometry &geometry, QVector<QgsGeometry::Error> &errors /Out/, Qgis::GeometryValidationEngine method = Qgis::GeometryValidationEngine::QgisInternal );
 %Docstring
-Validate geometry and produce a list of geometry errors.
-This method blocks the thread until the validation is finished.
+Validate geometry and produce a list of geometry errors. This method
+blocks the thread until the validation is finished.
+%End
+
+    static Qgis::GeometryValidationEngine defaultValidationEngine();
+%Docstring
+Returns the geometry validation engine configured in the application
+settings.
+
+:return: The geometry validation engine to use.
+
+.. versionadded:: 4.4
 %End
 
   signals:
@@ -47,9 +59,9 @@ The ``error`` contains details about the error.
 %Docstring
 Sent when the validation is finished.
 
-The result is in a human readable ``summary``, mentioning
-if the validation has been aborted, successfully been validated
-or how many errors have been found.
+The result is in a human readable ``summary``, mentioning if the
+validation has been aborted, successfully been validated or how many
+errors have been found.
 
 .. versionadded:: 3.6
 %End
@@ -64,5 +76,5 @@ or how many errors have been found.
  *                                                                      *
  * src/core/qgsgeometryvalidator.h                                      *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/

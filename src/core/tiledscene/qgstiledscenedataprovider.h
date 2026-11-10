@@ -19,40 +19,29 @@
 #ifndef QGSTILEDSCENEDATAPROVIDER_H
 #define QGSTILEDSCENEDATAPROVIDER_H
 
+#include "qgis.h"
 #include "qgis_core.h"
 #include "qgsdataprovider.h"
-#include "qgis.h"
 
 class QgsTiledSceneBoundingVolume;
 class QgsTiledSceneIndex;
 
 /**
  * \ingroup core
- * \brief Base class for data providers for QgsTiledSceneLayer
+ * \brief Base class for data providers for QgsTiledSceneLayer.
  *
  * \since QGIS 3.34
  */
-class CORE_EXPORT QgsTiledSceneDataProvider: public QgsDataProvider
+class CORE_EXPORT QgsTiledSceneDataProvider : public QgsDataProvider
 {
     Q_OBJECT
   public:
-
-
     //! Constructor for QgsTiledSceneDataProvider
-    QgsTiledSceneDataProvider( const QString &uri,
-                               const QgsDataProvider::ProviderOptions &providerOptions,
-                               QgsDataProvider::ReadFlags flags = QgsDataProvider::ReadFlags() );
+    QgsTiledSceneDataProvider( const QString &uri, const QgsDataProvider::ProviderOptions &providerOptions, Qgis::DataProviderReadFlags flags = Qgis::DataProviderReadFlags() );
 
     ~QgsTiledSceneDataProvider() override;
 
-    /**
-     * Copy constructor.
-     */
     QgsTiledSceneDataProvider( const QgsTiledSceneDataProvider &other );
-
-    /**
-     * QgsTiledSceneDataProvider cannot be assigned.
-     */
     QgsTiledSceneDataProvider &operator=( const QgsTiledSceneDataProvider &other ) = delete;
 
     /**
@@ -100,7 +89,6 @@ class CORE_EXPORT QgsTiledSceneDataProvider: public QgsDataProvider
      * Returns the provider's z range, or an infinite range if this is not known.
      */
     virtual QgsDoubleRange zRange() const;
-
 };
 
 #endif // QGSTILEDSCENEDATAPROVIDER_H

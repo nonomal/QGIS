@@ -14,34 +14,38 @@
  ***************************************************************************/
 
 #include "qgsbrushstylecombobox.h"
+
 #include "qgsguiutils.h"
 
-#include <QList>
-#include <QPair>
-
+#include <QAbstractItemView>
 #include <QBrush>
+#include <QList>
 #include <QPainter>
+#include <QPair>
 #include <QPen>
+
+#include "moc_qgsbrushstylecombobox.cpp"
 
 QgsBrushStyleComboBox::QgsBrushStyleComboBox( QWidget *parent )
   : QComboBox( parent )
 {
-  QList < QPair<Qt::BrushStyle, QString> > styles;
-  styles << qMakePair( Qt::SolidPattern, tr( "Solid" ) )
-         << qMakePair( Qt::NoBrush, tr( "No Brush" ) )
-         << qMakePair( Qt::HorPattern, tr( "Horizontal" ) )
-         << qMakePair( Qt::VerPattern, tr( "Vertical" ) )
-         << qMakePair( Qt::CrossPattern, tr( "Cross" ) )
-         << qMakePair( Qt::BDiagPattern, tr( "BDiagonal" ) )
-         << qMakePair( Qt::FDiagPattern, tr( "FDiagonal" ) )
-         << qMakePair( Qt::DiagCrossPattern, tr( "Diagonal X" ) )
-         << qMakePair( Qt::Dense1Pattern, tr( "Dense 1" ) )
-         << qMakePair( Qt::Dense2Pattern, tr( "Dense 2" ) )
-         << qMakePair( Qt::Dense3Pattern, tr( "Dense 3" ) )
-         << qMakePair( Qt::Dense4Pattern, tr( "Dense 4" ) )
-         << qMakePair( Qt::Dense5Pattern, tr( "Dense 5" ) )
-         << qMakePair( Qt::Dense6Pattern, tr( "Dense 6" ) )
-         << qMakePair( Qt::Dense7Pattern, tr( "Dense 7" ) );
+  QList<QPair<Qt::BrushStyle, QString>> styles;
+  styles
+    << qMakePair( Qt::SolidPattern, tr( "Solid" ) )
+    << qMakePair( Qt::NoBrush, tr( "No Brush" ) )
+    << qMakePair( Qt::HorPattern, tr( "Horizontal" ) )
+    << qMakePair( Qt::VerPattern, tr( "Vertical" ) )
+    << qMakePair( Qt::CrossPattern, tr( "Cross" ) )
+    << qMakePair( Qt::BDiagPattern, tr( "BDiagonal" ) )
+    << qMakePair( Qt::FDiagPattern, tr( "FDiagonal" ) )
+    << qMakePair( Qt::DiagCrossPattern, tr( "Diagonal X" ) )
+    << qMakePair( Qt::Dense1Pattern, tr( "Dense 1" ) )
+    << qMakePair( Qt::Dense2Pattern, tr( "Dense 2" ) )
+    << qMakePair( Qt::Dense3Pattern, tr( "Dense 3" ) )
+    << qMakePair( Qt::Dense4Pattern, tr( "Dense 4" ) )
+    << qMakePair( Qt::Dense5Pattern, tr( "Dense 5" ) )
+    << qMakePair( Qt::Dense6Pattern, tr( "Dense 6" ) )
+    << qMakePair( Qt::Dense7Pattern, tr( "Dense 7" ) );
 
   const int iconSize = QgsGuiUtils::scaleIconSize( 16 );
   setIconSize( QSize( iconSize * 2, iconSize ) );
@@ -54,7 +58,6 @@ QgsBrushStyleComboBox::QgsBrushStyleComboBox( QWidget *parent )
   }
 
   setCurrentIndex( 1 );
-
 }
 
 
@@ -76,7 +79,7 @@ QIcon QgsBrushStyleComboBox::iconForBrush( Qt::BrushStyle style )
   pix.fill( Qt::transparent );
 
   p.begin( &pix );
-  const QBrush brush( QColor( 100, 100, 100 ), style );
+  const QBrush brush( view()->palette().color( QPalette::Text ), style );
   p.setBrush( brush );
   const QPen pen( Qt::NoPen );
   p.setPen( pen );

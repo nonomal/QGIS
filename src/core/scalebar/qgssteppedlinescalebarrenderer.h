@@ -19,6 +19,7 @@
 
 #include "qgis_core.h"
 #include "qgsscalebarrenderer.h"
+
 #include <QString>
 
 /**
@@ -27,13 +28,9 @@
  * \brief Scalebar style that draws a stepped line representation of a scalebar.
  * \since QGIS 3.14
  */
-class CORE_EXPORT QgsSteppedLineScaleBarRenderer: public QgsScaleBarRenderer
+class CORE_EXPORT QgsSteppedLineScaleBarRenderer : public QgsScaleBarRenderer
 {
   public:
-
-    /**
-     * Constructor for QgsSteppedLineScaleBarRenderer.
-     */
     QgsSteppedLineScaleBarRenderer() = default;
 
     QString id() const override;
@@ -42,10 +39,7 @@ class CORE_EXPORT QgsSteppedLineScaleBarRenderer: public QgsScaleBarRenderer
     Flags flags() const override;
     QgsSteppedLineScaleBarRenderer *clone() const override SIP_FACTORY;
 
-    void draw( QgsRenderContext &context,
-               const QgsScaleBarSettings &settings,
-               const QgsScaleBarRenderer::ScaleBarContext &scaleContext ) const override;
-
+    void draw( QgsRenderContext &context, const QgsScaleBarSettings &settings, const QgsScaleBarRenderer::ScaleBarContext &scaleContext ) const override;
 };
 
 #endif // QGSSTEPPEDLINESCALEBARRENDERER_H

@@ -19,10 +19,11 @@
 
 #include "qgis_core.h"
 #include "qgis_sip.h"
-#include <QObject>
-#include <QRecursiveMutex>
+
 #include <QNetworkReply>
 #include <QNetworkRequest>
+#include <QObject>
+#include <QRecursiveMutex>
 #include <QSqlDatabase>
 #include <QSqlError>
 #include <QSqlQuery>
@@ -38,29 +39,30 @@
 #include "qgsauthconfig.h"
 #include "qgsauthmethod.h"
 
-#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
 #include <qt6keychain/keychain.h>
-#else
-#include <qt5keychain/keychain.h>
-#endif
 
 #ifndef SIP_RUN
+#ifdef HAVE_AUTH
 namespace QCA
 {
   class Initializer;
 }
 #endif
+#endif
 class QgsAuthMethod;
 class QgsAuthMethodEdit;
 class QgsAuthProvider;
 class QgsAuthMethodMetadata;
+class QgsSettingsEntryBool;
 class QTimer;
-
+class QgsAuthConfigurationStorage;
+class QgsAuthConfigurationStorageDb;
+class QgsAuthConfigurationStorageRegistry;
 
 /**
  * \ingroup core
- * \brief Singleton offering an interface to manage the authentication configuration database
- * and to utilize configurations through various authentication method plugins
+ * \brief Singleton which offers an interface to manage the authentication configuration database
+ * and to utilize configurations through various authentication method plugins.
  *
  * QgsAuthManager should not usually be directly created, but rather accessed through
  * QgsApplication::authManager().
@@ -70,6 +72,14 @@ class CORE_EXPORT QgsAuthManager : public QObject
     Q_OBJECT
 
   public:
+    static const QgsSettingsEntryBool *settingsGenerateRandomPasswordForPasswordHelper SIP_SKIP;
+    static const QgsSettingsEntryBool *settingsUsingGeneratedRandomPassword SIP_SKIP;
+
+    static const QgsSettingsEntryBool *settingsPasswordHelperInsecureFallback SIP_SKIP;
+
+    static const QgsSettingsEntryBool *settingsUsePasswordHelper SIP_SKIP;
+
+    static const QgsSettingsEntryBool *settingsPasswordHelperLogging SIP_SKIP;
 
     //! Message log level (mirrors that of QgsMessageLog, so it can also output there)
     enum MessageLevel
@@ -87,9 +97,9 @@ class CORE_EXPORT QgsAuthManager : public QObject
      * \return TRUE on success
      * \see QgsApplication::pluginPath
      * \see QgsApplication::qgisAuthDatabaseFilePath
-     * \deprecated Since QGIS 3.36, use setup() instead.
+     * \deprecated QGIS 3.36. Use setup() or ensureInitialized() instead.
      */
-    Q_DECL_DEPRECATED bool init( const QString &pluginPath = QString(),  const QString &authDatabasePath = QString() ) SIP_DEPRECATED;
+    Q_DECL_DEPRECATED bool init( const QString &pluginPath = QString(), const QString &authDatabasePath = QString() ) SIP_DEPRECATED;
 
     /**
      * Sets up the authentication manager configuration.
@@ -98,20 +108,53 @@ class CORE_EXPORT QgsAuthManager : public QObject
      * to lazy-initialize when required.
      *
      * \param pluginPath the plugin path
-     * \param authDatabasePath the authentication DB path
+     * \param authDatabasePath the authentication DB URI (or just the file path for SQLite)
+     * \see ensureInitialized()
      */
-    void setup( const QString &pluginPath = QString(),  const QString &authDatabasePath = QString() );
+    void setup( const QString &pluginPath = QString(), const QString &authDatabasePath = QString() );
+
+    /**
+     * Performs lazy initialization of the authentication framework, if it has
+     * not already been done.
+     *
+     * \see setup()
+     * \since QGIS 3.40
+     */
+    bool ensureInitialized() const;
 
     ~QgsAuthManager() override;
 
-    //! Sets up the application instance of the authentication database connection
-    QSqlDatabase authDatabaseConnection() const;
+    /**
+     * Returns the authentication configuration storage registry.
+     *  \since QGIS 3.40
+     */
+    QgsAuthConfigurationStorageRegistry *authConfigurationStorageRegistry() const;
 
-    //! Name of the authentication database table that stores configs
-    const QString authDatabaseConfigTable() const { return AUTH_CONFIG_TABLE; }
+    /**
+     * Sets up the application instance of the authentication database connection
+     *
+     * \deprecated QGIS 3.40. Direct access to the DB is not allowed, use QgsAuthConfigurationStorage API instead.
+     */
+    Q_DECL_DEPRECATED QSqlDatabase authDatabaseConnection() const SIP_DEPRECATED;
 
-    //! Name of the authentication database table that stores server exceptions/configs
-    const QString authDatabaseServersTable() const { return AUTH_SERVERS_TABLE; }
+    /**
+     * Name of the authentication database table that stores configs
+     * \deprecated QGIS 3.40. Direct access to the DB is not allowed, use methodConfigTableName() instead.
+     */
+    Q_DECL_DEPRECATED const QString authDatabaseConfigTable() const SIP_DEPRECATED { return AUTH_CONFIG_TABLE; }
+
+    /**
+     * Returns the database table from the first ready storage that stores authentication configs,
+     * or an empty string if none available. The table is prefixed with schema and escaped if necessary.
+     * \since QGIS 3.40
+     */
+    const QString methodConfigTableName() const;
+
+    /**
+     * Name of the authentication database table that stores server exceptions/configs
+     * \deprecated QGIS 3.40. Direct access to the DB is not allowed, use QgsAuthConfigurationStorage API instead.
+     */
+    Q_DECL_DEPRECATED const QString authDatabaseServersTable() const SIP_DEPRECATED { return AUTH_SERVERS_TABLE; }
 
 
     //! Whether QCA has the qca-ossl plugin, which a base run-time requirement
@@ -123,8 +166,42 @@ class CORE_EXPORT QgsAuthManager : public QObject
     /**
      * The standard authentication database file in ~/.qgis3/ or defined location
      * \see QgsApplication::qgisAuthDatabaseFilePath
+     * \deprecated QGIS 3.40. Use authenticationDatabaseUri() instead.
      */
-    const QString authenticationDatabasePath() const { return mAuthDbPath; }
+    Q_DECL_DEPRECATED const QString authenticationDatabasePath() const;
+
+    /**
+     * Returns the TRUE if the \a uri is a filesystem-based database (SQLite).
+     */
+    static bool isFilesystemBasedDatabase( const QString &uri );
+
+    /**
+     * Transitional proxy to the first ready storage of database type.
+     * Exposes the old SQLite local API from the new storage API.
+     * \note not available in Python bindings
+     */
+    QgsAuthConfigurationStorageDb *defaultDbStorage() const SIP_SKIP;
+
+    /**
+     * Returns the authentication database connection URI.
+     * \since QGIS 3.40
+     */
+    const QString authenticationDatabaseUri() const;
+
+    /**
+     * Returns the authentication database connection URI with the password stripped.
+     * \since QGIS 3.40
+     */
+    const QString authenticationDatabaseUriStripped() const;
+
+    /**
+     * Creates a new securely seeded random password and stores it in the
+     * system keychain as the new master password.
+     *
+     * \note Not available in Python bindings
+     * \since QGIS 3.42
+     */
+    bool createAndStoreRandomMasterPasswordInKeyChain() SIP_SKIP;
 
     /**
      * Main call to initially set or continually check master password is set
@@ -136,10 +213,10 @@ class CORE_EXPORT QgsAuthManager : public QObject
     /**
      * Overloaded call to reset master password or set it initially without user interaction
      * \note Only use this in trusted reset functions, unit tests or user/app setup scripts!
-     * \param pass Password to use
+     * \param password Password to use
      * \param verify Whether password's hash was saved in authentication database
      */
-    bool setMasterPassword( const QString &pass, bool verify = false );
+    bool setMasterPassword( const QString &password, bool verify = false );
 
     /**
      * Verify the supplied master password against any existing hash in authentication database
@@ -162,25 +239,41 @@ class CORE_EXPORT QgsAuthManager : public QObject
 
     /**
      * Check whether supplied password is the same as the one already set
-     * \param pass Password to verify
+     * \param password Password to verify
      */
-    bool masterPasswordSame( const QString &pass ) const;
+    bool masterPasswordSame( const QString &password ) const;
 
     /**
-     * Reset the master password to a new one, then re-encrypt all previous
-     * configs in a new database file, optionally backup current database
+     * Reset the master password to a new one, then re-encrypts all previous
+     * configs with the new password.
+     *
      * \param newpass New master password to replace existing
      * \param oldpass Current master password to replace existing
-     * \param keepbackup Whether to keep the generated backup of current database
+     * \param keepbackup Whether to keep the generated backup of current database (if using file-based storage)
      * \param backuppath Where the backup is located, if kept
      */
     bool resetMasterPassword( const QString &newpass, const QString &oldpass, bool keepbackup, QString *backuppath SIP_INOUT = nullptr );
 
     /**
+     * Reset the master password to a new one, hen re-encrypts all previous
+     * configs with the new password.
+     *
+     * The old password will automatically be retrieved from the password helper.
+     *
+     * \param newPassword New master password to replace existing
+     * \param keepBackup Whether to keep the generated backup of current database (if using file-based storage)
+     * \param backupPath Where the backup is located, if kept
+     *
+     * \note Not available in Python bindings
+     * \since QGIS 3.42
+     */
+    bool resetMasterPasswordUsingStoredPasswordHelper( const QString &newPassword, bool keepBackup, QString *backupPath = nullptr ) SIP_SKIP;
+
+    /**
      * Whether there is a scheduled opitonal erase of authentication database.
      * \note not available in Python bindings
      */
-    bool scheduledAuthDatabaseErase() { return mScheduledDbErase; } SIP_SKIP
+    bool scheduledAuthDatabaseErase() SIP_SKIP { return mScheduledDbErase; }
 
     /**
      * Schedule an optional erase of authentication database, starting when mutex is lockable.
@@ -289,7 +382,7 @@ class CORE_EXPORT QgsAuthManager : public QObject
     static bool hasConfigId( const QString &txt );
 
     //! Returns the regular expression for authcfg=.{7} key/value token for authentication ids
-    QString configIdRegex() const { return AUTH_CFG_REGEX;}
+    QString configIdRegex() const { return AUTH_CFG_REGEX; }
 
     //! Gets list of authentication ids from database
     QStringList configIds() const;
@@ -373,8 +466,7 @@ class CORE_EXPORT QgsAuthManager : public QObject
      * \param dataprovider Provider key filter, offering logic branching in authentication method
      * \returns Whether operation succeeded
      */
-    bool updateNetworkRequest( QNetworkRequest &request SIP_INOUT, const QString &authcfg,
-                               const QString &dataprovider = QString() );
+    bool updateNetworkRequest( QNetworkRequest &request SIP_INOUT, const QString &authcfg, const QString &dataprovider = QString() );
 
     /**
      * Provider call to update a QNetworkReply with an authentication config (used to skip known SSL errors, etc.)
@@ -383,8 +475,7 @@ class CORE_EXPORT QgsAuthManager : public QObject
      * \param dataprovider Provider key filter, offering logic branching in authentication method
      * \returns Whether operation succeeded
      */
-    bool updateNetworkReply( QNetworkReply *reply, const QString &authcfg,
-                             const QString &dataprovider = QString() );
+    bool updateNetworkReply( QNetworkReply *reply, const QString &authcfg, const QString &dataprovider = QString() );
 
     /**
      * Provider call to update a QgsDataSourceUri with an authentication config
@@ -393,8 +484,7 @@ class CORE_EXPORT QgsAuthManager : public QObject
      * \param dataprovider Provider key filter, offering logic branching in authentication method
      * \returns Whether operation succeeded
      */
-    bool updateDataSourceUriItems( QStringList &connectionItems SIP_INOUT, const QString &authcfg,
-                                   const QString &dataprovider = QString() );
+    bool updateDataSourceUriItems( QStringList &connectionItems SIP_INOUT, const QString &authcfg, const QString &dataprovider = QString() );
 
     /**
      * Provider call to update a QNetworkProxy with an authentication config
@@ -403,20 +493,30 @@ class CORE_EXPORT QgsAuthManager : public QObject
      * \param dataprovider Provider key filter, offering logic branching in authentication method
      * \returns Whether operation succeeded
      */
-    bool updateNetworkProxy( QNetworkProxy &proxy SIP_INOUT, const QString &authcfg,
-                             const QString &dataprovider = QString() );
+    bool updateNetworkProxy( QNetworkProxy &proxy SIP_INOUT, const QString &authcfg, const QString &dataprovider = QString() );
 
     ////////////////// Generic settings ///////////////////////
 
-    //! Store an authentication setting (stored as string via QVariant( value ).toString() )
+    /**
+     * Stores an authentication setting.
+     *
+     * The \a value will be stored as a string, using QVariant::toString().
+     *
+     * \see authSetting()
+     */
     bool storeAuthSetting( const QString &key, const QVariant &value, bool encrypt = false );
 
     /**
-     * \brief authSetting get an authentication setting (retrieved as string and returned as QVariant( QString ))
+     * Returns a previously set authentication setting.
+     *
+     * The value will be retrieved as a string, regardless of the value type used when calling storeAuthSetting().
+     *
      * \param key setting key
      * \param defaultValue
      * \param decrypt if the value needs decrypted
-     * \return QVariant( QString ) authentication setting
+     * \returns authentication setting string
+     *
+     * \see storeAuthSetting()
      */
     QVariant authSetting( const QString &key, const QVariant &defaultValue = QVariant(), bool decrypt = false );
 
@@ -513,7 +613,7 @@ class CORE_EXPORT QgsAuthManager : public QObject
      * \return hash keyed with cert/connection's sha:host:port.
      * \note not available in Python bindings
      */
-    QHash<QString, QSet<QSslError::SslError> > ignoredSslErrorCache() { return mIgnoredSslErrorsCache; } SIP_SKIP
+    QHash<QString, QSet<QSslError::SslError> > ignoredSslErrorCache() SIP_SKIP { return mIgnoredSslErrorsCache; }
 
     //! Utility function to dump the cache for debug purposes
     void dumpIgnoredSslErrorsCache_();
@@ -578,10 +678,7 @@ class CORE_EXPORT QgsAuthManager : public QObject
      * \return map of sha1 <source, certificates>
      * \note not available in Python bindings
      */
-    const QMap<QString, QPair<QgsAuthCertUtils::CaCertSource, QSslCertificate> > caCertsCache() SIP_SKIP
-    {
-      return mCaCertsCache;
-    }
+    const QMap<QString, QPair<QgsAuthCertUtils::CaCertSource, QSslCertificate> > caCertsCache() SIP_SKIP { return mCaCertsCache; }
 
     //! Rebuild certificate authority cache
     bool rebuildCaCertsCache();
@@ -658,7 +755,7 @@ class CORE_EXPORT QgsAuthManager : public QObject
      * Error message getter
      * \note not available in Python bindings
      */
-    const QString passwordHelperErrorMessage() { return mPasswordHelperErrorMessage; } SIP_SKIP
+    const QString passwordHelperErrorMessage() SIP_SKIP { return mPasswordHelperErrorMessage; }
 
     /**
      * Delete master password from wallet
@@ -696,11 +793,42 @@ class CORE_EXPORT QgsAuthManager : public QObject
      */
     bool passwordHelperSync();
 
-    //! The display name of the password helper (platform dependent)
+    /**
+     * Verify the password stored in the password helper.
+     *
+     * \note Not available in Python bindings
+     * \since QGIS 3.42
+     */
+    bool verifyStoredPasswordHelperPassword() SIP_SKIP;
+
+    // TODO QGIS 5.0 -- remove
+
+    /**
+     * The display name of the password helper (platform dependent).
+     *
+     * This is deprecated, use passwordHelperDisplayName() instead.
+     */
     static const QString AUTH_PASSWORD_HELPER_DISPLAY_NAME;
+
+    /**
+     * Returns a translated display name of the password helper (platform dependent).
+     *
+     * If \a titleCase is TRUE then a title case version of the string will be returned. Otherwise
+     * a mid-sentence case version will be returned.
+     *
+     * \since QGIS 3.42
+     */
+    static QString passwordHelperDisplayName( bool titleCase = false );
 
     //! The display name of the Authentication Manager
     static const QString AUTH_MAN_TAG;
+
+    /**
+     * Returns the path to the authentication database file or an empty string if the database is not SQLite.
+     *
+     * \note Not available in Python bindings
+     */
+    QString sqliteDatabasePath() const SIP_SKIP;
 
   signals:
 
@@ -722,8 +850,19 @@ class CORE_EXPORT QgsAuthManager : public QObject
      * \param tag Associated tag (title)
      * \param level Message log level
      * \see QgsMessageLog
+     * \deprecated QGIS 3.40. Use messageLog() instead.
      */
-    void messageOut( const QString &message, const QString &tag = QgsAuthManager::AUTH_MAN_TAG, QgsAuthManager::MessageLevel level = QgsAuthManager::INFO ) const;
+    Q_DECL_DEPRECATED void messageOut( const QString &message, const QString &tag = QgsAuthManager::AUTH_MAN_TAG, QgsAuthManager::MessageLevel level = QgsAuthManager::INFO ) const SIP_DEPRECATED;
+
+    /**
+     * Custom logging signal to relay to console output and QgsMessageLog
+     * \param message Message to send
+     * \param tag Associated tag (title)
+     * \param level Message log level
+     * \see QgsMessageLog
+     * \since QGIS 3.40
+     */
+    void messageLog( const QString &message, const QString &tag = QgsAuthManager::AUTH_MAN_TAG, Qgis::MessageLevel level = Qgis::MessageLevel::Info ) const;
 
     /**
      * Custom logging signal to inform the user about master password <-> password manager interactions
@@ -731,9 +870,20 @@ class CORE_EXPORT QgsAuthManager : public QObject
      * \param tag Associated tag (title)
      * \param level Message log level
      * \see QgsMessageLog
+     * \deprecated QGIS 3.40. Use passwordHelperMessageLog() instead.
      */
-    void passwordHelperMessageOut( const QString &message, const QString &tag = QgsAuthManager::AUTH_MAN_TAG, QgsAuthManager::MessageLevel level = QgsAuthManager::INFO );
+    Q_DECL_DEPRECATED void passwordHelperMessageOut( const QString &message, const QString &tag = QgsAuthManager::AUTH_MAN_TAG, QgsAuthManager::MessageLevel level = QgsAuthManager::INFO )
+      SIP_DEPRECATED;
 
+    /**
+     * Custom logging signal to inform the user about master password <-> password manager interactions
+     * \param message Message to send
+     * \param tag Associated tag (title)
+     * \param level Message log level
+     * \see QgsMessageLog
+     * \since QGIS 3.40
+     */
+    void passwordHelperMessageLog( const QString &message, const QString &tag = QgsAuthManager::AUTH_MAN_TAG, Qgis::MessageLevel level = Qgis::MessageLevel::Info );
 
     /**
      * Emitted when a password has been verify (or not)
@@ -755,7 +905,7 @@ class CORE_EXPORT QgsAuthManager : public QObject
     void clearCachedConfig( const QString &authcfg );
 
   private slots:
-    void writeToConsole( const QString &message, const QString &tag = QString(), QgsAuthManager::MessageLevel level = INFO );
+    void writeToConsole( const QString &message, const QString &tag = QString(), Qgis::MessageLevel level = Qgis::MessageLevel::Info );
 
     /**
      * This slot emits the authDatabaseEraseRequested signal, instead of attempting
@@ -769,7 +919,6 @@ class CORE_EXPORT QgsAuthManager : public QObject
     void tryToStartDbErase();
 
   protected:
-
     /**
      * Enforce singleton pattern
      * \note To set up the manager instance and initialize everything use QgsAuthManager::instance()->init()
@@ -786,14 +935,12 @@ class CORE_EXPORT QgsAuthManager : public QObject
 #endif
 
   private:
-
     /**
-     * Performs lazy initialization of the authentication framework, if it has
-     * not already been done.
+     * Generates a random, securely seeded password.
      */
-    bool ensureInitialized() const;
+    static QString generatePassword();
 
-    bool initPrivate( const QString &pluginPath,  const QString &authDatabasePath );
+    bool initPrivate( const QString &pluginPath );
 
     //////////////////////////////////////////////////////////////////////////////
     // Password Helper methods
@@ -805,7 +952,7 @@ class CORE_EXPORT QgsAuthManager : public QObject
     void passwordHelperLog( const QString &msg ) const;
 
     //! Read Master password from the wallet
-    QString passwordHelperRead();
+    QString passwordHelperRead( bool &ok );
 
     //! Store Master password in the wallet
     bool passwordHelperWrite( const QString &password );
@@ -822,13 +969,15 @@ class CORE_EXPORT QgsAuthManager : public QObject
      */
     void passwordHelperProcessError();
 
-    bool createConfigTables();
-
-    bool createCertTables();
-
     bool masterPasswordInput();
 
-    bool masterPasswordRowsInDb( int *rows ) const;
+    /**
+     * Calculate the total number of master password rows in all storages.
+     *
+     * Returns TRUE if the calculation was successful for at least one storage,
+     * or FALSE if no storages could be queried.
+     */
+    bool masterPasswordRowsInDb( int &rows ) const;
 
     bool masterPasswordCheckAgainstDb( const QString &compare = QString() ) const;
 
@@ -850,50 +999,32 @@ class CORE_EXPORT QgsAuthManager : public QObject
 
     bool reencryptAuthenticationIdentity( const QString &identid, const QString &prevpass, const QString &prevciv );
 
-    bool authDbOpen() const;
-
-    bool authDbQuery( QSqlQuery *query ) const;
-
-    bool authDbStartTransaction() const;
-
-    bool authDbCommit() const;
-
-    bool authDbTransactionQuery( QSqlQuery *query ) const;
-
 #ifndef QT_NO_SSL
     void insertCaCertInCache( QgsAuthCertUtils::CaCertSource source, const QList<QSslCertificate> &certs );
 #endif
 
-    const QString authDbPassTable() const { return AUTH_PASS_TABLE; }
-
-    const QString authDbSettingsTable() const { return AUTH_SETTINGS_TABLE; }
-
-    const QString authDbIdentitiesTable() const { return AUTH_IDENTITIES_TABLE; }
-
-    const QString authDbAuthoritiesTable() const { return AUTH_AUTHORITIES_TABLE; }
-
-    const QString authDbTrustTable() const { return AUTH_TRUST_TABLE; }
-
     QString authPasswordHelperKeyName() const;
+
+    /**
+     * Returns the first ready storage with the given \a capability or NULLPTR if none available.
+     */
+    QgsAuthConfigurationStorage *firstStorageWithCapability( Qgis::AuthConfigurationStorageCapability capability ) const;
 
     static QgsAuthManager *sInstance;
     static const QString AUTH_CONFIG_TABLE;
-    static const QString AUTH_PASS_TABLE;
-    static const QString AUTH_SETTINGS_TABLE;
-    static const QString AUTH_IDENTITIES_TABLE;
     static const QString AUTH_SERVERS_TABLE;
-    static const QString AUTH_AUTHORITIES_TABLE;
-    static const QString AUTH_TRUST_TABLE;
     static const QString AUTH_CFG_REGEX;
 
     QString mPluginPath;
-    QString mAuthDatabasePath;
+    QString mAuthDatabaseConnectionUri;
+
     mutable bool mLazyInitResult = false;
-
     bool mAuthInit = false;
-    QString mAuthDbPath;
 
+    mutable std::unique_ptr<QgsAuthConfigurationStorageRegistry> mAuthConfigurationStorageRegistry;
+#ifdef HAVE_AUTH
     std::unique_ptr<QCA::Initializer> mQcaInitializer;
+#endif
 
     QHash<QString, QString> mConfigAuthMethods;
     QHash<QString, QgsAuthMethod *> mAuthMethods;
@@ -902,9 +1033,9 @@ class CORE_EXPORT QgsAuthManager : public QObject
     int mPassTries = 0;
     bool mAuthDisabled = false;
     QString mAuthDisabledMessage;
-    QTimer *mScheduledDbEraseTimer = nullptr;
+    std::unique_ptr<QTimer> mScheduledDbEraseTimer;
     bool mScheduledDbErase = false;
-    int mScheduledDbEraseRequestWait = 3 ; // in seconds
+    int mScheduledDbEraseRequestWait = 3; // in seconds
     bool mScheduledDbEraseRequestEmitted = false;
     int mScheduledDbEraseRequestCount = 0;
 
@@ -953,7 +1084,6 @@ class CORE_EXPORT QgsAuthManager : public QObject
     mutable QMap<QThread *, QMetaObject::Connection> mConnectedThreads;
 
     friend class QgsApplication;
-
 };
 
 #endif // QGSAUTHMANAGER_H

@@ -16,9 +16,10 @@
 #define QGSHEATMAPRENDERERWIDGET_H
 
 #include "ui_qgsheatmaprendererwidgetbase.h"
+
+#include "qgis_gui.h"
 #include "qgis_sip.h"
 #include "qgsrendererwidget.h"
-#include "qgis_gui.h"
 
 class QMenu;
 class QgsHeatmapRenderer;
@@ -26,13 +27,13 @@ class QgsHeatmapRenderer;
 /**
  * \ingroup gui
  * \class QgsHeatmapRendererWidget
+ * \brief A widget for configuring a QgsHeatmapRenderer.
  */
-class GUI_EXPORT QgsHeatmapRendererWidget : public QgsRendererWidget, private Ui::QgsHeatmapRendererWidgetBase, private QgsExpressionContextGenerator
+class GUI_EXPORT QgsHeatmapRendererWidget : public QgsRendererWidget, private Ui::QgsHeatmapRendererWidgetBase
 {
     Q_OBJECT
 
   public:
-
     /**
      * Static creation method
      * \param layer the layer where this renderer is applied
@@ -52,21 +53,20 @@ class GUI_EXPORT QgsHeatmapRendererWidget : public QgsRendererWidget, private Ui
 
     QgsFeatureRenderer *renderer() override;
     void setContext( const QgsSymbolWidgetContext &context ) override;
+    QgsExpressionContext createExpressionContext() const override;
 
   private:
-    std::unique_ptr< QgsHeatmapRenderer > mRenderer;
-
-    QgsExpressionContext createExpressionContext() const override;
+    std::unique_ptr<QgsHeatmapRenderer> mRenderer;
 
   private slots:
 
     void applyColorRamp();
+    void showLegendSettings();
     void mRadiusUnitWidget_changed();
     void mRadiusSpinBox_valueChanged( double d );
     void mMaxSpinBox_valueChanged( double d );
     void mQualitySlider_valueChanged( int v );
     void weightExpressionChanged( const QString &expression );
-
 };
 
 

@@ -5,21 +5,22 @@ it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or
 (at your option) any later version.
 """
-__author__ = 'Tobias Reber'
-__date__ = '20/05/2015'
-__copyright__ = 'Copyright 2015, The QGIS Project'
 
+__author__ = "Tobias Reber"
+__date__ = "20/05/2015"
+__copyright__ = "Copyright 2015, The QGIS Project"
+
+
+import unittest
 
 from qgis.core import NULL, QgsFeature, QgsGeometry, QgsPointXY, QgsVectorLayer
 from qgis.gui import QgsGui
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.testing import QgisTestCase, start_app
 
 start_app()
 
 
 class TestQgsRangeWidget(QgisTestCase):
-
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
@@ -29,8 +30,11 @@ class TestQgsRangeWidget(QgisTestCase):
         """
         create a layer with one feature
         """
-        self.layer = QgsVectorLayer("Point?crs=EPSG:21781&field=fldtxt:string&field=fldint:integer",
-                                    "addfeat", "memory")
+        self.layer = QgsVectorLayer(
+            "Point?crs=EPSG:21781&field=fldtxt:string&field=fldint:integer",
+            "addfeat",
+            "memory",
+        )
         pr = self.layer.dataProvider()  # NOQA
         f = QgsFeature()
         f.setAttributes(["Hello World", 123])
@@ -41,7 +45,7 @@ class TestQgsRangeWidget(QgisTestCase):
         create a range widget
         """
         reg = QgsGui.editorWidgetRegistry()
-        configWdg = reg.createConfigWidget('Range', self.layer, 1, None)
+        configWdg = reg.createConfigWidget("Range", self.layer, 1, None)
         config = configWdg.config()
         config["Min"] = 0
 
@@ -49,7 +53,7 @@ class TestQgsRangeWidget(QgisTestCase):
         if allownull:
             config["AllowNull"] = allownull
 
-        rangewidget = reg.create('Range', self.layer, 1, config, None, None)
+        rangewidget = reg.create("Range", self.layer, 1, config, None, None)
         return rangewidget
 
     def test_range_widget_numbers(self):
@@ -92,5 +96,5 @@ class TestQgsRangeWidget(QgisTestCase):
         self.assertEqual(rangewidget.value(), 0)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

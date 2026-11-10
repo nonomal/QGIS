@@ -14,13 +14,16 @@
  ***************************************************************************/
 
 #include "qgsstringstatisticalsummary.h"
+
+#include <limits>
+
 #include "qgsvariantutils.h"
+
+#include <QObject>
 #include <QString>
 #include <QStringList>
-#include <QObject>
 #include <QVariant>
 #include <QVariantList>
-#include <limits>
 
 /***************************************************************************
  * This class is considered CRITICAL and any change MUST be accompanied with
@@ -68,11 +71,10 @@ void QgsStringStatisticalSummary::addString( const QString &string )
 
 void QgsStringStatisticalSummary::addValue( const QVariant &value )
 {
-  if ( QgsVariantUtils::isNull( value ) || value.type() == QVariant::String )
+  if ( QgsVariantUtils::isNull( value ) || value.userType() == QMetaType::Type::QString )
   {
     testString( value.toString() );
   }
-  finalize();
 }
 
 void QgsStringStatisticalSummary::finalize()
@@ -101,7 +103,7 @@ void QgsStringStatisticalSummary::calculateFromVariants( const QVariantList &val
   const auto constValues = values;
   for ( const QVariant &variant : constValues )
   {
-    if ( QgsVariantUtils::isNull( variant ) || variant.type() == QVariant::String )
+    if ( QgsVariantUtils::isNull( variant ) || variant.userType() == QMetaType::Type::QString )
     {
       testString( variant.toString() );
     }
@@ -219,4 +221,3 @@ QString QgsStringStatisticalSummary::displayName( Qgis::StringStatistic statisti
   }
   return QString();
 }
-

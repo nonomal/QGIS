@@ -5,6 +5,7 @@ QgsServerRequest.GetMethod = QgsServerRequest.Method.GetMethod
 QgsServerRequest.PostMethod = QgsServerRequest.Method.PostMethod
 QgsServerRequest.DeleteMethod = QgsServerRequest.Method.DeleteMethod
 QgsServerRequest.PatchMethod = QgsServerRequest.Method.PatchMethod
+QgsServerRequest.OptionsMethod = QgsServerRequest.Method.OptionsMethod
 QgsServerRequest.Method.baseClass = QgsServerRequest
 QgsServerRequest.HOST = QgsServerRequest.RequestHeader.HOST
 QgsServerRequest.FORWARDED = QgsServerRequest.RequestHeader.FORWARDED
@@ -20,3 +21,8 @@ QgsServerRequest.ACCEPT = QgsServerRequest.RequestHeader.ACCEPT
 QgsServerRequest.USER_AGENT = QgsServerRequest.RequestHeader.USER_AGENT
 QgsServerRequest.AUTHORIZATION = QgsServerRequest.RequestHeader.AUTHORIZATION
 QgsServerRequest.RequestHeader.baseClass = QgsServerRequest
+try:
+    QgsServerRequest.methodToString = staticmethod(QgsServerRequest.methodToString)
+    QgsServerRequest.__virtual_methods__ = ['setParameter', 'removeParameter', 'header', 'data', 'setUrl']
+except (NameError, AttributeError):
+    pass

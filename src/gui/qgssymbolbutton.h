@@ -15,13 +15,14 @@
 #ifndef QGSSYMBOLBUTTON_H
 #define QGSSYMBOLBUTTON_H
 
+#include <memory>
+
+#include "qgis.h"
 #include "qgis_gui.h"
 #include "qgis_sip.h"
-#include "qgis.h"
 
-#include <QToolButton>
 #include <QPointer>
-#include <memory>
+#include <QToolButton>
 
 class QgsMapCanvas;
 class QgsVectorLayer;
@@ -31,6 +32,8 @@ class QgsMessageBar;
 class QMimeData;
 class QgsSymbol;
 class QgsSymbolSelectorWidget;
+class QgsColorPickerHelper;
+
 
 /**
  * \ingroup gui
@@ -48,13 +51,12 @@ class GUI_EXPORT QgsSymbolButton : public QToolButton
     Q_PROPERTY( QString dialogTitle READ dialogTitle WRITE setDialogTitle )
 
   public:
-
     /**
      * Construct a new symbol button.
      * Use \a dialogTitle string to define the title to show in the symbol settings dialog.
      */
     QgsSymbolButton( QWidget *parent SIP_TRANSFERTHIS = nullptr, const QString &dialogTitle = QString() );
-    ~QgsSymbolButton();
+    ~QgsSymbolButton() override;
 
     QSize minimumSizeHint() const override;
     QSize sizeHint() const override;
@@ -98,7 +100,7 @@ class GUI_EXPORT QgsSymbolButton : public QToolButton
     * \see changed()
     * \note Not available in Python bindings.
     */
-    template <class SymbolType> SymbolType *clonedSymbol() SIP_SKIP
+    template<class SymbolType> SymbolType *clonedSymbol() SIP_SKIP
     {
       QgsSymbol *tmpSymbol = mSymbol.get();
       SymbolType *symbolCastToType = dynamic_cast<SymbolType *>( tmpSymbol );
@@ -198,6 +200,13 @@ class GUI_EXPORT QgsSymbolButton : public QToolButton
      */
     bool isNull() const;
 
+    /**
+     * Returns TRUE if the widget adopts fixed size constraints.
+     *
+     * \since QGIS 4.0
+     */
+    bool fixedSizeConstraints() const;
+
   public slots:
 
     /**
@@ -269,6 +278,13 @@ class GUI_EXPORT QgsSymbolButton : public QToolButton
      */
     void setToDefaultSymbol();
 
+    /**
+     * Sets whether the widget adopts fixed size constraints.
+     *
+     * \since QGIS 4.0
+     */
+    void setFixedSizeConstraints( bool fixedSizeConstraints );
+
   signals:
 
     /**
@@ -279,17 +295,15 @@ class GUI_EXPORT QgsSymbolButton : public QToolButton
     void changed();
 
   protected:
-
     void changeEvent( QEvent *e ) override;
     void showEvent( QShowEvent *e ) override;
     void resizeEvent( QResizeEvent *event ) override;
 
-    // Reimplemented to detect right mouse button clicks on the color button and allow dragging colors
+    // Reimplemented to allow dragging colors
     void mousePressEvent( QMouseEvent *e ) override;
+    void contextMenuEvent( QContextMenuEvent *e ) override;
     // Reimplemented to allow dragging colors/symbols from button
     void mouseMoveEvent( QMouseEvent *e ) override;
-    void mouseReleaseEvent( QMouseEvent *e ) override;
-    void keyPressEvent( QKeyEvent *e ) override;
     // Reimplemented to accept dragged colors
     void dragEnterEvent( QDragEnterEvent *e ) override;
 
@@ -318,8 +332,11 @@ class GUI_EXPORT QgsSymbolButton : public QToolButton
      */
     void activatePicker();
 
-  private:
+    void onColorPicked( const QColor &color );
+    void onColorHovered( const QColor &color );
+    void colorPickingCanceled();
 
+  private:
     QSize mSizeHint;
 
     QString mDialogTitle;
@@ -333,19 +350,21 @@ class GUI_EXPORT QgsSymbolButton : public QToolButton
 
     QMenu *mMenu = nullptr;
 
-    QPointer< QgsVectorLayer > mLayer;
+    QPointer<QgsVectorLayer> mLayer;
 
     QSize mIconSize;
 
-    std::unique_ptr< QgsSymbol > mSymbol;
+    std::unique_ptr<QgsSymbol> mSymbol;
 
     QgsExpressionContextGenerator *mExpressionContextGenerator = nullptr;
 
-    bool mPickingColor = false;
-
     bool mShowNull = false;
 
-    std::unique_ptr< QgsSymbol > mDefaultSymbol;
+    bool mFixedSizeConstraints = true;
+
+    std::unique_ptr<QgsSymbol> mDefaultSymbol;
+
+    QgsColorPickerHelper *mPickerHelper = nullptr;
 
     /**
      * Regenerates the text preview. If \a color is specified, a temporary color preview
@@ -369,18 +388,9 @@ class GUI_EXPORT QgsSymbolButton : public QToolButton
      */
     QPixmap createColorIcon( const QColor &color ) const;
 
-    /**
-     * Ends a color picking operation
-     * \param eventPos global position of pixel to sample color from
-     * \param samplingColor set to TRUE to actually sample the color, FALSE to just cancel
-     * the color picking operation
-     */
-    void stopPicking( QPoint eventPos, bool samplingColor = true );
-
     void showColorDialog();
 
     void updateSizeHint();
-
 };
 
 #endif // QGSSYMBOLBUTTON_H

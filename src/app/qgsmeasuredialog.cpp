@@ -14,31 +14,40 @@
  *                                                                         *
  ***************************************************************************/
 
-#include "qgisapp.h"
-#include "qgsmessagebar.h"
 #include "qgsmeasuredialog.h"
-#include "qgsmeasuretool.h"
-#include "qgsdistancearea.h"
-#include "qgsmapcanvas.h"
-#include "qgsproject.h"
+
+#include "qgisapp.h"
 #include "qgscoordinatereferencesystem.h"
-#include "qgsunittypes.h"
+#include "qgsdistancearea.h"
+#include "qgsgui.h"
+#include "qgsmapcanvas.h"
+#include "qgsmeasuretool.h"
+#include "qgsmessagebar.h"
+#include "qgsproject.h"
 #include "qgssettings.h"
 #include "qgssettingsentryimpl.h"
+#include "qgssettingsregistrycore.h"
 #include "qgssettingstree.h"
-#include "qgsgui.h"
+#include "qgsunittypes.h"
 
 #include <QClipboard>
 #include <QCloseEvent>
 #include <QLocale>
 #include <QPushButton>
+#include <QString>
 
+#include "moc_qgsmeasuredialog.cpp"
 
-const QgsSettingsEntryBool *QgsMeasureDialog::settingClipboardHeader = new QgsSettingsEntryBool( QStringLiteral( "clipboard-header" ), QgsSettingsTree::sTreeMeasure, false, QObject::tr( "Whether the header should be copied to the clipboard along the coordinates, distances" ) );
+using namespace Qt::StringLiterals;
 
-const QgsSettingsEntryString *QgsMeasureDialog::settingClipboardSeparator = new QgsSettingsEntryString( QStringLiteral( "clipboard-separator" ), QgsSettingsTree::sTreeMeasure, QStringLiteral( "\t" ), QObject::tr( "Separator between the measure columns copied to the clipboard" ) );
+const QgsSettingsEntryBool *QgsMeasureDialog::settingClipboardHeader
+  = new QgsSettingsEntryBool( u"clipboard-header"_s, QgsSettingsTree::sTreeMeasure, false, QObject::tr( "Whether the header should be copied to the clipboard along the coordinates, distances" ) );
 
-const QgsSettingsEntryBool *QgsMeasureDialog::settingClipboardAlwaysUseDecimalPoint = new QgsSettingsEntryBool( QStringLiteral( "clipboard-use-decimal-point" ), QgsSettingsTree::sTreeMeasure, false, QObject::tr( "Whether to use the locale decimal separator or always use the decimal point. Needed to export data as csv with a locale that uses a comma as its decimal separator." ) );
+const QgsSettingsEntryString *QgsMeasureDialog::settingClipboardSeparator
+  = new QgsSettingsEntryString( u"clipboard-separator"_s, QgsSettingsTree::sTreeMeasure, u"\t"_s, QObject::tr( "Separator between the measure columns copied to the clipboard" ) );
+
+const QgsSettingsEntryBool *QgsMeasureDialog::settingClipboardAlwaysUseDecimalPoint
+  = new QgsSettingsEntryBool( u"clipboard-use-decimal-point"_s, QgsSettingsTree::sTreeMeasure, false, QObject::tr( "Whether to use the locale decimal separator or always use the decimal point. Needed to export data as csv with a locale that uses a comma as its decimal separator." ) );
 
 QgsMeasureDialog::QgsMeasureDialog( QgsMeasureTool *tool, Qt::WindowFlags f )
   : QDialog( tool->canvas()->topLevelWidget(), f )
@@ -80,25 +89,25 @@ QgsMeasureDialog::QgsMeasureDialog( QgsMeasureTool *tool, Qt::WindowFlags f )
   if ( mMeasureArea )
   {
     if ( mUseMapUnits )
-      mUnitsCombo->setCurrentIndex( mUnitsCombo->findData( static_cast< int >( Qgis::AreaUnit::Unknown ) ) );
+      mUnitsCombo->setCurrentIndex( mUnitsCombo->findData( static_cast<int>( Qgis::AreaUnit::Unknown ) ) );
     else
-      mUnitsCombo->setCurrentIndex( mUnitsCombo->findData( static_cast< int >( QgsProject::instance()->areaUnits() ) ) );
+      mUnitsCombo->setCurrentIndex( mUnitsCombo->findData( static_cast<int>( QgsProject::instance()->areaUnits() ) ) );
   }
   else
   {
     if ( mUseMapUnits )
-      mUnitsCombo->setCurrentIndex( mUnitsCombo->findData( static_cast< int >( Qgis::DistanceUnit::Unknown ) ) );
+      mUnitsCombo->setCurrentIndex( mUnitsCombo->findData( static_cast<int>( Qgis::DistanceUnit::Unknown ) ) );
     else
-      mUnitsCombo->setCurrentIndex( mUnitsCombo->findData( static_cast< int >( QgsProject::instance()->distanceUnits() ) ) );
+      mUnitsCombo->setCurrentIndex( mUnitsCombo->findData( static_cast<int>( QgsProject::instance()->distanceUnits() ) ) );
   }
 
   if ( !mCanvas->mapSettings().destinationCrs().isValid() )
   {
     mUnitsCombo->setEnabled( false );
     if ( mMeasureArea )
-      mUnitsCombo->setCurrentIndex( mUnitsCombo->findData( static_cast< int >( Qgis::DistanceUnit::Unknown ) ) );
+      mUnitsCombo->setCurrentIndex( mUnitsCombo->findData( static_cast<int>( Qgis::DistanceUnit::Unknown ) ) );
     else
-      mUnitsCombo->setCurrentIndex( mUnitsCombo->findData( static_cast< int >( Qgis::AreaUnit::Unknown ) ) );
+      mUnitsCombo->setCurrentIndex( mUnitsCombo->findData( static_cast<int>( Qgis::AreaUnit::Unknown ) ) );
   }
 
   updateSettings();
@@ -115,7 +124,7 @@ void QgsMeasureDialog::projChanged()
 {
   if ( mCartesian->isChecked() )
   {
-    mDa.setEllipsoid( geoNone() );
+    mDa.setEllipsoid( Qgis::geoNone() );
   }
   else
   {
@@ -128,7 +137,7 @@ void QgsMeasureDialog::projChanged()
 
 void QgsMeasureDialog::openConfigTab()
 {
-  QgisApp::instance()->showOptionsDialog( this, QStringLiteral( "mOptionsPageMapTools" ) );
+  QgisApp::instance()->showOptionsDialog( this, u"mOptionsPageMapTools"_s );
 }
 
 void QgsMeasureDialog::crsChanged()
@@ -137,9 +146,9 @@ void QgsMeasureDialog::crsChanged()
   {
     mUnitsCombo->setEnabled( false );
     if ( mMeasureArea )
-      mUnitsCombo->setCurrentIndex( mUnitsCombo->findData( static_cast< int >( Qgis::DistanceUnit::Unknown ) ) );
+      mUnitsCombo->setCurrentIndex( mUnitsCombo->findData( static_cast<int>( Qgis::DistanceUnit::Unknown ) ) );
     else
-      mUnitsCombo->setCurrentIndex( mUnitsCombo->findData( static_cast< int >( Qgis::AreaUnit::Unknown ) ) );
+      mUnitsCombo->setCurrentIndex( mUnitsCombo->findData( static_cast<int>( Qgis::AreaUnit::Unknown ) ) );
   }
   else
   {
@@ -153,7 +162,7 @@ void QgsMeasureDialog::updateSettings()
 {
   const QgsSettings settings;
 
-  mDecimalPlaces = settings.value( QStringLiteral( "qgis/measure/decimalplaces" ), 3 ).toInt();
+  mDecimalPlaces = QgsSettingsRegistryCore::settingsMeasureDecimalPlaces->value();
   mCanvasUnits = mCanvas->mapUnits();
 
   // Configure QgsDistanceArea
@@ -166,11 +175,11 @@ void QgsMeasureDialog::updateSettings()
   // Calling projChanged() will set the ellipsoid and clear then re-populate the table
   projChanged();
 
-  if ( mCartesian->isChecked() || !mCanvas->mapSettings().destinationCrs().isValid() ||
-       ( mCanvas->mapSettings().destinationCrs().mapUnits() == Qgis::DistanceUnit::Degrees
-         && mDistanceUnits == Qgis::DistanceUnit::Degrees ) )
+  if ( mCartesian->isChecked()
+       || !mCanvas->mapSettings().destinationCrs().isValid()
+       || ( mCanvas->mapSettings().destinationCrs().mapUnits() == Qgis::DistanceUnit::Degrees && mDistanceUnits == Qgis::DistanceUnit::Degrees ) )
   {
-    mDa.setEllipsoid( geoNone() );
+    mDa.setEllipsoid( Qgis::geoNone() );
   }
   else
   {
@@ -182,18 +191,18 @@ void QgsMeasureDialog::unitsChanged( int index )
 {
   if ( mMeasureArea )
   {
-    mAreaUnits = static_cast< Qgis::AreaUnit >( mUnitsCombo->itemData( index ).toInt() );
+    mAreaUnits = static_cast<Qgis::AreaUnit>( mUnitsCombo->itemData( index ).toInt() );
   }
   else
   {
-    mDistanceUnits = static_cast< Qgis::DistanceUnit >( mUnitsCombo->itemData( index ).toInt() );
+    mDistanceUnits = static_cast<Qgis::DistanceUnit>( mUnitsCombo->itemData( index ).toInt() );
   }
 
   updateUnitsMembers();
   updateUi();
 }
 
-void QgsMeasureDialog:: updateUnitsMembers()
+void QgsMeasureDialog::updateUnitsMembers()
 {
   if ( mMeasureArea )
   {
@@ -238,14 +247,33 @@ void QgsMeasureDialog::mouseMove( const QgsPointXY &point )
   {
     QVector<QgsPointXY> tmpPoints = mTool->points();
     tmpPoints.append( point );
-    const double area = mDa.measurePolygon( tmpPoints );
+    double area = 0;
+    try
+    {
+      area = mDa.measurePolygon( tmpPoints );
+    }
+    catch ( QgsCsException & )
+    {
+      // TODO report errors to user
+      QgsDebugError( u"An error occurred while calculating area"_s );
+    }
+
     editTotal->setText( formatArea( area ) );
   }
   else if ( !mMeasureArea && !mTool->points().empty() )
   {
-    const QVector< QgsPointXY > tmpPoints = mTool->points();
+    const QVector<QgsPointXY> tmpPoints = mTool->points();
     QgsPointXY p1( tmpPoints.at( tmpPoints.size() - 1 ) ), p2( point );
-    double d = mDa.measureLine( p1, p2 );
+    double d = 0;
+    try
+    {
+      d = mDa.measureLine( p1, p2 );
+    }
+    catch ( QgsCsException & )
+    {
+      // TODO report errors to user
+      QgsDebugError( u"An error occurred while calculating length"_s );
+    }
     editTotal->setText( formatDistance( mTotal + d, mConvertToDisplayUnits ) );
     d = convertLength( d, mDistanceUnits );
 
@@ -265,7 +293,17 @@ void QgsMeasureDialog::addPoint()
   const int numPoints = mTool->points().size();
   if ( mMeasureArea && numPoints > 2 )
   {
-    const double area = mDa.measurePolygon( mTool->points() );
+    double area = 0;
+    try
+    {
+      area = mDa.measurePolygon( mTool->points() );
+    }
+    catch ( QgsCsException & )
+    {
+      // TODO report errors to user
+      QgsDebugError( u"An error occurred while calculating area"_s );
+    }
+
     editTotal->setText( formatArea( area ) );
   }
   else if ( !mMeasureArea && numPoints >= 1 )
@@ -292,7 +330,16 @@ void QgsMeasureDialog::addPoint()
     }
     if ( numPoints > 1 )
     {
-      mTotal = mDa.measureLine( mTool->points() );
+      try
+      {
+        mTotal = mDa.measureLine( mTool->points() );
+      }
+      catch ( QgsCsException & )
+      {
+        // TODO report errors to user
+        QgsDebugError( u"An error occurred while calculating length"_s );
+      }
+
       editTotal->setText( formatDistance( mTotal, mConvertToDisplayUnits ) );
     }
   }
@@ -308,7 +355,16 @@ void QgsMeasureDialog::removeLastPoint()
       QVector<QgsPointXY> tmpPoints = mTool->points();
       if ( !mTool->done() )
         tmpPoints.append( mLastMousePoint );
-      const double area = mDa.measurePolygon( tmpPoints );
+      double area = 0;
+      try
+      {
+        area = mDa.measurePolygon( tmpPoints );
+      }
+      catch ( QgsCsException & )
+      {
+        // TODO report errors to user
+        QgsDebugError( u"An error occurred while calculating area"_s );
+      }
       editTotal->setText( formatArea( area ) );
     }
     else
@@ -321,14 +377,31 @@ void QgsMeasureDialog::removeLastPoint()
     //remove final row
     delete mTable->takeTopLevelItem( mTable->topLevelItemCount() - 1 );
 
-    mTotal = mDa.measureLine( mTool->points() );
+    try
+    {
+      mTotal = mDa.measureLine( mTool->points() );
+    }
+    catch ( QgsCsException & )
+    {
+      // TODO report errors to user
+      QgsDebugError( u"An error occurred while calculating length"_s );
+    }
 
     if ( !mTool->done() )
     {
       // need to add the distance for the temporary mouse cursor point
-      const QVector< QgsPointXY > tmpPoints = mTool->points();
+      const QVector<QgsPointXY> tmpPoints = mTool->points();
       const QgsPointXY p1( tmpPoints.at( tmpPoints.size() - 1 ) );
-      double d = mDa.measureLine( p1, mLastMousePoint );
+      double d = 0;
+      try
+      {
+        d = mDa.measureLine( p1, mLastMousePoint );
+      }
+      catch ( QgsCsException & )
+      {
+        // TODO report errors to user
+        QgsDebugError( u"An error occurred while calculating length"_s );
+      }
 
       d = convertLength( d, mDistanceUnits );
 
@@ -356,9 +429,9 @@ void QgsMeasureDialog::restorePosition()
   const QgsSettings settings;
   int wh;
   if ( mMeasureArea )
-    wh = settings.value( QStringLiteral( "Windows/Measure/hNoTable" ), 70 ).toInt();
+    wh = settings.value( u"Windows/Measure/hNoTable"_s, 70 ).toInt();
   else
-    wh = settings.value( QStringLiteral( "Windows/Measure/h" ), 200 ).toInt();
+    wh = settings.value( u"Windows/Measure/h"_s, 200 ).toInt();
   resize( width(), wh );
   updateUi();
 }
@@ -373,13 +446,13 @@ void QgsMeasureDialog::saveWindowLocation()
 QString QgsMeasureDialog::formatDistance( double distance, bool convertUnits ) const
 {
   const QgsSettings settings;
-  const bool baseUnit = settings.value( QStringLiteral( "qgis/measure/keepbaseunit" ), true ).toBool();
+  const bool baseUnit = QgsSettingsRegistryCore::settingsMeasureKeepBaseUnit->value();
 
   if ( convertUnits )
     distance = convertLength( distance, mDistanceUnits );
 
   int decimals = mDecimalPlaces;
-  if ( mDistanceUnits == Qgis::DistanceUnit::Degrees  && distance < 1 )
+  if ( mDistanceUnits == Qgis::DistanceUnit::Degrees && distance < 1 )
   {
     // special handling for degrees - because we can't use smaller units (eg m->mm), we need to make sure there's
     // enough decimal places to show a usable measurement value
@@ -409,8 +482,7 @@ void QgsMeasureDialog::updateUi()
   mDa.setEllipsoid( QgsProject::instance()->ellipsoid() );
   mConvertToDisplayUnits = true;
 
-  const auto getEllipsoidFriendlyName = [this]()
-  {
+  const auto getEllipsoidFriendlyName = [this]() {
     // If mDa.ellipsoid is an acronym (e.g "EPSG:7030"), retrieve the user
     // friendly name ("WGS 84 (EPSG:7030)")
     QString ellipsoid = mDa.ellipsoid();
@@ -445,15 +517,15 @@ void QgsMeasureDialog::updateUi()
         toolTip += "<br> * " + tr( "Units are unknown." );
         mConvertToDisplayUnits = false;
       }
-      mDa.setEllipsoid( geoNone() );
+      mDa.setEllipsoid( Qgis::geoNone() );
     }
-    else if ( mCanvas->mapSettings().destinationCrs().mapUnits() == Qgis::DistanceUnit::Degrees
-              && ( mAreaUnits == Qgis::AreaUnit::SquareDegrees || mAreaUnits == Qgis::AreaUnit::Unknown ) )
+    else if ( mCanvas->mapSettings().destinationCrs().mapUnits() == Qgis::DistanceUnit::Degrees && ( mAreaUnits == Qgis::AreaUnit::SquareDegrees || mAreaUnits == Qgis::AreaUnit::Unknown ) )
     {
       //both source and destination units are degrees
-      toolTip += "<br> * " + tr( "Both project CRS (%1) and measured area are in degrees, so area is calculated using Cartesian calculations in square degrees." ).arg(
-                   mCanvas->mapSettings().destinationCrs().userFriendlyIdentifier() );
-      mDa.setEllipsoid( geoNone() );
+      toolTip += "<br> * "
+                 + tr( "Both project CRS (%1) and measured area are in degrees, so area is calculated using Cartesian calculations in square degrees." )
+                     .arg( mCanvas->mapSettings().destinationCrs().userFriendlyIdentifier() );
+      mDa.setEllipsoid( Qgis::geoNone() );
       mConvertToDisplayUnits = false; //not required since we will be measuring in degrees
     }
     else
@@ -463,42 +535,37 @@ void QgsMeasureDialog::updateUi()
       {
         resultUnit = Qgis::AreaUnit::SquareMeters;
         toolTip += "<br> * " + tr( "Project ellipsoidal calculation is selected." ) + ' ';
-        toolTip += "<br> * " + tr( "The coordinates are transformed to the chosen ellipsoid (%1), and the area is calculated in %2." ).arg( getEllipsoidFriendlyName(),
-                   QgsUnitTypes::toString( resultUnit ) );
+        toolTip += "<br> * "
+                   + tr( "The coordinates are transformed to the chosen ellipsoid (%1), and the area is calculated in %2." ).arg( getEllipsoidFriendlyName(), QgsUnitTypes::toString( resultUnit ) );
       }
       else
       {
         resultUnit = QgsUnitTypes::distanceToAreaUnit( mCanvas->mapSettings().destinationCrs().mapUnits() );
         toolTip += "<br> * " + tr( "Project ellipsoidal calculation is not selected." ) + ' ';
-        toolTip += tr( "Area is calculated in %1, based on project CRS (%2)." ).arg( QgsUnitTypes::toString( resultUnit ),
-                   mCanvas->mapSettings().destinationCrs().userFriendlyIdentifier() );
+        toolTip += tr( "Area is calculated in %1, based on project CRS (%2)." ).arg( QgsUnitTypes::toString( resultUnit ), mCanvas->mapSettings().destinationCrs().userFriendlyIdentifier() );
       }
       setWindowTitle( tr( "Measure" ) );
 
-      if ( QgsUnitTypes::unitType( resultUnit ) == Qgis::DistanceUnitType::Geographic &&
-           QgsUnitTypes::unitType( mAreaUnits ) == Qgis::DistanceUnitType::Standard )
+      if ( QgsUnitTypes::unitType( resultUnit ) == Qgis::DistanceUnitType::Geographic && QgsUnitTypes::unitType( mAreaUnits ) == Qgis::DistanceUnitType::Standard )
       {
-        toolTip += QLatin1String( "<br> * Area is roughly converted to square meters by using scale at equator (1 degree = 111319.49 meters)." );
+        toolTip += "<br> * Area is roughly converted to square meters by using scale at equator (1 degree = 111319.49 meters)."_L1;
         resultUnit = Qgis::AreaUnit::SquareMeters;
       }
-      else if ( QgsUnitTypes::unitType( resultUnit ) == Qgis::DistanceUnitType::Standard &&
-                QgsUnitTypes::unitType( mAreaUnits ) == Qgis::DistanceUnitType::Geographic )
+      else if ( QgsUnitTypes::unitType( resultUnit ) == Qgis::DistanceUnitType::Standard && QgsUnitTypes::unitType( mAreaUnits ) == Qgis::DistanceUnitType::Geographic )
       {
-        toolTip += QLatin1String( "<br> * Area is roughly converted to square degrees by using scale at equator (1 degree = 111319.49 meters)." );
+        toolTip += "<br> * Area is roughly converted to square degrees by using scale at equator (1 degree = 111319.49 meters)."_L1;
         resultUnit = Qgis::AreaUnit::SquareDegrees;
       }
 
       if ( resultUnit != mAreaUnits )
       {
-        if ( QgsUnitTypes::unitType( resultUnit ) == Qgis::DistanceUnitType::Standard &&
-             QgsUnitTypes::unitType( mAreaUnits ) == Qgis::DistanceUnitType::Standard )
+        if ( QgsUnitTypes::unitType( resultUnit ) == Qgis::DistanceUnitType::Standard && QgsUnitTypes::unitType( mAreaUnits ) == Qgis::DistanceUnitType::Standard )
         {
           // only shown if both conditions are true:
           // - the display unit is a standard distance measurement (e.g., square feet)
           // - either the canvas units is also a standard distance OR we are using an ellipsoid (in which case the
           //   value will be in square meters)
-          toolTip += "<br> * " + tr( "The value is converted from %1 to %2." ).arg( QgsUnitTypes::toString( resultUnit ),
-                     QgsUnitTypes::toString( mAreaUnits ) );
+          toolTip += "<br> * " + tr( "The value is converted from %1 to %2." ).arg( QgsUnitTypes::toString( resultUnit ), QgsUnitTypes::toString( mAreaUnits ) );
         }
         else
         {
@@ -523,15 +590,15 @@ void QgsMeasureDialog::updateUi()
         toolTip += "<br> * " + tr( "Units are unknown." );
         mConvertToDisplayUnits = false;
       }
-      mDa.setEllipsoid( geoNone() );
+      mDa.setEllipsoid( Qgis::geoNone() );
     }
-    else if ( mCanvas->mapSettings().destinationCrs().mapUnits() == Qgis::DistanceUnit::Degrees
-              && mDistanceUnits == Qgis::DistanceUnit::Degrees )
+    else if ( mCanvas->mapSettings().destinationCrs().mapUnits() == Qgis::DistanceUnit::Degrees && mDistanceUnits == Qgis::DistanceUnit::Degrees )
     {
       //both source and destination units are degrees
-      toolTip += "<br> * " + tr( "Both project CRS (%1) and measured length are in degrees, so distance is calculated using Cartesian calculations in degrees." ).arg(
-                   mCanvas->mapSettings().destinationCrs().userFriendlyIdentifier() );
-      mDa.setEllipsoid( geoNone() );
+      toolTip += "<br> * "
+                 + tr( "Both project CRS (%1) and measured length are in degrees, so distance is calculated using Cartesian calculations in degrees." )
+                     .arg( mCanvas->mapSettings().destinationCrs().userFriendlyIdentifier() );
+      mDa.setEllipsoid( Qgis::geoNone() );
       mConvertToDisplayUnits = false; //not required since we will be measuring in degrees
     }
     else
@@ -541,42 +608,37 @@ void QgsMeasureDialog::updateUi()
       {
         resultUnit = Qgis::DistanceUnit::Meters;
         toolTip += "<br> * " + tr( "Project ellipsoidal calculation is selected." ) + ' ';
-        toolTip += "<br> * " + tr( "The coordinates are transformed to the chosen ellipsoid (%1), and the distance is calculated in %2." ).arg( getEllipsoidFriendlyName(),
-                   QgsUnitTypes::toString( resultUnit ) );
+        toolTip += "<br> * "
+                   + tr( "The coordinates are transformed to the chosen ellipsoid (%1), and the distance is calculated in %2." ).arg( getEllipsoidFriendlyName(), QgsUnitTypes::toString( resultUnit ) );
       }
       else
       {
         resultUnit = mCanvas->mapSettings().destinationCrs().mapUnits();
         toolTip += "<br> * " + tr( "Project ellipsoidal calculation is not selected." ) + ' ';
-        toolTip += tr( "Distance is calculated in %1, based on project CRS (%2)." ).arg( QgsUnitTypes::toString( resultUnit ),
-                   mCanvas->mapSettings().destinationCrs().userFriendlyIdentifier() );
+        toolTip += tr( "Distance is calculated in %1, based on project CRS (%2)." ).arg( QgsUnitTypes::toString( resultUnit ), mCanvas->mapSettings().destinationCrs().userFriendlyIdentifier() );
       }
       setWindowTitle( tr( "Measure" ) );
 
-      if ( QgsUnitTypes::unitType( resultUnit ) == Qgis::DistanceUnitType::Geographic &&
-           QgsUnitTypes::unitType( mDistanceUnits ) == Qgis::DistanceUnitType::Standard )
+      if ( QgsUnitTypes::unitType( resultUnit ) == Qgis::DistanceUnitType::Geographic && QgsUnitTypes::unitType( mDistanceUnits ) == Qgis::DistanceUnitType::Standard )
       {
-        toolTip += QLatin1String( "<br> * Distance is roughly converted to meters by using scale at equator (1 degree = 111319.49 meters)." );
+        toolTip += "<br> * Distance is roughly converted to meters by using scale at equator (1 degree = 111319.49 meters)."_L1;
         resultUnit = Qgis::DistanceUnit::Meters;
       }
-      else if ( QgsUnitTypes::unitType( resultUnit ) == Qgis::DistanceUnitType::Standard &&
-                QgsUnitTypes::unitType( mDistanceUnits ) == Qgis::DistanceUnitType::Geographic )
+      else if ( QgsUnitTypes::unitType( resultUnit ) == Qgis::DistanceUnitType::Standard && QgsUnitTypes::unitType( mDistanceUnits ) == Qgis::DistanceUnitType::Geographic )
       {
-        toolTip += QLatin1String( "<br> * Distance is roughly converted to degrees by using scale at equator (1 degree = 111319.49 meters)." );
+        toolTip += "<br> * Distance is roughly converted to degrees by using scale at equator (1 degree = 111319.49 meters)."_L1;
         resultUnit = Qgis::DistanceUnit::Degrees;
       }
 
       if ( resultUnit != mDistanceUnits )
       {
-        if ( QgsUnitTypes::unitType( resultUnit ) == Qgis::DistanceUnitType::Standard &&
-             QgsUnitTypes::unitType( mDistanceUnits ) == Qgis::DistanceUnitType::Standard )
+        if ( QgsUnitTypes::unitType( resultUnit ) == Qgis::DistanceUnitType::Standard && QgsUnitTypes::unitType( mDistanceUnits ) == Qgis::DistanceUnitType::Standard )
         {
           // only shown if both conditions are true:
           // - the display unit is a standard distance measurement (e.g., feet)
           // - either the canvas units is also a standard distance OR we are using an ellipsoid (in which case the
           //   value will be in meters)
-          toolTip += "<br> * " + tr( "The value is converted from %1 to %2." ).arg( QgsUnitTypes::toString( resultUnit ),
-                     QgsUnitTypes::toString( mDistanceUnits ) );
+          toolTip += "<br> * " + tr( "The value is converted from %1 to %2." ).arg( QgsUnitTypes::toString( resultUnit ), QgsUnitTypes::toString( mDistanceUnits ) );
         }
         else
         {
@@ -604,22 +666,22 @@ void QgsMeasureDialog::updateUi()
     if ( mUseMapUnits )
       mUnitsCombo->setCurrentIndex( mUnitsCombo->findData( static_cast<int>( Qgis::AreaUnit::Unknown ) ) );
     else
-      mUnitsCombo->setCurrentIndex( mUnitsCombo->findData( static_cast< int >( mAreaUnits ) ) );
+      mUnitsCombo->setCurrentIndex( mUnitsCombo->findData( static_cast<int>( mAreaUnits ) ) );
   }
   else
   {
     if ( mUseMapUnits )
     {
-      mUnitsCombo->setCurrentIndex( mUnitsCombo->findData( static_cast< int >( Qgis::DistanceUnit::Unknown ) ) );
+      mUnitsCombo->setCurrentIndex( mUnitsCombo->findData( static_cast<int>( Qgis::DistanceUnit::Unknown ) ) );
       mTable->headerItem()->setText( Columns::Distance, tr( "Segments [%1]" ).arg( QgsUnitTypes::toString( mMapDistanceUnits ) ) );
     }
     else
     {
-      mUnitsCombo->setCurrentIndex( mUnitsCombo->findData( static_cast< int >( mDistanceUnits ) ) );
+      mUnitsCombo->setCurrentIndex( mUnitsCombo->findData( static_cast<int>( mDistanceUnits ) ) );
       if ( mDistanceUnits != Qgis::DistanceUnit::Unknown )
-        mTable->headerItem()->setText( Columns::Distance,  tr( "Segments [%1]" ).arg( QgsUnitTypes::toString( mDistanceUnits ) ) );
+        mTable->headerItem()->setText( Columns::Distance, tr( "Segments [%1]" ).arg( QgsUnitTypes::toString( mDistanceUnits ) ) );
       else
-        mTable->headerItem()->setText( Columns::Distance,  tr( "Segments" ) );
+        mTable->headerItem()->setText( Columns::Distance, tr( "Segments" ) );
     }
   }
 
@@ -628,7 +690,15 @@ void QgsMeasureDialog::updateUi()
     double area = 0.0;
     if ( mTool->points().size() > 1 )
     {
-      area = mDa.measurePolygon( mTool->points() );
+      try
+      {
+        area = mDa.measurePolygon( mTool->points() );
+      }
+      catch ( QgsCsException & )
+      {
+        // TODO report errors to user
+        QgsDebugError( u"An error occurred while calculating area"_s );
+      }
     }
     mTable->hide(); // Hide the table, only show summary
     mSpacer->changeSize( 40, 5, QSizePolicy::Fixed, QSizePolicy::Expanding );
@@ -642,7 +712,7 @@ void QgsMeasureDialog::updateUi()
 
     QgsPointXY previousPoint, point;
     mTotal = 0;
-    const QVector< QgsPointXY > tmpPoints = mTool->points();
+    const QVector<QgsPointXY> tmpPoints = mTool->points();
     for ( it = tmpPoints.constBegin(); it != tmpPoints.constEnd(); ++it )
     {
       point = *it;
@@ -654,7 +724,16 @@ void QgsMeasureDialog::updateUi()
       if ( !firstPoint )
       {
         double d = -1;
-        d = mDa.measureLine( previousPoint, point );
+        try
+        {
+          d = mDa.measureLine( previousPoint, point );
+        }
+        catch ( QgsCsException & )
+        {
+          // TODO report errors to user
+          QgsDebugError( u"An error occurred while calculating length"_s );
+        }
+
         if ( mConvertToDisplayUnits )
         {
           if ( mDistanceUnits == Qgis::DistanceUnit::Unknown && mMapDistanceUnits != Qgis::DistanceUnit::Unknown )
@@ -673,7 +752,16 @@ void QgsMeasureDialog::updateUi()
       firstPoint = false;
     }
 
-    mTotal = mDa.measureLine( mTool->points() );
+    try
+    {
+      mTotal = mDa.measureLine( mTool->points() );
+    }
+    catch ( QgsCsException &e )
+    {
+      QgsDebugError( u"Coordinate transform error while calculating line length: %1"_s.arg( e.what() ) );
+      mTotal = 0;
+    }
+
     mTable->show(); // Show the table with items
     mSpacer->changeSize( 40, 5, QSizePolicy::Fixed, QSizePolicy::Maximum );
     editTotal->setText( formatDistance( mTotal, mConvertToDisplayUnits ) );
@@ -692,33 +780,43 @@ void QgsMeasureDialog::repopulateComboBoxUnits( bool isArea )
   mUnitsCombo->clear();
   if ( isArea )
   {
-    mUnitsCombo->addItem( QgsUnitTypes::toString( Qgis::AreaUnit::SquareMeters ), static_cast< int >( Qgis::AreaUnit::SquareMeters ) );
-    mUnitsCombo->addItem( QgsUnitTypes::toString( Qgis::AreaUnit::SquareKilometers ), static_cast< int >( Qgis::AreaUnit::SquareKilometers ) );
-    mUnitsCombo->addItem( QgsUnitTypes::toString( Qgis::AreaUnit::SquareFeet ), static_cast< int >( Qgis::AreaUnit::SquareFeet ) );
-    mUnitsCombo->addItem( QgsUnitTypes::toString( Qgis::AreaUnit::SquareYards ), static_cast< int >( Qgis::AreaUnit::SquareYards ) );
-    mUnitsCombo->addItem( QgsUnitTypes::toString( Qgis::AreaUnit::SquareMiles ), static_cast< int >( Qgis::AreaUnit::SquareMiles ) );
-    mUnitsCombo->addItem( QgsUnitTypes::toString( Qgis::AreaUnit::Hectares ), static_cast< int >( Qgis::AreaUnit::Hectares ) );
-    mUnitsCombo->addItem( QgsUnitTypes::toString( Qgis::AreaUnit::Acres ), static_cast< int >( Qgis::AreaUnit::Acres ) );
-    mUnitsCombo->addItem( QgsUnitTypes::toString( Qgis::AreaUnit::SquareCentimeters ), static_cast< int >( Qgis::AreaUnit::SquareCentimeters ) );
-    mUnitsCombo->addItem( QgsUnitTypes::toString( Qgis::AreaUnit::SquareMillimeters ), static_cast< int >( Qgis::AreaUnit::SquareMillimeters ) );
-    mUnitsCombo->addItem( QgsUnitTypes::toString( Qgis::AreaUnit::SquareNauticalMiles ), static_cast< int >( Qgis::AreaUnit::SquareNauticalMiles ) );
-    mUnitsCombo->addItem( QgsUnitTypes::toString( Qgis::AreaUnit::SquareInches ), static_cast< int >( Qgis::AreaUnit::SquareInches ) );
-    mUnitsCombo->addItem( QgsUnitTypes::toString( Qgis::AreaUnit::SquareDegrees ), static_cast< int >( Qgis::AreaUnit::SquareDegrees ) );
-    mUnitsCombo->addItem( tr( "map units" ), static_cast< int >( Qgis::AreaUnit::Unknown ) );
+    for ( const Qgis::AreaUnit unit : {
+            Qgis::AreaUnit::SquareMeters,
+            Qgis::AreaUnit::SquareKilometers,
+            Qgis::AreaUnit::SquareFeet,
+            Qgis::AreaUnit::SquareYards,
+            Qgis::AreaUnit::SquareMiles,
+            Qgis::AreaUnit::Hectares,
+            Qgis::AreaUnit::Acres,
+            Qgis::AreaUnit::SquareCentimeters,
+            Qgis::AreaUnit::SquareMillimeters,
+            Qgis::AreaUnit::SquareNauticalMiles,
+            Qgis::AreaUnit::SquareInches,
+            Qgis::AreaUnit::SquareDegrees,
+          } )
+    {
+      mUnitsCombo->addItem( QgsUnitTypes::toString( unit ), static_cast<int>( unit ) );
+    }
+    mUnitsCombo->addItem( tr( "map units" ), static_cast<int>( Qgis::AreaUnit::Unknown ) );
   }
   else
   {
-    mUnitsCombo->addItem( QgsUnitTypes::toString( Qgis::DistanceUnit::Meters ), static_cast< int >( Qgis::DistanceUnit::Meters ) );
-    mUnitsCombo->addItem( QgsUnitTypes::toString( Qgis::DistanceUnit::Kilometers ), static_cast< int >( Qgis::DistanceUnit::Kilometers ) );
-    mUnitsCombo->addItem( QgsUnitTypes::toString( Qgis::DistanceUnit::Feet ), static_cast< int >( Qgis::DistanceUnit::Feet ) );
-    mUnitsCombo->addItem( QgsUnitTypes::toString( Qgis::DistanceUnit::Yards ), static_cast< int >( Qgis::DistanceUnit::Yards ) );
-    mUnitsCombo->addItem( QgsUnitTypes::toString( Qgis::DistanceUnit::Miles ), static_cast< int >( Qgis::DistanceUnit::Miles ) );
-    mUnitsCombo->addItem( QgsUnitTypes::toString( Qgis::DistanceUnit::NauticalMiles ), static_cast< int >( Qgis::DistanceUnit::NauticalMiles ) );
-    mUnitsCombo->addItem( QgsUnitTypes::toString( Qgis::DistanceUnit::Centimeters ), static_cast< int >( Qgis::DistanceUnit::Centimeters ) );
-    mUnitsCombo->addItem( QgsUnitTypes::toString( Qgis::DistanceUnit::Millimeters ), static_cast< int >( Qgis::DistanceUnit::Millimeters ) );
-    mUnitsCombo->addItem( QgsUnitTypes::toString( Qgis::DistanceUnit::Inches ), static_cast< int >( Qgis::DistanceUnit::Inches ) );
-    mUnitsCombo->addItem( QgsUnitTypes::toString( Qgis::DistanceUnit::Degrees ), static_cast< int >( Qgis::DistanceUnit::Degrees ) );
-    mUnitsCombo->addItem( tr( "map units" ), static_cast< int >( Qgis::DistanceUnit::Unknown ) );
+    for ( const Qgis::DistanceUnit unit :
+          { Qgis::DistanceUnit::Meters,
+            Qgis::DistanceUnit::Kilometers,
+            Qgis::DistanceUnit::Feet,
+            Qgis::DistanceUnit::Yards,
+            Qgis::DistanceUnit::Miles,
+            Qgis::DistanceUnit::NauticalMiles,
+            Qgis::DistanceUnit::Centimeters,
+            Qgis::DistanceUnit::Millimeters,
+            Qgis::DistanceUnit::Inches,
+            Qgis::DistanceUnit::Degrees,
+            Qgis::DistanceUnit::ChainsInternational } )
+    {
+      mUnitsCombo->addItem( QgsUnitTypes::toString( unit ), static_cast<int>( unit ) );
+    }
+    mUnitsCombo->addItem( tr( "map units" ), static_cast<int>( Qgis::DistanceUnit::Unknown ) );
   }
 }
 
@@ -741,11 +839,11 @@ void QgsMeasureDialog::copyMeasurements()
   QString separator = settingClipboardSeparator->value();
 
   // If the field separator is a comma and the locale uses a comma as decimal separator, change to a semicolon
-  if ( separator == QLatin1String( "," ) && !alwaysUseDecimalPoint && QLocale().decimalPoint() == QLatin1String( "," ) )
-    separator = QStringLiteral( ";" );
+  if ( separator == ","_L1 && !alwaysUseDecimalPoint && QLocale().decimalPoint() == ","_L1 )
+    separator = u";"_s;
 
   if ( separator.isEmpty() )
-    separator = QStringLiteral( "\t" );
+    separator = u"\t"_s;
 
   QClipboard *clipboard = QApplication::clipboard();
   QString text;
@@ -755,15 +853,14 @@ void QgsMeasureDialog::copyMeasurements()
   {
     text += mTable->headerItem()->text( Columns::X ) + separator;
     text += mTable->headerItem()->text( Columns::Y ) + separator;
-    text += mTable->headerItem()->text( Columns::Distance ) + QStringLiteral( "\n" );
+    text += mTable->headerItem()->text( Columns::Distance ) + u"\n"_s;
   }
 
 
-  auto replaceDecimalSeparator = [ alwaysUseDecimalPoint ]( const QString & value ) -> QString
-  {
+  auto replaceDecimalSeparator = [alwaysUseDecimalPoint]( const QString &value ) -> QString {
     QString result = value;
-    if ( alwaysUseDecimalPoint && QLocale().decimalPoint() != QLatin1String( "." ) )
-      result.replace( QLocale().decimalPoint(), QStringLiteral( "." ) );
+    if ( alwaysUseDecimalPoint && QLocale().decimalPoint() != "."_L1 )
+      result.replace( QLocale().decimalPoint(), u"."_s );
     return result;
   };
 
@@ -771,7 +868,7 @@ void QgsMeasureDialog::copyMeasurements()
   {
     text += replaceDecimalSeparator( ( *it )->text( Columns::X ) ) + separator;
     text += replaceDecimalSeparator( ( *it )->text( Columns::Y ) ) + separator;
-    text += replaceDecimalSeparator( ( *it )->text( Columns::Distance ) ) + QStringLiteral( "\n" );
+    text += replaceDecimalSeparator( ( *it )->text( Columns::Distance ) ) + u"\n"_s;
     it++;
   }
 
@@ -790,5 +887,5 @@ void QgsMeasureDialog::reject()
 
 void QgsMeasureDialog::showHelp()
 {
-  QgsHelp::openHelp( QStringLiteral( "map_views/map_view.html#sec-measure" ) );
+  QgsHelp::openHelp( u"map_views/map_view.html#sec-measure"_s );
 }

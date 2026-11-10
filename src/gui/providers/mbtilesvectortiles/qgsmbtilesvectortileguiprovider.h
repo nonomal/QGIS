@@ -22,8 +22,9 @@
 #include "qgsproviderguimetadata.h"
 #include "qgsprovidersourcewidgetprovider.h"
 
-///@cond PRIVATE
 #define SIP_NO_FILE
+
+///@cond PRIVATE
 
 class QgsMbtilesVectorTileSourceWidgetProvider : public QgsProviderSourceWidgetProvider
 {
@@ -34,7 +35,7 @@ class QgsMbtilesVectorTileSourceWidgetProvider : public QgsProviderSourceWidgetP
     QgsProviderSourceWidget *createWidget( QgsMapLayer *layer, QWidget *parent = nullptr ) override;
 };
 
-class QgsMbtilesVectorTileGuiProviderMetadata: public QgsProviderGuiMetadata
+class QgsMbtilesVectorTileGuiProviderMetadata : public QgsProviderGuiMetadata
 {
   public:
     QgsMbtilesVectorTileGuiProviderMetadata();

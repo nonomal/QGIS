@@ -16,13 +16,18 @@
  ***************************************************************************/
 
 #include "qgsalgorithmmultiringconstantbuffer.h"
+
 #include "qgsvectorlayer.h"
+
+#include <QString>
+
+using namespace Qt::StringLiterals;
 
 ///@cond PRIVATE
 
 QString QgsMultiRingConstantBufferAlgorithm::name() const
 {
-  return QStringLiteral( "multiringconstantbuffer" );
+  return u"multiringconstantbuffer"_s;
 }
 
 QString QgsMultiRingConstantBufferAlgorithm::displayName() const
@@ -42,7 +47,7 @@ QString QgsMultiRingConstantBufferAlgorithm::group() const
 
 QString QgsMultiRingConstantBufferAlgorithm::groupId() const
 {
-  return QStringLiteral( "vectorgeometry" );
+  return u"vectorgeometry"_s;
 }
 
 QString QgsMultiRingConstantBufferAlgorithm::outputName() const
@@ -52,7 +57,17 @@ QString QgsMultiRingConstantBufferAlgorithm::outputName() const
 
 QString QgsMultiRingConstantBufferAlgorithm::shortHelpString() const
 {
-  return QObject::tr( "This algorithm computes multi-ring ('donuts') buffer for all the features in an input layer, using a fixed or dynamic distance and rings number." );
+  return QObject::tr( "This algorithm computes multi-ring ('donuts') buffer for the features in an input layer, using a fixed or dynamic distance and number of rings." );
+}
+
+QString QgsMultiRingConstantBufferAlgorithm::shortDescription() const
+{
+  return QObject::tr( "Computes multi-ring ('donuts') buffer using a fixed or dynamic distance and number of rings." );
+}
+
+Qgis::ProcessingAlgorithmDocumentationFlags QgsMultiRingConstantBufferAlgorithm::documentationFlags() const
+{
+  return Qgis::ProcessingAlgorithmDocumentationFlag::RegeneratesPrimaryKey;
 }
 
 QgsMultiRingConstantBufferAlgorithm *QgsMultiRingConstantBufferAlgorithm::createInstance() const
@@ -62,29 +77,26 @@ QgsMultiRingConstantBufferAlgorithm *QgsMultiRingConstantBufferAlgorithm::create
 
 void QgsMultiRingConstantBufferAlgorithm::initParameters( const QVariantMap & )
 {
-  std::unique_ptr< QgsProcessingParameterNumber> rings = std::make_unique< QgsProcessingParameterNumber >( QStringLiteral( "RINGS" ),
-      QObject::tr( "Number of rings" ), Qgis::ProcessingNumberParameterType::Integer,
-      1, false, 0 );
+  auto rings = std::make_unique<QgsProcessingParameterNumber>( u"RINGS"_s, QObject::tr( "Number of rings" ), Qgis::ProcessingNumberParameterType::Integer, 1, false, 0 );
   rings->setIsDynamic( true );
-  rings->setDynamicPropertyDefinition( QgsPropertyDefinition( QStringLiteral( "RINGS" ), QObject::tr( "Number of rings" ), QgsPropertyDefinition::IntegerPositive ) );
-  rings->setDynamicLayerParameterName( QStringLiteral( "INPUT" ) );
+  rings->setDynamicPropertyDefinition( QgsPropertyDefinition( u"RINGS"_s, QObject::tr( "Number of rings" ), QgsPropertyDefinition::IntegerPositive ) );
+  rings->setDynamicLayerParameterName( u"INPUT"_s );
   addParameter( rings.release() );
 
-  std::unique_ptr< QgsProcessingParameterDistance > distance = std::make_unique< QgsProcessingParameterDistance >( QStringLiteral( "DISTANCE" ),
-      QObject::tr( "Distance between rings" ), 1, QStringLiteral( "INPUT" ), false );
+  auto distance = std::make_unique<QgsProcessingParameterDistance>( u"DISTANCE"_s, QObject::tr( "Distance between rings" ), 1, u"INPUT"_s, false );
   distance->setIsDynamic( true );
-  distance->setDynamicPropertyDefinition( QgsPropertyDefinition( QStringLiteral( "DISTANCE" ), QObject::tr( "Distance between rings" ), QgsPropertyDefinition::DoublePositive ) );
-  distance->setDynamicLayerParameterName( QStringLiteral( "INPUT" ) );
+  distance->setDynamicPropertyDefinition( QgsPropertyDefinition( u"DISTANCE"_s, QObject::tr( "Distance between rings" ), QgsPropertyDefinition::DoublePositive ) );
+  distance->setDynamicLayerParameterName( u"INPUT"_s );
   addParameter( distance.release() );
 }
 
 bool QgsMultiRingConstantBufferAlgorithm::supportInPlaceEdit( const QgsMapLayer *l ) const
 {
-  const QgsVectorLayer *layer = qobject_cast< const QgsVectorLayer * >( l );
+  const QgsVectorLayer *layer = qobject_cast<const QgsVectorLayer *>( l );
   if ( !layer )
     return false;
 
-  if ( ! QgsProcessingFeatureBasedAlgorithm::supportInPlaceEdit( layer ) )
+  if ( !QgsProcessingFeatureBasedAlgorithm::supportInPlaceEdit( layer ) )
     return false;
   // Polygons only
   return layer->wkbType() == Qgis::WkbType::Polygon || layer->wkbType() == Qgis::WkbType::MultiPolygon;
@@ -92,25 +104,25 @@ bool QgsMultiRingConstantBufferAlgorithm::supportInPlaceEdit( const QgsMapLayer 
 
 bool QgsMultiRingConstantBufferAlgorithm::prepareAlgorithm( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback * )
 {
-  mRingsNumber = parameterAsInt( parameters, QStringLiteral( "RINGS" ), context );
-  mDynamicRingsNumber = QgsProcessingParameters::isDynamic( parameters, QStringLiteral( "RINGS" ) );
+  mRingsNumber = parameterAsInt( parameters, u"RINGS"_s, context );
+  mDynamicRingsNumber = QgsProcessingParameters::isDynamic( parameters, u"RINGS"_s );
   if ( mDynamicRingsNumber )
-    mRingsNumberProperty = parameters.value( QStringLiteral( "RINGS" ) ).value< QgsProperty >();
+    mRingsNumberProperty = parameters.value( u"RINGS"_s ).value<QgsProperty>();
 
-  mDistance = parameterAsDouble( parameters, QStringLiteral( "DISTANCE" ), context );
-  mDynamicDistance = QgsProcessingParameters::isDynamic( parameters, QStringLiteral( "DISTANCE" ) );
+  mDistance = parameterAsDouble( parameters, u"DISTANCE"_s, context );
+  mDynamicDistance = QgsProcessingParameters::isDynamic( parameters, u"DISTANCE"_s );
   if ( mDynamicDistance )
-    mDistanceProperty = parameters.value( QStringLiteral( "DISTANCE" ) ).value< QgsProperty >();
+    mDistanceProperty = parameters.value( u"DISTANCE"_s ).value<QgsProperty>();
 
   return true;
 }
 
 QgsFields QgsMultiRingConstantBufferAlgorithm::outputFields( const QgsFields &inputFields ) const
 {
-  QgsFields fields = inputFields;
-  fields.append( QgsField( QStringLiteral( "ringId" ), QVariant::Int, QString(), 10, 0 ) );
-  fields.append( QgsField( QStringLiteral( "distance" ), QVariant::Double, QString(), 20, 6 ) );
-  return fields;
+  QgsFields newFields;
+  newFields.append( QgsField( u"ringId"_s, QMetaType::Type::Int, QString(), 10, 0 ) );
+  newFields.append( QgsField( u"distance"_s, QMetaType::Type::Double, QString(), 20, 6 ) );
+  return QgsProcessingUtils::combineFields( inputFields, newFields );
 }
 
 Qgis::ProcessingFeatureSourceFlags QgsMultiRingConstantBufferAlgorithm::sourceFlags() const
@@ -125,6 +137,8 @@ QgsFeatureSink::SinkFlags QgsMultiRingConstantBufferAlgorithm::sinkFlags() const
 
 QgsFeatureList QgsMultiRingConstantBufferAlgorithm::processFeature( const QgsFeature &feature, QgsProcessingContext &context, QgsProcessingFeedback *feedback )
 {
+  QGS_MARK_ALGORITHM_SOURCE
+
   double currentDistance = 0;
   QgsGeometry outputGeometry, previousGeometry;
 
@@ -140,14 +154,14 @@ QgsFeatureList QgsMultiRingConstantBufferAlgorithm::processFeature( const QgsFea
 
   // Set previous geometry to a zero-distance buffer of the original geometry,
   // this is needed for negative distance values
-  previousGeometry = feature.geometry().buffer( 0.0, 40 );
+  previousGeometry = feature.geometry().buffer( 0.0, 40, feedback );
   previousGeometry.convertToMultiType();
 
   for ( int i = 1; i <= rings; ++i )
   {
     QgsFeature out;
     currentDistance = i * distance;
-    outputGeometry = feature.geometry().buffer( currentDistance, 40 );
+    outputGeometry = feature.geometry().buffer( currentDistance, 40, feedback );
     outputGeometry.convertToMultiType();
     if ( outputGeometry.isNull() )
     {
@@ -157,7 +171,7 @@ QgsFeatureList QgsMultiRingConstantBufferAlgorithm::processFeature( const QgsFea
 
     if ( distance < 0.0 )
     {
-      out.setGeometry( previousGeometry.symDifference( outputGeometry ) );
+      out.setGeometry( previousGeometry.symDifference( outputGeometry, QgsGeometryParameters(), feedback ) );
     }
     else if ( i == 1 )
     {
@@ -165,7 +179,7 @@ QgsFeatureList QgsMultiRingConstantBufferAlgorithm::processFeature( const QgsFea
     }
     else
     {
-      out.setGeometry( outputGeometry.symDifference( previousGeometry ) );
+      out.setGeometry( outputGeometry.symDifference( previousGeometry, QgsGeometryParameters(), feedback ) );
     }
     previousGeometry = outputGeometry;
     QgsAttributes attrs = feature.attributes();

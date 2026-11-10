@@ -2,8 +2,8 @@
                          qgsregularpolygon.cpp
                          --------------
     begin                : May 2017
-    copyright            : (C) 2017 by Loîc Bartoletti
-    email                : lbartoletti at tuxfamily dot org
+    copyright            : (C) 2017 by Loïc Bartoletti
+    email                : lituus at free dot fr
  ***************************************************************************/
 
 /***************************************************************************
@@ -16,9 +16,14 @@
  ***************************************************************************/
 
 #include "qgsregularpolygon.h"
-#include "qgsgeometryutils.h"
 
 #include <memory>
+
+#include "qgsgeometryutils.h"
+
+#include <QString>
+
+using namespace Qt::StringLiterals;
 
 QgsRegularPolygon::QgsRegularPolygon( const QgsPoint &center, const double radius, const double azimuth, const unsigned int numSides, const ConstructionOption circle )
   : mCenter( center )
@@ -44,9 +49,7 @@ QgsRegularPolygon::QgsRegularPolygon( const QgsPoint &center, const double radiu
         break;
       }
     }
-
   }
-
 }
 
 QgsRegularPolygon::QgsRegularPolygon( const QgsPoint &center, const QgsPoint &pt1, const unsigned int numSides, const ConstructionOption circle )
@@ -73,9 +76,7 @@ QgsRegularPolygon::QgsRegularPolygon( const QgsPoint &center, const QgsPoint &pt
         break;
       }
     }
-
   }
-
 }
 
 QgsRegularPolygon::QgsRegularPolygon( const QgsPoint &pt1, const QgsPoint &pt2, const unsigned int numSides )
@@ -98,26 +99,19 @@ QgsRegularPolygon::QgsRegularPolygon( const QgsPoint &pt1, const QgsPoint &pt2, 
   }
 }
 
-bool QgsRegularPolygon::operator ==( const QgsRegularPolygon &rp ) const
+bool QgsRegularPolygon::operator==( const QgsRegularPolygon &rp ) const
 {
-  return ( ( mCenter == rp.mCenter ) &&
-           ( mFirstVertex == rp.mFirstVertex ) &&
-           ( mNumberSides == rp.mNumberSides )
-         );
+  return ( ( mCenter == rp.mCenter ) && ( mFirstVertex == rp.mFirstVertex ) && ( mNumberSides == rp.mNumberSides ) );
 }
 
-bool QgsRegularPolygon::operator !=( const QgsRegularPolygon &rp ) const
+bool QgsRegularPolygon::operator!=( const QgsRegularPolygon &rp ) const
 {
   return !operator==( rp );
 }
 
 bool QgsRegularPolygon::isEmpty() const
 {
-  return ( ( mNumberSides < 3 ) ||
-           ( mCenter.isEmpty() ) ||
-           ( mFirstVertex.isEmpty() ) ||
-           ( mCenter == mFirstVertex )
-         );
+  return ( ( mNumberSides < 3 ) || ( mCenter.isEmpty() ) || ( mFirstVertex.isEmpty() ) || ( mCenter == mFirstVertex ) );
 }
 
 void QgsRegularPolygon::setCenter( const QgsPoint &center )
@@ -180,25 +174,25 @@ QgsPointSequence QgsRegularPolygon::points() const
   return pts;
 }
 
-QgsPolygon *QgsRegularPolygon::toPolygon() const
+std::unique_ptr<QgsPolygon> QgsRegularPolygon::toPolygon() const
 {
-  std::unique_ptr<QgsPolygon> polygon( new QgsPolygon() );
+  auto polygon = std::make_unique<QgsPolygon>();
   if ( isEmpty() )
   {
-    return polygon.release();
+    return polygon;
   }
 
-  polygon->setExteriorRing( toLineString() );
+  polygon->setExteriorRing( toLineString().release() );
 
-  return polygon.release();
+  return polygon;
 }
 
-QgsLineString *QgsRegularPolygon::toLineString() const
+std::unique_ptr<QgsLineString> QgsRegularPolygon::toLineString() const
 {
-  std::unique_ptr<QgsLineString> ext( new QgsLineString() );
+  auto ext = std::make_unique<QgsLineString>();
   if ( isEmpty() )
   {
-    return ext.release();
+    return ext;
   }
 
   QgsPointSequence pts;
@@ -207,7 +201,7 @@ QgsLineString *QgsRegularPolygon::toLineString() const
   ext->setPoints( pts );
   ext->addVertex( pts.at( 0 ) ); //close regular polygon
 
-  return ext.release();
+  return ext;
 }
 
 QgsTriangle QgsRegularPolygon::toTriangle() const
@@ -261,13 +255,12 @@ QString QgsRegularPolygon::toString( int pointPrecision, int radiusPrecision, in
 {
   QString rep;
   if ( isEmpty() )
-    rep = QStringLiteral( "Empty" );
+    rep = u"Empty"_s;
   else
-    rep = QStringLiteral( "RegularPolygon (Center: %1, First Vertex: %2, Radius: %3, Azimuth: %4)" )
-          .arg( mCenter.asWkt( pointPrecision ), 0, 's' )
-          .arg( mFirstVertex.asWkt( pointPrecision ), 0, 's' )
-          .arg( qgsDoubleToString( mRadius, radiusPrecision ), 0, 'f' )
-          .arg( qgsDoubleToString( mCenter.azimuth( mFirstVertex ), anglePrecision ), 0, 'f' );
+    rep = u"RegularPolygon (Center: %1, First Vertex: %2, Radius: %3, Azimuth: %4)"_s.arg( mCenter.asWkt( pointPrecision ), 0, 's' )
+            .arg( mFirstVertex.asWkt( pointPrecision ), 0, 's' )
+            .arg( qgsDoubleToString( mRadius, radiusPrecision ), 0, 'f' )
+            .arg( qgsDoubleToString( mCenter.azimuth( mFirstVertex ), anglePrecision ), 0, 'f' );
   // TODO: inclination
   // .arg( qgsDoubleToString( mCenter.inclination(mFirstVertex), anglePrecision ), 0, 'f' );
 

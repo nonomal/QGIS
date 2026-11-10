@@ -17,14 +17,12 @@
 #define QGSLINE3DSYMBOL_H
 
 #include "qgis_3d.h"
-
 #include "qgsabstract3dsymbol.h"
-#include "qgs3dtypes.h"
 
 class QgsAbstractMaterialSettings;
 
 /**
- * \ingroup 3d
+ * \ingroup qgis_3d
  * \brief 3D symbol that draws linestring geometries as planar polygons (created from lines using a buffer with given thickness).
  *
  * \warning This is not considered stable API, and may change in future QGIS releases. It is
@@ -34,7 +32,6 @@ class QgsAbstractMaterialSettings;
 class _3D_EXPORT QgsLine3DSymbol : public QgsAbstract3DSymbol SIP_NODEFAULTCTORS
 {
   public:
-    //! Constructor for QgsLine3DSymbol
     QgsLine3DSymbol();
     ~QgsLine3DSymbol() override;
 
@@ -50,7 +47,7 @@ class _3D_EXPORT QgsLine3DSymbol : public QgsAbstract3DSymbol SIP_NODEFAULTCTORS
 
     void writeXml( QDomElement &elem, const QgsReadWriteContext &context ) const override;
     void readXml( const QDomElement &elem, const QgsReadWriteContext &context ) override;
-    QList< Qgis::GeometryType > compatibleGeometryTypes() const override;
+    QList<Qgis::GeometryType> compatibleGeometryTypes() const override;
     void setDefaultPropertiesFromLayer( const QgsVectorLayer *layer ) override;
 
     //! Returns method that determines altitude (whether to clamp to feature to terrain)
@@ -71,14 +68,14 @@ class _3D_EXPORT QgsLine3DSymbol : public QgsAbstract3DSymbol SIP_NODEFAULTCTORS
     /**
      * Returns height (altitude) of the symbol (in map units)
      *
-     * \deprecated since QGIS 3.36. Use offset() instead.
+     * \deprecated QGIS 3.36. Use offset() instead.
      */
     Q_DECL_DEPRECATED float height() const SIP_DEPRECATED { return mOffset; }
 
     /**
      * Sets height (altitude) of the symbol (in map units)
      *
-     * \deprecated since QGIS 3.36. Use setOffset() instead.
+     * \deprecated QGIS 3.36. Use setOffset() instead.
      */
     Q_DECL_DEPRECATED void setHeight( float height ) SIP_DEPRECATED { mOffset = height; }
 
@@ -107,14 +104,14 @@ class _3D_EXPORT QgsLine3DSymbol : public QgsAbstract3DSymbol SIP_NODEFAULTCTORS
     void setRenderAsSimpleLines( bool enabled ) { mRenderAsSimpleLines = enabled; }
 
     //! Returns material settings used for shading of the symbol
-    QgsAbstractMaterialSettings *materialSettings() const;
+    QgsAbstractMaterialSettings *materialSettings() const override;
 
     /**
      * Sets the \a material settings used for shading of the symbol.
      *
      * Ownership of \a material is transferred to the symbol.
      */
-    void setMaterialSettings( QgsAbstractMaterialSettings *materialSettings SIP_TRANSFER );
+    void setMaterialSettings( QgsAbstractMaterialSettings *materialSettings SIP_TRANSFER ) override;
 
     /**
      * Exports the geometries contained within the hierarchy of entity.
@@ -124,15 +121,15 @@ class _3D_EXPORT QgsLine3DSymbol : public QgsAbstract3DSymbol SIP_NODEFAULTCTORS
 
   private:
     //! how to handle altitude of vector features
-    Qgis::AltitudeClamping mAltClamping = Qgis::AltitudeClamping::Relative;
+    Qgis::AltitudeClamping mAltClamping = Qgis::AltitudeClamping::Absolute;
     //! how to handle clamping of vertices of individual features
     Qgis::AltitudeBinding mAltBinding = Qgis::AltitudeBinding::Centroid;
 
-    float mWidth = 2.0f;            //!< Line width (horizontally)
-    float mOffset = 0.0f;           //!< Base height of polygons
-    float mExtrusionHeight = 0.0f;  //!< How much to extrude (0 means no walls)
-    bool mRenderAsSimpleLines = false;   //!< Whether to render data with simple lines (otherwise it uses buffer)
-    std::unique_ptr< QgsAbstractMaterialSettings > mMaterialSettings;  //!< Defines appearance of objects
+    float mWidth = 2.0f;                                            //!< Line width (horizontally)
+    float mOffset = 0.0f;                                           //!< Base height of polygons
+    float mExtrusionHeight = 0.0f;                                  //!< How much to extrude (0 means no walls)
+    bool mRenderAsSimpleLines = false;                              //!< Whether to render data with simple lines (otherwise it uses buffer)
+    std::unique_ptr<QgsAbstractMaterialSettings> mMaterialSettings; //!< Defines appearance of objects
 };
 
 

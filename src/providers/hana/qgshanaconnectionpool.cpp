@@ -14,16 +14,19 @@
  * (at your option) any later version.
  *
  ***************************************************************************/
-#include "qgshanaconnection.h"
 #include "qgshanaconnectionpool.h"
+
+#include "qgshanaconnection.h"
 #include "qgshanasettings.h"
 #include "qgshanautils.h"
 #include "qgslogger.h"
 
+#include "moc_qgshanaconnectionpool.cpp"
+
 QgsHanaConnectionPoolGroup::QgsHanaConnectionPoolGroup( const QString &name )
-  : QgsConnectionPoolGroup<QgsHanaConnection*>( name )
+  : QgsConnectionPoolGroup<QgsHanaConnection *>( name )
 {
-  initTimer( this );
+  initTimer<QgsHanaConnectionPoolGroup>( this );
 }
 
 QBasicMutex QgsHanaConnectionPool::sMutex;
@@ -70,15 +73,13 @@ QgsHanaConnectionPool::~QgsHanaConnectionPool()
 
 QgsHanaConnectionRef::QgsHanaConnectionRef( const QgsDataSourceUri &uri )
 {
-  mConnection = std::unique_ptr<QgsHanaConnection>(
-                  QgsHanaConnectionPool::getConnection( QgsHanaUtils::connectionInfo( uri ) ) );
+  mConnection = std::unique_ptr<QgsHanaConnection>( QgsHanaConnectionPool::getConnection( QgsHanaUtils::connectionInfo( uri ) ) );
 }
 
 QgsHanaConnectionRef::QgsHanaConnectionRef( const QString &name )
 {
   QgsHanaSettings settings( name, true );
-  mConnection = std::unique_ptr<QgsHanaConnection>(
-                  QgsHanaConnectionPool::getConnection( QgsHanaUtils::connectionInfo( settings.toDataSourceUri() ) ) );
+  mConnection = std::unique_ptr<QgsHanaConnection>( QgsHanaConnectionPool::getConnection( QgsHanaUtils::connectionInfo( settings.toDataSourceUri() ) ) );
 }
 
 QgsHanaConnectionRef::~QgsHanaConnectionRef()

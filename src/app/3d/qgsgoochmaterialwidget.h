@@ -16,9 +16,9 @@
 #ifndef QGSGOOCHMATERIALWIDGET_H
 #define QGSGOOCHMATERIALWIDGET_H
 
-#include "qgsmaterialsettingswidget.h"
+#include "ui_goochmaterialwidget.h"
 
-#include <ui_goochmaterialwidget.h>
+#include "qgsmaterialsettingswidget.h"
 
 class QgsGoochMaterialSettings;
 
@@ -31,10 +31,17 @@ class QgsGoochMaterialWidget : public QgsMaterialSettingsWidget, private Ui::Goo
     explicit QgsGoochMaterialWidget( QWidget *parent = nullptr );
 
     static QgsMaterialSettingsWidget *create();
-    void setSettings( const QgsAbstractMaterialSettings *settings, QgsVectorLayer *layer ) override;
-    void setTechnique( QgsMaterialSettingsRenderingTechnique technique ) override;
-    QgsAbstractMaterialSettings *settings() override;
+    void setSettings( const QgsAbstractMaterialSettings *settings, QgsVectorLayer *layer ) final;
+    std::unique_ptr< QgsAbstractMaterialSettings > settings() final;
 
+  public slots:
+    void setPreviewVisible( bool visible ) final;
+
+  private slots:
+    void updatePreview();
+
+  protected:
+    void updateWidgetVisibility() final;
 };
 
 #endif // QGSGOOCHMATERIALWIDGET_H

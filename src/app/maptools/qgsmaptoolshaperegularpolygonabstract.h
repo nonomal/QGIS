@@ -3,7 +3,7 @@
     ---------------------
     begin                : July 2017
     copyright            : (C) 2017
-    email                : lbartoletti at tuxfamily dot org
+    email                : lituus at free dot fr
  ***************************************************************************
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -16,14 +16,14 @@
 #ifndef QGSMAPTOOLSHAPEREGULARPOLYGONABSTRACT_H
 #define QGSMAPTOOLSHAPEREGULARPOLYGONABSTRACT_H
 
+#include "qgis_app.h"
 #include "qgsmaptoolshapeabstract.h"
 #include "qgsregularpolygon.h"
 #include "qgsspinbox.h"
-#include "qgis_app.h"
 
 class QSpinBox;
 
-class APP_EXPORT QgsMapToolShapeRegularPolygonAbstract: public QgsMapToolShapeAbstract
+class APP_EXPORT QgsMapToolShapeRegularPolygonAbstract : public QgsMapToolShapeAbstract
 {
     Q_OBJECT
 

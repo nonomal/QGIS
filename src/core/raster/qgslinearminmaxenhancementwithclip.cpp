@@ -1,4 +1,4 @@
-/* **************************************************************************
+/***************************************************************************
               qgslinearminmaxenhancementwithclip.cpp -  description
                        -------------------
 begin                : Fri Nov 16 2007
@@ -7,7 +7,7 @@ email                : ersts@amnh.org
 
 ****************************************************************************/
 
-/* **************************************************************************
+/***************************************************************************
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
  *   it under the terms of the GNU General Public License as published by  *
@@ -18,9 +18,9 @@ email                : ersts@amnh.org
 
 #include "qgslinearminmaxenhancementwithclip.h"
 
-QgsLinearMinMaxEnhancementWithClip::QgsLinearMinMaxEnhancementWithClip( Qgis::DataType qgsRasterDataType, double minimumValue, double maximumValue ) : QgsContrastEnhancementFunction( qgsRasterDataType, minimumValue, maximumValue )
-{
-}
+QgsLinearMinMaxEnhancementWithClip::QgsLinearMinMaxEnhancementWithClip( Qgis::DataType qgsRasterDataType, double minimumValue, double maximumValue )
+  : QgsContrastEnhancementFunction( qgsRasterDataType, minimumValue, maximumValue )
+{}
 
 int QgsLinearMinMaxEnhancementWithClip::enhance( double value )
 {

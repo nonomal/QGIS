@@ -14,19 +14,26 @@
  ***************************************************************************/
 
 #include "qgsrubberband.h"
+
+#include "qgsfillsymbol.h"
 #include "qgsgeometry.h"
+#include "qgsguiutils.h"
+#include "qgslinesymbol.h"
 #include "qgslogger.h"
 #include "qgsmapcanvas.h"
-#include "qgsvectorlayer.h"
+#include "qgspainting.h"
 #include "qgsproject.h"
 #include "qgsrectangle.h"
-#include "qgssymbol.h"
 #include "qgsrendercontext.h"
-#include "qgslinesymbol.h"
-#include "qgsfillsymbol.h"
-#include "qgsguiutils.h"
+#include "qgssymbol.h"
+#include "qgsvectorlayer.h"
 
 #include <QPainter>
+#include <QString>
+
+#include "moc_qgsrubberband.cpp"
+
+using namespace Qt::StringLiterals;
 
 QgsRubberBand::QgsRubberBand( QgsMapCanvas *mapCanvas, Qgis::GeometryType geometryType )
   : QObject( nullptr )
@@ -46,8 +53,7 @@ QgsRubberBand::QgsRubberBand( QgsMapCanvas *mapCanvas, Qgis::GeometryType geomet
 QgsRubberBand::QgsRubberBand()
   : QObject( nullptr )
   , QgsMapCanvasItem( nullptr )
-{
-}
+{}
 
 QgsRubberBand::~QgsRubberBand() = default;
 
@@ -75,24 +81,24 @@ void QgsRubberBand::setSecondaryStrokeColor( const QColor &color )
   mSecondaryPen.setColor( color );
 }
 
-void QgsRubberBand::setWidth( int width )
+void QgsRubberBand::setWidth( double width )
 {
-  mPen.setWidth( width );
+  mPen.setWidthF( width );
 }
 
-void QgsRubberBand::setIcon( IconType icon )
+void QgsRubberBand::setIcon( Qgis::RubberBandIconType icon )
 {
   mIconType = icon;
 }
 
 void QgsRubberBand::setSvgIcon( const QString &path, QPoint drawOffset )
 {
-  setIcon( ICON_SVG );
+  setIcon( Qgis::RubberBandIconType::SVG );
   mSvgRenderer = std::make_unique<QSvgRenderer>( path );
   mSvgOffset = drawOffset;
 }
 
-void QgsRubberBand::setIconSize( int iconSize )
+void QgsRubberBand::setIconSize( double iconSize )
 {
   mIconSize = iconSize;
 }
@@ -112,6 +118,21 @@ void QgsRubberBand::reset( Qgis::GeometryType geometryType )
   mPoints.clear();
   mGeometryType = geometryType;
   updateRect();
+  update();
+}
+
+void QgsRubberBand::addPreviewItem( QgsRubberBandPreviewItem *item )
+{
+  if ( item )
+  {
+    mPreviewItems.push_back( std::unique_ptr< QgsRubberBandPreviewItem>( item ) );
+    update();
+  }
+}
+
+void QgsRubberBand::clearPreviewItems()
+{
+  mPreviewItems.clear();
   update();
 }
 
@@ -154,8 +175,7 @@ void QgsRubberBand::addPoint( const QgsPointXY &p, bool doUpdate /* = true */, i
       mPoints[geometryIndex][ringIndex].append( p );
   }
 
-  if ( mPoints.at( geometryIndex ).at( ringIndex ).size() == 2 &&
-       mPoints.at( geometryIndex ).at( ringIndex ).at( 0 ) == mPoints.at( geometryIndex ).at( ringIndex ).at( 1 ) )
+  if ( mPoints.at( geometryIndex ).at( ringIndex ).size() == 2 && mPoints.at( geometryIndex ).at( ringIndex ).at( 0 ) == mPoints.at( geometryIndex ).at( ringIndex ).at( 1 ) )
   {
     mPoints[geometryIndex][ringIndex].last() = p;
   }
@@ -175,10 +195,7 @@ void QgsRubberBand::addPoint( const QgsPointXY &p, bool doUpdate /* = true */, i
 
 void QgsRubberBand::closePoints( bool doUpdate, int geometryIndex, int ringIndex )
 {
-  if ( geometryIndex < 0 || ringIndex < 0 ||
-       mPoints.size() <= geometryIndex ||
-       mPoints.at( geometryIndex ).size() <= ringIndex ||
-       mPoints.at( geometryIndex ).at( ringIndex ).isEmpty() )
+  if ( geometryIndex < 0 || ringIndex < 0 || mPoints.size() <= geometryIndex || mPoints.at( geometryIndex ).size() <= ringIndex || mPoints.at( geometryIndex ).at( ringIndex ).isEmpty() )
   {
     return;
   }
@@ -197,15 +214,15 @@ void QgsRubberBand::closePoints( bool doUpdate, int geometryIndex, int ringIndex
 }
 
 
-void QgsRubberBand::removePoint( int index, bool doUpdate/* = true*/, int geometryIndex/* = 0*/, int ringIndex/* = 0*/ )
+void QgsRubberBand::removePoint( int index, bool doUpdate /* = true*/, int geometryIndex /* = 0*/, int ringIndex /* = 0*/ )
 {
-
-  if ( geometryIndex < 0 || ringIndex < 0 ||
-       mPoints.size() <= geometryIndex ||
-       mPoints.at( geometryIndex ).size() <= ringIndex ||
-       mPoints.at( geometryIndex ).at( ringIndex ).size() <= index ||
-       mPoints.at( geometryIndex ).at( ringIndex ).size() < -index ||
-       mPoints.at( geometryIndex ).at( ringIndex ).isEmpty() )
+  if ( geometryIndex < 0
+       || ringIndex < 0
+       || mPoints.size() <= geometryIndex
+       || mPoints.at( geometryIndex ).size() <= ringIndex
+       || mPoints.at( geometryIndex ).at( ringIndex ).size() <= index
+       || mPoints.at( geometryIndex ).at( ringIndex ).size() < -index
+       || mPoints.at( geometryIndex ).at( ringIndex ).isEmpty() )
   {
     return;
   }
@@ -224,17 +241,14 @@ void QgsRubberBand::removePoint( int index, bool doUpdate/* = true*/, int geomet
   }
 }
 
-void QgsRubberBand::removeLastPoint( int geometryIndex, bool doUpdate/* = true*/, int ringIndex/* = 0*/ )
+void QgsRubberBand::removeLastPoint( int geometryIndex, bool doUpdate /* = true*/, int ringIndex /* = 0*/ )
 {
   removePoint( -1, doUpdate, geometryIndex, ringIndex );
 }
 
 void QgsRubberBand::movePoint( const QgsPointXY &p, int geometryIndex, int ringIndex )
 {
-  if ( geometryIndex < 0 || ringIndex < 0 ||
-       mPoints.size() <= geometryIndex ||
-       mPoints.at( geometryIndex ).size() <= ringIndex ||
-       mPoints.at( geometryIndex ).at( ringIndex ).isEmpty() )
+  if ( geometryIndex < 0 || ringIndex < 0 || mPoints.size() <= geometryIndex || mPoints.at( geometryIndex ).size() <= ringIndex || mPoints.at( geometryIndex ).at( ringIndex ).isEmpty() )
   {
     return;
   }
@@ -247,10 +261,7 @@ void QgsRubberBand::movePoint( const QgsPointXY &p, int geometryIndex, int ringI
 
 void QgsRubberBand::movePoint( int index, const QgsPointXY &p, int geometryIndex, int ringIndex )
 {
-  if ( geometryIndex < 0 || ringIndex < 0 || index < 0 ||
-       mPoints.size() <= geometryIndex ||
-       mPoints.at( geometryIndex ).size() <= ringIndex ||
-       mPoints.at( geometryIndex ).at( ringIndex ).size() <= index )
+  if ( geometryIndex < 0 || ringIndex < 0 || index < 0 || mPoints.size() <= geometryIndex || mPoints.at( geometryIndex ).size() <= ringIndex || mPoints.at( geometryIndex ).at( ringIndex ).size() <= index )
   {
     return;
   }
@@ -326,7 +337,7 @@ void QgsRubberBand::addGeometry( const QgsGeometry &geometry, const QgsCoordinat
     }
     catch ( QgsCsException & )
     {
-      QgsDebugError( QStringLiteral( "Could not transform rubber band geometry to map CRS" ) );
+      QgsDebugError( u"Could not transform rubber band geometry to map CRS"_s );
       return;
     }
   }
@@ -449,7 +460,23 @@ void QgsRubberBand::paint( QPainter *p )
   if ( mPoints.isEmpty() )
     return;
 
-  QVector< QVector<QPolygonF> > shapes;
+  QgsRenderContext context;
+  if ( mMapCanvas )
+  {
+    context = QgsRenderContext::fromMapSettings( mMapCanvas->mapSettings() );
+    if ( QPaintDevice *device = p->device() )
+    {
+      context.setScaleFactor( device->physicalDpiX() / 25.4 );
+    }
+    context.setPainter( p );
+  }
+  else
+  {
+    context = QgsRenderContext::fromQPainter( p );
+    context.setFlag( Qgis::RenderContextFlag::Antialiasing, true );
+  }
+
+  QVector<QVector<QPolygonF>> shapes;
   shapes.reserve( mPoints.size() );
   for ( const QgsPolygonXY &poly : std::as_const( mPoints ) )
   {
@@ -462,7 +489,7 @@ void QgsRubberBand::paint( QPainter *p )
       for ( const QgsPointXY &pt : line )
       {
         const QPointF cur = toCanvasCoordinates( QgsPointXY( pt.x() + mTranslationOffsetX, pt.y() + mTranslationOffsetY ) ) - pos();
-        if ( pts.isEmpty() || std::abs( pts.last().x() - cur.x() ) > 1 ||  std::abs( pts.last().y() - cur.y() ) > 1 )
+        if ( pts.isEmpty() || std::abs( pts.last().x() - cur.x() ) > 1 || std::abs( pts.last().y() - cur.y() ) > 1 )
           pts.append( cur );
       }
       rings.append( pts );
@@ -470,58 +497,66 @@ void QgsRubberBand::paint( QPainter *p )
     shapes.append( rings );
   }
 
-  if ( QgsLineSymbol *lineSymbol = dynamic_cast< QgsLineSymbol * >( mSymbol.get() ) )
+  if ( mComponentsToRender.testFlag( Qgis::RubberBandComponent::Symbol ) )
   {
-    QgsRenderContext context( QgsRenderContext::fromQPainter( p ) );
-    context.setFlag( Qgis::RenderContextFlag::Antialiasing, true );
-
-    lineSymbol->startRender( context );
-    for ( const QVector<QPolygonF> &shape : std::as_const( shapes ) )
+    if ( QgsLineSymbol *lineSymbol = dynamic_cast<QgsLineSymbol *>( mSymbol.get() ) )
     {
-      for ( const QPolygonF &ring : shape )
-      {
-        lineSymbol->renderPolyline( ring, nullptr, context );
-      }
-    }
-    lineSymbol->stopRender( context );
-  }
-  else if ( QgsFillSymbol *fillSymbol = dynamic_cast< QgsFillSymbol * >( mSymbol.get() ) )
-  {
-    QgsRenderContext context( QgsRenderContext::fromQPainter( p ) );
-    context.setFlag( Qgis::RenderContextFlag::Antialiasing, true );
-
-    fillSymbol->startRender( context );
-    for ( const QVector<QPolygonF> &shape : std::as_const( shapes ) )
-    {
-      for ( const QPolygonF &ring : shape )
-      {
-        fillSymbol->renderPolygon( ring, nullptr, nullptr, context );
-      }
-    }
-    fillSymbol->stopRender( context );
-  }
-  else
-  {
-    int iterations = mSecondaryPen.color().isValid() ? 2 : 1;
-    for ( int i = 0; i < iterations; ++i )
-    {
-      if ( i == 0 && iterations > 1 )
-      {
-        // first iteration with multi-pen painting, so use secondary pen
-        mSecondaryPen.setWidth( mPen.width() + QgsGuiUtils::scaleIconSize( 2 ) );
-        p->setBrush( Qt::NoBrush );
-        p->setPen( mSecondaryPen );
-      }
-      else
-      {
-        // "top" layer, use primary pen/brush
-        p->setBrush( mBrush );
-        p->setPen( mPen );
-      }
-
+      lineSymbol->startRender( context );
       for ( const QVector<QPolygonF> &shape : std::as_const( shapes ) )
       {
-        drawShape( p, shape );
+        for ( const QPolygonF &ring : shape )
+        {
+          lineSymbol->renderPolyline( ring, nullptr, context );
+        }
+      }
+      lineSymbol->stopRender( context );
+    }
+    else if ( QgsFillSymbol *fillSymbol = dynamic_cast<QgsFillSymbol *>( mSymbol.get() ) )
+    {
+      fillSymbol->startRender( context );
+      for ( const QVector<QPolygonF> &shape : std::as_const( shapes ) )
+      {
+        for ( const QPolygonF &ring : shape )
+        {
+          fillSymbol->renderPolygon( ring, nullptr, nullptr, context );
+        }
+      }
+      fillSymbol->stopRender( context );
+    }
+    else
+    {
+      int iterations = mSecondaryPen.color().isValid() ? 2 : 1;
+      for ( int i = 0; i < iterations; ++i )
+      {
+        if ( i == 0 && iterations > 1 )
+        {
+          // first iteration with multi-pen painting, so use secondary pen
+          mSecondaryPen.setWidthF( mPen.widthF() + QgsGuiUtils::scaleIconSize( 2 ) );
+          p->setBrush( Qt::NoBrush );
+          p->setPen( mSecondaryPen );
+        }
+        else
+        {
+          // "top" layer, use primary pen/brush
+          p->setBrush( mBrush );
+          p->setPen( mPen );
+        }
+
+        for ( const QVector<QPolygonF> &shape : std::as_const( shapes ) )
+        {
+          drawShape( p, shape );
+        }
+      }
+    }
+  }
+
+  if ( mComponentsToRender.testFlag( Qgis::RubberBandComponent::PreviewItems ) )
+  {
+    for ( const auto &item : mPreviewItems )
+    {
+      if ( item )
+      {
+        item->render( context );
       }
     }
   }
@@ -566,52 +601,46 @@ void QgsRubberBand::drawShape( QPainter *p, const QVector<QPointF> &pts )
 
         switch ( mIconType )
         {
-          case ICON_NONE:
+          case Qgis::RubberBandIconType::NoIcon:
             break;
 
-          case ICON_CROSS:
+          case Qgis::RubberBandIconType::CrossPlus:
             p->drawLine( QLineF( x - s, y, x + s, y ) );
             p->drawLine( QLineF( x, y - s, x, y + s ) );
             break;
 
-          case ICON_X:
+          case Qgis::RubberBandIconType::CrossX:
             p->drawLine( QLineF( x - s, y - s, x + s, y + s ) );
             p->drawLine( QLineF( x - s, y + s, x + s, y - s ) );
             break;
 
-          case ICON_BOX:
+          case Qgis::RubberBandIconType::Box:
             p->drawLine( QLineF( x - s, y - s, x + s, y - s ) );
             p->drawLine( QLineF( x + s, y - s, x + s, y + s ) );
             p->drawLine( QLineF( x + s, y + s, x - s, y + s ) );
             p->drawLine( QLineF( x - s, y + s, x - s, y - s ) );
             break;
 
-          case ICON_FULL_BOX:
-            p->drawRect( static_cast< int>( x - s ), static_cast< int >( y - s ), mIconSize, mIconSize );
+          case Qgis::RubberBandIconType::BoxFilled:
+            p->drawRect( QRectF( static_cast<int>( x - s ), static_cast<int>( y - s ), mIconSize, mIconSize ) );
             break;
 
-          case ICON_CIRCLE:
-            p->drawEllipse( static_cast< int >( x - s ), static_cast< int >( y - s ), mIconSize, mIconSize );
+          case Qgis::RubberBandIconType::Circle:
+            p->drawEllipse( QRectF( static_cast<int>( x - s ), static_cast<int>( y - s ), mIconSize, mIconSize ) );
             break;
 
-          case ICON_DIAMOND:
-          case ICON_FULL_DIAMOND:
+          case Qgis::RubberBandIconType::Diamond:
+          case Qgis::RubberBandIconType::DiamondFilled:
           {
-            QPointF pts[] =
-            {
-              QPointF( x, y - s ),
-              QPointF( x + s, y ),
-              QPointF( x, y + s ),
-              QPointF( x - s, y )
-            };
-            if ( mIconType == ICON_FULL_DIAMOND )
+            QPointF pts[] = { QPointF( x, y - s ), QPointF( x + s, y ), QPointF( x, y + s ), QPointF( x - s, y ) };
+            if ( mIconType == Qgis::RubberBandIconType::DiamondFilled )
               p->drawPolygon( pts, 4 );
             else
               p->drawPolyline( pts, 4 );
             break;
           }
 
-          case ICON_SVG:
+          case Qgis::RubberBandIconType::SVG:
           {
             QRectF viewBox = mSvgRenderer->viewBoxF();
             QRectF r( mSvgOffset.x(), mSvgOffset.y(), viewBox.width(), viewBox.height() );
@@ -654,9 +683,9 @@ void QgsRubberBand::updateRect()
   }
 #endif
 
-  qreal w = ( ( mIconSize - 1 ) / 2 + mPen.width() ); // in canvas units
+  qreal w = ( ( mIconSize - 1 ) / 2 + mPen.widthF() ); // in canvas units
 
-  QgsRectangle r;  // in canvas units
+  QgsRectangle r; // in canvas units
   for ( const QgsPolygonXY &poly : std::as_const( mPoints ) )
   {
     for ( const QgsPointXY &point : poly.at( 0 ) )
@@ -673,9 +702,37 @@ void QgsRubberBand::updateRect()
   // expects (encoding of position and size of the item)
   qreal res = m2p.mapUnitsPerPixel();
   QgsPointXY topLeft = m2p.toMapCoordinates( r.xMinimum(), r.yMinimum() );
-  QgsRectangle rect( topLeft.x(), topLeft.y(), topLeft.x() + r.width()*res, topLeft.y() - r.height()*res );
+  QgsRectangle rect( topLeft.x(), topLeft.y(), topLeft.x() + r.width() * res, topLeft.y() - r.height() * res );
 
   setRect( rect );
+}
+
+Qgis::RubberBandComponents QgsRubberBand::renderedComponents() const
+{
+  return mComponentsToRender;
+}
+
+void QgsRubberBand::setRenderedComponents( Qgis::RubberBandComponents components )
+{
+  mComponentsToRender = components;
+}
+
+QRectF QgsRubberBand::boundingRect() const
+{
+  QRectF res = QgsMapCanvasItem::boundingRect();
+
+  if ( mComponentsToRender.testFlag( Qgis::RubberBandComponent::PreviewItems ) )
+  {
+    for ( const std::unique_ptr<QgsRubberBandPreviewItem> &previewItem : mPreviewItems )
+    {
+      const QRectF itemBounds = previewItem->boundingRect();
+      if ( itemBounds.isValid() )
+      {
+        res = res.united( itemBounds );
+      }
+    }
+  }
+  return res;
 }
 
 QgsSymbol *QgsRubberBand::symbol() const
@@ -712,9 +769,7 @@ int QgsRubberBand::size() const
 
 int QgsRubberBand::partSize( int geometryIndex ) const
 {
-  if ( geometryIndex < 0 ||
-       geometryIndex >= mPoints.size() ||
-       mPoints.at( geometryIndex ).isEmpty() )
+  if ( geometryIndex < 0 || geometryIndex >= mPoints.size() || mPoints.at( geometryIndex ).isEmpty() )
     return 0;
   return mPoints.at( geometryIndex ).at( 0 ).size();
 }
@@ -734,10 +789,7 @@ int QgsRubberBand::numberOfVertices() const
 
 const QgsPointXY *QgsRubberBand::getPoint( int i, int j, int ringIndex ) const
 {
-  if ( i < 0 || ringIndex < 0 || j < 0 ||
-       mPoints.size() <= i ||
-       mPoints.at( i ).size() <= ringIndex ||
-       mPoints.at( i ).at( ringIndex ).size() <= j )
+  if ( i < 0 || ringIndex < 0 || j < 0 || mPoints.size() <= i || mPoints.at( i ).size() <= ringIndex || mPoints.at( i ).at( ringIndex ).size() <= j )
     return nullptr;
   else
     return &mPoints[i][ringIndex][j];
@@ -797,4 +849,22 @@ QgsGeometry QgsRubberBand::asGeometry() const
     }
   }
   return geom;
+}
+
+//
+// QgsRubberBandPreviewItem
+//
+
+QgsRubberBandPreviewItem::QgsRubberBandPreviewItem( QgsRubberBand *rubberBand )
+  : mRubberBand( rubberBand )
+{}
+
+QgsRubberBand *QgsRubberBandPreviewItem::rubberBand()
+{
+  return mRubberBand.data();
+}
+
+QRectF QgsRubberBandPreviewItem::boundingRect() const
+{
+  return QRectF();
 }

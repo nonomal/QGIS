@@ -16,13 +16,22 @@
  ***************************************************************************/
 
 #include "qgsrasterrendererutils.h"
-#include "qgis.h"
-#include <QFile>
-#include <QTextStream>
-#include <QRegularExpression>
 
-bool QgsRasterRendererUtils::parseColorMapFile( const QString &path, QList<QgsColorRampShader::ColorRampItem> &items, QgsColorRampShader::Type &type, QStringList &errors )
+#include "qgis.h"
+
+#include <QFile>
+#include <QRegularExpression>
+#include <QString>
+#include <QTextStream>
+
+using namespace Qt::StringLiterals;
+
+bool QgsRasterRendererUtils::parseColorMapFile( const QString &path, QList<QgsColorRampShader::ColorRampItem> &items, Qgis::ShaderInterpolationMethod &type, QStringList &errors )
 {
+  type = Qgis::ShaderInterpolationMethod::Discrete;
+  errors.clear();
+  items.clear();
+
   QFile inputFile( path );
   if ( !inputFile.open( QFile::ReadOnly ) )
   {
@@ -34,7 +43,7 @@ bool QgsRasterRendererUtils::parseColorMapFile( const QString &path, QList<QgsCo
 
   QTextStream inputStream( &inputFile );
   int lineCounter = 0;
-  const thread_local QRegularExpression itemRegex( QStringLiteral( "^(.+?),(.+?),(.+?),(.+?),(.+?),(.+)$" ) );
+  const thread_local QRegularExpression itemRegex( u"^(.+?),(.+?),(.+?),(.+?),(.+?),(.+)$"_s );
 
   //read through the input looking for valid data
   while ( !inputStream.atEnd() )
@@ -45,22 +54,22 @@ bool QgsRasterRendererUtils::parseColorMapFile( const QString &path, QList<QgsCo
     {
       if ( !inputLine.simplified().startsWith( '#' ) )
       {
-        if ( inputLine.contains( QLatin1String( "INTERPOLATION" ), Qt::CaseInsensitive ) )
+        if ( inputLine.contains( "INTERPOLATION"_L1, Qt::CaseInsensitive ) )
         {
           QStringList inputStringComponents = inputLine.split( ':' );
           if ( inputStringComponents.size() == 2 )
           {
-            if ( inputStringComponents[1].trimmed().toUpper().compare( QLatin1String( "INTERPOLATED" ), Qt::CaseInsensitive ) == 0 )
+            if ( inputStringComponents[1].trimmed().toUpper().compare( "INTERPOLATED"_L1, Qt::CaseInsensitive ) == 0 )
             {
-              type = QgsColorRampShader::Interpolated;
+              type = Qgis::ShaderInterpolationMethod::Linear;
             }
-            else if ( inputStringComponents[1].trimmed().toUpper().compare( QLatin1String( "DISCRETE" ), Qt::CaseInsensitive ) == 0 )
+            else if ( inputStringComponents[1].trimmed().toUpper().compare( "DISCRETE"_L1, Qt::CaseInsensitive ) == 0 )
             {
-              type = QgsColorRampShader::Discrete;
+              type = Qgis::ShaderInterpolationMethod::Discrete;
             }
             else
             {
-              type = QgsColorRampShader::Exact;
+              type = Qgis::ShaderInterpolationMethod::Exact;
             }
           }
           else
@@ -74,9 +83,8 @@ bool QgsRasterRendererUtils::parseColorMapFile( const QString &path, QList<QgsCo
           const QRegularExpressionMatch match = itemRegex.match( inputLine );
           if ( match.hasMatch() )
           {
-            const QgsColorRampShader::ColorRampItem currentItem( match.captured( 1 ).toDouble(),
-                QColor::fromRgb( match.captured( 2 ).toInt(), match.captured( 3 ).toInt(), match.captured( 4 ).toInt(), match.captured( 5 ).toInt() ),
-                match.captured( 6 ) );
+            const QgsColorRampShader::ColorRampItem
+              currentItem( match.captured( 1 ).toDouble(), QColor::fromRgb( match.captured( 2 ).toInt(), match.captured( 3 ).toInt(), match.captured( 4 ).toInt(), match.captured( 5 ).toInt() ), match.captured( 6 ) );
             items.push_back( currentItem );
           }
           else
@@ -93,7 +101,7 @@ bool QgsRasterRendererUtils::parseColorMapFile( const QString &path, QList<QgsCo
   return res;
 }
 
-bool QgsRasterRendererUtils::saveColorMapFile( const QString &path, const QList<QgsColorRampShader::ColorRampItem> &items, QgsColorRampShader::Type type )
+bool QgsRasterRendererUtils::saveColorMapFile( const QString &path, const QList<QgsColorRampShader::ColorRampItem> &items, Qgis::ShaderInterpolationMethod type )
 {
   QFile outputFile( path );
   if ( outputFile.open( QFile::WriteOnly | QIODevice::Truncate ) )
@@ -103,13 +111,13 @@ bool QgsRasterRendererUtils::saveColorMapFile( const QString &path, const QList<
     outputStream << "INTERPOLATION:";
     switch ( type )
     {
-      case QgsColorRampShader::Interpolated:
+      case Qgis::ShaderInterpolationMethod::Linear:
         outputStream << "INTERPOLATED\n";
         break;
-      case QgsColorRampShader::Discrete:
+      case Qgis::ShaderInterpolationMethod::Discrete:
         outputStream << "DISCRETE\n";
         break;
-      case QgsColorRampShader::Exact:
+      case Qgis::ShaderInterpolationMethod::Exact:
         outputStream << "EXACT\n";
         break;
     }
@@ -138,4 +146,3 @@ bool QgsRasterRendererUtils::saveColorMapFile( const QString &path, const QList<
     return false;
   }
 }
-

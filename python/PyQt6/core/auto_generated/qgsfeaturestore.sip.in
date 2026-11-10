@@ -3,8 +3,9 @@
  *                                                                      *
  * src/core/qgsfeaturestore.h                                           *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/
+
 
 
 class QgsFeatureStore : QgsFeatureSink
@@ -18,9 +19,6 @@ A container for features with the same fields and crs.
 %End
   public:
     QgsFeatureStore();
-%Docstring
-Constructor
-%End
 
     QgsFeatureStore( const QgsFields &fields, const QgsCoordinateReferenceSystem &crs );
 %Docstring
@@ -36,7 +34,8 @@ Returns the store's field list.
 
     void setFields( const QgsFields &fields );
 %Docstring
-Sets the store's ``fields``. Every contained feature's fields will be reset to match ``fields``.
+Sets the store's ``fields``. Every contained feature's fields will be
+reset to match ``fields``.
 
 .. seealso:: :py:func:`fields`
 %End
@@ -56,6 +55,7 @@ Sets the store's ``crs``.
 %End
 
     virtual bool addFeature( QgsFeature &feature, QgsFeatureSink::Flags flags = QgsFeatureSink::Flags() );
+
 
     virtual bool addFeatures( QgsFeatureList &features, QgsFeatureSink::Flags flags = QgsFeatureSink::Flags() );
 
@@ -80,7 +80,7 @@ Returns the number of features contained in the store.
     sipRes = true;
 %End
 
-    QgsFeatureList features() const;
+        QgsFeatureList features() const;
 %Docstring
 Returns the list of features contained in the store.
 %End
@@ -185,5 +185,5 @@ typedef QVector<QgsFeatureStore> QgsFeatureStoreList;
  *                                                                      *
  * src/core/qgsfeaturestore.h                                           *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/

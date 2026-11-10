@@ -3,8 +3,10 @@
  *                                                                      *
  * src/core/layout/qgsreport.h                                          *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/
+
+
 
 
 
@@ -14,8 +16,8 @@ class QgsReport : QObject, QgsAbstractReportSection, QgsMasterLayoutInterface
 %Docstring(signature="appended")
 Represents a report for use with the :py:class:`QgsLayout` engine.
 
-Reports consist of multiple sections, represented by :py:class:`QgsAbstractReportSection`
-subclasses.
+Reports consist of multiple sections, represented by
+:py:class:`QgsAbstractReportSection` subclasses.
 
 .. warning::
 
@@ -27,11 +29,9 @@ subclasses.
 #include "qgsreport.h"
 %End
   public:
-
     QgsReport( QgsProject *project );
 %Docstring
-Constructor for QgsReport, associated with the specified
-``project``.
+Constructor for QgsReport, associated with the specified ``project``.
 
 Note that ownership is not transferred to ``project``.
 %End
@@ -74,5 +74,5 @@ Emitted when the report's name is changed.
  *                                                                      *
  * src/core/layout/qgsreport.h                                          *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/

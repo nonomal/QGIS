@@ -19,19 +19,23 @@
 #define QGSDXFEXPORTDIALOG_H
 
 #include "ui_qgsdxfexportdialogbase.h"
+
+#include "qgsdxfexport.h"
 #include "qgslayertreemodel.h"
 #include "qgslayertreeview.h"
-#include "qgsdxfexport.h"
-#include "qgssettingstree.h"
-#include "qgssettingsentryimpl.h"
-#include "qgsxmlutils.h"
-#include "qgsvectorlayerref.h"
 #include "qgsmessagebar.h"
+#include "qgssettingsentryimpl.h"
+#include "qgssettingstree.h"
+#include "qgsvectorlayerref.h"
+#include "qgsxmlutils.h"
 
+#include <QItemDelegate>
 #include <QList>
 #include <QPair>
 #include <QSet>
-#include <QItemDelegate>
+#include <QString>
+
+using namespace Qt::StringLiterals;
 
 class QgsLayerTreeGroup;
 class QgsLayerTreeNode;
@@ -45,6 +49,7 @@ class FieldSelectorDelegate : public QItemDelegate
     QWidget *createEditor( QWidget *parent, const QStyleOptionViewItem &option, const QModelIndex &index ) const override;
     void setEditorData( QWidget *editor, const QModelIndex &index ) const override;
     void setModelData( QWidget *editor, QAbstractItemModel *model, const QModelIndex &index ) const override;
+
   private:
     QgsVectorLayer *indexToLayer( const QAbstractItemModel *model, const QModelIndex &index ) const;
     int attributeIndex( const QAbstractItemModel *model, const QgsVectorLayer *vl ) const;
@@ -62,7 +67,7 @@ class QgsVectorLayerAndAttributeModel : public QgsLayerTreeModel
     Qt::ItemFlags flags( const QModelIndex &index ) const override;
     bool setData( const QModelIndex &index, const QVariant &value, int role = Qt::EditRole ) override;
 
-    QList< QgsDxfExport::DxfLayer > layers() const;
+    QList<QgsDxfExport::DxfLayer> layers() const;
 
     void saveLayersOutputAttribute( QgsLayerTreeNode *node );
     void loadLayersOutputAttribute( QgsLayerTreeNode *node );
@@ -80,7 +85,7 @@ class QgsVectorLayerAndAttributeModel : public QgsLayerTreeModel
   private:
     QHash<const QgsVectorLayer *, int> mAttributeIdx;
     QHash<const QgsVectorLayer *, bool> mCreateDDBlockInfo;
-    QHash<const QgsVectorLayer *, int>  mDDBlocksMaxNumberOfClasses;
+    QHash<const QgsVectorLayer *, int> mDDBlocksMaxNumberOfClasses;
     QHash<const QgsVectorLayer *, QString> mOverriddenName;
     QSet<QModelIndex> mCheckedLeafs;
 
@@ -103,13 +108,14 @@ class QgsDxfExportDialog : public QDialog, private Ui::QgsDxfExportDialogBase
 {
     Q_OBJECT
   public:
-    static inline QgsSettingsTreeNode *sTreeAppDdxf = QgsSettingsTree::sTreeApp->createChildNode( QStringLiteral( "dxf" ) );
-    static const inline QgsSettingsEntryString *settingsDxfLastSettingsDir = new QgsSettingsEntryString( QStringLiteral( "last-settings-dir" ), sTreeAppDdxf,  QDir::homePath() );
+    static inline QgsSettingsTreeNode *sTreeAppDdxf = QgsSettingsTree::sTreeApp->createChildNode( u"dxf"_s );
+    static const inline QgsSettingsEntryString *settingsDxfLastSettingsDir = new QgsSettingsEntryString( u"last-settings-dir"_s, sTreeAppDdxf, QDir::homePath() );
+    static const inline QgsSettingsEntryString *settingsLastDxfDir = new QgsSettingsEntryString( u"last-dir"_s, sTreeAppDdxf, QDir::homePath(), u"Last directory used for DXF export"_s );
 
     QgsDxfExportDialog( QWidget *parent = nullptr, Qt::WindowFlags f = Qt::WindowFlags() );
     ~QgsDxfExportDialog() override;
 
-    QList< QgsDxfExport::DxfLayer > layers() const;
+    QList<QgsDxfExport::DxfLayer> layers() const;
 
     double symbologyScale() const;
     Qgis::FeatureSymbologyExport symbologyMode() const;
@@ -119,6 +125,7 @@ class QgsDxfExportDialog : public QDialog, private Ui::QgsDxfExportDialogBase
     bool layerTitleAsName() const;
     bool force2d() const;
     bool useMText() const;
+    bool hairlineWidthExport() const;
     QString mapTheme() const;
     QString encoding() const;
     QgsCoordinateReferenceSystem crs() const;

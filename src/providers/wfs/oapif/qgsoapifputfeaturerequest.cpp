@@ -14,17 +14,24 @@
  ***************************************************************************/
 
 #include <nlohmann/json.hpp>
+
+#include <QString>
+
+using namespace Qt::StringLiterals;
+
 using namespace nlohmann;
 
 #include "qgslogger.h"
 #include "qgsjsonutils.h"
 #include "qgsoapifputfeaturerequest.h"
-#include "qgsoapifprovider.h"
+#include "moc_qgsoapifputfeaturerequest.cpp"
+#include "qgsoapifshareddata.h"
+#include "qgsoapifutils.h"
+#include "qgswfsconstants.h"
 
-QgsOapifPutFeatureRequest::QgsOapifPutFeatureRequest( const QgsDataSourceUri &uri ):
-  QgsBaseNetworkRequest( QgsAuthorizationSettings( uri.username(), uri.password(), uri.authConfigId() ), "OAPIF" )
-{
-}
+QgsOapifPutFeatureRequest::QgsOapifPutFeatureRequest( const QgsDataSourceUri &uri )
+  : QgsBaseNetworkRequest( QgsAuthorizationSettings( uri.username(), uri.password(), QgsHttpHeaders(), uri.authConfigId() ), tr( "OAPIF" ), uri.hasParam( QgsWFSConstants::URI_PARAM_DISABLE_DECOMPRESSED_SAFETY_CHECK_THRESHOLD ) )
+{}
 
 bool QgsOapifPutFeatureRequest::putFeature( const QgsOapifSharedData *sharedData, const QString &jsonId, const QgsFeature &f, const QString &contentCrs, bool hasAxisInverted )
 {
@@ -53,15 +60,27 @@ bool QgsOapifPutFeatureRequest::putFeature( const QgsOapifSharedData *sharedData
         jProperties.erase( iterId );
     }
   }
+  QgsOAPIFJson::removeReadOnlyProperties( j, sharedData->mFields );
+  const bool jsonFg = sharedData->shouldWriteJsonFg();
+  if ( jsonFg )
+  {
+    QgsOAPIFJson::writeJsonFgPlace( j, fModified.geometry(), sharedData->mWKBType, contentCrs, true );
+  }
   const QString jsonFeature = QString::fromStdString( j.dump() );
   QgsDebugMsgLevel( jsonFeature, 5 );
   mEmptyResponseIsValid = true;
   mFakeResponseHasHeaders = true;
   QList<QNetworkReply::RawHeaderPair> extraHeaders;
   if ( !contentCrs.isEmpty() )
+  {
     extraHeaders.append( QNetworkReply::RawHeaderPair( QByteArray( "Content-Crs" ), contentCrs.toUtf8() ) );
-  QUrl url( sharedData->mItemsUrl + QString( QStringLiteral( "/" ) + jsonId ) );
-  return sendPUT( url, "application/geo+json", jsonFeature.toUtf8(), extraHeaders );
+  }
+  if ( jsonFg )
+  {
+    extraHeaders.append( QNetworkReply::RawHeaderPair( QByteArray( "Link" ), u"<%1>; rel=profile"_s.arg( QgsOapifUtils::PROFILE_JSONFG ).toUtf8() ) );
+  }
+  QUrl url( sharedData->mItemsUrl + QString( u"/"_s + jsonId ) );
+  return sendPUT( url, QgsOapifUtils::MEDIA_TYPE_GEOJSON, jsonFeature.toUtf8(), extraHeaders );
 }
 
 QString QgsOapifPutFeatureRequest::errorMessageWithReason( const QString &reason )

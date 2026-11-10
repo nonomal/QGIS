@@ -33,7 +33,6 @@ class QgsCurvePolygon;
 class CORE_EXPORT QgsAnnotationPolygonItem : public QgsAnnotationItem
 {
   public:
-
     /**
      * Constructor for QgsAnnotationPolygonItem, with the specified \a polygon geometry.
      */
@@ -43,17 +42,20 @@ class CORE_EXPORT QgsAnnotationPolygonItem : public QgsAnnotationItem
     QString type() const override;
     void render( QgsRenderContext &context, QgsFeedback *feedback ) override;
     bool writeXml( QDomElement &element, QDomDocument &document, const QgsReadWriteContext &context ) const override;
-    QList< QgsAnnotationItemNode > nodes() const override;
-    Qgis::AnnotationItemEditOperationResult applyEdit( QgsAbstractAnnotationItemEditOperation *operation ) override;
-    QgsAnnotationItemEditOperationTransientResults *transientEditResults( QgsAbstractAnnotationItemEditOperation *operation ) override SIP_FACTORY;
+    QList< QgsAnnotationItemNode > nodesV2( const QgsAnnotationItemEditContext &context ) const override;
+    Qgis::AnnotationItemEditOperationResult applyEditV2( QgsAbstractAnnotationItemEditOperation *operation, const QgsAnnotationItemEditContext &context ) override;
+    QgsAnnotationItemEditOperationTransientResults *transientEditResultsV2( QgsAbstractAnnotationItemEditOperation *operation, const QgsAnnotationItemEditContext &context ) override SIP_FACTORY;
+    Qgis::AnnotationItemFlags flags() const override;
 
     /**
      * Creates a new polygon annotation item.
      */
-    static QgsAnnotationPolygonItem *create() SIP_FACTORY;
+    static std::unique_ptr<QgsAnnotationPolygonItem> create();
 
     bool readXml( const QDomElement &element, const QgsReadWriteContext &context ) override;
     QgsAnnotationPolygonItem *clone() const override SIP_FACTORY;
+
+    using QgsAnnotationItem::boundingBox;
     QgsRectangle boundingBox() const override;
 
     /**
@@ -91,13 +93,11 @@ class CORE_EXPORT QgsAnnotationPolygonItem : public QgsAnnotationItem
     void setSymbol( QgsFillSymbol *symbol SIP_TRANSFER );
 
   private:
-
     std::unique_ptr< QgsCurvePolygon > mPolygon;
     std::unique_ptr< QgsFillSymbol > mSymbol;
 
 #ifdef SIP_RUN
     QgsAnnotationPolygonItem( const QgsAnnotationPolygonItem &other );
 #endif
-
 };
 #endif // QGSANNOTATIONPOLYGONITEM_H

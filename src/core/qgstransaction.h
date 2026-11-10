@@ -18,21 +18,22 @@
 #ifndef QGSTRANSACTION_H
 #define QGSTRANSACTION_H
 
-#include <QSet>
-#include "qgis_sip.h"
-#include <QString>
-#include <QObject>
-#include <QStack>
-
 #include "qgis_core.h"
 #include "qgis_sip.h"
+
+#include <QObject>
+#include <QSet>
+#include <QStack>
+#include <QString>
 
 class QgsVectorDataProvider;
 class QgsVectorLayer;
 
 /**
  * \ingroup core
- * \brief This class allows including a set of layers in a database-side transaction,
+ * \brief Allows creation of a multi-layer database-side transaction.
+ *
+ * This class allows including a set of layers in a database-side transaction,
  * provided the layer data providers support transactions and are compatible
  * with each other.
  *
@@ -58,7 +59,6 @@ class CORE_EXPORT QgsTransaction : public QObject SIP_ABSTRACT
     Q_OBJECT
 
   public:
-
     /**
      * Create a transaction for the specified connection string \a connString
      * and provider with \a providerKey.
@@ -161,10 +161,10 @@ class CORE_EXPORT QgsTransaction : public QObject SIP_ABSTRACT
      */
     bool lastSavePointIsDirty() const { return mLastSavePointIsDirty; }
 
-///@cond PRIVATE
+    ///@cond PRIVATE
     // For internal use only, or by QgsTransactionGroup
     static QString connectionString( const QString &layerUri ) SIP_SKIP;
-///@endcond
+    ///@endcond
 
   signals:
 
@@ -172,6 +172,12 @@ class CORE_EXPORT QgsTransaction : public QObject SIP_ABSTRACT
      * Emitted after a rollback
      */
     void afterRollback();
+
+    /**
+     * Emitted after a rollback to savepoint
+     * \since QGIS 3.42
+     */
+    void afterRollbackToSavepoint( const QString &savepointName );
 
     /**
      * Emitted if a sql query is executed and the underlying data is modified
@@ -182,15 +188,14 @@ class CORE_EXPORT QgsTransaction : public QObject SIP_ABSTRACT
     QgsTransaction( const QString &connString ) SIP_SKIP;
 
     QString mConnString;
-    bool mTransactionActive;
+    bool mTransactionActive = false;
     QStack< QString > mSavepoints;
-    bool mLastSavePointIsDirty;
+    bool mLastSavePointIsDirty = true;
 
   private slots:
     void onLayerDeleted();
 
   private:
-
     QSet<QgsVectorLayer *> mLayers;
 
     void setLayerTransactionIds( QgsTransaction *transaction );

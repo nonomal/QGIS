@@ -16,15 +16,14 @@
  ***************************************************************************/
 
 #include "qgstiledscenedataprovider.h"
+
 #include "qgsthreadingutils.h"
 
-QgsTiledSceneDataProvider::QgsTiledSceneDataProvider(
-  const QString &uri,
-  const QgsDataProvider::ProviderOptions &options,
-  QgsDataProvider::ReadFlags flags )
+#include "moc_qgstiledscenedataprovider.cpp"
+
+QgsTiledSceneDataProvider::QgsTiledSceneDataProvider( const QString &uri, const QgsDataProvider::ProviderOptions &options, Qgis::DataProviderReadFlags flags )
   : QgsDataProvider( uri, options, flags )
-{
-}
+{}
 
 QgsTiledSceneDataProvider::QgsTiledSceneDataProvider( const QgsTiledSceneDataProvider &other )
   : QgsDataProvider( other.dataSourceUri( false ), ProviderOptions(), other.mReadFlags )

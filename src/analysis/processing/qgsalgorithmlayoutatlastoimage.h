@@ -18,10 +18,11 @@
 #ifndef QGSALGORITHMLAYOUTATLASTOIMAGE_H
 #define QGSALGORITHMLAYOUTATLASTOIMAGE_H
 
-#define SIP_NO_FILE
 
 #include "qgis_sip.h"
 #include "qgsprocessingalgorithm.h"
+
+#define SIP_NO_FILE
 
 ///@cond PRIVATE
 
@@ -30,9 +31,7 @@
  */
 class QgsLayoutAtlasToImageAlgorithm : public QgsProcessingAlgorithm
 {
-
   public:
-
     QgsLayoutAtlasToImageAlgorithm() = default;
     void initAlgorithm( const QVariantMap &configuration = QVariantMap() ) override;
     Qgis::ProcessingAlgorithmFlags flags() const override;
@@ -46,15 +45,9 @@ class QgsLayoutAtlasToImageAlgorithm : public QgsProcessingAlgorithm
     QgsLayoutAtlasToImageAlgorithm *createInstance() const override SIP_FACTORY;
 
   protected:
-
-    QVariantMap processAlgorithm( const QVariantMap &parameters,
-                                  QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
-
-
+    QVariantMap processAlgorithm( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
 };
 
 ///@endcond PRIVATE
 
 #endif // QGSALGORITHMLAYOUTATLASTOIMAGE_H
-
-

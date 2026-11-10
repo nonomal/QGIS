@@ -18,12 +18,12 @@
 
 #include "qgis_core.h"
 
-#define SIP_NO_FILE
-
-#include <QMutex>
 #include <QElapsedTimer>
+#include <QMutex>
 #include <QString>
 #include <QVector>
+
+#define SIP_NO_FILE
 
 /// @cond PRIVATE
 
@@ -35,7 +35,6 @@
 // implementation detail.  This header file may change from version to
 // version without notice, or even be removed.
 //
-
 
 /**
  * A utility class that provides event tracing functionality. When tracing
@@ -51,13 +50,13 @@
  *
  * Currently we recognize these kinds of events:
  *
- * # Duration events - they provide a way to mark a duration of work within a thread.
+ * - Duration events - they provide a way to mark a duration of work within a thread.
  *   Their duration is specified by begin and end timestamps. They can be nested
  *   and the viewer will stack them. If you need durations that do not nest properly
  *   (i.e. they only partially overlap), you should use Async events instead.
- * # Instant events - they correspond to something that happens but has no duration
+ * - Instant events - they correspond to something that happens but has no duration
  *   associated with it.
- * # Async events - they are used to specify asynchronous operations. They also require
+ * - Async events - they are used to specify asynchronous operations. They also require
  *   additional "id" parameter to group them into the same event tree.
  *
  * Duration events are for example to record run of a single function. Async events
@@ -72,9 +71,9 @@
  *
  * The intended usage:
  *
- * # call startTracing()
- * # repeatedly call addEvent()
- * # call stopTracing() and writeTrace() to export the data to JSON
+ * - call startTracing()
+ * - repeatedly call addEvent()
+ * - call stopTracing() and writeTrace() to export the data to JSON
  *
  * \note not available in Python bindings
  * \since QGIS 3.12
@@ -85,11 +84,11 @@ class CORE_EXPORT QgsEventTracing
     //! Type of the event that is being stored
     enum EventType
     {
-      Begin,       //!< Marks start of a duration event - should be paired with "End" event type
-      End,         //!< Marks end of a durection event - should be paired with "Begin" event type
-      Instant,     //!< Marks an instant event (which does not have any duration)
-      AsyncBegin,  //!< Marks start of an async event - should be paired with "AsyncEnd" event type
-      AsyncEnd,    //!< Marks end of an async event - should be paired with "AsyncBegin" event type
+      Begin,      //!< Marks start of a duration event - should be paired with "End" event type
+      End,        //!< Marks end of a durection event - should be paired with "Begin" event type
+      Instant,    //!< Marks an instant event (which does not have any duration)
+      AsyncBegin, //!< Marks start of an async event - should be paired with "AsyncEnd" event type
+      AsyncEnd,   //!< Marks end of an async event - should be paired with "AsyncBegin" event type
     };
 
     /**
@@ -113,26 +112,55 @@ class CORE_EXPORT QgsEventTracing
     static bool writeTrace( const QString &fileName );
 
     /**
-     * Adds an event to the trace. Does nothing if tracing is not started.
-     * The "id" parameter is only needed for Async events to group them into a single event tree.
+     * Adds an event to the trace and also to Tracy. If tracing is not started,
+     * it only sends the event to Tracy. The "id" parameter is only needed for
+     * Async events to group them into a single event tree.
      * \note This method is thread-safe: it can be run from any thread.
      */
     static void addEvent( EventType type, const QString &category, const QString &name, const QString &id = QString() );
 
     /**
-     * ScopedEvent can be used to trace a single function duration - the constructor adds a "begin" event
-     * and the destructor adds "end" event of the same name and category.
+     * Adds an event to the trace without adding it to Tracy. Does nothing if
+     * tracing is not started. The "id" parameter is only needed for Async
+     * events to group them into a single event tree.
+     * \note This method is thread-safe: it can be run from any thread.
      */
-    class ScopedEvent
-    {
-      public:
-        ScopedEvent( const QString &category, const QString &name ): mCat( category ), mName( name ) { addEvent( Begin, mCat, mName ); }
-        ~ScopedEvent() { addEvent( End, mCat, mName ); }
-      private:
-        QString mCat, mName;
-    };
+    static void addEventToQgisTrace( EventType type, const QString &category, const QString &name, const QString &id = QString() );
 
+    /**
+     * Set value of numerical variable which will be plotted by Tracy.
+     * \note This method is thread-safe: it can be run from any thread.
+     */
+    static void setFloatVariable( const char *name, double value, bool continuous = false );
+
+    /**
+     * Set value of numerical variable which will be plotted by Tracy.
+     * \note This method is thread-safe: it can be run from any thread.
+     */
+    static void setIntVariable( const char *name, int64_t value, bool continuous = false );
 };
+
+/**
+ * ScopedEvent can be used to trace a single function duration - the constructor adds a "begin" event
+ * and the destructor adds "end" event of the same name and category.
+ */
+class CORE_EXPORT QgsScopedEvent
+{
+  public:
+    QgsScopedEvent( const QString &category, const QString &name )
+      : mCat( category )
+      , mName( name )
+      , mId( QString::number( sNextId++ ) )
+    {
+      QgsEventTracing::addEvent( QgsEventTracing::Begin, mCat, mName, mId );
+    }
+    ~QgsScopedEvent() { QgsEventTracing::addEvent( QgsEventTracing::End, mCat, mName, mId ); }
+
+  private:
+    QString mCat, mName, mId;
+    static size_t sNextId;
+};
+
 
 /// @endcond
 

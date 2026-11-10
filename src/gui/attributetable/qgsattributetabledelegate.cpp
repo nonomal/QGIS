@@ -13,26 +13,29 @@
  *                                                                         *
  ***************************************************************************/
 
-#include <QItemDelegate>
-#include <QLineEdit>
-#include <QComboBox>
-#include <QPainter>
-#include <QToolButton>
-
 #include "qgsattributetabledelegate.h"
+
+#include "qgsactionmanager.h"
 #include "qgsattributetablefiltermodel.h"
 #include "qgsattributetablemodel.h"
 #include "qgsattributetableview.h"
 #include "qgseditorwidgetregistry.h"
 #include "qgseditorwidgetwrapper.h"
 #include "qgsfeatureselectionmodel.h"
-#include "qgslogger.h"
-#include "qgsvectordataprovider.h"
-#include "qgsactionmanager.h"
 #include "qgsgui.h"
-#include "qgsvectorlayerjoininfo.h"
-#include "qgsvectorlayerjoinbuffer.h"
+#include "qgspainting.h"
 #include "qgsrendercontext.h"
+#include "qgsvectordataprovider.h"
+#include "qgsvectorlayerjoinbuffer.h"
+#include "qgsvectorlayerjoininfo.h"
+
+#include <QComboBox>
+#include <QItemDelegate>
+#include <QLineEdit>
+#include <QPainter>
+#include <QToolButton>
+
+#include "moc_qgsattributetabledelegate.cpp"
 
 QgsVectorLayer *QgsAttributeTableDelegate::layer( const QAbstractItemModel *model )
 {
@@ -67,22 +70,23 @@ QWidget *QgsAttributeTableDelegate::createEditor( QWidget *parent, const QStyleO
   if ( !vl )
     return nullptr;
 
-  const int fieldIdx = index.model()->data( index, static_cast< int >( QgsAttributeTableModel::CustomRole::FieldIndex ) ).toInt();
+  const int fieldIdx = index.model()->data( index, static_cast<int>( QgsAttributeTableModel::CustomRole::FieldIndex ) ).toInt();
   QgsAttributeEditorContext context( masterModel( index.model() )->editorContext(), QgsAttributeEditorContext::Popup );
 
   // Update the editor form context with the feature being edited
-  const QgsFeatureId fid( index.model()->data( index, static_cast< int >( QgsAttributeTableModel::CustomRole::FeatureId ) ).toLongLong() );
+  const QgsFeatureId fid( index.model()->data( index, static_cast<int>( QgsAttributeTableModel::CustomRole::FeatureId ) ).toLongLong() );
   context.setFormFeature( vl->getFeature( fid ) );
 
   QgsEditorWidgetWrapper *eww = QgsGui::editorWidgetRegistry()->create( vl, fieldIdx, nullptr, parent, context );
-  QWidget *w = eww->widget();
+  eww->setFeature( context.formFeature() );
 
+  QWidget *w = eww->widget();
   w->setAutoFillBackground( true );
   w->setFocusPolicy( Qt::StrongFocus ); // to make sure QMouseEvents are propagated to the editor widget
 
-  const int fieldOrigin = vl->fields().fieldOrigin( fieldIdx );
+  const Qgis::FieldOrigin fieldOrigin = vl->fields().fieldOrigin( fieldIdx );
   bool readOnly = true;
-  if ( fieldOrigin == QgsFields::OriginJoin )
+  if ( fieldOrigin == Qgis::FieldOrigin::Join )
   {
     int srcFieldIndex;
     const QgsVectorLayerJoinInfo *info = vl->joinBuffer()->joinForFieldIndex( fieldIdx, vl->fields(), srcFieldIndex );
@@ -104,8 +108,8 @@ void QgsAttributeTableDelegate::setModelData( QWidget *editor, QAbstractItemMode
   if ( !vl )
     return;
 
-  const int fieldIdx = model->data( index, static_cast< int >( QgsAttributeTableModel::CustomRole::FieldIndex ) ).toInt();
-  const QgsFeatureId fid = model->data( index, static_cast< int >( QgsAttributeTableModel::CustomRole::FeatureId ) ).toLongLong();
+  const int fieldIdx = model->data( index, static_cast<int>( QgsAttributeTableModel::CustomRole::FieldIndex ) ).toInt();
+  const QgsFeatureId fid = model->data( index, static_cast<int>( QgsAttributeTableModel::CustomRole::FeatureId ) ).toLongLong();
   const QVariant oldValue = model->data( index, Qt::EditRole );
 
   QgsEditorWidgetWrapper *eww = QgsEditorWidgetWrapper::fromWidget( editor );
@@ -121,9 +125,7 @@ void QgsAttributeTableDelegate::setModelData( QWidget *editor, QAbstractItemMode
   }
   newValues.append( eww->additionalFieldValues() );
 
-  if ( ( oldValue != newValues.at( 0 ) && newValues.at( 0 ).isValid() )
-       || QgsVariantUtils::isNull( oldValue ) != QgsVariantUtils::isNull( newValues.at( 0 ) )
-       || newValues.count() > 1 )
+  if ( ( oldValue != newValues.at( 0 ) && newValues.at( 0 ).isValid() ) || QgsVariantUtils::isNull( oldValue ) != QgsVariantUtils::isNull( newValues.at( 0 ) ) || newValues.count() > 1 )
   {
     // This fixes https://github.com/qgis/QGIS/issues/24398
     QgsFeatureRequest request( fid );
@@ -176,36 +178,43 @@ void QgsAttributeTableDelegate::setFeatureSelectionModel( QgsFeatureSelectionMod
 
 void QgsAttributeTableDelegate::paint( QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index ) const
 {
-  const QgsAttributeTableFilterModel::ColumnType columnType = static_cast<QgsAttributeTableFilterModel::ColumnType>( index.model()->data( index, static_cast< int >( QgsAttributeTableFilterModel::CustomRole::Type ) ).toInt() );
+  const QgsAttributeTableModel::ColumnTypeValue columnType = static_cast<QgsAttributeTableModel::ColumnTypeValue>(
+    index.model()->data( index, static_cast<int>( QgsAttributeTableModel::CustomRole::ColumnType ) ).toInt()
+  );
 
-  if ( columnType == QgsAttributeTableFilterModel::ColumnTypeActionButton )
+  switch ( columnType )
   {
-    emit actionColumnItemPainted( index );
-  }
-  else
-  {
-    const QgsFeatureId fid = index.model()->data( index, static_cast< int >( QgsAttributeTableModel::CustomRole::FeatureId ) ).toLongLong();
-
-    QStyleOptionViewItem myOpt = option;
-
-    if ( QgsVariantUtils::isNull( index.model()->data( index, Qt::EditRole ) ) )
+    case QgsAttributeTableModel::ColumnTypeValue::ActionButton:
     {
-      myOpt.font.setItalic( true );
-      myOpt.palette.setColor( QPalette::Text, QColor( "gray" ) );
+      emit actionColumnItemPainted( index );
+      break;
     }
-
-    if ( mFeatureSelectionModel && mFeatureSelectionModel->isSelected( fid ) )
-      myOpt.state |= QStyle::State_Selected;
-
-    QItemDelegate::paint( painter, myOpt, index );
-
-    if ( option.state & QStyle::State_HasFocus )
+    case QgsAttributeTableModel::ColumnTypeValue::Field:
     {
-      const QRect r = option.rect.adjusted( 1, 1, -1, -1 );
-      const QPen p( QBrush( QColor( 0, 255, 127 ) ), 2 );
-      const QgsScopedQPainterState painterState( painter );
-      painter->setPen( p );
-      painter->drawRect( r );
+      const QgsFeatureId fid = index.model()->data( index, static_cast<int>( QgsAttributeTableModel::CustomRole::FeatureId ) ).toLongLong();
+
+      QStyleOptionViewItem myOpt = option;
+
+      if ( QgsVariantUtils::isNull( index.model()->data( index, Qt::EditRole ) ) )
+      {
+        myOpt.font.setItalic( true );
+        myOpt.palette.setColor( QPalette::Text, QColor( "gray" ) );
+      }
+
+      if ( mFeatureSelectionModel && mFeatureSelectionModel->isSelected( fid ) )
+        myOpt.state |= QStyle::State_Selected;
+
+      QItemDelegate::paint( painter, myOpt, index );
+
+      if ( option.state & QStyle::State_HasFocus )
+      {
+        const QRect r = option.rect.adjusted( 1, 1, -1, -1 );
+        const QPen p( QBrush( QColor( 0, 255, 127 ) ), 2 );
+        const QgsScopedQPainterState painterState( painter );
+        painter->setPen( p );
+        painter->drawRect( r );
+      }
+      break;
     }
   }
 }

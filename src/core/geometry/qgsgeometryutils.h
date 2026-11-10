@@ -19,11 +19,11 @@ email                : marco.hugentobler at sourcepole dot com
 
 #include "qgis_core.h"
 #include "qgis_sip.h"
-#include "qgspoint.h"
-#include "qgsvertexid.h"
 #include "qgsgeometry.h"
 #include "qgsgeometryutils_base.h"
+#include "qgspoint.h"
 #include "qgsvector3d.h"
+#include "qgsvertexid.h"
 
 #include <QJsonArray>
 
@@ -33,11 +33,13 @@ class QgsLineString;
  * \ingroup core
  * \class QgsGeometryUtils
  * \brief Contains various geometry utility functions.
+ *
+ * \note This class is primarily intended to wrap the low-level mathematical implementations found in QgsGeometryUtilsBase,
+ * exposing them using QGIS geometry classes and providing Python bindings.
  */
 class CORE_EXPORT QgsGeometryUtils
 {
   public:
-
     /**
      * Returns list of linestrings extracted from the passed geometry. The returned objects
      *  have to be deleted by the caller.
@@ -75,10 +77,7 @@ class CORE_EXPORT QgsGeometryUtils
      * \returns TRUE if vertices were successfully retrieved
      * \note if the distance coincides exactly with a vertex, then both previousVertex and nextVertex will be set to this vertex
      */
-    static bool verticesAtDistance( const QgsAbstractGeometry &geometry,
-                                    double distance,
-                                    QgsVertexId &previousVertex SIP_OUT,
-                                    QgsVertexId &nextVertex SIP_OUT );
+    static bool verticesAtDistance( const QgsAbstractGeometry &geometry, double distance, QgsVertexId &previousVertex SIP_OUT, QgsVertexId &nextVertex SIP_OUT );
 
     /**
      * Returns the distance between a point and an infinite line.
@@ -90,6 +89,7 @@ class CORE_EXPORT QgsGeometryUtils
      */
     static double distToInfiniteLine( const QgsPoint &point, const QgsPoint &linePoint1, const QgsPoint &linePoint2, double epsilon = 1e-7 );
 
+    // clang-format off
     /**
      * \brief Compute the intersection of a line and a circle.
      * If the intersection has two solutions (points),
@@ -101,9 +101,8 @@ class CORE_EXPORT QgsGeometryUtils
      * \param intersection the initial point and the returned intersection point
      * \return TRUE if an intersection has been found
      */
-    static bool lineCircleIntersection( const QgsPointXY &center, double radius,
-                                        const QgsPointXY &linePoint1, const QgsPointXY &linePoint2,
-                                        QgsPointXY &intersection SIP_INOUT ) SIP_HOLDGIL;
+    static bool lineCircleIntersection( const QgsPointXY &center, double radius, const QgsPointXY &linePoint1, const QgsPointXY &linePoint2, QgsPointXY &intersection SIP_INOUT ) SIP_HOLDGIL;
+    // clang-format on
 
     /**
      * Calculates the intersections points between the circle with center \a center1 and
@@ -153,8 +152,8 @@ class CORE_EXPORT QgsGeometryUtils
       QgsPointXY &line2P1 SIP_OUT, QgsPointXY &line2P2 SIP_OUT ) SIP_HOLDGIL;
 
     /**
-     * Calculates the inner tangent points for two circles, centered at \a
-     * center1 and \a center2 and with radii of \a radius1 and \a radius2
+     * Calculates the inner tangent points for two circles, centered at
+     * \a center1 and \a center2 and with radii of \a radius1 and \a radius2
      * respectively.
      *
      * The inner tangent points correspond to the points at which the two lines
@@ -234,6 +233,28 @@ class CORE_EXPORT QgsGeometryUtils
      * \since QGIS 3.4
      */
     static QgsPoint interpolatePointOnArc( const QgsPoint &pt1, const QgsPoint &pt2, const QgsPoint &pt3, double distance ) SIP_HOLDGIL;
+
+    /**
+     * Evaluates a point on a cubic Bézier curve defined by four control points.
+     *
+     * \param p0 start point (the curve passes through this point)
+     * \param p1 first control point
+     * \param p2 second control point
+     * \param p3 end point (the curve passes through this point)
+     * \param t parameter value between 0 and 1
+     *
+     * \returns the point on the Bézier curve at parameter \a t
+     *
+     * Any Z or M values present in the input points will also be interpolated.
+     *
+     * The cubic Bézier formula is:
+     * \code{.unparsed}
+     * B(t) = (1-t)³P₀ + 3(1-t)²tP₁ + 3(1-t)t²P₂ + t³P₃
+     * \endcode
+     *
+     * \since QGIS 4.0
+     */
+    static QgsPoint interpolatePointOnCubicBezier( const QgsPoint &p0, const QgsPoint &p1, const QgsPoint &p2, const QgsPoint &p3, double t ) SIP_HOLDGIL;
 
     /**
      * Calculates midpoint on circle passing through \a p1 and \a p2, closest to
@@ -324,14 +345,15 @@ class CORE_EXPORT QgsGeometryUtils
     /**
      * Returns a geoJSON coordinates string.
      * \note not available in Python bindings
+     * \deprecated QGIS 4.2. Use pointsToJson() instead.
      */
-    static QString pointsToJSON( const QgsPointSequence &points, int precision ) SIP_SKIP;
+    Q_DECL_DEPRECATED static QString pointsToJSON( const QgsPointSequence &points, int precision ) SIP_SKIP;
 
     /**
      * Returns coordinates as json object.
      * \note not available in Python bindings
      */
-    static json pointsToJson( const QgsPointSequence &points, int precision ) SIP_SKIP;
+    static json pointsToJson( const QgsPointSequence &points, int precision, Qgis::GeoJsonProfile profile ) SIP_SKIP;
 
     /**
      * Parses a WKT block of the format "TYPE( contents )" and returns a pair of geometry type to contents ("Pair(wkbType, "contents")")
@@ -360,13 +382,13 @@ class CORE_EXPORT QgsGeometryUtils
      *
      * \code{.py}
      *   p = QgsPoint( 4, 6 ) # 2D point
-     *   pr = midpoint ( p, QgsPoint( 2, 2 ) )
+     *   pr = QgsGeometryUtils.midpoint ( p, QgsPoint( 2, 2 ) )
      *   # pr is a 2D point: 'Point (3 4)'
-     *   pr = midpoint ( p, QgsPoint( QgsWkbTypes.PointZ, 2, 2, 2 ) )
+     *   pr = QgsGeometryUtils.midpoint ( p, QgsPoint( QgsWkbTypes.PointZ, 2, 2, 2 ) )
      *   # pr is a 3D point: 'PointZ (3 4 1)'
-     *   pr = midpoint ( p, QgsPoint( QgsWkbTypes.PointM, 2, 2, 0, 2 ) )
+     *   pr = QgsGeometryUtils.midpoint ( p, QgsPoint( QgsWkbTypes.PointM, 2, 2, 0, 2 ) )
      *   # pr is a 3D point: 'PointM (3 4 1)'
-     *   pr = midpoint ( p, QgsPoint( QgsWkbTypes.PointZM, 2, 2, 2, 2 ) )
+     *   pr = QgsGeometryUtils.midpoint ( p, QgsPoint( QgsWkbTypes.PointZM, 2, 2, 2, 2 ) )
      *   # pr is a 3D point: 'PointZM (3 4 1 1)'
      * \endcode
      */
@@ -457,7 +479,7 @@ class CORE_EXPORT QgsGeometryUtils
      * \warning This method does not copy the z value of the coordinate from the
      * points whose z value is closest to the original x/y point, but only the first one found.
      *
-     * \deprecated since QGIS 3.20 use transferFirstZValueToPoint( const QgsPointSequence &points, QgsPoint &point ) instead
+     * \deprecated QGIS 3.20. Use transferFirstZValueToPoint( const QgsPointSequence &points, QgsPoint &point ) instead.
      */
     Q_DECL_DEPRECATED static bool setZValueFromPoints( const QgsPointSequence &points, QgsPoint &point ) SIP_DEPRECATED
     {
@@ -657,7 +679,7 @@ class CORE_EXPORT QgsGeometryUtils
     /**
      * Returns the squared 2D distance between (\a x1, \a y1) and (\a x2, \a y2).
      *
-     * \deprecated Use QgsGeometryUtilsBase methods instead.
+     * \deprecated QGIS 3.40. Use QgsGeometryUtilsBase methods instead.
      */
     Q_DECL_DEPRECATED static double sqrDistance2D( double x1, double y1, double x2, double y2 ) SIP_DEPRECATED SIP_HOLDGIL {return QgsGeometryUtilsBase::sqrDistance2D( x1, y1, x2, y2 ); }
 
@@ -683,7 +705,7 @@ class CORE_EXPORT QgsGeometryUtils
     /**
      * Returns the 2D distance between (\a x1, \a y1) and (\a x2, \a y2).
      *
-     * \deprecated Use QgsGeometryUtilsBase methods instead.
+     * \deprecated QGIS 3.40. Use QgsGeometryUtilsBase methods instead.
      */
     Q_DECL_DEPRECATED static double distance2D( double x1, double y1, double x2, double y2 ) SIP_DEPRECATED SIP_HOLDGIL {return QgsGeometryUtilsBase::distance2D( x1, y1, x2, y2 ); }
 
@@ -707,7 +729,7 @@ class CORE_EXPORT QgsGeometryUtils
     /**
      * Returns the squared distance between a point and a line.
      *
-     * \deprecated Use QgsGeometryUtilsBase methods instead.
+     * \deprecated QGIS 3.40. Use QgsGeometryUtilsBase methods instead.
      */
     Q_DECL_DEPRECATED static double sqrDistToLine( double ptX, double ptY, double x1, double y1, double x2, double y2, double &minDistX SIP_OUT, double &minDistY SIP_OUT, double epsilon ) SIP_DEPRECATED SIP_HOLDGIL
     {
@@ -721,7 +743,7 @@ class CORE_EXPORT QgsGeometryUtils
      * If the return value is 0, then the test was unsuccessful (e.g. due to testing a point exactly
      * on the line, or exactly in line with the segment) and the result is undefined.
      *
-     * \deprecated Use QgsGeometryUtilsBase methods instead.
+     * \deprecated QGIS 3.40. Use QgsGeometryUtilsBase methods instead.
      */
     Q_DECL_DEPRECATED static int leftOfLine( const double x, const double y, const double x1, const double y1, const double x2, const double y2 ) SIP_DEPRECATED SIP_HOLDGIL
     {
@@ -736,7 +758,7 @@ class CORE_EXPORT QgsGeometryUtils
      *
      * \note Not available in Python bindings
      * \since QGIS 3.4
-     * \deprecated Use QgsGeometryUtilsBase methods instead.
+     * \deprecated QGIS 3.40. Use QgsGeometryUtilsBase methods instead.
      */
     Q_DECL_DEPRECATED static void pointOnLineWithDistance( double x1, double y1, double x2, double y2, double distance, double &x, double &y,
         double *z1 = nullptr, double *z2 = nullptr, double *z = nullptr,
@@ -773,7 +795,7 @@ class CORE_EXPORT QgsGeometryUtils
      * \endcode
      *
      * \since QGIS 3.20
-     * \deprecated Use QgsGeometryUtilsBase methods instead.
+     * \deprecated QGIS 3.40. Use QgsGeometryUtilsBase methods instead.
      */
     Q_DECL_DEPRECATED static void perpendicularOffsetPointAlongSegment( double x1, double y1, double x2, double y2, double proportion, double offset, double *x SIP_OUT, double *y SIP_OUT )
     {
@@ -786,7 +808,7 @@ class CORE_EXPORT QgsGeometryUtils
     /**
      *Returns the counter clockwise angle between a line with components dx, dy and the line with dx > 0 and dy = 0
      *
-     * \deprecated Use QgsGeometryUtilsBase methods instead.
+     * \deprecated QGIS 3.40. Use QgsGeometryUtilsBase methods instead.
      */
     Q_DECL_DEPRECATED static double ccwAngle( double dy, double dx ) SIP_DEPRECATED SIP_HOLDGIL
     {
@@ -800,7 +822,7 @@ class CORE_EXPORT QgsGeometryUtils
      * The angles are defined counter-clockwise from the origin, i.e. using
      * Euclidean angles as opposed to geographic "North up" angles.
      *
-     * \deprecated Use QgsGeometryUtilsBase methods instead.
+     * \deprecated QGIS 3.40. Use QgsGeometryUtilsBase methods instead.
      */
     Q_DECL_DEPRECATED static bool circleClockwise( double angle1, double angle2, double angle3 ) SIP_DEPRECATED SIP_HOLDGIL
     {
@@ -810,7 +832,7 @@ class CORE_EXPORT QgsGeometryUtils
     /**
      * Returns TRUE if, in a circle, angle is between angle1 and angle2
      *
-     * \deprecated Use QgsGeometryUtilsBase methods instead.
+     * \deprecated QGIS 3.40. Use QgsGeometryUtilsBase methods instead.
      */
     Q_DECL_DEPRECATED static bool circleAngleBetween( double angle, double angle1, double angle2, bool clockwise ) SIP_DEPRECATED SIP_HOLDGIL
     {
@@ -821,7 +843,7 @@ class CORE_EXPORT QgsGeometryUtils
      * Returns TRUE if an angle is between angle1 and angle3 on a circle described by
      * angle1, angle2 and angle3.
      *
-     * \deprecated Use QgsGeometryUtilsBase methods instead.
+     * \deprecated QGIS 3.40. Use QgsGeometryUtilsBase methods instead.
      */
     Q_DECL_DEPRECATED static bool angleOnCircle( double angle, double angle1, double angle2, double angle3 ) SIP_DEPRECATED SIP_HOLDGIL
     {
@@ -831,7 +853,7 @@ class CORE_EXPORT QgsGeometryUtils
     /**
      * Length of a circular string segment defined by pt1, pt2, pt3
      *
-     * \deprecated Use QgsGeometryUtilsBase methods instead.
+     * \deprecated QGIS 3.40. Use QgsGeometryUtilsBase methods instead.
      */
     Q_DECL_DEPRECATED static double circleLength( double x1, double y1, double x2, double y2, double x3, double y3 ) SIP_DEPRECATED SIP_HOLDGIL
     {
@@ -841,7 +863,7 @@ class CORE_EXPORT QgsGeometryUtils
     /**
      * Calculates angle of a circular string part defined by pt1, pt2, pt3
      *
-     * \deprecated Use QgsGeometryUtilsBase methods instead.
+     * \deprecated QGIS 3.40. Use QgsGeometryUtilsBase methods instead.
      */
     Q_DECL_DEPRECATED static double sweepAngle( double centerX, double centerY, double x1, double y1, double x2, double y2, double x3, double y3 ) SIP_DEPRECATED SIP_HOLDGIL
     {
@@ -850,7 +872,7 @@ class CORE_EXPORT QgsGeometryUtils
 
     /**
      * Interpolate a value at given angle on circular arc given values (zm1, zm2, zm3) at three different angles (a1, a2, a3).
-     * \deprecated Use QgsGeometryUtilsBase methods instead.
+     * \deprecated QGIS 3.40. Use QgsGeometryUtilsBase methods instead.
      */
     Q_DECL_DEPRECATED static double interpolateArcValue( double angle, double a1, double a2, double a3, double zm1, double zm2, double zm3 ) SIP_DEPRECATED SIP_HOLDGIL
     {
@@ -862,7 +884,7 @@ class CORE_EXPORT QgsGeometryUtils
      * \param angle angle in radians
      * \returns equivalent angle within the range [0, 2 pi)
      *
-     * \deprecated Use QgsGeometryUtilsBase methods instead.
+     * \deprecated QGIS 3.40. Use QgsGeometryUtilsBase methods instead.
      */
     Q_DECL_DEPRECATED static double normalizedAngle( double angle ) SIP_DEPRECATED SIP_HOLDGIL
     {
@@ -877,7 +899,7 @@ class CORE_EXPORT QgsGeometryUtils
      * \param y2 y-coordinate of line end
      * \returns angle in radians. Returned value is undefined if start and end point are the same.
      *
-     * \deprecated Use QgsGeometryUtilsBase methods instead.
+     * \deprecated QGIS 3.40. Use QgsGeometryUtilsBase methods instead.
      */
     Q_DECL_DEPRECATED static double lineAngle( double x1, double y1, double x2, double y2 ) SIP_DEPRECATED SIP_HOLDGIL
     {
@@ -895,7 +917,7 @@ class CORE_EXPORT QgsGeometryUtils
      * \param y3 y-coordinate of point c
      * \returns angle between lines in radians. Returned value is undefined if two or more points are equal.
      *
-     * \deprecated Use QgsGeometryUtilsBase methods instead.
+     * \deprecated QGIS 3.40. Use QgsGeometryUtilsBase methods instead.
      */
     Q_DECL_DEPRECATED static double angleBetweenThreePoints( double x1, double y1, double x2, double y2, double x3, double y3 ) SIP_DEPRECATED SIP_HOLDGIL
     {
@@ -911,7 +933,7 @@ class CORE_EXPORT QgsGeometryUtils
      * \param y2 y-coordinate of line end
      * \returns angle in radians. Returned value is undefined if start and end point are the same.
      *
-     * \deprecated Use QgsGeometryUtilsBase methods instead.
+     * \deprecated QGIS 3.40. Use QgsGeometryUtilsBase methods instead.
      */
     Q_DECL_DEPRECATED static double linePerpendicularAngle( double x1, double y1, double x2, double y2 ) SIP_DEPRECATED SIP_HOLDGIL
     {
@@ -922,7 +944,7 @@ class CORE_EXPORT QgsGeometryUtils
      * Calculates the average angle (in radians) between the two linear segments from
      * (\a x1, \a y1) to (\a x2, \a y2) and (\a x2, \a y2) to (\a x3, \a y3).
      *
-     * \deprecated Use QgsGeometryUtilsBase methods instead.
+     * \deprecated QGIS 3.40. Use QgsGeometryUtilsBase methods instead.
      */
     Q_DECL_DEPRECATED static double averageAngle( double x1, double y1, double x2, double y2, double x3, double y3 ) SIP_DEPRECATED SIP_HOLDGIL
     {
@@ -935,7 +957,7 @@ class CORE_EXPORT QgsGeometryUtils
      * \param a2 second angle (in radians)
      * \returns average angle (in radians)
      *
-     * \deprecated Use QgsGeometryUtilsBase methods instead.
+     * \deprecated QGIS 3.40. Use QgsGeometryUtilsBase methods instead.
      */
     Q_DECL_DEPRECATED static double averageAngle( double a1, double a2 ) SIP_DEPRECATED SIP_HOLDGIL
     {
@@ -964,7 +986,7 @@ class CORE_EXPORT QgsGeometryUtils
      * to the diagonal line extended from the rectangle's top-left corner.
      *
      * \since QGIS 3.20
-     * \deprecated Use QgsGeometryUtilsBase methods instead.
+     * \deprecated QGIS 3.40. Use QgsGeometryUtilsBase methods instead.
      */
     Q_DECL_DEPRECATED static int closestSideOfRectangle( double right, double bottom, double left, double top, double x, double y )
     {
@@ -992,7 +1014,7 @@ class CORE_EXPORT QgsGeometryUtils
      *
      *
      * \since QGIS 3.24
-     * \deprecated Use QgsGeometryUtilsBase methods instead.
+     * \deprecated QGIS 3.40. Use QgsGeometryUtilsBase methods instead.
      */
     Q_DECL_DEPRECATED static void perpendicularCenterSegment( double centerPointX, double centerPointY,
         double segmentPoint1x, double segmentPoint1y,
@@ -1012,7 +1034,7 @@ class CORE_EXPORT QgsGeometryUtils
      * \param P22 is the second point on the second line.
      * \return the shortest distance
      *
-     * \deprecated Use QgsGeometryUtilsBase methods instead.
+     * \deprecated QGIS 3.40. Use QgsGeometryUtilsBase methods instead.
      */
     Q_DECL_DEPRECATED static double skewLinesDistance( const QgsVector3D &P1, const QgsVector3D &P12, const QgsVector3D &P2, const QgsVector3D &P22 ) SIP_DEPRECATED SIP_HOLDGIL
     {
@@ -1029,7 +1051,7 @@ class CORE_EXPORT QgsGeometryUtils
      * \param epsilon the tolerance to use.
      * \return TRUE if such point exists, FALSE - otherwise.
      *
-     * \deprecated Use QgsGeometryUtilsBase methods instead.
+     * \deprecated QGIS 3.40. Use QgsGeometryUtilsBase methods instead.
      */
     Q_DECL_DEPRECATED static bool skewLinesProjection( const QgsVector3D &P1, const QgsVector3D &P12,
         const QgsVector3D &P2, const QgsVector3D &P22,
@@ -1076,7 +1098,7 @@ class CORE_EXPORT QgsGeometryUtils
      *   # (True, PyQt5.QtGui.QgsVector3D(0.0, 5.0, 5.0))
      *   \endcode
      *
-     *   \deprecated Use QgsGeometryUtilsBase methods instead.
+     *   \deprecated QGIS 3.40. Use QgsGeometryUtilsBase methods instead.
      */
     Q_DECL_DEPRECATED static bool linesIntersection3D( const QgsVector3D &La1, const QgsVector3D &La2,
         const QgsVector3D &Lb1, const QgsVector3D &Lb2,
@@ -1090,7 +1112,7 @@ class CORE_EXPORT QgsGeometryUtils
      * (\a cX, \a cY).
      *
      * \since QGIS 3.10
-     * \deprecated Use QgsGeometryUtilsBase methods instead.
+     * \deprecated QGIS 3.40. Use QgsGeometryUtilsBase methods instead.
      */
     Q_DECL_DEPRECATED static double triangleArea( double aX, double aY, double bX, double bY, double cX, double cY ) SIP_DEPRECATED SIP_HOLDGIL
     {
@@ -1104,7 +1126,7 @@ class CORE_EXPORT QgsGeometryUtils
      * \warning this method requires that the point definitely lies on the line!
      *
      * \since QGIS 3.32
-     * \deprecated Use QgsGeometryUtilsBase methods instead.
+     * \deprecated QGIS 3.40. Use QgsGeometryUtilsBase methods instead.
      */
     Q_DECL_DEPRECATED static double pointFractionAlongLine( double x1, double y1, double x2, double y2, double px, double py )
     {
@@ -1127,7 +1149,7 @@ class CORE_EXPORT QgsGeometryUtils
      * \param pointY y-coordinate of generated point
      *
      * \since QGIS 3.10
-     * \deprecated Use QgsGeometryUtilsBase methods instead.
+     * \deprecated QGIS 3.40. Use QgsGeometryUtilsBase methods instead.
      */
     Q_DECL_DEPRECATED static void weightedPointInTriangle( double aX, double aY, double bX, double bY, double cX, double cY,
         double weightB, double weightC, double &pointX SIP_OUT, double &pointY SIP_OUT ) SIP_HOLDGIL
@@ -1140,7 +1162,7 @@ class CORE_EXPORT QgsGeometryUtils
      * points can be considered collinear with a specified tolerance \a epsilon.
      *
      * \since QGIS 3.32
-     * \deprecated Use QgsGeometryUtilsBase methods instead.
+     * \deprecated QGIS 3.40. Use QgsGeometryUtilsBase methods instead.
      */
     Q_DECL_DEPRECATED static bool pointsAreCollinear( double x1, double y1, double x2, double y2, double x3, double y3, double epsilon )
     {
@@ -1166,7 +1188,7 @@ class CORE_EXPORT QgsGeometryUtils
      * \returns TRUE if the bisector exists (A B and C D are not collinear)
      *
      * \since QGIS 3.18
-     * \deprecated Use QgsGeometryUtilsBase methods instead.
+     * \deprecated QGIS 3.40. Use QgsGeometryUtilsBase methods instead.
      */
     Q_DECL_DEPRECATED static bool angleBisector( double aX, double aY, double bX, double bY, double cX, double cY, double dX, double dY,
         double &pointX SIP_OUT, double &pointY SIP_OUT, double &angle SIP_OUT ) SIP_HOLDGIL
@@ -1189,7 +1211,7 @@ class CORE_EXPORT QgsGeometryUtils
      * \returns TRUE if the bisector exists (A B and C are not collinear)
      *
      * \since QGIS 3.18
-     * \deprecated Use QgsGeometryUtilsBase methods instead.
+     * \deprecated QGIS 3.40. Use QgsGeometryUtilsBase methods instead.
      */
     Q_DECL_DEPRECATED static bool bisector( double aX, double aY, double bX, double bY, double cX, double cY,
                                             double &pointX SIP_OUT, double &pointY SIP_OUT ) SIP_HOLDGIL
@@ -1228,6 +1250,39 @@ class CORE_EXPORT QgsGeometryUtils
 
       return result;
     }
+
+    /**
+     * Calculates the intersection point of two lines defined by point and bearing.
+     *
+     * Each line is defined by a point and a bearing (azimuth). The bearing is measured
+     * clockwise from north in radians.
+     *
+     * \param pt1 point on the first line
+     * \param bearing1 bearing from the first point in radians (clockwise from north)
+     * \param pt2 point on the second line
+     * \param bearing2 bearing from the second point in radians (clockwise from north)
+     * \param intersection will be set to the intersection point.
+     *
+     * \returns TRUE if an intersection was found, FALSE if lines are parallel
+     *
+     * \see lineIntersection()
+     * \see QgsGeometryUtilsBase::intersectionPointOfLinesByBearing()
+     *
+     * \since QGIS 4.0
+     */
+    static bool intersectionPointOfLinesByBearing( const QgsPoint &pt1, double bearing1, const QgsPoint &pt2, double bearing2, QgsPoint &intersection SIP_OUT ) SIP_HOLDGIL
+    {
+      double intersectionX = 0.0, intersectionY = 0.0;
+      const bool found = QgsGeometryUtilsBase::intersectionPointOfLinesByBearing( pt1.x(), pt1.y(), bearing1, pt2.x(), pt2.y(), bearing2, intersectionX, intersectionY );
+
+      intersection = QgsPoint( intersectionX, intersectionY );
+
+      // z and m support for intersection point
+      QgsGeometryUtils::transferFirstZOrMValueToPoint( QgsPointSequence() << pt1 << pt2, intersection );
+
+      return found;
+    }
+
 
     /**
      * \brief Compute the intersection between two segments
@@ -1274,6 +1329,251 @@ class CORE_EXPORT QgsGeometryUtils
       return result;
     }
 
+    /**
+     * Creates a QgsPoint with dimensions matching a reference point.
+     * \param x x-coordinate for the new point
+     * \param y y-coordinate for the new point
+     * \param reference reference point providing dimension information (Z, M)
+     * \returns QgsPoint with matching dimensions, Z and M values set to 0.0
+     * \since QGIS 4.0
+     */
+    static QgsPoint createPointWithMatchingDimensions( double x, double y, const QgsPoint &reference ) SIP_HOLDGIL;
 
+    /**
+     * Interpolates a point on a segment with proper Z and M value interpolation.
+     * \param x x-coordinate of the point to interpolate
+     * \param y y-coordinate of the point to interpolate
+     * \param segmentStart start point of the segment
+     * \param segmentEnd end point of the segment
+     * \returns QgsPoint with proper Z and M interpolation
+     * \since QGIS 4.0
+     */
+    static QgsPoint interpolatePointOnSegment( double x, double y,
+        const QgsPoint &segmentStart, const QgsPoint &segmentEnd ) SIP_HOLDGIL;
+
+    /**
+     * Creates a chamfer between two line segments using QgsPoint.
+     * \param segment1Start start point of first segment
+     * \param segment1End end point of first segment
+     * \param segment2Start start point of second segment
+     * \param segment2End end point of second segment
+     * \param distance1 chamfer distance along first segment
+     * \param distance2 chamfer distance along second segment (if negative, uses distance1)
+     * \param chamferStart calculated start point of the chamfer
+     * \param chamferEnd calculated end point of the chamfer
+     * \param epsilon tolerance for geometric calculations
+     * \returns true if chamfer was successfully created
+     * \throws QgsInvalidArgumentException same as QgsGeometryUtilsBase::createChamfer
+     * \see QgsGeometryUtilsBase::createChamfer
+     * \since QGIS 4.0
+     */
+    static bool createChamfer( const QgsPoint &segment1Start, const QgsPoint &segment1End,
+                               const QgsPoint &segment2Start, const QgsPoint &segment2End,
+                               double distance1, double distance2,
+                               QgsPoint &chamferStart SIP_OUT, QgsPoint &chamferEnd SIP_OUT,
+                               double epsilon = 1e-8 ) SIP_THROW( QgsInvalidArgumentException ) SIP_HOLDGIL;
+
+    /**
+     * Creates a fillet (rounded corner) between two line segments using QgsPoint.
+     * Returns the three fillet arc points (\a filletPoint1, \a filletMidPoint, \a filletPoint2)
+     * via output parameters to define a CircularString.
+     * \param segment1Start start point of first segment
+     * \param segment1End end point of first segment
+     * \param segment2Start start point of second segment
+     * \param segment2End end point of second segment
+     * \param radius fillet radius
+     * \param filletPoint1 first tangent point of the fillet arc
+     * \param filletMidPoint midpoint of the fillet arc
+     * \param filletPoint2 second tangent point of the fillet arc
+     * \param epsilon tolerance for geometric calculations
+     * \returns true if fillet was successfully created
+     * \throws QgsInvalidArgumentException
+     * \throws QgsInvalidArgumentException same as QgsGeometryUtilsBase::createFillet
+     * \see QgsGeometryUtilsBase::createFillet
+     * \since QGIS 4.0
+     */
+    static bool createFillet( const QgsPoint &segment1Start, const QgsPoint &segment1End,
+                              const QgsPoint &segment2Start, const QgsPoint &segment2End,
+                              double radius,
+                              QgsPoint &filletPoint1 SIP_OUT,
+                              QgsPoint &filletMidPoint SIP_OUT,
+                              QgsPoint &filletPoint2 SIP_OUT,
+                              double epsilon = 1e-8 ) SIP_THROW( QgsInvalidArgumentException ) SIP_HOLDGIL;
+
+    /**
+     * Creates a complete chamfer geometry connecting two segments.
+     * \param segment1Start start point of first segment
+     * \param segment1End end point of first segment
+     * \param segment2Start start point of second segment
+     * \param segment2End end point of second segment
+     * \param distance1 chamfer distance along first segment
+     * \param distance2 chamfer distance along second segment (if negative, uses distance1)
+     * \returns QgsLineString geometry connecting the segments through the chamfer
+     * \throws QgsInvalidArgumentException same as QgsGeometryUtilsBase::createChamfer
+     * \see QgsGeometryUtilsBase::createChamfer
+     * \since QGIS 4.0
+     */
+    static std::unique_ptr< QgsLineString > createChamferGeometry(
+      const QgsPoint &segment1Start, const QgsPoint &segment1End,
+      const QgsPoint &segment2Start, const QgsPoint &segment2End,
+      double distance1, double distance2
+    ) SIP_THROW( QgsInvalidArgumentException );
+
+    /**
+     * Creates a complete fillet geometry connecting two segments.
+     * \param segment1Start start point of first segment
+     * \param segment1End end point of first segment
+     * \param segment2Start start point of second segment
+     * \param segment2End end point of second segment
+     * \param radius fillet radius
+     * \param segments number of segments for arc discretization (≤0 for circular arc)
+     * \returns geometry connecting the segments through the fillet
+     * \throws QgsInvalidArgumentException same as QgsGeometryUtilsBase::createFillet
+     * \see QgsGeometryUtilsBase::createFillet
+     * \since QGIS 4.0
+     */
+    static std::unique_ptr< QgsAbstractGeometry > createFilletGeometry(
+      const QgsPoint &segment1Start, const QgsPoint &segment1End,
+      const QgsPoint &segment2Start, const QgsPoint &segment2End,
+      double radius, int segments
+    ) SIP_THROW( QgsInvalidArgumentException );
+
+    /**
+     * Calculates the maximum allowed fillet radius for the given segment configuration.
+     *
+     * \param segment1Start start point of the first segment
+     * \param segment1End end point of the first segment
+     * \param segment2Start start point of the second segment
+     * \param segment2End end point of the second segment
+     * \param epsilon tolerance for intersection and angle calculations
+     * \returns Maximum fillet radius that can be applied, or -1.0 if no fillet is possible
+     *
+     * \since QGIS 4.0
+     */
+    static double maxFilletRadius( const QgsPoint &segment1Start, const QgsPoint &segment1End,
+                                   const QgsPoint &segment2Start, const QgsPoint &segment2End,
+                                   double epsilon = 1e-8 ) SIP_HOLDGIL;
+
+    /**
+     * Applies chamfer to a vertex in a curve geometry.
+     * \param curve input curve geometry
+     * \param vertexIndex index of vertex to chamfer
+     * \param distance1 chamfer distance along first segment
+     * \param distance2 chamfer distance along second segment
+     * \returns new geometry with chamfer applied, or None on failure
+     * \throws QgsInvalidArgumentException same as QgsGeometryUtilsBase::createChamfer and
+     *         when curve is null
+     *         when curve has not enough points
+     *
+     * \see QgsGeometryUtilsBase::createChamfer
+     * \since QGIS 4.0
+     */
+    static std::unique_ptr< QgsAbstractGeometry > chamferVertex(
+      const QgsCurve *curve, int vertexIndex,
+      double distance1, double distance2
+    ) SIP_THROW( QgsInvalidArgumentException );
+
+    /**
+     * Applies fillet to a vertex in a curve geometry.
+     * \param curve input curve geometry
+     * \param vertexIndex index of vertex to fillet
+     * \param radius fillet radius
+     * \param segments number of segments for arc discretization (≤0 for circular arc)
+     * \returns new geometry with fillet applied, or None on failure
+     * \throws QgsInvalidArgumentException same as QgsGeometryUtilsBase::createFillet and
+     *         when curve is null
+     *         when curve has not enough points
+     *
+     * \see QgsGeometryUtilsBase::createFillet
+     * \since QGIS 4.0
+     */
+    static std::unique_ptr< QgsAbstractGeometry > filletVertex(
+      const QgsCurve *curve, int vertexIndex,
+      double radius, int segments
+    ) SIP_THROW( QgsInvalidArgumentException );
+
+    /**
+     * Convenient method of createFillet using array output.
+     * \note Not available in Python bindings.
+     * \throws QgsInvalidArgumentException same as QgsGeometryUtilsBase::createFillet
+     * \see QgsGeometryUtilsBase::createFillet
+     * \since QGIS 4.0
+     */
+    static bool createFilletArray( const QgsPoint &segment1Start, const QgsPoint &segment1End,
+                                   const QgsPoint &segment2Start, const QgsPoint &segment2End,
+                                   double radius,
+                                   QgsPoint filletPoints[3],
+                                   double epsilon = 1e-8 ) SIP_SKIP;
+
+    /**
+     * Checks if three points are collinear within a given tolerance.
+     *
+     * This function determines whether the points `pt1`, `pt2`, and `pt3` lie
+     * on the same straight line, considering a numerical tolerance `epsilon`.
+     * The function works only with 2D and 3D points. The measure component (if present) is ignored.
+     *
+     * \param pt1 The first point.
+     * \param pt2 The second point.
+     * \param pt3 The third point.
+     * \param epsilon The tolerance used to account for floating-point inaccuracies.
+     * \return true if the points are collinear, false otherwise.
+     *
+     * \since QGIS 4.0
+     */
+    static bool pointsAreCollinear( const QgsPoint &pt1, const QgsPoint &pt2, const QgsPoint &pt3, double epsilon );
+
+
+    /**
+     * Checks if a 3D geometry has a plane defined by at least 3 non-collinear points.
+     * If successful, the points are returned in ptA, ptB, and ptC.
+     *
+     * \param geom The input 3D geometry.
+     * \param pt1 The first point found, if a plane exists.
+     * \param pt2 The second point found, if a plane exists.
+     * \param pt3 The third point found, if a plane exists.
+     * \param epsilon The tolerance used to account for floating-point inaccuracies.
+     * \return true if a plane is found, false otherwise.
+     *
+     * \note This function does not handle geometry collections.
+     * \note This function stops as soon as three suitable non-collinear points are
+     *       found; it does not perform an exhaustive verification of all geometry
+     *       vertices.
+     * \note For polygon geometries, only the exterior ring is inspected when
+     *       searching for candidate points.
+     *
+     * \since QGIS 4.0
+     */
+    static bool checkWeaklyFor3DPlane( const QgsAbstractGeometry *geom, QgsPoint &pt1 SIP_OUT, QgsPoint &pt2 SIP_OUT, QgsPoint &pt3 SIP_OUT, double epsilon = std::numeric_limits<double>::epsilon() );
+
+    /**
+     * Interpolates the Z value at the given (x, y) location within the triangle defined by points a, b, and c.
+     *
+     * \param a First vertex of the triangle.
+     * \param b Second vertex of the triangle.
+     * \param c Third vertex of the triangle.
+     * \param x X coordinate of the point to interpolate.
+     * \param y Y coordinate of the point to interpolate.
+     * \return The interpolated Z value at the specified (x, y) location.
+     */
+    static double interpolateZ( const QgsPoint &a, const QgsPoint &b, const QgsPoint &c, double x, double y );
+
+  private:
+
+    /**
+     * Applies fillet/chamfer to a vertex in a curve geometry.
+     * \param operation chamfer or fillet string
+     * \param curve input curve geometry
+     * \param vertexIndex index of vertex to fillet
+     * \param value1 fillet radius or chamfer distance1
+     * \param value2 chamfer distance2
+     * \param segments fillet number of segments for arc discretization (≤0 for circular arc)
+     * \returns new geometry with fillet/chamfer applied, or None on failure
+     * \throws QgsInvalidArgumentException
+     * \since QGIS 4.0
+     */
+    static std::unique_ptr< QgsAbstractGeometry > doChamferFilletOnVertex(
+      QgsGeometry::ChamferFilletOperationType operation, const QgsCurve *curve, int vertexIndex,
+      double value1, double value2, int segments
+    );
 };
 #include "qgsgeometryutils_base.h"

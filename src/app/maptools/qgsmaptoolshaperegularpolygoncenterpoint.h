@@ -4,7 +4,7 @@
     ---------------------
     begin                : July 2017
     copyright            : (C) 2017 by Loïc Bartoletti
-    email                : lbartoletti at tuxfamily dot org
+    email                : lituus at free dot fr
  ***************************************************************************
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -17,9 +17,9 @@
 #ifndef QGSMAPTOOLSHAPEREGULARPOLYGONCENTERPOINT_H
 #define QGSMAPTOOLSHAPEREGULARPOLYGONCENTERPOINT_H
 
-#include "qgsmaptoolshaperegularpolygonabstract.h"
 #include "qgis_app.h"
 #include "qgsmaptoolshaperegistry.h"
+#include "qgsmaptoolshaperegularpolygonabstract.h"
 
 class APP_EXPORT QgsMapToolShapeRegularPolygonCenterPointMetadata : public QgsMapToolShapeMetadata
 {
@@ -37,7 +37,7 @@ class APP_EXPORT QgsMapToolShapeRegularPolygonCenterPointMetadata : public QgsMa
     QgsMapToolShapeAbstract *factory( QgsMapToolCapture *parentTool ) const override;
 };
 
-class APP_EXPORT QgsMapToolShapeRegularPolygonCenterPoint: public QgsMapToolShapeRegularPolygonAbstract
+class APP_EXPORT QgsMapToolShapeRegularPolygonCenterPoint : public QgsMapToolShapeRegularPolygonAbstract
 {
     Q_OBJECT
 

@@ -28,12 +28,11 @@
  * \brief A layout table subclass that displays manually entered (and formatted) content.
  * \since QGIS 3.12
 */
-class CORE_EXPORT QgsLayoutItemManualTable: public QgsLayoutTable
+class CORE_EXPORT QgsLayoutItemManualTable : public QgsLayoutTable
 {
     Q_OBJECT
 
   public:
-
     /**
      * Constructor for QgsLayoutItemManualTable, attached to the specified \a layout.
      *
@@ -135,7 +134,6 @@ class CORE_EXPORT QgsLayoutItemManualTable: public QgsLayoutTable
     void setHeaders( const QgsLayoutTableColumns &headers );
 
   protected:
-
     bool writePropertiesToElement( QDomElement &elem, QDomDocument &doc, const QgsReadWriteContext &context ) const override;
     bool readPropertiesFromElement( const QDomElement &itemElem, const QDomDocument &doc, const QgsReadWriteContext &context ) override;
     bool calculateMaxRowHeights() override;
@@ -143,9 +141,10 @@ class CORE_EXPORT QgsLayoutItemManualTable: public QgsLayoutTable
     QgsTextFormat textFormatForCell( int row, int column ) const override;
     Qt::Alignment horizontalAlignmentForCell( int row, int column ) const override;
     Qt::Alignment verticalAlignmentForCell( int row, int column ) const override;
+    int rowSpan( int row, int column ) const override;
+    int columnSpan( int row, int column ) const override;
 
   private:
-
     QgsTableContents mContents;
     QgsLayoutTableColumns mHeaders;
 
@@ -154,7 +153,6 @@ class CORE_EXPORT QgsLayoutItemManualTable: public QgsLayoutTable
     bool mIncludeHeader = false;
 
     void refreshColumns();
-
 };
 
 #endif // QGSLAYOUTITEMMANUALTABLE_H

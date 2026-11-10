@@ -16,9 +16,11 @@
 #ifndef QGSVERSIONMIGRATION_H
 #define QGSVERSIONMIGRATION_H
 
+#include <memory>
+
 #include "qgis_app.h"
 #include "qgserror.h"
-#include <memory>
+
 #include <QSettings>
 
 class QgsSettings;
@@ -42,22 +44,23 @@ class APP_EXPORT QgsVersionMigration
      * \param toVersion The version migrating to.
      * \returns new migration object
      */
-    static std::unique_ptr< QgsVersionMigration > canMigrate( int fromVersion, int toVersion );
+    static std::unique_ptr<QgsVersionMigration> canMigrate( int fromVersion, int toVersion );
 
     /**
      * Run the version migration to convert between versions.
      * \return QgsError containing any error messages when running the conversion.
      */
-    virtual QgsError runMigration() = 0;
+    virtual QgsError runMigration( const QString &oldProfilePath, const QString &newProfilePath ) = 0;
     virtual bool requiresMigration() = 0;
 };
 
-
+#if 0
 class Qgs2To3Migration : public QgsVersionMigration
 {
   public:
     QgsError runMigration() override;
     bool requiresMigration() override;
+
   private:
     QgsError migrateStyles();
     QgsError migrateSettings();
@@ -71,7 +74,14 @@ class Qgs2To3Migration : public QgsVersionMigration
     int mMigrationFileVersion = 0;
 
     QSettings *mOldSettings = nullptr;
+};
+#endif
 
+class Qgs3To4Migration : public QgsVersionMigration
+{
+  public:
+    QgsError runMigration( const QString &oldProfilePath, const QString &newProfilePath ) override;
+    bool requiresMigration() override;
 };
 
 #endif // QGSVERSIONMIGRATION_H

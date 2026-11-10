@@ -17,10 +17,11 @@
 
 #include "qgis_core.h"
 #include "qgis_sip.h"
+
+#include <QDomElement>
 #include <QIcon>
 #include <QMap>
 #include <QStringList>
-#include <QDomElement>
 
 class QgsTiledSceneRenderer;
 class QgsReadWriteContext;
@@ -43,7 +44,6 @@ class QgsTiledSceneRendererWidget SIP_EXTERNAL;
 class CORE_EXPORT QgsTiledSceneRendererAbstractMetadata
 {
   public:
-
     /**
      * Constructor for QgsTiledSceneRendererAbstractMetadata, with the specified \a name.
      *
@@ -100,7 +100,12 @@ class CORE_EXPORT QgsTiledSceneRendererAbstractMetadata
      * \note Not available in Python bindings
      */
     virtual QgsTiledSceneRendererWidget *createRendererWidget( QgsTiledSceneLayer *layer, QgsStyle *style, QgsTiledSceneRenderer *oldRenderer ) SIP_FACTORY
-    { Q_UNUSED( layer ) Q_UNUSED( style ); Q_UNUSED( oldRenderer ); return nullptr; }
+    {
+      Q_UNUSED( layer )
+      Q_UNUSED( style );
+      Q_UNUSED( oldRenderer );
+      return nullptr;
+    }
 #endif
 
   protected:
@@ -112,7 +117,7 @@ class CORE_EXPORT QgsTiledSceneRendererAbstractMetadata
     QIcon mIcon;
 };
 
-typedef QgsTiledSceneRenderer *( *QgsTiledSceneRendererCreateFunc )( QDomElement &, const QgsReadWriteContext & ) SIP_SKIP;
+typedef std::unique_ptr<QgsTiledSceneRenderer> ( *QgsTiledSceneRendererCreateFunc )( QDomElement &, const QgsReadWriteContext & ) SIP_SKIP;
 typedef QgsTiledSceneRendererWidget *( *QgsTiledSceneRendererWidgetFunc )( QgsTiledSceneLayer *, QgsStyle *, QgsTiledSceneRenderer * ) SIP_SKIP;
 
 /**
@@ -123,36 +128,32 @@ typedef QgsTiledSceneRendererWidget *( *QgsTiledSceneRendererWidgetFunc )( QgsTi
 class CORE_EXPORT QgsTiledSceneRendererMetadata : public QgsTiledSceneRendererAbstractMetadata
 {
   public:
-
     /**
      * Construct metadata
      * \note not available in Python bindings
      */
-    QgsTiledSceneRendererMetadata( const QString &name,
-                                   const QString &visibleName,
-                                   QgsTiledSceneRendererCreateFunc pfCreate,
-                                   const QIcon &icon = QIcon(),
-                                   QgsTiledSceneRendererWidgetFunc pfWidget = nullptr ) SIP_SKIP
-  : QgsTiledSceneRendererAbstractMetadata( name, visibleName, icon )
-    , mCreateFunc( pfCreate )
-    , mWidgetFunc( pfWidget )
+    QgsTiledSceneRendererMetadata( const QString &name, const QString &visibleName, QgsTiledSceneRendererCreateFunc pfCreate, const QIcon &icon = QIcon(), QgsTiledSceneRendererWidgetFunc pfWidget = nullptr )
+      SIP_SKIP : QgsTiledSceneRendererAbstractMetadata( name, visibleName, icon ),
+                 mCreateFunc( pfCreate ),
+                 mWidgetFunc( pfWidget )
     {}
 
-    QgsTiledSceneRenderer *createRenderer( QDomElement &elem, const QgsReadWriteContext &context ) override SIP_FACTORY
-    { return mCreateFunc ? mCreateFunc( elem, context ) : nullptr; }
+    QgsTiledSceneRenderer *createRenderer( QDomElement &elem, const QgsReadWriteContext &context ) override SIP_FACTORY;
 
 #ifndef SIP_RUN
     QgsTiledSceneRendererWidget *createRendererWidget( QgsTiledSceneLayer *layer, QgsStyle *style, QgsTiledSceneRenderer *renderer ) override SIP_FACTORY
-    { return mWidgetFunc ? mWidgetFunc( layer, style, renderer ) : nullptr; }
+    {
+      return mWidgetFunc ? mWidgetFunc( layer, style, renderer ) : nullptr;
+    }
 #endif
 
     //! \note not available in Python bindings
-    QgsTiledSceneRendererCreateFunc createFunction() const { return mCreateFunc; } SIP_SKIP
+    QgsTiledSceneRendererCreateFunc createFunction() const SIP_SKIP { return mCreateFunc; }
     //! \note not available in Python bindings
-    QgsTiledSceneRendererWidgetFunc widgetFunction() const { return mWidgetFunc; } SIP_SKIP
+    QgsTiledSceneRendererWidgetFunc widgetFunction() const SIP_SKIP { return mWidgetFunc; }
 
     //! \note not available in Python bindings
-    void setWidgetFunction( QgsTiledSceneRendererWidgetFunc f ) { mWidgetFunc = f; } SIP_SKIP
+    void setWidgetFunction( QgsTiledSceneRendererWidgetFunc f ) SIP_SKIP { mWidgetFunc = f; }
 
   protected:
     //! pointer to function that creates an instance of the renderer when loading project / style
@@ -164,7 +165,6 @@ class CORE_EXPORT QgsTiledSceneRendererMetadata : public QgsTiledSceneRendererAb
 #ifdef SIP_RUN
     QgsTiledSceneRendererMetadata();
 #endif
-
 };
 
 
@@ -181,13 +181,10 @@ class CORE_EXPORT QgsTiledSceneRendererMetadata : public QgsTiledSceneRendererAb
 class CORE_EXPORT QgsTiledSceneRendererRegistry
 {
   public:
-
     QgsTiledSceneRendererRegistry();
     ~QgsTiledSceneRendererRegistry();
 
-    //! QgsTiledSceneRendererRegistry cannot be copied.
     QgsTiledSceneRendererRegistry( const QgsTiledSceneRendererRegistry &rh ) = delete;
-    //! QgsTiledSceneRendererRegistry cannot be copied.
     QgsTiledSceneRendererRegistry &operator=( const QgsTiledSceneRendererRegistry &rh ) = delete;
 
     /**
@@ -222,7 +219,7 @@ class CORE_EXPORT QgsTiledSceneRendererRegistry
      *
      * Caller takes ownership of the returned renderer.
      */
-    static QgsTiledSceneRenderer *defaultRenderer( const QgsTiledSceneLayer *layer ) SIP_FACTORY;
+    static std::unique_ptr<QgsTiledSceneRenderer> defaultRenderer( const QgsTiledSceneLayer *layer );
 
   private:
 #ifdef SIP_RUN

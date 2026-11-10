@@ -17,11 +17,12 @@
 
 #include <QUuid>
 
+#include "moc_qgsuuidwidgetwrapper.cpp"
+
 QgsUuidWidgetWrapper::QgsUuidWidgetWrapper( QgsVectorLayer *layer, int fieldIdx, QWidget *editor, QWidget *parent )
   : QgsEditorWidgetWrapper( layer, fieldIdx, editor, parent )
 
-{
-}
+{}
 
 QString QgsUuidWidgetWrapper::createUiid( int maxLength )
 {
@@ -73,7 +74,7 @@ void QgsUuidWidgetWrapper::updateValues( const QVariant &value, const QVariantLi
   if ( QgsVariantUtils::isNull( value ) )
   {
     int maxLength = 0;
-    if ( field().type() == QVariant::String && field().length() > 0 )
+    if ( field().type() == QMetaType::Type::QString && field().length() > 0 )
     {
       maxLength = field().length();
     }

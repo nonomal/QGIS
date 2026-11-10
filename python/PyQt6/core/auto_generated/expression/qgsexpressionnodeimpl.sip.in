@@ -3,8 +3,11 @@
  *                                                                      *
  * src/core/expression/qgsexpressionnodeimpl.h                          *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/
+
+
+
 
 
 
@@ -12,14 +15,14 @@
 class QgsExpressionNodeUnaryOperator : QgsExpressionNode
 {
 %Docstring(signature="appended")
-A unary node is either negative as in boolean (not) or as in numbers (minus).
+A unary node is either negative as in boolean (not) or as in numbers
+(minus).
 %End
 
 %TypeHeaderCode
 #include "qgsexpressionnodeimpl.h"
 %End
   public:
-
     enum UnaryOperator /BaseType=IntEnum/
     {
       uoNot,
@@ -28,17 +31,19 @@ A unary node is either negative as in boolean (not) or as in numbers (minus).
 
     QgsExpressionNodeUnaryOperator( QgsExpressionNodeUnaryOperator::UnaryOperator op, QgsExpressionNode *operand /Transfer/ );
 %Docstring
-A node unary operator is modifying the value of ``operand`` by negating it with ``op``.
+A node unary operator is modifying the value of ``operand`` by negating
+it with ``op``.
 %End
-    ~QgsExpressionNodeUnaryOperator();
 
     SIP_PYOBJECT __repr__();
 %MethodCode
-    QString str = QStringLiteral( "<QgsExpressionNodeUnaryOperator: %1>" ).arg( sipCpp->text() );
+QString str = QStringLiteral( "<QgsExpressionNodeUnaryOperator: %1>" ).arg( sipCpp->text() );
     sipRes = PyUnicode_FromString( str.toUtf8().constData() );
 %End
 
-    QgsExpressionNodeUnaryOperator::UnaryOperator op() const;
+
+
+        QgsExpressionNodeUnaryOperator::UnaryOperator op() const;
 %Docstring
 Returns the unary operator.
 %End
@@ -63,18 +68,23 @@ Returns the node the operator will operate upon.
 
     virtual QSet<QString> referencedFunctions() const;
 
+    virtual bool needsGeometry() const;
+
     virtual QgsExpressionNode *clone() const /Factory/;
 
+    virtual QgsExpressionNode *simplifiedNode() const /Factory/;
 
     virtual bool isStatic( QgsExpression *parent, const QgsExpressionContext *context ) const;
 
 
     QString text() const;
 %Docstring
-Returns a the name of this operator without the operands.
-I.e. "NOT" or "-"
+Returns a the name of this operator without the operands. I.e. "NOT" or
+"-"
 %End
 
+  private:
+    QgsExpressionNodeUnaryOperator( const QgsExpressionNodeUnaryOperator &other );
 };
 
 class QgsExpressionNodeBinaryOperator : QgsExpressionNode
@@ -87,7 +97,6 @@ A binary expression operator, which operates on two values.
 #include "qgsexpressionnodeimpl.h"
 %End
   public:
-
     enum BinaryOperator /BaseType=IntEnum/
     {
       // logical
@@ -126,15 +135,14 @@ A binary expression operator, which operates on two values.
 %Docstring
 Binary combination of the left and the right with op.
 %End
-    ~QgsExpressionNodeBinaryOperator();
 
     SIP_PYOBJECT __repr__();
 %MethodCode
-    QString str = QStringLiteral( "<QgsExpressionNodeBinaryOperator: %1>" ).arg( sipCpp->text() );
+QString str = QStringLiteral( "<QgsExpressionNodeBinaryOperator: %1>" ).arg( sipCpp->text() );
     sipRes = PyUnicode_FromString( str.toUtf8().constData() );
 %End
 
-    QgsExpressionNodeBinaryOperator::BinaryOperator op() const;
+        QgsExpressionNodeBinaryOperator::BinaryOperator op() const;
 %Docstring
 Returns the binary operator.
 %End
@@ -168,16 +176,20 @@ Returns the node to the right of the operator.
 
     virtual QSet<QString> referencedFunctions() const;
 
+
     virtual bool needsGeometry() const;
 
     virtual QgsExpressionNode *clone() const /Factory/;
 
     virtual bool isStatic( QgsExpression *parent, const QgsExpressionContext *context ) const;
 
+    virtual QgsExpressionNode *simplifiedNode() const /Factory/;
+
 
     int precedence() const;
 %Docstring
-Returns the precedence index for the operator. Higher values have higher precedence.
+Returns the precedence index for the operator. Higher values have higher
+precedence.
 %End
 
     bool leftAssociative() const;
@@ -187,16 +199,19 @@ Returns ``True`` if the operator is left-associative.
 
     QString text() const;
 %Docstring
-Returns a the name of this operator without the operands.
-I.e. "AND", "OR", ...
+Returns a the name of this operator without the operands. I.e. "AND",
+"OR", ...
 %End
 
+  private:
+    QgsExpressionNodeBinaryOperator( const QgsExpressionNodeBinaryOperator &other );
 };
 
 class QgsExpressionNodeIndexOperator : QgsExpressionNode
 {
 %Docstring(signature="appended")
-A indexing expression operator, which allows use of square brackets [] to reference map and array items.
+An indexing expression operator, which allows use of square brackets []
+to reference map and array items.
 
 .. versionadded:: 3.6
 %End
@@ -205,12 +220,10 @@ A indexing expression operator, which allows use of square brackets [] to refere
 #include "qgsexpressionnodeimpl.h"
 %End
   public:
-
     QgsExpressionNodeIndexOperator( QgsExpressionNode *container /Transfer/, QgsExpressionNode *index /Transfer/ );
 %Docstring
 Constructor for QgsExpressionNodeIndexOperator.
 %End
-    ~QgsExpressionNodeIndexOperator();
 
     QgsExpressionNode *container() const;
 %Docstring
@@ -241,6 +254,7 @@ Returns the index node, representing an array element index or map key.
 
     virtual QSet<QString> referencedFunctions() const;
 
+
     virtual bool needsGeometry() const;
 
     virtual QgsExpressionNode *clone() const /Factory/;
@@ -248,9 +262,11 @@ Returns the index node, representing an array element index or map key.
     virtual bool isStatic( QgsExpression *parent, const QgsExpressionContext *context ) const;
 
 
+  private:
+    QgsExpressionNodeIndexOperator( const QgsExpressionNodeIndexOperator &other );
 };
 
-class QgsExpressionNodeBetweenOperator: QgsExpressionNode
+class QgsExpressionNodeBetweenOperator : QgsExpressionNode
 {
 %Docstring(signature="appended")
 SQL-like BETWEEN and NOT BETWEEN predicates.
@@ -262,10 +278,11 @@ SQL-like BETWEEN and NOT BETWEEN predicates.
 #include "qgsexpressionnodeimpl.h"
 %End
   public:
-
     QgsExpressionNodeBetweenOperator( QgsExpressionNode *node /Transfer/, QgsExpressionNode *nodeLowerBound /Transfer/, QgsExpressionNode *nodeHigherBound /Transfer/, bool negate = false );
 %Docstring
-This node tests if the result of ``node`` is between the result of ``nodeLowerBound`` and ``nodeHigherBound`` nodes. Optionally it can be inverted with ``negate`` which by default is ``False``.
+This node tests if the result of ``node`` is between the result of
+``nodeLowerBound`` and ``nodeHigherBound`` nodes. Optionally it can be
+inverted with ``negate`` which by default is ``False``.
 %End
 
     ~QgsExpressionNodeBetweenOperator();
@@ -291,6 +308,8 @@ Returns the expression node.
 
     virtual QSet<QString> referencedFunctions() const;
 
+    virtual bool needsGeometry() const;
+
     virtual QgsExpressionNode *clone() const /Factory/;
 
     virtual bool isStatic( QgsExpression *parent, const QgsExpressionContext *context ) const;
@@ -311,6 +330,8 @@ Returns the higher bound expression node of the range.
 Returns ``True`` if the predicate is an exclusion test (NOT BETWEEN).
 %End
 
+  private:
+    QgsExpressionNodeBetweenOperator( const QgsExpressionNodeBetweenOperator &other );
 };
 
 class QgsExpressionNodeInOperator : QgsExpressionNode
@@ -323,10 +344,11 @@ An expression node for value IN or NOT IN clauses.
 #include "qgsexpressionnodeimpl.h"
 %End
   public:
-
     QgsExpressionNodeInOperator( QgsExpressionNode *node /Transfer/, QgsExpressionNode::NodeList *list /Transfer/, bool notin = false );
 %Docstring
-This node tests if the result of ``node`` is in the result of ``list``. Optionally it can be inverted with ``notin`` which by default is ``False``.
+This node tests if the result of ``node`` is in the result of ``list``.
+Optionally it can be inverted with ``notin`` which by default is
+``False``.
 %End
     ~QgsExpressionNodeInOperator();
 
@@ -337,7 +359,8 @@ Returns the expression node.
 
     bool isNotIn() const;
 %Docstring
-Returns ``True`` if this node is a "NOT IN" operator, or ``False`` if the node is a normal "IN" operator.
+Returns ``True`` if this node is a "NOT IN" operator, or ``False`` if
+the node is a normal "IN" operator.
 %End
 
     QgsExpressionNode::NodeList *list() const;
@@ -360,11 +383,17 @@ Returns the list of nodes to search for matching values within.
 
     virtual QSet<QString> referencedFunctions() const;
 
+    virtual bool needsGeometry() const;
+
     virtual QgsExpressionNode *clone() const /Factory/;
 
     virtual bool isStatic( QgsExpression *parent, const QgsExpressionContext *context ) const;
 
+    virtual QgsExpressionNode *simplifiedNode() const /Factory/;
 
+
+  private:
+    QgsExpressionNodeInOperator( const QgsExpressionNodeInOperator &other );
 };
 
 class QgsExpressionNodeFunction : QgsExpressionNode
@@ -377,35 +406,37 @@ An expression node for expression functions.
 #include "qgsexpressionnodeimpl.h"
 %End
   public:
-
     QgsExpressionNodeFunction( int fnIndex, QgsExpressionNode::NodeList *args /Transfer/ );
 %Docstring
-A function node consists of an index of the function in the global function array and
-a list of arguments that will be passed to it.
+A function node consists of an index of the function in the global
+function array and a list of arguments that will be passed to it.
 %End
+
 
     ~QgsExpressionNodeFunction();
 
     SIP_PYOBJECT __repr__();
 %MethodCode
-    QString function;
-    if ( QgsExpressionFunction *fd = QgsExpression::QgsExpression::Functions()[sipCpp->fnIndex()] )
+QString function;
+    std::shared_ptr<QgsExpressionFunction> fd = sipCpp->function();
+    if ( fd )
     {
       function = fd->name();
     }
     else
     {
-      function = QString::number( sipCpp->fnIndex() );
+      function = QStringLiteral( "invalid" );
     }
 
     QString str = QStringLiteral( "<QgsExpressionNodeFunction: %1>" ).arg( function );
     sipRes = PyUnicode_FromString( str.toUtf8().constData() );
 %End
 
-    int fnIndex() const;
+      int fnIndex() const;
 %Docstring
 Returns the index of the node's function.
 %End
+
 
     QgsExpressionNode::NodeList *args() const;
 %Docstring
@@ -428,16 +459,23 @@ Returns a list of arguments specified for the function.
     virtual QSet<QString> referencedFunctions() const;
 
 
+    virtual bool needsGeometry() const;
+
     virtual QgsExpressionNode *clone() const /Factory/;
 
     virtual bool isStatic( QgsExpression *parent, const QgsExpressionContext *context ) const;
 
+    virtual QgsExpressionNode *simplifiedNode() const /Factory/;
+
 
     static bool validateParams( int fnIndex, QgsExpressionNode::NodeList *args, QString &error );
 %Docstring
-Tests whether the provided argument list is valid for the matching function
+Tests whether the provided argument list is valid for the matching
+function
 %End
 
+  private:
+    QgsExpressionNodeFunction( const QgsExpressionNodeFunction &other );
 };
 
 class QgsExpressionNodeLiteral : QgsExpressionNode
@@ -450,19 +488,19 @@ An expression node for literal values.
 #include "qgsexpressionnodeimpl.h"
 %End
   public:
-
     QgsExpressionNodeLiteral( const QVariant &value );
 %Docstring
-Constructor for QgsExpressionNodeLiteral, with the specified literal ``value``.
+Constructor for QgsExpressionNodeLiteral, with the specified literal
+``value``.
 %End
 
     SIP_PYOBJECT __repr__();
 %MethodCode
-    QString str = QStringLiteral( "<QgsExpressionNodeLiteral: %1>" ).arg( sipCpp->valueAsString() );
+QString str = QStringLiteral( "<QgsExpressionNodeLiteral: %1>" ).arg( sipCpp->valueAsString() );
     sipRes = PyUnicode_FromString( str.toUtf8().constData() );
 %End
 
-    QVariant value() const;
+      QVariant value() const;
 %Docstring
 The value of the literal.
 %End
@@ -483,6 +521,8 @@ The value of the literal.
     virtual QSet<QString> referencedFunctions() const;
 
 
+    virtual bool needsGeometry() const;
+
     virtual QgsExpressionNode *clone() const /Factory/;
 
     virtual bool isStatic( QgsExpression *parent, const QgsExpressionContext *context ) const;
@@ -500,27 +540,26 @@ Returns a string representation of the node's literal value.
 class QgsExpressionNodeColumnRef : QgsExpressionNode
 {
 %Docstring(signature="appended")
-An expression node which takes it value from a feature's field.
+An expression node which takes its value from a feature's field.
 %End
 
 %TypeHeaderCode
 #include "qgsexpressionnodeimpl.h"
 %End
   public:
-
     QgsExpressionNodeColumnRef( const QString &name );
 %Docstring
-Constructor for QgsExpressionNodeColumnRef, referencing the column
-with the specified ``name``.
+Constructor for QgsExpressionNodeColumnRef, referencing the column with
+the specified ``name``.
 %End
 
     SIP_PYOBJECT __repr__();
 %MethodCode
-    QString str = QStringLiteral( "<QgsExpressionNodeColumnRef: \"%1\">" ).arg( sipCpp->name() );
+QString str = QStringLiteral( "<QgsExpressionNodeColumnRef: \"%1\">" ).arg( sipCpp->name() );
     sipRes = PyUnicode_FromString( str.toUtf8().constData() );
 %End
 
-    QString name() const;
+        QString name() const;
 %Docstring
 The name of the column.
 %End
@@ -539,6 +578,7 @@ The name of the column.
     virtual QSet<QString> referencedVariables() const;
 
     virtual QSet<QString> referencedFunctions() const;
+
 
     virtual bool needsGeometry() const;
 
@@ -560,18 +600,14 @@ An expression node for CASE WHEN clauses.
 #include "qgsexpressionnodeimpl.h"
 %End
   public:
-
     class WhenThen
-{
+    {
 %Docstring(signature="appended")
-Represents a "WHEN... THEN..." portation of a CASE WHEN clause in an expression.
+Represents a "WHEN... THEN..." portation of a CASE WHEN clause in an
+expression.
 %End
 
-%TypeHeaderCode
-#include "qgsexpressionnodeimpl.h"
-%End
       public:
-
         WhenThen( QgsExpressionNode *whenExp, QgsExpressionNode *thenExp );
 %Docstring
 A combination of when and then. Simple as that.
@@ -579,7 +615,7 @@ A combination of when and then. Simple as that.
         ~WhenThen();
 
 
-        QgsExpressionNodeCondition::WhenThen *clone() const /Factory/;
+        std::unique_ptr<QgsExpressionNodeCondition::WhenThen> clone() const;
 %Docstring
 Gets a deep copy of this WhenThen combination.
 %End
@@ -588,7 +624,8 @@ Gets a deep copy of this WhenThen combination.
 %Docstring
 The expression that makes the WHEN part of the condition.
 
-:return: The expression node that makes the WHEN part of the condition check.
+:return: The expression node that makes the WHEN part of the condition
+         check.
 %End
 
 
@@ -596,7 +633,8 @@ The expression that makes the WHEN part of the condition.
 %Docstring
 The expression node that makes the THEN result part of the condition.
 
-:return: The expression node that makes the THEN result part of the condition.
+:return: The expression node that makes the THEN result part of the
+         condition.
 %End
 
       private:
@@ -606,7 +644,8 @@ The expression node that makes the THEN result part of the condition.
 
     QgsExpressionNodeCondition( QgsExpressionNodeCondition::WhenThenList *conditions, QgsExpressionNode *elseExp = 0 );
 %Docstring
-Create a new node with the given list of ``conditions`` and an optional ``elseExp`` expression.
+Create a new node with the given list of ``conditions`` and an optional
+``elseExp`` expression.
 %End
 
 
@@ -642,13 +681,18 @@ The ELSE expression used for the condition.
     virtual QSet<QString> referencedFunctions() const;
 
 
+
     virtual bool needsGeometry() const;
 
     virtual QgsExpressionNode *clone() const /Factory/;
 
     virtual bool isStatic( QgsExpression *parent, const QgsExpressionContext *context ) const;
 
+    virtual QgsExpressionNode *simplifiedNode() const /Factory/;
 
+
+  private:
+    QgsExpressionNodeCondition( const QgsExpressionNodeCondition &other );
 };
 
 
@@ -657,5 +701,5 @@ The ELSE expression used for the condition.
  *                                                                      *
  * src/core/expression/qgsexpressionnodeimpl.h                          *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/

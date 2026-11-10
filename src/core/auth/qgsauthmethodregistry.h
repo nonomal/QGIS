@@ -17,16 +17,18 @@
 #ifndef QGSAUTHMETHODREGISTRY_H
 #define QGSAUTHMETHODREGISTRY_H
 
-#define SIP_NO_FILE
+
+#include <memory>
+
+#include "qgis_core.h"
+#include "qgis_sip.h"
 
 #include <QDir>
 #include <QLibrary>
 #include <QMap>
 #include <QString>
-#include <memory>
 
-#include "qgis_core.h"
-#include "qgis_sip.h"
+#define SIP_NO_FILE
 
 class QgsAuthMethod;
 class QgsAuthMethodMetadata;
@@ -46,17 +48,15 @@ class QgsAuthMethodMetadata;
 */
 class CORE_EXPORT QgsAuthMethodRegistry
 {
-
   public:
     //! Means of accessing canonical single instance
     static QgsAuthMethodRegistry *instance( const QString &pluginPath = QString() );
 
-    //! Virtual dectructor
     virtual ~QgsAuthMethodRegistry();
 
     /**
     * Returns path for the library of the auth method
-    * \deprecated since QGIS 3.22 - methods may not need to be loaded from a library (empty string returned)
+    * \deprecated QGIS 3.22. Methods may not need to be loaded from a library (empty string returned).
     */
     Q_DECL_DEPRECATED QString library( const QString &authMethodKey ) const SIP_DEPRECATED;
 
@@ -102,7 +102,6 @@ class CORE_EXPORT QgsAuthMethodRegistry
     typedef std::map<QString, QgsAuthMethodMetadata *> AuthMethods;
 
   private:
-
     //! Ctor private since instance() creates it
     QgsAuthMethodRegistry( const QString &pluginPath );
 

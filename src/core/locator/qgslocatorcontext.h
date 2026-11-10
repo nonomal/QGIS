@@ -19,9 +19,9 @@
 #define QGSLOCATORCONTEXT_H
 
 #include "qgis_core.h"
-#include "qgsrectangle.h"
 #include "qgscoordinatereferencesystem.h"
 #include "qgscoordinatetransformcontext.h"
+#include "qgsrectangle.h"
 
 /**
  * \class QgsLocatorContext
@@ -30,11 +30,14 @@
  */
 class CORE_EXPORT QgsLocatorContext
 {
-  public:
+    Q_GADGET
 
-    /**
-     * Constructor for QgsLocatorContext.
-     */
+    Q_PROPERTY( QgsRectangle targetExtent MEMBER targetExtent )
+    Q_PROPERTY( QgsCoordinateReferenceSystem targetExtentCrs MEMBER targetExtentCrs )
+    Q_PROPERTY( QgsCoordinateTransformContext transformContext MEMBER transformContext )
+    Q_PROPERTY( bool usingPrefix MEMBER usingPrefix )
+
+  public:
     QgsLocatorContext() = default;
 
     /**
@@ -63,9 +66,6 @@ class CORE_EXPORT QgsLocatorContext
      * Will be TRUE if search is being conducted using a filter prefix.
      */
     bool usingPrefix = false;
-
 };
 
 #endif // QGSLOCATORCONTEXT_H
-
-

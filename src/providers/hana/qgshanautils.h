@@ -17,14 +17,14 @@
 #ifndef QGSHANAUTILS_H
 #define QGSHANAUTILS_H
 
+#include <odbc/Types.h>
+
 #include "qgsdatasourceuri.h"
 #include "qgsfields.h"
 #include "qgswkbtypes.h"
 
 #include <QVariant>
 #include <QVersionNumber>
-
-#include "odbc/Types.h"
 
 class QgsHanaUtils
 {
@@ -37,7 +37,7 @@ class QgsHanaUtils
     static QString quotedString( const QString &str );
     static QString quotedValue( const QVariant &value );
 
-    static QString toConstant( const QVariant &value, QVariant::Type type );
+    static QString toConstant( const QVariant &value, QMetaType::Type type );
 
     static QString toString( Qgis::DistanceUnit unit );
 

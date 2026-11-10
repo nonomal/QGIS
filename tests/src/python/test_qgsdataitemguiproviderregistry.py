@@ -5,10 +5,13 @@ it under the terms of the GNU General Public License as published by
 the Free Software Foundation; either version 2 of the License, or
 (at your option) any later version.
 """
-__author__ = 'Nyall Dawson'
-__date__ = '27/10/2018'
-__copyright__ = 'Copyright 2018, The QGIS Project'
 
+__author__ = "Nyall Dawson"
+__date__ = "27/10/2018"
+__copyright__ = "Copyright 2018, The QGIS Project"
+
+
+import unittest
 
 from qgis.gui import (
     QgsDataItemGuiContext,
@@ -17,14 +20,12 @@ from qgis.gui import (
     QgsGui,
     QgsMessageBar,
 )
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.testing import QgisTestCase, start_app
 
 app = start_app()
 
 
 class TestProvider(QgsDataItemGuiProvider):
-
     def __init__(self, name):
         super().__init__()
         self._name = name
@@ -34,7 +35,6 @@ class TestProvider(QgsDataItemGuiProvider):
 
 
 class TestQgsDataItemGuiContext(QgisTestCase):
-
     def testContext(self):
         context = QgsDataItemGuiContext()
         self.assertIsNone(context.messageBar())
@@ -45,7 +45,6 @@ class TestQgsDataItemGuiContext(QgisTestCase):
 
 
 class TestQgsDataItemGuiProviderRegistry(QgisTestCase):
-
     def testAppRegistry(self):
         # ensure there is an application instance
         self.assertIsNotNone(QgsGui.dataItemGuiProviderRegistry())
@@ -55,28 +54,28 @@ class TestQgsDataItemGuiProviderRegistry(QgisTestCase):
         initial_providers = registry.providers()
 
         # add a new provider
-        p1 = TestProvider('p1')
+        p1 = TestProvider("p1")
         registry.addProvider(p1)
         self.assertIn(p1, registry.providers())
 
-        p2 = TestProvider('p2')
+        p2 = TestProvider("p2")
         registry.addProvider(p2)
         self.assertIn(p1, registry.providers())
         self.assertIn(p2, registry.providers())
 
         registry.removeProvider(None)
-        p3 = TestProvider('p3')
+        p3 = TestProvider("p3")
         # not in registry yet
         registry.removeProvider(p3)
 
         registry.removeProvider(p1)
-        self.assertNotIn('p1', [p.name() for p in registry.providers()])
+        self.assertNotIn("p1", [p.name() for p in registry.providers()])
         self.assertIn(p2, registry.providers())
 
         registry.removeProvider(p2)
-        self.assertNotIn('p2', [p.name() for p in registry.providers()])
+        self.assertNotIn("p2", [p.name() for p in registry.providers()])
         self.assertEqual(registry.providers(), initial_providers)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

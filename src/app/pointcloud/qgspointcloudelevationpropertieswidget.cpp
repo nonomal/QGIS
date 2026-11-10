@@ -14,40 +14,45 @@
  ***************************************************************************/
 
 #include "qgspointcloudelevationpropertieswidget.h"
-#include "qgspointcloudrendererpropertieswidget.h"
+
 #include "qgsapplication.h"
 #include "qgsmaplayer.h"
 #include "qgspointcloudlayer.h"
 #include "qgspointcloudlayerelevationproperties.h"
+#include "qgspointcloudrendererpropertieswidget.h"
+#include "qgsprojectionselectionwidget.h"
+
+#include <QString>
+
+#include "moc_qgspointcloudelevationpropertieswidget.cpp"
+
+using namespace Qt::StringLiterals;
 
 QgsPointCloudElevationPropertiesWidget::QgsPointCloudElevationPropertiesWidget( QgsPointCloudLayer *layer, QgsMapCanvas *canvas, QWidget *parent )
   : QgsMapLayerConfigWidget( layer, canvas, parent )
 {
   setupUi( this );
-  setObjectName( QStringLiteral( "mOptsPage_Elevation" ) );
+  setObjectName( u"mOptsPage_Elevation"_s );
+
+  mVerticalCrsStackedWidget->setSizeMode( QgsStackedWidget::SizeMode::CurrentPageOnly );
+
+  QVBoxLayout *vl = new QVBoxLayout();
+  vl->setContentsMargins( 0, 0, 0, 0 );
+  mVerticalCrsWidget = new QgsProjectionSelectionWidget( nullptr, QgsCoordinateReferenceSystemProxyModel::FilterVertical );
+  mVerticalCrsWidget->setOptionVisible( QgsProjectionSelectionWidget::CrsNotSet, true );
+  mVerticalCrsWidget->setNotSetText( tr( "Not set" ) );
+  mVerticalCrsWidget->setDialogTitle( tr( "Layer Vertical CRS" ) );
+  vl->addWidget( mVerticalCrsWidget );
+  mCrsPageEnabled->setLayout( vl );
 
   mOffsetZSpinBox->setClearValue( 0 );
   mScaleZSpinBox->setClearValue( 1 );
 
-  mPointStyleComboBox->addItem( tr( "Square" ), static_cast< int >( Qgis::PointCloudSymbol::Square ) );
-  mPointStyleComboBox->addItem( tr( "Circle" ), static_cast< int >( Qgis::PointCloudSymbol::Circle ) );
-  mPointSizeUnitWidget->setUnits(
-  {
-    Qgis::RenderUnit::Millimeters,
-    Qgis::RenderUnit::MapUnits,
-    Qgis::RenderUnit::Pixels,
-    Qgis::RenderUnit::Points,
-    Qgis::RenderUnit::Inches
-  } );
+  mPointStyleComboBox->addItem( tr( "Square" ), static_cast<int>( Qgis::PointCloudSymbol::Square ) );
+  mPointStyleComboBox->addItem( tr( "Circle" ), static_cast<int>( Qgis::PointCloudSymbol::Circle ) );
+  mPointSizeUnitWidget->setUnits( { Qgis::RenderUnit::Millimeters, Qgis::RenderUnit::MapUnits, Qgis::RenderUnit::Pixels, Qgis::RenderUnit::Points, Qgis::RenderUnit::Inches } );
 
-  mMaxErrorUnitWidget->setUnits(
-  {
-    Qgis::RenderUnit::Millimeters,
-    Qgis::RenderUnit::MapUnits,
-    Qgis::RenderUnit::Pixels,
-    Qgis::RenderUnit::Points,
-    Qgis::RenderUnit::Inches
-  } );
+  mMaxErrorUnitWidget->setUnits( { Qgis::RenderUnit::Millimeters, Qgis::RenderUnit::MapUnits, Qgis::RenderUnit::Pixels, Qgis::RenderUnit::Points, Qgis::RenderUnit::Inches } );
   mMaxErrorSpinBox->setClearValue( 0.3 );
 
   mPointSizeSpinBox->setClearValue( 1.0 );
@@ -55,11 +60,18 @@ QgsPointCloudElevationPropertiesWidget::QgsPointCloudElevationPropertiesWidget( 
   mPointColorButton->setAllowOpacity( true );
   mPointColorButton->setColorDialogTitle( tr( "Point Color" ) );
 
+  mTypeCombobox->addItem( tr( "Individual Points" ), static_cast<int>( Qgis::PointCloudProfileType::IndividualPoints ) );
+  mTypeCombobox->addItem( tr( "Triangulated Surface" ), static_cast<int>( Qgis::PointCloudProfileType::TriangulatedSurface ) );
+
+  mSurfaceStyleCombobox->addItem( QgsApplication::getThemeIcon( u"mIconSurfaceElevationLine.svg"_s ), tr( "Line" ), static_cast<int>( Qgis::ProfileSurfaceSymbology::Line ) );
+  mSurfaceStyleCombobox->addItem( QgsApplication::getThemeIcon( u"mIconSurfaceElevationFillBelow.svg"_s ), tr( "Fill Below" ), static_cast<int>( Qgis::ProfileSurfaceSymbology::FillBelow ) );
+  mSurfaceStyleCombobox->addItem( QgsApplication::getThemeIcon( u"mIconSurfaceElevationFillAbove.svg"_s ), tr( "Fill Above" ), static_cast<int>( Qgis::ProfileSurfaceSymbology::FillAbove ) );
+
   syncToLayer( layer );
 
-  connect( mOffsetZSpinBox, qOverload<double >( &QDoubleSpinBox::valueChanged ), this, &QgsPointCloudElevationPropertiesWidget::onChanged );
-  connect( mScaleZSpinBox, qOverload<double >( &QDoubleSpinBox::valueChanged ), this, &QgsPointCloudElevationPropertiesWidget::onChanged );
-  connect( mShifPointCloudZAxisButton, &QPushButton::clicked, this, &QgsPointCloudElevationPropertiesWidget::shiftPointCloudZAxis );
+  connect( mOffsetZSpinBox, qOverload<double>( &QDoubleSpinBox::valueChanged ), this, &QgsPointCloudElevationPropertiesWidget::onChanged );
+  connect( mScaleZSpinBox, qOverload<double>( &QDoubleSpinBox::valueChanged ), this, &QgsPointCloudElevationPropertiesWidget::onChanged );
+  connect( mShiftPointCloudZAxisButton, &QPushButton::clicked, this, &QgsPointCloudElevationPropertiesWidget::shiftPointCloudZAxis );
   connect( mPointSizeSpinBox, qOverload<double>( &QgsDoubleSpinBox::valueChanged ), this, &QgsPointCloudElevationPropertiesWidget::onChanged );
   connect( mPointSizeUnitWidget, &QgsUnitSelectionWidget::changed, this, &QgsPointCloudElevationPropertiesWidget::onChanged );
   connect( mMaxErrorSpinBox, qOverload<double>( &QgsDoubleSpinBox::valueChanged ), this, &QgsPointCloudElevationPropertiesWidget::onChanged );
@@ -68,31 +80,85 @@ QgsPointCloudElevationPropertiesWidget::QgsPointCloudElevationPropertiesWidget( 
   connect( mPointColorButton, &QgsColorButton::colorChanged, this, &QgsPointCloudElevationPropertiesWidget::onChanged );
   connect( mCheckBoxRespectLayerColors, &QCheckBox::toggled, this, &QgsPointCloudElevationPropertiesWidget::onChanged );
   connect( mOpacityByDistanceCheckBox, &QCheckBox::toggled, this, &QgsPointCloudElevationPropertiesWidget::onChanged );
+  connect( mLayer, &QgsMapLayer::crsChanged, this, &QgsPointCloudElevationPropertiesWidget::updateVerticalCrsOptions );
+  connect( mElevationLimitSpinBox, qOverload<double>( &QDoubleSpinBox::valueChanged ), this, &QgsPointCloudElevationPropertiesWidget::onChanged );
+  connect( mTypeCombobox, qOverload<int>( &QComboBox::currentIndexChanged ), this, [this] {
+    switch ( static_cast<Qgis::PointCloudProfileType>( mTypeCombobox->currentData().toInt() ) )
+    {
+      case Qgis::PointCloudProfileType::IndividualPoints:
+        mInterpretationStackedWidget->setCurrentWidget( pageIndividualPoints );
+        break;
+      case Qgis::PointCloudProfileType::TriangulatedSurface:
+        mInterpretationStackedWidget->setCurrentWidget( pageTriangulatedSurface );
+        break;
+    }
+    onChanged();
+  } );
+  connect( mSurfaceStyleCombobox, qOverload<int>( &QComboBox::currentIndexChanged ), this, [this] {
+    switch ( static_cast<Qgis::ProfileSurfaceSymbology>( mSurfaceStyleCombobox->currentData().toInt() ) )
+    {
+      case Qgis::ProfileSurfaceSymbology::Line:
+        labelLineStyle->show();
+        mLineStyleButton->show();
+        mElevationLimitSpinBox->hide();
+        labelFillStyle->hide();
+        mFillStyleButton->hide();
+        break;
+      case Qgis::ProfileSurfaceSymbology::FillBelow:
+      case Qgis::ProfileSurfaceSymbology::FillAbove:
+        labelLineStyle->hide();
+        mLineStyleButton->hide();
+        mElevationLimitSpinBox->show();
+        labelFillStyle->show();
+        mFillStyleButton->show();
+        break;
+    }
 
-  setProperty( "helpPage", QStringLiteral( "working_with_point_clouds/point_clouds.html#elevation-properties" ) );
+    onChanged();
+  } );
+  connect( mLineStyleButton, &QgsSymbolButton::changed, this, &QgsPointCloudElevationPropertiesWidget::onChanged );
+  connect( mFillStyleButton, &QgsSymbolButton::changed, this, &QgsPointCloudElevationPropertiesWidget::onChanged );
+
+  setProperty( "helpPage", u"working_with_point_clouds/point_clouds.html#elevation-properties"_s );
 }
 
 void QgsPointCloudElevationPropertiesWidget::syncToLayer( QgsMapLayer *layer )
 {
-  mLayer = qobject_cast< QgsPointCloudLayer * >( layer );
+  mLayer = qobject_cast<QgsPointCloudLayer *>( layer );
   if ( !mLayer )
     return;
 
-  const QgsPointCloudLayerElevationProperties *properties = qgis::down_cast< const QgsPointCloudLayerElevationProperties * >( mLayer->elevationProperties() );
+  const QgsPointCloudLayerElevationProperties *properties = qgis::down_cast<const QgsPointCloudLayerElevationProperties *>( mLayer->elevationProperties() );
 
   mBlockUpdates = true;
   mOffsetZSpinBox->setValue( properties->zOffset() );
   mScaleZSpinBox->setValue( properties->zScale() );
   mPointSizeSpinBox->setValue( properties->pointSize() );
   mPointSizeUnitWidget->setUnit( properties->pointSizeUnit() );
-  mPointStyleComboBox->setCurrentIndex( mPointStyleComboBox->findData( static_cast< int >( properties->pointSymbol() ) ) );
+  mPointStyleComboBox->setCurrentIndex( mPointStyleComboBox->findData( static_cast<int>( properties->pointSymbol() ) ) );
   mMaxErrorSpinBox->setValue( properties->maximumScreenError() );
   mMaxErrorUnitWidget->setUnit( properties->maximumScreenErrorUnit() );
   mPointColorButton->setColor( properties->pointColor() );
   mCheckBoxRespectLayerColors->setChecked( properties->respectLayerColors() );
   mOpacityByDistanceCheckBox->setChecked( properties->applyOpacityByDistanceEffect() );
+  mTypeCombobox->setCurrentIndex( mTypeCombobox->findData( static_cast<int>( properties->type() ) ) );
+
+  mLineStyleButton->setSymbol( properties->profileLineSymbol()->clone() );
+  mFillStyleButton->setSymbol( properties->profileFillSymbol()->clone() );
+
+  switch ( properties->type() )
+  {
+    case Qgis::PointCloudProfileType::IndividualPoints:
+      mInterpretationStackedWidget->setCurrentWidget( pageIndividualPoints );
+      break;
+    case Qgis::PointCloudProfileType::TriangulatedSurface:
+      mInterpretationStackedWidget->setCurrentWidget( pageTriangulatedSurface );
+      break;
+  }
 
   mBlockUpdates = false;
+
+  updateVerticalCrsOptions();
 }
 
 void QgsPointCloudElevationPropertiesWidget::apply()
@@ -100,21 +166,32 @@ void QgsPointCloudElevationPropertiesWidget::apply()
   if ( !mLayer )
     return;
 
-  QgsPointCloudLayerElevationProperties *properties = qgis::down_cast< QgsPointCloudLayerElevationProperties * >( mLayer->elevationProperties() );
+  QgsPointCloudLayerElevationProperties *properties = qgis::down_cast<QgsPointCloudLayerElevationProperties *>( mLayer->elevationProperties() );
 
-  const bool changed3DrelatedProperties = !qgsDoubleNear( mOffsetZSpinBox->value(), properties->zOffset() )
-                                          || !qgsDoubleNear( mScaleZSpinBox->value(), properties->zScale() );
+  const bool changed3DrelatedProperties = !qgsDoubleNear( mOffsetZSpinBox->value(), properties->zOffset() ) || !qgsDoubleNear( mScaleZSpinBox->value(), properties->zScale() );
 
   properties->setZOffset( mOffsetZSpinBox->value() );
   properties->setZScale( mScaleZSpinBox->value() );
   properties->setPointSize( mPointSizeSpinBox->value() );
   properties->setPointSizeUnit( mPointSizeUnitWidget->unit() );
-  properties->setPointSymbol( static_cast< Qgis::PointCloudSymbol >( mPointStyleComboBox->currentData().toInt() ) );
+  properties->setPointSymbol( static_cast<Qgis::PointCloudSymbol>( mPointStyleComboBox->currentData().toInt() ) );
   properties->setMaximumScreenError( mMaxErrorSpinBox->value() );
   properties->setMaximumScreenErrorUnit( mMaxErrorUnitWidget->unit() );
   properties->setPointColor( mPointColorButton->color() );
   properties->setRespectLayerColors( mCheckBoxRespectLayerColors->isChecked() );
   properties->setApplyOpacityByDistanceEffect( mOpacityByDistanceCheckBox->isChecked() );
+  properties->setType( static_cast<Qgis::PointCloudProfileType>( mTypeCombobox->currentData().toInt() ) );
+
+  if ( mElevationLimitSpinBox->value() != mElevationLimitSpinBox->clearValue() )
+    properties->setElevationLimit( mElevationLimitSpinBox->value() );
+  else
+    properties->setElevationLimit( std::numeric_limits<double>::quiet_NaN() );
+
+  properties->setProfileSymbology( static_cast<Qgis::ProfileSurfaceSymbology>( mSurfaceStyleCombobox->currentData().toInt() ) );
+  properties->setProfileLineSymbol( mLineStyleButton->clonedSymbol<QgsLineSymbol>() );
+  properties->setProfileFillSymbol( mFillStyleButton->clonedSymbol<QgsFillSymbol>() );
+
+  mLayer->setVerticalCrs( mVerticalCrsWidget->crs() );
 
   if ( changed3DrelatedProperties )
     mLayer->trigger3DUpdate();
@@ -123,7 +200,7 @@ void QgsPointCloudElevationPropertiesWidget::apply()
 void QgsPointCloudElevationPropertiesWidget::onChanged()
 {
   if ( !mBlockUpdates )
-    emit widgetChanged();
+    emit changed();
 }
 
 void QgsPointCloudElevationPropertiesWidget::shiftPointCloudZAxis()
@@ -135,6 +212,56 @@ void QgsPointCloudElevationPropertiesWidget::shiftPointCloudZAxis()
   }
 }
 
+void QgsPointCloudElevationPropertiesWidget::updateVerticalCrsOptions()
+{
+  switch ( mLayer->crs().type() )
+  {
+    case Qgis::CrsType::Compound:
+      mVerticalCrsStackedWidget->setCurrentWidget( mCrsPageDisabled );
+      mCrsDisabledLabel->setText( tr( "Layer coordinate reference system is set to a compound CRS (%1), so the layer's vertical CRS is the vertical component of this CRS (%2)." )
+                                    .arg( mLayer->crs().userFriendlyIdentifier(), mLayer->verticalCrs().userFriendlyIdentifier() ) );
+      break;
+
+    case Qgis::CrsType::Geographic3d:
+      mVerticalCrsStackedWidget->setCurrentWidget( mCrsPageDisabled );
+      mCrsDisabledLabel->setText(
+        tr( "Layer coordinate reference system is set to a geographic 3D CRS (%1), so the vertical CRS cannot be manually specified." ).arg( mLayer->crs().userFriendlyIdentifier() )
+      );
+      break;
+
+    case Qgis::CrsType::Geocentric:
+      mVerticalCrsStackedWidget->setCurrentWidget( mCrsPageDisabled );
+      mCrsDisabledLabel->setText(
+        tr( "Layer coordinate reference system is set to a geocentric CRS (%1), so the vertical CRS cannot be manually specified." ).arg( mLayer->crs().userFriendlyIdentifier() )
+      );
+      break;
+
+    case Qgis::CrsType::Projected:
+      if ( mLayer->crs().hasVerticalAxis() )
+      {
+        mVerticalCrsStackedWidget->setCurrentWidget( mCrsPageDisabled );
+        mCrsDisabledLabel->setText(
+          tr( "Layer coordinate reference system is set to a projected 3D CRS (%1), so the vertical CRS cannot be manually specified." ).arg( mLayer->crs().userFriendlyIdentifier() )
+        );
+        break;
+      }
+      [[fallthrough]];
+
+    case Qgis::CrsType::Unknown:
+    case Qgis::CrsType::Geodetic:
+    case Qgis::CrsType::Geographic2d:
+    case Qgis::CrsType::Vertical:
+    case Qgis::CrsType::Temporal:
+    case Qgis::CrsType::Engineering:
+    case Qgis::CrsType::Bound:
+    case Qgis::CrsType::Other:
+    case Qgis::CrsType::DerivedProjected:
+      mVerticalCrsStackedWidget->setCurrentWidget( mCrsPageEnabled );
+      mVerticalCrsWidget->setCrs( mLayer->verticalCrs() );
+      break;
+  }
+}
+
 //
 // QgsPointCloudElevationPropertiesWidgetFactory
 //
@@ -142,13 +269,13 @@ void QgsPointCloudElevationPropertiesWidget::shiftPointCloudZAxis()
 QgsPointCloudElevationPropertiesWidgetFactory::QgsPointCloudElevationPropertiesWidgetFactory( QObject *parent )
   : QObject( parent )
 {
-  setIcon( QgsApplication::getThemeIcon( QStringLiteral( "propertyicons/elevationscale.svg" ) ) );
+  setIcon( QgsApplication::getThemeIcon( u"propertyicons/elevationscale.svg"_s ) );
   setTitle( tr( "Elevation" ) );
 }
 
 QgsMapLayerConfigWidget *QgsPointCloudElevationPropertiesWidgetFactory::createWidget( QgsMapLayer *layer, QgsMapCanvas *canvas, bool, QWidget *parent ) const
 {
-  return new QgsPointCloudElevationPropertiesWidget( qobject_cast< QgsPointCloudLayer * >( layer ), canvas, parent );
+  return new QgsPointCloudElevationPropertiesWidget( qobject_cast<QgsPointCloudLayer *>( layer ), canvas, parent );
 }
 
 bool QgsPointCloudElevationPropertiesWidgetFactory::supportLayerPropertiesDialog() const
@@ -168,6 +295,5 @@ bool QgsPointCloudElevationPropertiesWidgetFactory::supportsLayer( QgsMapLayer *
 
 QString QgsPointCloudElevationPropertiesWidgetFactory::layerPropertiesPagePositionHint() const
 {
-  return QStringLiteral( "mOptsPage_Metadata" );
+  return u"mOptsPage_Metadata"_s;
 }
-

@@ -15,14 +15,16 @@
 
 #include "qgsenumerationwidgetwrapper.h"
 
-#include "qgsvectorlayer.h"
+#include "qgsapplication.h"
 #include "qgsvectordataprovider.h"
+#include "qgsvectorlayer.h"
+
+#include "moc_qgsenumerationwidgetwrapper.cpp"
 
 QgsEnumerationWidgetWrapper::QgsEnumerationWidgetWrapper( QgsVectorLayer *layer, int fieldIdx, QWidget *editor, QWidget *parent )
   : QgsEditorWidgetWrapper( layer, fieldIdx, editor, parent )
 
-{
-}
+{}
 
 
 QVariant QgsEnumerationWidgetWrapper::value() const
@@ -57,16 +59,19 @@ void QgsEnumerationWidgetWrapper::initWidget( QWidget *editor )
 
   if ( mComboBox )
   {
-    QStringList enumValues;
-    layer()->dataProvider()->enumValues( fieldIdx(), enumValues );
-
-    const auto constEnumValues = enumValues;
-    for ( const QString &s : constEnumValues )
+    const QgsField field( layer()->fields().at( fieldIdx() ) );
+    // also add NULL entry if not restricted by constraints
+    if ( !( field.constraints().constraints() & QgsFieldConstraints::ConstraintNotNull ) )
     {
-      mComboBox->addItem( s, s );
+      mComboBox->addItem( QgsApplication::nullRepresentation(), QgsVariantUtils::createNullVariant( field.type() ) );
     }
-    connect( mComboBox, static_cast<void ( QComboBox::* )( int )>( &QComboBox::currentIndexChanged ),
-             this, static_cast<void ( QgsEditorWidgetWrapper::* )()>( &QgsEditorWidgetWrapper::emitValueChanged ) );
+
+    const QList<QPair<QString, QString>> values( layer()->dataProvider()->codedValues( fieldIdx() ) );
+    for ( const QPair<QString, QString> &pair : values )
+    {
+      mComboBox->addItem( pair.second, pair.first );
+    }
+    connect( mComboBox, static_cast<void ( QComboBox::* )( int )>( &QComboBox::currentIndexChanged ), this, static_cast<void ( QgsEditorWidgetWrapper::* )()>( &QgsEditorWidgetWrapper::emitValueChanged ) );
   }
 }
 
@@ -82,4 +87,3 @@ void QgsEnumerationWidgetWrapper::updateValues( const QVariant &value, const QVa
     mComboBox->setCurrentIndex( mComboBox->findData( value ) );
   }
 }
-

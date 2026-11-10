@@ -19,12 +19,11 @@
 #define QGSPROCESSINGUTILS_H
 
 #include "qgis_core.h"
-
-#include "qgsrasterlayer.h"
 #include "qgsfeaturesink.h"
 #include "qgsfeaturesource.h"
 #include "qgsprocessing.h"
 #include "qgsproxyfeaturesink.h"
+#include "qgsrasterlayer.h"
 #include "qgsremappingproxyfeaturesink.h"
 
 class QgsMeshLayer;
@@ -54,7 +53,6 @@ class CORE_EXPORT QgsProcessingUtils
     Q_GADGET
 
   public:
-
     /**
      * Returns a list of raster layers from a \a project which are compatible with the processing
      * framework.
@@ -92,9 +90,7 @@ class CORE_EXPORT QgsProcessingUtils
      * \see compatibleTiledSceneLayers()
      * \see compatibleLayers()
      */
-    static QList< QgsVectorLayer * > compatibleVectorLayers( QgsProject *project,
-        const QList< int > &sourceTypes = QList< int >(),
-        bool sort = true );
+    static QList< QgsVectorLayer * > compatibleVectorLayers( QgsProject *project, const QList< int > &sourceTypes = QList< int >(), bool sort = true );
 
     /**
      * Returns a list of mesh layers from a \a project which are compatible with the processing
@@ -255,13 +251,13 @@ class CORE_EXPORT QgsProcessingUtils
     enum class LayerHint SIP_MONKEYPATCH_SCOPEENUM : int
     {
       UnknownType, //!< Unknown layer type
-      Vector, //!< Vector layer type
-      Raster, //!< Raster layer type
-      Mesh, //!< Mesh layer type, since QGIS 3.6
-      PointCloud, //!< Point cloud layer type, since QGIS 3.22
-      Annotation, //!< Annotation layer type, since QGIS 3.22
-      VectorTile, //!< Vector tile layer type, since QGIS 3.32
-      TiledScene, //!< Tiled scene layer type, since QGIS 3.34
+      Vector,      //!< Vector layer type
+      Raster,      //!< Raster layer type
+      Mesh,        //!< Mesh layer type, since QGIS 3.6
+      PointCloud,  //!< Point cloud layer type, since QGIS 3.22
+      Annotation,  //!< Annotation layer type, since QGIS 3.22
+      VectorTile,  //!< Vector tile layer type, since QGIS 3.32
+      TiledScene,  //!< Tiled scene layer type, since QGIS 3.34
     };
     Q_ENUM( LayerHint )
 
@@ -277,7 +273,13 @@ class CORE_EXPORT QgsProcessingUtils
      *
      * The \a typeHint can be used to dictate the type of map layer expected.
      */
-    static QgsMapLayer *mapLayerFromString( const QString &string, QgsProcessingContext &context, bool allowLoadingNewLayers = true, QgsProcessingUtils::LayerHint typeHint = QgsProcessingUtils::LayerHint::UnknownType, QgsProcessing::LayerOptionsFlags flags = QgsProcessing::LayerOptionsFlags() );
+    static QgsMapLayer *mapLayerFromString(
+      const QString &string,
+      QgsProcessingContext &context,
+      bool allowLoadingNewLayers = true,
+      QgsProcessingUtils::LayerHint typeHint = QgsProcessingUtils::LayerHint::UnknownType,
+      QgsProcessing::LayerOptionsFlags flags = QgsProcessing::LayerOptionsFlags()
+    );
 
     /**
      * Converts a variant \a value to a new feature source.
@@ -302,11 +304,13 @@ class CORE_EXPORT QgsProcessingUtils
      */
     static QgsCoordinateReferenceSystem variantToCrs( const QVariant &value, QgsProcessingContext &context, const QVariant &fallbackValue = QVariant() );
 
+    // clang-format off
     /**
      * Normalizes a layer \a source string for safe comparison across different
      * operating system environments.
      */
     static QString normalizeLayerSource( const QString &source ) SIP_HOLDGIL;
+    // clang-format on
 
     /**
      * Returns a string representation of the source for a \a layer. The returned
@@ -315,7 +319,7 @@ class CORE_EXPORT QgsProcessingUtils
      *
      * \since QGIS 3.34
      */
-    static QString layerToStringIdentifier( const QgsMapLayer *layer ) SIP_HOLDGIL;
+    static QString layerToStringIdentifier( const QgsMapLayer *layer, const QString &layerName = QString() ) SIP_HOLDGIL;
 
     /**
      * Converts a variant to a Python literal.
@@ -395,7 +399,7 @@ class CORE_EXPORT QgsProcessingUtils
     /**
      * Combines the extent of several map \a layers. If specified, the target \a crs
      * will be used to transform the layer's extent to the desired output reference system.
-     * \deprecated Use version with QgsProcessingContext argument instead
+     * \deprecated QGIS 3.40. Use version with QgsProcessingContext argument instead.
      */
     Q_DECL_DEPRECATED static QgsRectangle combineLayerExtents( const QList<QgsMapLayer *> &layers, const QgsCoordinateReferenceSystem &crs = QgsCoordinateReferenceSystem() ) SIP_DEPRECATED;
 
@@ -426,6 +430,26 @@ class CORE_EXPORT QgsProcessingUtils
      * a specified \a algorithm.
      */
     static QString formatHelpMapAsHtml( const QVariantMap &map, const QgsProcessingAlgorithm *algorithm );
+
+    /**
+     * Returns the index of the parameter with matching \a name for a specified \a algorithm.
+     *
+     * Matching is done in a case-insensitive manner.
+     *
+     * \see outputDefinitionIndex()
+     * \since QGIS 4.2
+     */
+    static int parameterDefinitionIndex( const QgsProcessingAlgorithm *algorithm, const QString &name ) SIP_HOLDGIL;
+
+    /**
+     * Returns the index of the output matching \a name for a specified \a algorithm.
+     *
+     * Matching is done in a case-insensitive manner.
+     *
+     * \see parameterDefinitionIndex()
+     * \since QGIS 3.44
+     */
+    static int outputDefinitionIndex( const QgsProcessingAlgorithm *algorithm, const QString &name ) SIP_HOLDGIL;
 
     /**
      * Converts a source vector \a layer to a file path of a vector layer of compatible format.
@@ -544,6 +568,18 @@ class CORE_EXPORT QgsProcessingUtils
     static QString defaultVectorExtension();
 
     /**
+     * Returns the default raster format to use, in the absence of all other constraints (e.g.
+     * provider based support for extensions).
+     *
+     * This method returns the user-set default format from the processing settings, or
+     * a fallback value of "GTiff".
+     *
+     * \see defaultRasterExtension()
+     * \since QGIS 4.0
+     */
+    static QString defaultRasterFormat();
+
+    /**
      * Returns the default raster extension to use, in the absence of all other constraints (e.g.
      * provider based support for extensions).
      *
@@ -610,6 +646,56 @@ class CORE_EXPORT QgsProcessingUtils
      */
     static QString resolveDefaultEncoding( const QString &defaultEncoding = "System" );
 
+     /**
+     * Returns a list of image format extensions supported by QImageWriter.
+     *
+     * The returned list excludes SVG as it is typically handled via other exporters, and has the PNG format
+     * listed first as the recommended default. Remaining formats are sorted alphabetically.
+     *
+     * \since QGIS 4.2
+     */
+    static QStringList supportedImageFormats();
+
+    /**
+     * Returns a file filter string of all supported image formats, suitable for use in file picker dialogs.
+     *
+     * The returned string excludes SVG formats and prioritizes the PNG format as the recommended default.
+     * Remaining filters are sorted alphabetically.
+     *
+     * \since QGIS 4.2
+     */
+    static QString supportedImageFileFilters();
+
+    /**
+     * Returns the location for Processing files stored within the user's current QGIS profile.
+     *
+     * \since QGIS 4.4
+     */
+    static QString userFolder();
+
+    /**
+     * Returns the default location for data files and outputs generated by Processing algorithms.
+     *
+     * \note This path is not created by default, and may not exist
+     *
+     * \since QGIS 4.4
+     */
+    static QString defaultOutputFolder();
+
+    /**
+     * Returns the default location for Processing model files.
+     *
+     * \since QGIS 4.4
+     */
+    static QString defaultModelFolder();
+
+    /**
+     * Returns the list of locations for reading Processing model files.
+     *
+     * \since QGIS 4.4
+     */
+    static QStringList modelFolders();
+
   private:
     static bool canUseLayer( const QgsRasterLayer *layer );
     static bool canUseLayer( const QgsMeshLayer *layer );
@@ -665,7 +751,7 @@ class CORE_EXPORT QgsProcessingUtils
      * then the layer at this file path will be loaded.
      * The caller takes responsibility for deleting the returned map layer.
      *
-     * \deprecated use mapLayerFromString() that takes QgsCoordinateTransformContext as an argument instead
+     * \deprecated QGIS 3.40. Use mapLayerFromString() that takes QgsCoordinateTransformContext as an argument instead.
      */
     Q_DECL_DEPRECATED static QgsMapLayer *loadMapLayerFromString( const QString &string, LayerHint typeHint = LayerHint::UnknownType ) SIP_DEPRECATED ;
 
@@ -797,6 +883,18 @@ class CORE_EXPORT QgsProcessingFeatureSink : public QgsProxyFeatureSink
      */
     QgsProcessingFeatureSink( QgsFeatureSink *originalSink, const QString &sinkName, QgsProcessingContext &context, bool ownsOriginalSink = false );
     ~QgsProcessingFeatureSink() override;
+
+    /**
+     * Finalizes the sink, flushing any buffered features to the destination.
+     *
+     * \warning All algorithms which use feature sinks should explicitly call finalize() prior to destroying the sink!
+     *
+     * \throws QgsProcessingException if an error occurs while finalizing the sink
+     *
+     * \since QGIS 3.42
+     */
+    void finalize() override SIP_THROW( QgsProcessingException );
+
     bool addFeature( QgsFeature &feature, QgsFeatureSink::Flags flags = QgsFeatureSink::Flags() ) override;
     bool addFeatures( QgsFeatureList &features, QgsFeatureSink::Flags flags = QgsFeatureSink::Flags() ) override;
     bool addFeatures( QgsFeatureIterator &iterator, QgsFeatureSink::Flags flags = QgsFeatureSink::Flags() ) override;

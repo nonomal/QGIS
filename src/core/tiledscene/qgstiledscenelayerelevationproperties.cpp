@@ -16,12 +16,18 @@
  ***************************************************************************/
 
 #include "qgstiledscenelayerelevationproperties.h"
+
 #include "qgstiledscenelayer.h"
+
+#include <QString>
+
+#include "moc_qgstiledscenelayerelevationproperties.cpp"
+
+using namespace Qt::StringLiterals;
 
 QgsTiledSceneLayerElevationProperties::QgsTiledSceneLayerElevationProperties( QObject *parent )
   : QgsMapLayerElevationProperties( parent )
-{
-}
+{}
 
 bool QgsTiledSceneLayerElevationProperties::hasElevation() const
 {
@@ -30,7 +36,7 @@ bool QgsTiledSceneLayerElevationProperties::hasElevation() const
 
 QDomElement QgsTiledSceneLayerElevationProperties::writeXml( QDomElement &parentElement, QDomDocument &document, const QgsReadWriteContext &context )
 {
-  QDomElement element = document.createElement( QStringLiteral( "elevation" ) );
+  QDomElement element = document.createElement( u"elevation"_s );
   writeCommonProperties( element, document, context );
 
   parentElement.appendChild( element );
@@ -39,7 +45,7 @@ QDomElement QgsTiledSceneLayerElevationProperties::writeXml( QDomElement &parent
 
 bool QgsTiledSceneLayerElevationProperties::readXml( const QDomElement &element, const QgsReadWriteContext &context )
 {
-  const QDomElement elevationElement = element.firstChildElement( QStringLiteral( "elevation" ) ).toElement();
+  const QDomElement elevationElement = element.firstChildElement( u"elevation"_s ).toElement();
   readCommonProperties( elevationElement, context );
 
   return true;
@@ -47,7 +53,7 @@ bool QgsTiledSceneLayerElevationProperties::readXml( const QDomElement &element,
 
 QgsTiledSceneLayerElevationProperties *QgsTiledSceneLayerElevationProperties::clone() const
 {
-  std::unique_ptr< QgsTiledSceneLayerElevationProperties > res = std::make_unique< QgsTiledSceneLayerElevationProperties >( nullptr );
+  auto res = std::make_unique< QgsTiledSceneLayerElevationProperties >( nullptr );
   res->copyCommonProperties( this );
 
   return res.release();
@@ -58,7 +64,7 @@ QString QgsTiledSceneLayerElevationProperties::htmlSummary() const
   QStringList properties;
   properties << tr( "Scale: %1" ).arg( mZScale );
   properties << tr( "Offset: %1" ).arg( mZOffset );
-  return QStringLiteral( "<ul><li>%1</li></ul>" ).arg( properties.join( QLatin1String( "</li><li>" ) ) );
+  return u"<ul><li>%1</li></ul>"_s.arg( properties.join( "</li><li>"_L1 ) );
 }
 
 QgsDoubleRange QgsTiledSceneLayerElevationProperties::calculateZRange( QgsMapLayer *layer ) const
@@ -76,4 +82,15 @@ QgsDoubleRange QgsTiledSceneLayerElevationProperties::calculateZRange( QgsMapLay
   }
 
   return QgsDoubleRange();
+}
+
+QList<double> QgsTiledSceneLayerElevationProperties::significantZValues( QgsMapLayer *layer ) const
+{
+  const QgsDoubleRange range = calculateZRange( layer );
+  if ( !range.isInfinite() && range.lower() != range.upper() )
+    return { range.lower(), range.upper() };
+  else if ( !range.isInfinite() )
+    return { range.lower() };
+  else
+    return {};
 }

@@ -76,23 +76,20 @@ void QgsAuthCrypto::passwordKeyHash( const QString &pass, QString *salt, QString
   if ( !key.isEmpty() )
   {
     *salt = QCA::arrayToHex( saltiv.toByteArray() );
-    qDebug( "salt hex: %s", qPrintable( *salt ) );
+    //qDebug( "salt hex: %s", qPrintable( *salt ) );
 
     *hash = QCA::arrayToHex( key.toByteArray() );
-    qDebug( "hash hex: %s", qPrintable( *hash ) );
+    //qDebug( "hash hex: %s", qPrintable( *hash ) );
 
     if ( cipheriv )
     {
       *cipheriv = QCA::arrayToHex( QCA::InitializationVector( CIPHER_IV_LENGTH ).toByteArray() );
-      qDebug( "cipheriv hex: %s", qPrintable( *cipheriv ) );
+      //qDebug( "cipheriv hex: %s", qPrintable( *cipheriv ) );
     }
   }
 }
 
-bool QgsAuthCrypto::verifyPasswordKeyHash( const QString &pass,
-    const QString &salt,
-    const QString &hash,
-    QString *hashderived )
+bool QgsAuthCrypto::verifyPasswordKeyHash( const QString &pass, const QString &salt, const QString &hash, QString *hashderived )
 {
   if ( QgsAuthCrypto::isDisabled() )
     return false;
@@ -108,10 +105,7 @@ bool QgsAuthCrypto::verifyPasswordKeyHash( const QString &pass,
   return hash == derived;
 }
 
-QString QgsAuthCrypto::encryptdecrypt( const QString &passstr,
-                                       const QString &cipheriv,
-                                       const QString &textstr,
-                                       bool encrypt )
+QString QgsAuthCrypto::encryptdecrypt( const QString &passstr, const QString &cipheriv, const QString &textstr, bool encrypt )
 {
   QString outtxt = QString();
   if ( QgsAuthCrypto::isDisabled() )
@@ -123,9 +117,7 @@ QString QgsAuthCrypto::encryptdecrypt( const QString &passstr,
 
   if ( encrypt )
   {
-    QCA::Cipher cipher = QCA::Cipher( CIPHER_TYPE, CIPHER_MODE, CIPHER_PADDING,
-                                      QCA::Encode, key, iv,
-                                      CIPHER_PROVIDER );
+    QCA::Cipher cipher = QCA::Cipher( CIPHER_TYPE, CIPHER_MODE, CIPHER_PADDING, QCA::Encode, key, iv, CIPHER_PROVIDER );
 
     const QCA::SecureArray securedata( textstr.toUtf8() );
     const QCA::SecureArray encrypteddata( cipher.process( securedata ) );
@@ -139,9 +131,7 @@ QString QgsAuthCrypto::encryptdecrypt( const QString &passstr,
   }
   else
   {
-    QCA::Cipher cipher = QCA::Cipher( CIPHER_TYPE, CIPHER_MODE, CIPHER_PADDING,
-                                      QCA::Decode, key, iv,
-                                      CIPHER_PROVIDER );
+    QCA::Cipher cipher = QCA::Cipher( CIPHER_TYPE, CIPHER_MODE, CIPHER_PADDING, QCA::Decode, key, iv, CIPHER_PROVIDER );
 
     const QCA::SecureArray ciphertext( QCA::hexToArray( textstr ) );
     const QCA::SecureArray decrypteddata( cipher.process( ciphertext ) );

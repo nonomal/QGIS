@@ -16,19 +16,55 @@
  ***************************************************************************/
 
 #include "qgsprocessingguiregistry.h"
-#include "qgsprocessingalgorithmconfigurationwidget.h"
-#include "qgsprocessingconfigurationwidgets.h"
-#include "qgsprocessingalignrasterlayerswidgetwrapper.h"
-#include "qgsprocessingvectortilewriterlayerswidgetwrapper.h"
-#include "qgsprocessingfieldmapwidgetwrapper.h"
-#include "qgsprocessingaggregatewidgetwrapper.h"
-#include "qgsprocessingdxflayerswidgetwrapper.h"
-#include "qgsprocessingwidgetwrapperimpl.h"
-#include "qgsprocessingtininputlayerswidget.h"
-#include "qgsprocessingmeshdatasetwidget.h"
-#include "qgsprocessingparameters.h"
+
 #include "qgis.h"
 #include "qgslogger.h"
+#include "qgsmodelchildalgorithmwidgets.h"
+#include "qgsmodelcomponentgraphicitem.h"
+#include "qgsmodeldesignerconfigwidget.h"
+#include "qgsmodeldesignerdialog.h"
+#include "qgsmodelgraphicsscene.h"
+#include "qgsmodelgroupboxdefinitionwidget.h"
+#include "qgsprocessingaggregatewidgetwrapper.h"
+#include "qgsprocessingalgorithm.h"
+#include "qgsprocessingalgorithmconfigurationwidget.h"
+#include "qgsprocessingalignrasterlayerswidgetwrapper.h"
+#include "qgsprocessingconfigurationwidgets.h"
+#include "qgsprocessingdxflayerswidgetwrapper.h"
+#include "qgsprocessingfieldmapwidgetwrapper.h"
+#include "qgsprocessingmeshdatasetwidget.h"
+#include "qgsprocessingmodelalgorithm.h"
+#include "qgsprocessingmodelchildalgorithm.h"
+#include "qgsprocessingmodelgroupbox.h"
+#include "qgsprocessingmodelparameter.h"
+#include "qgsprocessingparameters.h"
+#include "qgsprocessingprovideractions.h"
+#include "qgsprocessingrasteroptionswidgetwrapper.h"
+#include "qgsprocessingtininputlayerswidget.h"
+#include "qgsprocessingvectortilewriterlayerswidgetwrapper.h"
+#include "qgsprocessingwidgetwrapperimpl.h"
+
+#include <QString>
+
+#include "moc_qgsprocessingguiregistry.cpp"
+
+using namespace Qt::StringLiterals;
+
+//
+// QgsProcessingDialogFactory
+//
+
+QgsProcessingDialogFactory::~QgsProcessingDialogFactory() = default;
+
+//
+// QgsProcessingContextFactory
+//
+
+QgsProcessingContextFactory::~QgsProcessingContextFactory() = default;
+
+//
+// QgsProcessingGuiRegistry
+//
 
 QgsProcessingGuiRegistry::QgsProcessingGuiRegistry()
 {
@@ -41,6 +77,8 @@ QgsProcessingGuiRegistry::QgsProcessingGuiRegistry()
   addParameterWidgetFactory( new QgsProcessingStringWidgetWrapper() );
   addParameterWidgetFactory( new QgsProcessingNumericWidgetWrapper() );
   addParameterWidgetFactory( new QgsProcessingDistanceWidgetWrapper() );
+  addParameterWidgetFactory( new QgsProcessingAreaWidgetWrapper() );
+  addParameterWidgetFactory( new QgsProcessingVolumeWidgetWrapper() );
   addParameterWidgetFactory( new QgsProcessingDurationWidgetWrapper() );
   addParameterWidgetFactory( new QgsProcessingScaleWidgetWrapper() );
   addParameterWidgetFactory( new QgsProcessingRangeWidgetWrapper() );
@@ -86,16 +124,41 @@ QgsProcessingGuiRegistry::QgsProcessingGuiRegistry()
   addParameterWidgetFactory( new QgsProcessingPointCloudDestinationWidgetWrapper() );
   addParameterWidgetFactory( new QgsProcessingPointCloudAttributeWidgetWrapper() );
   addParameterWidgetFactory( new QgsProcessingVectorTileDestinationWidgetWrapper() );
+  addParameterWidgetFactory( new QgsProcessingRasterOptionsWidgetWrapper() );
+  addParameterWidgetFactory( new QgsProcessingHeatmapPixelSizeWidgetWrapper() );
+  addParameterWidgetFactory( new QgsProcessingReliefColorsWidgetWrapper() );
+  addParameterWidgetFactory( new QgsProcessingExecuteSqlWidgetWrapper() );
+  addParameterWidgetFactory( new QgsProcessingInterpolationPixelSizeWidgetWrapper() );
+  addParameterWidgetFactory( new QgsProcessingInterpolationSourceWidgetWrapper() );
+  addParameterWidgetFactory( new QgsProcessingTileExtentMaxZoomWidgetWrapper() );
+
+  mModelConfigWidgetFactory = std::make_unique< QgsProcessingGuiInternalModelConfigWidgetFactory >();
+  registerModelConfigWidgetFactory( mModelConfigWidgetFactory.get() );
 }
 
 QgsProcessingGuiRegistry::~QgsProcessingGuiRegistry()
 {
-  const QList< QgsProcessingAlgorithmConfigurationWidgetFactory * > factories = mAlgorithmConfigurationWidgetFactories;
+  for ( auto it = mProviderToolboxActions.constBegin(); it != mProviderToolboxActions.constEnd(); ++it )
+  {
+    qDeleteAll( it.value() );
+  }
+  mProviderToolboxActions.clear();
+
+  for ( auto it = mProviderToolboxContextActions.constBegin(); it != mProviderToolboxContextActions.constEnd(); ++it )
+  {
+    qDeleteAll( it.value() );
+  }
+  mProviderToolboxContextActions.clear();
+
+  const QList<QgsProcessingAlgorithmConfigurationWidgetFactory *> factories = mAlgorithmConfigurationWidgetFactories;
   for ( QgsProcessingAlgorithmConfigurationWidgetFactory *factory : factories )
     removeAlgorithmConfigurationWidgetFactory( factory );
-  const QMap< QString, QgsProcessingParameterWidgetFactoryInterface * > paramFactories = mParameterWidgetFactories;
+  const QMap<QString, QgsProcessingParameterWidgetFactoryInterface *> paramFactories = mParameterWidgetFactories;
   for ( auto it = paramFactories.constBegin(); it != paramFactories.constEnd(); ++it )
     removeParameterWidgetFactory( it.value() );
+
+  unregisterModelConfigWidgetFactory( mModelConfigWidgetFactory.get() );
+  mModelConfigWidgetFactory.reset();
 }
 
 void QgsProcessingGuiRegistry::addAlgorithmConfigurationWidgetFactory( QgsProcessingAlgorithmConfigurationWidgetFactory *factory )
@@ -115,7 +178,7 @@ QgsProcessingAlgorithmConfigurationWidget *QgsProcessingGuiRegistry::algorithmCo
   {
     if ( factory->canCreateFor( algorithm ) )
     {
-      std::unique_ptr< QgsProcessingAlgorithmConfigurationWidget > widget( factory->create( algorithm ) );
+      std::unique_ptr<QgsProcessingAlgorithmConfigurationWidget> widget( factory->create( algorithm ) );
       if ( widget )
         widget->setAlgorithm( algorithm );
       return widget.release();
@@ -132,7 +195,7 @@ bool QgsProcessingGuiRegistry::addParameterWidgetFactory( QgsProcessingParameter
 
   if ( mParameterWidgetFactories.contains( factory->parameterType() ) )
   {
-    QgsLogger::warning( QStringLiteral( "Duplicate parameter factory for %1 registered" ).arg( factory->parameterType() ) );
+    QgsLogger::warning( u"Duplicate parameter factory for %1 registered"_s.arg( factory->parameterType() ) );
     return false;
   }
 
@@ -149,39 +212,327 @@ void QgsProcessingGuiRegistry::removeParameterWidgetFactory( QgsProcessingParame
   delete factory;
 }
 
-QgsAbstractProcessingParameterWidgetWrapper *QgsProcessingGuiRegistry::createParameterWidgetWrapper( const QgsProcessingParameterDefinition *parameter, QgsProcessingGui::WidgetType type )
+void QgsProcessingGuiRegistry::registerModelConfigWidgetFactory( QgsProcessingModelConfigWidgetFactory *factory )
+{
+  mModelConfigWidgetFactories << factory;
+}
+
+void QgsProcessingGuiRegistry::unregisterModelConfigWidgetFactory( QgsProcessingModelConfigWidgetFactory *factory )
+{
+  mModelConfigWidgetFactories.removeAll( factory );
+}
+
+QgsAbstractProcessingParameterWidgetWrapper *QgsProcessingGuiRegistry::createParameterWidgetWrapper( const QgsProcessingParameterDefinition *parameter, Qgis::ProcessingMode type )
+{
+  if ( !parameter )
+    return nullptr;
+
+  const QVariantMap metadata = parameter->metadata();
+  const QString widgetType = metadata.value( u"widget_wrapper"_s ).toMap().value( u"widget_type"_s ).toString();
+  const QString parameterType = !widgetType.isEmpty() ? widgetType : parameter->type();
+  if ( !mParameterWidgetFactories.contains( parameterType ) )
+    return nullptr;
+
+  if ( QgsProcessingParameterWidgetFactoryInterface *factory = mParameterWidgetFactories.value( parameterType ) )
+  {
+    return factory->createWidgetWrapper( parameter, type );
+  }
+  return nullptr;
+}
+
+QgsProcessingModelerParameterWidget *QgsProcessingGuiRegistry::createModelerParameterWidget(
+  QgsProcessingModelAlgorithm *model, const QString &childId, const QgsProcessingParameterDefinition *parameter, QgsProcessingContext &context
+)
 {
   if ( !parameter )
     return nullptr;
 
   const QString parameterType = parameter->type();
-  if ( !mParameterWidgetFactories.contains( parameterType ) )
+  auto it = mParameterWidgetFactories.constFind( parameterType );
+  if ( it == mParameterWidgetFactories.constEnd() )
     return nullptr;
 
-  return mParameterWidgetFactories.value( parameterType )->createWidgetWrapper( parameter, type );
+  return it.value()->createModelerWidgetWrapper( model, childId, parameter, context );
 }
 
-QgsProcessingModelerParameterWidget *QgsProcessingGuiRegistry::createModelerParameterWidget( QgsProcessingModelAlgorithm *model, const QString &childId, const QgsProcessingParameterDefinition *parameter, QgsProcessingContext &context )
+QgsProcessingAbstractParameterDefinitionWidget *QgsProcessingGuiRegistry::createParameterDefinitionWidget(
+  const QString &type, QgsProcessingContext &context, const QgsProcessingParameterWidgetContext &widgetContext, const QgsProcessingParameterDefinition *definition, const QgsProcessingAlgorithm *algorithm
+)
 {
-  if ( !parameter )
+  auto it = mParameterWidgetFactories.constFind( type );
+  if ( it == mParameterWidgetFactories.constEnd() )
     return nullptr;
 
-  const QString parameterType = parameter->type();
-  if ( !mParameterWidgetFactories.contains( parameterType ) )
-    return nullptr;
-
-  return mParameterWidgetFactories.value( parameterType )->createModelerWidgetWrapper( model, childId, parameter, context );
+  return it.value()->createParameterDefinitionWidget( context, widgetContext, definition, algorithm );
 }
 
-QgsProcessingAbstractParameterDefinitionWidget *QgsProcessingGuiRegistry::createParameterDefinitionWidget( const QString &type,
-    QgsProcessingContext &context,
-    const QgsProcessingParameterWidgetContext &widgetContext,
-    const QgsProcessingParameterDefinition *definition,
-    const QgsProcessingAlgorithm *algorithm )
+QgsProcessingModelConfigWidget *QgsProcessingGuiRegistry::createModelConfigWidgetForComponent(
+  QgsProcessingModelComponent *component, QgsProcessingContext &context, const QgsProcessingParameterWidgetContext &widgetContext
+) const
 {
-  if ( !mParameterWidgetFactories.contains( type ) )
-    return nullptr;
+  for ( auto it = mModelConfigWidgetFactories.constBegin(); it != mModelConfigWidgetFactories.constEnd(); ++it )
+  {
+    // factory may have been deleted without deregistering, don't crash!
+    if ( !it->data() )
+      continue;
 
-  return mParameterWidgetFactories.value( type )->createParameterDefinitionWidget( context, widgetContext, definition, algorithm );
+    if ( it->data()->supportsComponent( component ) )
+    {
+      if ( QgsProcessingModelConfigWidget *widget = it->data()->createWidget( component, context, widgetContext ) )
+        return widget;
+    }
+  }
+  return nullptr;
 }
 
+void QgsProcessingGuiRegistry::registerWidgetContextGenerator( QgsProcessingWidgetContextGenerator *generator )
+{
+  mWidgetContextGenerator = generator;
+}
+
+QgsProcessingParameterWidgetContext QgsProcessingGuiRegistry::createWidgetContext()
+{
+  if ( mWidgetContextGenerator )
+  {
+    return mWidgetContextGenerator->createWidgetContext();
+  }
+  return QgsProcessingParameterWidgetContext();
+}
+
+void QgsProcessingGuiRegistry::registerProviderToolboxAction( const QString &providerId, QgsProcessingToolboxAction *action )
+{
+  mProviderToolboxActions[providerId].append( action );
+}
+
+void QgsProcessingGuiRegistry::deregisterProviderToolboxActions( const QString &providerId )
+{
+  QList< QgsProcessingToolboxAction * > actions = mProviderToolboxActions.take( providerId );
+  qDeleteAll( actions );
+}
+
+QList<QgsProcessingToolboxAction *> QgsProcessingGuiRegistry::toolboxActionsForProvider( const QString &providerId ) const
+{
+  return mProviderToolboxActions.value( providerId );
+}
+
+void QgsProcessingGuiRegistry::registerProviderToolboxContextAction( const QString &providerId, QgsProcessingToolboxContextAction *action )
+{
+  mProviderToolboxContextActions[providerId].append( action );
+}
+
+void QgsProcessingGuiRegistry::deregisterProviderToolboxContextActions( const QString &providerId )
+{
+  QList< QgsProcessingToolboxContextAction * > actions = mProviderToolboxContextActions.take( providerId );
+  qDeleteAll( actions );
+}
+
+void QgsProcessingGuiRegistry::deregisterProviderToolboxContextAction( QgsProcessingToolboxContextAction *action )
+{
+  for ( auto it = mProviderToolboxContextActions.begin(); it != mProviderToolboxContextActions.end(); ++it )
+  {
+    if ( it.value().contains( action ) )
+    {
+      QList< QgsProcessingToolboxContextAction * > actions = it.value();
+      actions.removeAll( action );
+      mProviderToolboxContextActions.insert( it.key(), actions );
+      break;
+    }
+  }
+}
+
+QList<QgsProcessingToolboxContextAction *> QgsProcessingGuiRegistry::toolboxContextActions() const
+{
+  QList<QgsProcessingToolboxContextAction *> res;
+  for ( auto it = mProviderToolboxContextActions.constBegin(); it != mProviderToolboxContextActions.constEnd(); ++it )
+  {
+    res.append( it.value() );
+  }
+  return res;
+}
+
+void QgsProcessingGuiRegistry::setDialogFactory( QgsProcessingDialogFactory *factory )
+{
+  mProcessingDialogFactory.reset( factory );
+}
+
+QgsProcessingDialogFactory *QgsProcessingGuiRegistry::dialogFactory()
+{
+  return mProcessingDialogFactory.get();
+}
+
+void QgsProcessingGuiRegistry::setContextFactory( QgsProcessingContextFactory *factory )
+{
+  mContextFactory.reset( factory );
+}
+
+QgsProcessingContextFactory *QgsProcessingGuiRegistry::contextFactory()
+{
+  return mContextFactory.get();
+}
+
+QList<QgsProcessingToolboxContextAction *> QgsProcessingGuiRegistry::toolboxContextActionsForProvider( const QString &providerId ) const
+{
+  return mProviderToolboxContextActions.value( providerId );
+}
+
+/// @cond PRIVATE
+bool QgsProcessingGuiInternalModelConfigWidgetFactory::supportsComponent( QgsProcessingModelComponent *component ) const
+{
+  if ( dynamic_cast< QgsProcessingModelGroupBox * >( component ) )
+    return true;
+
+  if ( dynamic_cast< QgsProcessingModelChildAlgorithm * >( component ) )
+    return true;
+
+  if ( dynamic_cast< QgsProcessingModelParameter * >( component ) )
+    return true;
+
+  if ( dynamic_cast< QgsProcessingModelOutput * >( component ) )
+    return true;
+
+  return false;
+}
+
+QgsProcessingModelConfigWidget *QgsProcessingGuiInternalModelConfigWidgetFactory::createWidget(
+  QgsProcessingModelComponent *component, QgsProcessingContext &context, const QgsProcessingParameterWidgetContext &widgetContext
+) const
+{
+  if ( QgsProcessingModelGroupBox *groupBox = dynamic_cast< QgsProcessingModelGroupBox * >( component ) )
+  {
+    QgsModelDesignerDialog *dialog = widgetContext.modelDesignerDialog();
+    const QString boxUuid = groupBox->uuid();
+
+    auto widget = new QgsModelGroupBoxDefinitionPanelWidget( *groupBox );
+    connect( widget, &QgsModelGroupBoxDefinitionPanelWidget::changed, this, [dialog, boxUuid, widget] {
+      QgsModelGraphicsScene *modelScene = dialog->modelScene();
+      QgsModelGroupBoxGraphicItem *graphicItem = dynamic_cast< QgsModelGroupBoxGraphicItem * >( modelScene->groupBoxItem( boxUuid ) );
+      if ( !graphicItem )
+        return; // should not happen
+
+      graphicItem->applyEdit( widget->groupBox() );
+    } );
+
+    return widget;
+  }
+  else if ( QgsProcessingModelChildAlgorithm *childAlg = dynamic_cast< QgsProcessingModelChildAlgorithm * >( component ) )
+  {
+    QgsModelDesignerDialog *dialog = widgetContext.modelDesignerDialog();
+    const QString childId = childAlg->childId();
+
+    std::unique_ptr< QgsProcessingAlgorithm > algorithm( childAlg->algorithm()->create() );
+    auto widget = new QgsProcessingModelerParametersWidget( algorithm.get(), widgetContext.model(), context, childId, childAlg->configuration(), nullptr );
+    widget->setComments( childAlg->comment()->description() );
+    widget->setCommentColor( childAlg->comment()->color() );
+
+    QgsProcessingParameterWidgetContext widgetContextCopy = widgetContext;
+    widgetContextCopy.setModelChildAlgorithmId( childId );
+    widget->setWidgetContext( widgetContextCopy );
+
+    connect( widget, &QgsProcessingModelConfigWidget::changed, this, [dialog, childId, widget] {
+      QgsModelGraphicsScene *modelScene = dialog->modelScene();
+      QgsModelChildAlgorithmGraphicItem *graphicItem = modelScene->childAlgorithmItem( childId );
+      if ( !graphicItem )
+        return; // should not happen
+
+      std::unique_ptr< QgsProcessingModelChildAlgorithm > updatedAlgorithm = widget->createAlgorithm();
+      if ( updatedAlgorithm )
+      {
+        graphicItem->applyEdit( *updatedAlgorithm );
+      }
+    } );
+
+    return widget;
+  }
+  else if ( QgsProcessingModelParameter *modelParam = dynamic_cast< QgsProcessingModelParameter * >( component ) )
+  {
+    QgsModelDesignerDialog *dialog = widgetContext.modelDesignerDialog();
+    QgsProcessingModelAlgorithm *model = widgetContext.model();
+
+    const QString componentName = modelParam->parameterName();
+    const QgsProcessingParameterDefinition *existingParam = model->parameterDefinition( componentName );
+    if ( !existingParam )
+      return nullptr;
+
+    const QString comment = modelParam->comment()->description();
+    const QColor commentColor = modelParam->comment()->color();
+    const QString oldName = existingParam->name();
+    const QString oldDescription = existingParam->description();
+
+    auto widget = new QgsProcessingParameterDefinitionPanelWidget( existingParam->type(), context, widgetContext, existingParam, model );
+    widget->setComments( comment );
+    widget->setCommentColor( commentColor );
+    if ( widgetContext.processingContextGenerator() )
+    {
+      widget->registerProcessingContextGenerator( widgetContext.processingContextGenerator() );
+    }
+
+    auto existingParamName = std::make_shared< QString >( existingParam->name() );
+
+    connect( widget, &QgsProcessingParameterDefinitionPanelWidget::changed, this, [dialog, componentName, oldDescription, oldName, existingParamName, widget] {
+      QgsModelGraphicsScene *modelScene = dialog->modelScene();
+      if ( !modelScene )
+        return;
+
+      QgsModelParameterGraphicItem *graphicItem = dynamic_cast< QgsModelParameterGraphicItem * >( modelScene->parameterItem( componentName ) );
+      if ( !graphicItem )
+        return; // should not happen
+
+      std::unique_ptr< QgsProcessingParameterDefinition > newParam( widget->createParameter( *existingParamName ) );
+      if ( !newParam )
+        return;
+
+      const QString comment = widget->comments();
+      const QColor commentColor = widget->commentColor();
+      *existingParamName = graphicItem->applyEdit( std::move( newParam ), oldDescription, oldName, comment, commentColor );
+    } );
+
+    return widget;
+  }
+  else if ( QgsProcessingModelOutput *modelOutput = dynamic_cast< QgsProcessingModelOutput * >( component ) )
+  {
+    QgsModelDesignerDialog *dialog = widgetContext.modelDesignerDialog();
+    QgsProcessingModelAlgorithm *model = widgetContext.model();
+
+    const QString childId = modelOutput->childId();
+    const QString childOutputName = modelOutput->childOutputName();
+
+    const QgsProcessingParameterDefinition *existingParam = model->modelParameterFromChildIdAndOutputName( childId, modelOutput->name() );
+    if ( !existingParam )
+      return nullptr;
+
+    const QString comment = modelOutput->comment()->description();
+    const QColor commentColor = modelOutput->comment()->color();
+
+    auto widget = new QgsProcessingParameterDefinitionPanelWidget( existingParam->type(), context, widgetContext, existingParam, model );
+    widget->setComments( comment );
+    widget->setCommentColor( commentColor );
+    if ( widgetContext.processingContextGenerator() )
+    {
+      widget->registerProcessingContextGenerator( widgetContext.processingContextGenerator() );
+    }
+
+    connect( widget, &QgsProcessingParameterDefinitionPanelWidget::changed, this, [dialog, childId, childOutputName, widget] {
+      QgsModelGraphicsScene *modelScene = dialog->modelScene();
+      if ( !modelScene )
+        return;
+
+      QgsModelOutputGraphicItem *graphicItem = dynamic_cast< QgsModelOutputGraphicItem * >( modelScene->outputItem( childId, childOutputName ) );
+      if ( !graphicItem )
+        return; // should not happen
+
+      std::unique_ptr< QgsProcessingParameterDefinition > newParam( widget->createParameter() );
+      if ( !newParam )
+        return;
+
+      graphicItem
+        ->applyEdit( newParam->description(), newParam->description(), newParam->defaultValue(), !newParam->flags().testFlag( Qgis::ProcessingParameterFlag::Optional ), widget->comments(), widget->commentColor() );
+    } );
+
+    return widget;
+  }
+
+  return nullptr;
+}
+
+
+/// @endcond PRIVATE

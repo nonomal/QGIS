@@ -4,7 +4,7 @@
     ---------------------
     begin                : July 2017
     copyright            : (C) 2017 by Loïc Bartoletti
-    email                : lbartoletti at tuxfamily dot org
+    email                : lituus at free dot fr
  ***************************************************************************
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -15,15 +15,23 @@
  ***************************************************************************/
 
 #include "qgsmaptoolshapeellipsecenter2points.h"
+
+#include <memory>
+
+#include "qgsapplication.h"
 #include "qgsgeometryrubberband.h"
 #include "qgslinestring.h"
-#include "qgspoint.h"
 #include "qgsmapmouseevent.h"
 #include "qgsmaptoolcapture.h"
-#include <memory>
-#include "qgsapplication.h"
+#include "qgspoint.h"
 
-const QString QgsMapToolShapeEllipseCenter2PointsMetadata::TOOL_ID = QStringLiteral( "ellipse-center-2-points" );
+#include <QString>
+
+#include "moc_qgsmaptoolshapeellipsecenter2points.cpp"
+
+using namespace Qt::StringLiterals;
+
+const QString QgsMapToolShapeEllipseCenter2PointsMetadata::TOOL_ID = u"ellipse-center-2-points"_s;
 
 QString QgsMapToolShapeEllipseCenter2PointsMetadata::id() const
 {
@@ -37,7 +45,7 @@ QString QgsMapToolShapeEllipseCenter2PointsMetadata::name() const
 
 QIcon QgsMapToolShapeEllipseCenter2PointsMetadata::icon() const
 {
-  return QgsApplication::getThemeIcon( QStringLiteral( "/mActionEllipseCenter2Points.svg" ) );
+  return QgsApplication::getThemeIcon( u"/mActionEllipseCenter2Points.svg"_s );
 }
 
 QgsMapToolShapeAbstract::ShapeCategory QgsMapToolShapeEllipseCenter2PointsMetadata::category() const
@@ -55,7 +63,6 @@ bool QgsMapToolShapeEllipseCenter2Points::cadCanvasReleaseEvent( QgsMapMouseEven
   const QgsPoint point = mParentTool->mapPoint( *e );
   if ( e->button() == Qt::LeftButton )
   {
-
     if ( mPoints.size() < 2 )
       mPoints.append( point );
 
@@ -68,6 +75,9 @@ bool QgsMapToolShapeEllipseCenter2Points::cadCanvasReleaseEvent( QgsMapMouseEven
   }
   else if ( e->button() == Qt::RightButton )
   {
+    if ( mEllipse.isEmpty() )
+      return false;
+
     addEllipseToParentTool();
     return true;
   }
@@ -87,7 +97,7 @@ void QgsMapToolShapeEllipseCenter2Points::cadCanvasMoveEvent( QgsMapMouseEvent *
     {
       case 1:
       {
-        std::unique_ptr<QgsLineString> line( new QgsLineString() );
+        auto line = std::make_unique<QgsLineString>();
         line->addVertex( mPoints.at( 0 ) );
         line->addVertex( point );
         mTempRubberBand->setGeometry( line.release() );
@@ -96,7 +106,12 @@ void QgsMapToolShapeEllipseCenter2Points::cadCanvasMoveEvent( QgsMapMouseEvent *
       case 2:
       {
         mEllipse = QgsEllipse::fromCenter2Points( mPoints.at( 0 ), mPoints.at( 1 ), point );
-        mTempRubberBand->setGeometry( mEllipse.toPolygon( segments() ) );
+        const QgsGeometry newGeometry( mEllipse.toPolygon( segments() ) );
+        if ( !newGeometry.isEmpty() )
+        {
+          mTempRubberBand->setGeometry( newGeometry.constGet()->clone() );
+          setTransientGeometry( newGeometry );
+        }
       }
       break;
       default:

@@ -15,58 +15,29 @@
 ***************************************************************************
 """
 
-__author__ = 'Victor Olaya'
-__date__ = 'August 2012'
-__copyright__ = '(C) 2012, Victor Olaya'
+__author__ = "Victor Olaya"
+__date__ = "August 2012"
+__copyright__ = "(C) 2012, Victor Olaya"
 
-from typing import Optional
+import math
 import os
 import time
-import sys
-import uuid
-import math
+from typing import Optional
 
-from qgis.PyQt.QtCore import QDir
-from qgis.core import (QgsApplication,
-                       QgsProcessingUtils,
-                       QgsProcessingContext)
+from qgis.core import QgsProcessingContext, QgsProcessingUtils
 
 numExported = 1
-
-
-def userFolder():
-    userDir = os.path.join(QgsApplication.qgisSettingsDirPath(), 'processing')
-    if not QDir(userDir).exists():
-        QDir().mkpath(userDir)
-
-    return str(QDir.toNativeSeparators(userDir))
-
-
-def defaultOutputFolder():
-    folder = os.path.join(userFolder(), 'outputs')
-    if not QDir(folder).exists():
-        QDir().mkpath(folder)
-
-    return str(QDir.toNativeSeparators(folder))
-
-
-def isWindows():
-    return os.name == 'nt'
-
-
-def isMac():
-    return sys.platform == 'darwin'
 
 
 def getTempFilename(ext=None, context: Optional[QgsProcessingContext] = None):
     tmpPath = QgsProcessingUtils.tempFolder(context)
     t = time.time()
     m = math.floor(t)
-    uid = f'{m:8x}{int((t - m) * 1000000):05x}'
+    uid = f"{m:8x}{int((t - m) * 1000000):05x}"
     if ext is None:
-        filename = os.path.join(tmpPath, f'{uid}{getNumExportedLayers()}')
+        filename = os.path.join(tmpPath, f"{uid}{getNumExportedLayers()}")
     else:
-        filename = os.path.join(tmpPath, f'{uid}{getNumExportedLayers()}.{ext}')
+        filename = os.path.join(tmpPath, f"{uid}{getNumExportedLayers()}.{ext}")
     return filename
 
 
@@ -77,32 +48,4 @@ def getNumExportedLayers():
 
 
 def mkdir(newdir):
-    os.makedirs(newdir.strip('\n\r '), exist_ok=True)
-
-
-def tempHelpFolder():
-    tmp = os.path.join(str(QDir.tempPath()), 'processing_help')
-    if not QDir(tmp).exists():
-        QDir().mkpath(tmp)
-
-    return str(os.path.abspath(tmp))
-
-
-def escapeAndJoin(strList):
-    """
-    .. deprecated:: 3.0
-    Do not use, will be removed in QGIS 4.0
-    """
-
-    from warnings import warn
-    warn("processing.escapeAndJoin is deprecated and will be removed in QGIS 4.0", DeprecationWarning)
-
-    joined = ''
-    for s in strList:
-        if s[0] != '-' and ' ' in s:
-            escaped = '"' + s.replace('\\', '\\\\').replace('"', '\\"') \
-                + '"'
-        else:
-            escaped = s
-        joined += escaped + ' '
-    return joined.strip()
+    os.makedirs(newdir.strip("\n\r "), exist_ok=True)

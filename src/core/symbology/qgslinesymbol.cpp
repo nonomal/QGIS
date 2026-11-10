@@ -14,20 +14,21 @@
  ***************************************************************************/
 
 #include "qgslinesymbol.h"
-#include "qgslinesymbollayer.h"
-#include "qgsgeometrygeneratorsymbollayer.h"
-#include "qgssymbollayerutils.h"
-#include "qgspainteffect.h"
 
-QgsLineSymbol *QgsLineSymbol::createSimple( const QVariantMap &properties )
+#include "qgsgeometrygeneratorsymbollayer.h"
+#include "qgslinesymbollayer.h"
+#include "qgspainteffect.h"
+#include "qgssymbollayerutils.h"
+
+std::unique_ptr< QgsLineSymbol > QgsLineSymbol::createSimple( const QVariantMap &properties )
 {
-  QgsSymbolLayer *sl = QgsSimpleLineSymbolLayer::create( properties );
+  std::unique_ptr<QgsSymbolLayer> sl = QgsSimpleLineSymbolLayer::create( properties );
   if ( !sl )
     return nullptr;
 
   QgsSymbolLayerList layers;
-  layers.append( sl );
-  return new QgsLineSymbol( layers );
+  layers.append( sl.release() );
+  return std::make_unique< QgsLineSymbol >( layers );
 }
 
 QgsLineSymbol::QgsLineSymbol( const QgsSymbolLayerList &layers )
@@ -232,11 +233,12 @@ QgsProperty QgsLineSymbol::dataDefinedWidth() const
 void QgsLineSymbol::renderPolyline( const QPolygonF &points, const QgsFeature *f, QgsRenderContext &context, int layerIdx, bool selected )
 {
   const double opacity = dataDefinedProperties().hasActiveProperties() ? dataDefinedProperties().valueAsDouble( QgsSymbol::Property::Opacity, context.expressionContext(), mOpacity * 100 ) * 0.01
-                         : mOpacity;
+                                                                       : mOpacity;
 
   //save old painter
   QPainter *renderPainter = context.painter();
-  QgsSymbolRenderContext symbolContext( context, Qgis::RenderUnit::Unknown, opacity, selected, mRenderHints, f );
+
+  QgsSymbolRenderContext symbolContext( context, Qgis::RenderUnit::Unknown, opacity, selected, renderHints(), f );
   symbolContext.setOriginalGeometryType( Qgis::GeometryType::Line );
   symbolContext.setGeometryPartCount( symbolRenderContext()->geometryPartCount() );
   symbolContext.setGeometryPartNum( symbolRenderContext()->geometryPartNum() );
@@ -303,14 +305,6 @@ void QgsLineSymbol::renderPolylineUsingLayer( QgsLineSymbolLayer *layer, const Q
 QgsLineSymbol *QgsLineSymbol::clone() const
 {
   QgsLineSymbol *cloneSymbol = new QgsLineSymbol( cloneLayers() );
-  cloneSymbol->setOpacity( mOpacity );
-  Q_NOWARN_DEPRECATED_PUSH
-  cloneSymbol->setLayer( mLayer );
-  Q_NOWARN_DEPRECATED_POP
-  cloneSymbol->setClipFeaturesToExtent( mClipFeaturesToExtent );
-  cloneSymbol->setForceRHR( mForceRHR );
-  cloneSymbol->setDataDefinedProperties( dataDefinedProperties() );
-  cloneSymbol->setFlags( mSymbolFlags );
-  cloneSymbol->setAnimationSettings( mAnimationSettings );
+  cloneSymbol->copyCommonProperties( this );
   return cloneSymbol;
 }

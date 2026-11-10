@@ -3,7 +3,7 @@
  *                                                                      *
  * src/analysis/network/qgsgraphbuilderinterface.h                      *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/
 
 
@@ -17,29 +17,33 @@
 class QgsGraphBuilderInterface
 {
 %Docstring(signature="appended")
-Determine interface for creating a graph. Contains the settings of the graph.
-:py:class:`QgsGraphBuilder` and :py:class:`QgsGraphDirector` both use a "builder" design pattern
+Interface for creating a graph.
+
+Contains the settings of the graph.
+
+:py:class:`QgsGraphBuilder` and :py:class:`QgsGraphDirector` both use a
+"builder" design pattern
 %End
 
 %TypeHeaderCode
 #include "qgsgraphbuilderinterface.h"
 %End
 %ConvertToSubClassCode
-    if ( dynamic_cast< QgsGraphBuilder * >( sipCpp ) != NULL )
+    if ( dynamic_cast<QgsGraphBuilder *>( sipCpp ) != NULL )
       sipType = sipType_QgsGraphBuilder;
     else
       sipType = NULL;
 %End
   public:
-
-    QgsGraphBuilderInterface( const QgsCoordinateReferenceSystem &crs, bool ctfEnabled = true,
-                              double topologyTolerance = 0.0, const QString &ellipsoidID = "WGS84" );
+    QgsGraphBuilderInterface( const QgsCoordinateReferenceSystem &crs, bool ctfEnabled = true, double topologyTolerance = 0.0, const QString &ellipsoidID = "WGS84" );
 %Docstring
 Default constructor
 
 :param crs: Coordinate reference system for new graph vertex
-:param ctfEnabled: enable coordinate transform from source graph CRS to CRS graph
-:param topologyTolerance: sqrt distance between source point as one graph vertex
+:param ctfEnabled: enable coordinate transform from source graph CRS to
+                   CRS graph
+:param topologyTolerance: sqrt distance between source point as one
+                          graph vertex
 :param ellipsoidID: ellipsoid for edge measurement
 %End
 
@@ -65,7 +69,7 @@ Returns topology tolerance
 Returns measurement tool
 %End
 
-    virtual void addVertex( int id, const QgsPointXY &pt );
+    virtual int addVertex( int id, const QgsPointXY &pt );
 %Docstring
 Add vertex to the graph
 
@@ -75,9 +79,11 @@ Add vertex to the graph
 .. note::
 
    id and pt are redundant. You can use pt or id to identify the vertex
+
+:return: the index of the newly added vertex
 %End
 
-    virtual void addEdge( int pt1id, const QgsPointXY &pt1, int pt2id, const QgsPointXY &pt2, const QVector< QVariant > &strategies );
+    virtual void addEdge( int pt1id, const QgsPointXY &pt1, int pt2id, const QgsPointXY &pt2, const QVector<QVariant> &strategies );
 %Docstring
 Add edge to the graph
 
@@ -100,5 +106,5 @@ Add edge to the graph
  *                                                                      *
  * src/analysis/network/qgsgraphbuilderinterface.h                      *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/

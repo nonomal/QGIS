@@ -18,28 +18,30 @@
 #ifndef QGSMESHVECTORRENDERER_H
 #define QGSMESHVECTORRENDERER_H
 
+#include <memory>
+
+#include "qgsmeshdataset.h"
+#include "qgsmeshutils.h"
+#include "qgsvectorfieldengine.h"
+
+#include <QSize>
+#include <QVector>
 
 #define SIP_NO_FILE
 
-#include <QVector>
-#include <QSize>
-
-#include "qgis_core.h"
-#include "qgsmeshdataprovider.h"
-#include "qgstriangularmesh.h"
-#include "qgsmeshlayer.h"
-#include "qgspointxy.h"
-
+class QgsMeshVectorFieldValueSource;
+class QgsPointXY;
+class QgsRasterBlockFeedback;
 class QgsRenderContext;
-class QgsInterpolatedLineColor;
-class QgsMeshLayerRendererFeedback;
+class QgsTriangularMesh;
+class QgsMeshDataBlock;
+
 ///@cond PRIVATE
 
 
 class QgsMeshVectorRenderer
 {
   public:
-    //! Constructor
     QgsMeshVectorRenderer() = default;
 
     /**
@@ -50,101 +52,121 @@ class QgsMeshVectorRenderer
     virtual void draw() = 0;
 
     //! Vector renderer factory. The returned renderer type depend on the settings
-    static QgsMeshVectorRenderer *makeVectorRenderer( const QgsTriangularMesh &m,
-        const QgsMeshDataBlock &datasetVectorValues,
-        const QgsMeshDataBlock &scalarActiveFaceFlagValues,
-        const QVector<double> &datasetValuesMag,
-        double datasetMagMaximumValue,
-        double datasetMagMinimumValue,
-        QgsMeshDatasetGroupMetadata::DataType dataType,
-        const QgsMeshRendererVectorSettings &settings,
-        QgsRenderContext &context,
-        const QgsRectangle &layerExtent,
-        QgsMeshLayerRendererFeedback *feedBack,
-        const QSize &size );
+    static QgsMeshVectorRenderer *makeVectorRenderer(
+      const QgsTriangularMesh &m,
+      const QgsMeshDataBlock &datasetVectorValues,
+      const QgsMeshDataBlock &scalarActiveFaceFlagValues,
+      const QVector<double> &datasetValuesMag,
+      double datasetMagMaximumValue,
+      double datasetMagMinimumValue,
+      QgsMeshDatasetGroupMetadata::DataType dataType,
+      const QgsVectorFieldSettings &settings,
+      QgsRenderContext &context,
+      const QgsRectangle &layerExtent,
+      QgsRasterBlockFeedback *feedBack,
+      const QSize &size
+    );
 };
 
 /**
  * \ingroup core
  *
- * \brief Helper private class for rendering vector datasets (e.g. velocity)
+ * \brief Helper private class for rendering vector datasets (e.g. velocity) with a glyph per
+ * data point, that is with arrows or with wind barbs.
  *
  * \note not available in Python bindings
- * \since QGIS 3.2
+ * \since QGIS 4.4
  */
-class QgsMeshVectorArrowRenderer : public QgsMeshVectorRenderer
+class QgsMeshVectorGlyphRenderer : public QgsMeshVectorRenderer
 {
   public:
     //! Ctor
-    QgsMeshVectorArrowRenderer( const QgsTriangularMesh &m,
-                                const QgsMeshDataBlock &datasetValues,
-                                const QVector<double> &datasetValuesMag,
-                                double datasetMagMaximumValue,
-                                double datasetMagMinimumValue,
-                                QgsMeshDatasetGroupMetadata::DataType dataType,
-                                const QgsMeshRendererVectorSettings &settings,
-                                QgsRenderContext &context,
-                                QSize size );
-    //! Dtor
-    ~QgsMeshVectorArrowRenderer() override;
+    QgsMeshVectorGlyphRenderer(
+      const QgsTriangularMesh &m,
+      const QgsMeshDataBlock &datasetValues,
+      const QVector<double> &datasetValuesMag,
+      double datasetMagMaximumValue,
+      double datasetMagMinimumValue,
+      QgsMeshDatasetGroupMetadata::DataType dataType,
+      const QgsVectorFieldSettings &settings,
+      QgsRenderContext &context,
+      QSize size
+    );
+    ~QgsMeshVectorGlyphRenderer() override;
 
     /**
-     * Draws vector arrows in the context's painter based on settings
+     * Draws vector glyphs in the context's painter based on settings
      */
     void draw() override;
 
   private:
     //! Draws for data defined on vertices
-    void drawVectorDataOnVertices( );
+    void drawVectorDataOnVertices();
     //! Draws for data defined on face centers
-    void drawVectorDataOnFaces( );
+    void drawVectorDataOnFaces();
     //! Draws for data defined on edge centers
-    void drawVectorDataOnEdges( );
+    void drawVectorDataOnEdges();
     //! Draws for data defined on edge centers or face centers
     void drawVectorDataOnPoints( const QSet<int> indexesToRender, const QVector<QgsMeshVertex> &points );
     //! Draws data on user-defined grid
-    void drawVectorDataOnGrid( );
-    //! Draws arrow from start point and vector data
-    void drawVectorArrow( const QgsPointXY &lineStart, double xVal, double yVal, double magnitude );
-    //! Calculates the end point of the arrow based on start point and vector data
-    bool calcVectorLineEnd( QgsPointXY &lineEnd,
-                            double &vectorLength,
-                            double &cosAlpha,
-                            double &sinAlpha, //out
-                            const QgsPointXY &lineStart,
-                            double xVal,
-                            double yVal,
-                            double magnitude //in
-                          );
-
-    /**
-     * Calculates the buffer size
-     * needed to draw arrows which have
-     * start or end point outside the
-     * visible canvas extent (in pixels)
-     */
-    double calcExtentBufferSize() const;
+    void drawVectorDataOnGrid();
 
     const QgsTriangularMesh &mTriangularMesh;
     const QgsMeshDataBlock &mDatasetValues;
     const QVector<double> &mDatasetValuesMag; //magnitudes
     double mMinMag = 0.0;
     double mMaxMag = 0.0;
-    QgsRenderContext &mContext;
-    const QgsMeshRendererVectorSettings mCfg;
     QgsMeshDatasetGroupMetadata::DataType mDataType = QgsMeshDatasetGroupMetadata::DataType::DataOnVertices;
-    QSize mOutputSize;
     QgsRectangle mBufferedExtent;
-    QPen mPen;
 
-    QgsInterpolatedLineColor mVectorColoring;
+    QgsRenderContext &mContext;
+    const QgsVectorFieldSettings mCfg;
+    QSize mOutputSize;
 
+    QgsVectorFieldEngine mEngine;
 };
 
+/**
+ * \ingroup core
+ *
+ * \brief Helper private class for rendering vector datasets by walking the vector field, that is
+ * with streamlines or with particle traces.
+ *
+ * Not available for data defined on edges.
+ *
+ * \note not available in Python bindings
+ * \since QGIS 3.12
+ */
+class QgsMeshVectorStreamlineRenderer : public QgsMeshVectorRenderer
+{
+  public:
+    //! Ctor
+    QgsMeshVectorStreamlineRenderer(
+      const QgsTriangularMesh &m,
+      const QgsMeshDataBlock &datasetValues,
+      const QgsMeshDataBlock &scalarActiveFaceFlagValues,
+      const QVector<double> &datasetValuesMag,
+      double datasetMagMaximumValue,
+      double datasetMagMinimumValue,
+      QgsMeshDatasetGroupMetadata::DataType dataType,
+      const QgsVectorFieldSettings &settings,
+      QgsRenderContext &context,
+      const QgsRectangle &layerExtent,
+      QgsRasterBlockFeedback *feedBack,
+      QSize size
+    );
+    ~QgsMeshVectorStreamlineRenderer() override;
 
+    void draw() override;
+
+  private:
+    const QgsVectorFieldSettings mCfg;
+    QgsRasterBlockFeedback *mFeedBack = nullptr;
+    std::unique_ptr<QgsMeshVectorFieldValueSource> mSource;
+    QgsVectorFieldEngine mEngine;
+};
 
 ///@endcond
-
 
 
 #endif // QGSMESHVECTORRENDERER_H

@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/tiledscene/qgstiledscenetile.h                              *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/
 
 
@@ -22,7 +22,6 @@ Represents an individual tile from a tiled scene data source.
 #include "qgstiledscenetile.h"
 %End
   public:
-
     QgsTiledSceneTile();
 %Docstring
 Constructor for an invalid tile.
@@ -40,13 +39,11 @@ Constructor for an valid tile.
     ~QgsTiledSceneTile();
 
     QgsTiledSceneTile( const QgsTiledSceneTile &other );
-%Docstring
-Copy constructor
-%End
 
     bool isValid() const;
 %Docstring
-Returns ``True`` if the tile is a valid tile (i.e. not default constructed).
+Returns ``True`` if the tile is a valid tile (i.e. not default
+constructed).
 %End
 
     long long id() const;
@@ -58,8 +55,9 @@ Returns the tile's unique ID.
 %Docstring
 Returns the tile's refinement process.
 
-Refinement determines the process by which a lower resolution parent tile's
-content is handled when its higher resolution children are also included.
+Refinement determines the process by which a lower resolution parent
+tile's content is handled when its higher resolution children are also
+included.
 
 .. seealso:: :py:func:`setRefinementProcess`
 %End
@@ -68,8 +66,9 @@ content is handled when its higher resolution children are also included.
 %Docstring
 Sets the tile's refinement ``process``.
 
-Refinement determines the process by which a lower resolution parent tile's
-content is handled when its higher resolution children are also included.
+Refinement determines the process by which a lower resolution parent
+tile's content is handled when its higher resolution children are also
+included.
 
 .. seealso:: :py:func:`refinementProcess`
 %End
@@ -97,10 +96,12 @@ Sets the tile's ``transform``.
 
     const QgsMatrix4x4 *transform() const;
 %Docstring
-Returns the tile's transform. May be ``None`` if no transform is associated with the tile.
+Returns the tile's transform. May be ``None`` if no transform is
+associated with the tile.
 
-This represents the transformation which must be applied to all geometries from the tile
-in order to transform them to the dataset's coordinate reference system.
+This represents the transformation which must be applied to all
+geometries from the tile in order to transform them to the dataset's
+coordinate reference system.
 
 .. seealso:: :py:func:`transform`
 %End
@@ -121,32 +122,32 @@ Sets the ``resources`` ``attached`` to the tile.
 
     double geometricError() const;
 %Docstring
-Returns the tile's geometric error, which is the error, in scene CRS units, of the tile's
-simplified representation of its source geometry.
+Returns the tile's geometric error, which is the error, in meters, of
+the tile's simplified representation of its source geometry.
 
 .. seealso:: :py:func:`setGeometricError`
 %End
 
     void setGeometricError( double error );
 %Docstring
-Sets the tile's geometric ``error``, which is the error, in scene CRS units, of the tile's
-simplified representation of its source geometry.
+Sets the tile's geometric ``error``, which is the error, in meters, of
+the tile's simplified representation of its source geometry.
 
 .. seealso:: :py:func:`geometricError`
 %End
 
     QUrl baseUrl() const;
 %Docstring
-Returns the tile's base URL. If this tile's resources are relative paths, they would
-get resolved against this URL.
+Returns the tile's base URL. If this tile's resources are relative
+paths, they would get resolved against this URL.
 
 .. seealso:: :py:func:`setBaseUrl`
 %End
 
     void setBaseUrl( const QUrl &baseUrl );
 %Docstring
-Sets the tile's base URL. If this tile's resources are relative paths, they would
-get resolved against this URL.
+Sets the tile's base URL. If this tile's resources are relative paths,
+they would get resolved against this URL.
 
 .. seealso:: :py:func:`baseUrl`
 %End
@@ -172,5 +173,5 @@ Sets additional ``metadata`` attached to the tile.
  *                                                                      *
  * src/core/tiledscene/qgstiledscenetile.h                              *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/

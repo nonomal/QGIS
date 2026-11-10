@@ -23,6 +23,9 @@
 #include "qgssensorwidget.h"
 
 #include <QIcon>
+#include <QString>
+
+using namespace Qt::StringLiterals;
 
 /**
  * \ingroup gui
@@ -37,7 +40,6 @@
 class GUI_EXPORT QgsSensorAbstractGuiMetadata
 {
   public:
-
     /**
      * Constructor for QgsSensorAbstractGuiMetadata with the specified class \a type.
      *
@@ -63,7 +65,7 @@ class GUI_EXPORT QgsSensorAbstractGuiMetadata
     /**
      * Returns an icon representing creation of the sensor type.
      */
-    virtual QIcon creationIcon() const { return QgsApplication::getThemeIcon( QStringLiteral( "/mSensor.svg" ) ); }
+    virtual QIcon creationIcon() const { return QgsApplication::getThemeIcon( u"/mSensor.svg"_s ); }
 
     /*
      * IMPORTANT: While it seems like /Factory/ would be the correct annotations here, that's not
@@ -83,18 +85,24 @@ class GUI_EXPORT QgsSensorAbstractGuiMetadata
     /**
      * Creates a configuration widget for an \a sensor of this type. Can return NULLPTR if no configuration GUI is required.
      */
-    virtual QgsAbstractSensorWidget *createSensorWidget( QgsAbstractSensor *sensor ) SIP_TRANSFERBACK { Q_UNUSED( sensor ) return nullptr; }
+    virtual QgsAbstractSensorWidget *createSensorWidget( QgsAbstractSensor *sensor ) SIP_TRANSFERBACK
+    {
+      Q_UNUSED( sensor )
+      return nullptr;
+    }
 
     /**
      * Creates an instance of the corresponding sensor type.
      */
-    virtual QgsAbstractSensor *createSensor( QObject *parent ) SIP_TRANSFERBACK { Q_UNUSED( parent ) return nullptr; }
+    virtual QgsAbstractSensor *createSensor( QObject *parent ) SIP_TRANSFERBACK
+    {
+      Q_UNUSED( parent )
+      return nullptr;
+    }
 
   private:
-
     QString mType;
     QString mVisibleName;
-
 };
 
 //! Sensor configuration widget creation function
@@ -110,16 +118,13 @@ typedef std::function<QgsAbstractSensorWidget *( QgsAbstractSensor *sensor )> Qg
 class GUI_EXPORT QgsSensorGuiMetadata : public QgsSensorAbstractGuiMetadata
 {
   public:
-
     /**
      * Constructor for QgsSensorGuiMetadata with the specified class \a type
      * and \a creationIcon, and function pointers for the configuration widget creation function.
      *
      * \a visibleName should be set to a translated, user visible name identifying the corresponding sensor.
      */
-    QgsSensorGuiMetadata( const QString &type, const QString &visibleName, const QIcon &creationIcon,
-                          const QgsSensorWidgetFunc &pfWidget = nullptr,
-                          const QgsSensorCreateFunc &pfCreateFunc = nullptr )
+    QgsSensorGuiMetadata( const QString &type, const QString &visibleName, const QIcon &creationIcon, const QgsSensorWidgetFunc &pfWidget = nullptr, const QgsSensorCreateFunc &pfCreateFunc = nullptr )
       : QgsSensorAbstractGuiMetadata( type, visibleName )
       , mIcon( creationIcon )
       , mWidgetFunc( pfWidget )
@@ -155,11 +160,9 @@ class GUI_EXPORT QgsSensorGuiMetadata : public QgsSensorAbstractGuiMetadata
     QgsAbstractSensor *createSensor( QObject *parent ) override { return mCreateFunc ? mCreateFunc( parent ) : nullptr; }
 
   protected:
-
     QIcon mIcon;
     QgsSensorWidgetFunc mWidgetFunc = nullptr;
     QgsSensorCreateFunc mCreateFunc = nullptr;
-
 };
 
 #endif
@@ -182,7 +185,6 @@ class GUI_EXPORT QgsSensorGuiRegistry : public QObject
     Q_OBJECT
 
   public:
-
     /**
      * Creates a new empty sensor GUI registry.
      *
@@ -192,9 +194,7 @@ class GUI_EXPORT QgsSensorGuiRegistry : public QObject
     QgsSensorGuiRegistry( QObject *parent = nullptr );
     ~QgsSensorGuiRegistry() override;
 
-    //! QgsSensorGuiRegistry cannot be copied.
     QgsSensorGuiRegistry( const QgsSensorGuiRegistry &rh ) = delete;
-    //! QgsSensorGuiRegistry cannot be copied.
     QgsSensorGuiRegistry &operator=( const QgsSensorGuiRegistry &rh ) = delete;
 
     /**
@@ -256,16 +256,11 @@ class GUI_EXPORT QgsSensorGuiRegistry : public QObject
     void sensorAdded( const QString &type, const QString &name );
 
   private:
-
 #ifdef SIP_RUN
     QgsSensorGuiRegistry( const QgsSensorGuiRegistry &rh );
 #endif
 
     QMap<QString, QgsSensorAbstractGuiMetadata *> mMetadata;
-
 };
 
 #endif //QGSSENSORGUIREGISTRY_H
-
-
-

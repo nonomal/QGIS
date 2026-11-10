@@ -15,37 +15,36 @@
 ***************************************************************************
 """
 
-__author__ = 'Matteo Ghetta'
-__date__ = 'March 2018'
-__copyright__ = '(C) 2018, Matteo Ghetta'
+__author__ = "Matteo Ghetta"
+__date__ = "March 2018"
+__copyright__ = "(C) 2018, Matteo Ghetta"
 
 import os
-import codecs
 
+from qgis.gui import QgsProcessingToolboxAction
 from qgis.PyQt.QtCore import QCoreApplication
-
 from qgis.utils import iface
-
-from processing.gui.ToolboxAction import ToolboxAction
 
 from processing.script.ScriptEditorDialog import ScriptEditorDialog
 
 
-class AddScriptFromTemplateAction(ToolboxAction):
-
+class AddScriptFromTemplateAction(QgsProcessingToolboxAction):
     def __init__(self):
-        self.name = QCoreApplication.translate("AddScriptFromTemplate", "Create New Script from Template…")
-        self.group = self.tr("Tools")
+        super().__init__(
+            QCoreApplication.translate(
+                "AddScriptFromTemplate", "Create New Script from Template…"
+            ),
+            QCoreApplication.translate("ToolboxAction", "Tools"),
+        )
 
-    def execute(self):
+    def trigger(self, context):
         dlg = ScriptEditorDialog(parent=iface.mainWindow())
 
         pluginPath = os.path.split(os.path.dirname(__file__))[0]
-        templatePath = os.path.join(
-            pluginPath, 'script', 'ScriptTemplate.py')
+        templatePath = os.path.join(pluginPath, "script", "ScriptTemplate.py")
 
-        with codecs.open(templatePath, 'r', encoding='utf-8') as f:
+        with open(templatePath, encoding="utf-8") as f:
             templateTxt = f.read()
-            dlg.editor.setText(templateTxt)
+            dlg.codeEditor().setText(templateTxt)
 
         dlg.show()

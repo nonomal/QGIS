@@ -18,8 +18,8 @@
 
 #include "ui_qgsvaluemapconfigdlgbase.h"
 
-#include "qgseditorconfigwidget.h"
 #include "qgis_gui.h"
+#include "qgseditorconfigwidget.h"
 
 class QComboBox;
 
@@ -28,10 +28,11 @@ SIP_NO_FILE
 /**
  * \ingroup gui
  * \class QgsValueMapConfigDlg
+ * \brief Configuration widget for value map widgets.
  * \note not available in Python bindings
  */
-
-class GUI_EXPORT QgsValueMapConfigDlg : public QgsEditorConfigWidget, private Ui::QgsValueMapWidget
+class GUI_EXPORT QgsValueMapConfigDlg : public QgsEditorConfigWidget,
+                                        private Ui::QgsValueMapWidget
 {
     Q_OBJECT
 
@@ -78,6 +79,14 @@ class GUI_EXPORT QgsValueMapConfigDlg : public QgsEditorConfigWidget, private Ui
   private:
     void setRow( int row, const QString &value, const QString &description );
 
+    /**
+     * Validates a value against the maximum allowed field length and trims it is necessary.
+     * \param value
+     * \return the validated field value trimmed if necessary
+     */
+    QString checkValueLength( const QString &value );
+
+
   private slots:
     void copySelectionToClipboard();
     void vCellChanged( int row, int column );
@@ -85,6 +94,8 @@ class GUI_EXPORT QgsValueMapConfigDlg : public QgsEditorConfigWidget, private Ui
     void removeSelectedButtonPushed();
     void loadFromLayerButtonPushed();
     void loadFromCSVButtonPushed();
+
+    friend class TestQgsValueMapConfigDlg;
 };
 
 #endif // QGSVALUEMAPCONFIGDLG_H

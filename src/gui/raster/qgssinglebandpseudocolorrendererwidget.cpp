@@ -16,35 +16,33 @@
  ***************************************************************************/
 
 #include "qgssinglebandpseudocolorrendererwidget.h"
-#include "qgssinglebandpseudocolorrenderer.h"
-#include "qgsrasterlayer.h"
-#include "qgsrasterdataprovider.h"
-#include "qgsrastershader.h"
-#include "qgsrasterminmaxwidget.h"
-#include "qgsdoublevalidator.h"
-#include "qgstreewidgetitem.h"
-#include "qgssettings.h"
-#include "qgsmapcanvas.h"
-#include "qgsguiutils.h"
 
-// for color ramps - todo add rasterStyle and refactor raster vs. vector ramps
-#include "qgsstyle.h"
-#include "qgscolorramp.h"
-#include "qgscolorrampbutton.h"
-#include "qgscolordialog.h"
+#include "qgsdoublevalidator.h"
+#include "qgsguiutils.h"
+#include "qgsmapcanvas.h"
+#include "qgsrasterdataprovider.h"
+#include "qgsrasterlayer.h"
+#include "qgsrasterminmaxwidget.h"
+#include "qgsrastershader.h"
+#include "qgssettings.h"
+#include "qgssinglebandpseudocolorrenderer.h"
 
 #include <QCursor>
-#include <QPushButton>
-#include <QInputDialog>
 #include <QFileDialog>
+#include <QInputDialog>
 #include <QMenu>
 #include <QMessageBox>
+#include <QPushButton>
+#include <QString>
 #include <QTextStream>
 #include <QTreeView>
 
+#include "moc_qgssinglebandpseudocolorrendererwidget.cpp"
+
+using namespace Qt::StringLiterals;
+
 QgsSingleBandPseudoColorRendererWidget::QgsSingleBandPseudoColorRendererWidget( QgsRasterLayer *layer, const QgsRectangle &extent )
   : QgsRasterRendererWidget( layer, extent )
-  , mMinMaxOrigin( 0 )
 {
   const QgsSettings settings;
 
@@ -93,9 +91,9 @@ QgsSingleBandPseudoColorRendererWidget::QgsSingleBandPseudoColorRendererWidget( 
   if ( mMinLineEdit->text().isEmpty() || mMaxLineEdit->text().isEmpty() )
   {
     QgsRasterMinMaxOrigin minMaxOrigin = mMinMaxWidget->minMaxOrigin();
-    if ( minMaxOrigin.limits() == QgsRasterMinMaxOrigin::None )
+    if ( minMaxOrigin.limits() == Qgis::RasterRangeLimit::NotSet )
     {
-      minMaxOrigin.setLimits( QgsRasterMinMaxOrigin::MinMax );
+      minMaxOrigin.setLimits( Qgis::RasterRangeLimit::MinimumMaximum );
       mMinMaxWidget->setFromMinMaxOrigin( minMaxOrigin );
     }
     mMinMaxWidget->doComputations();
@@ -131,7 +129,10 @@ void QgsSingleBandPseudoColorRendererWidget::doComputations()
   mMinMaxWidget->doComputations();
 }
 
-QgsRasterMinMaxWidget *QgsSingleBandPseudoColorRendererWidget::minMaxWidget() { return mMinMaxWidget; }
+QgsRasterMinMaxWidget *QgsSingleBandPseudoColorRendererWidget::minMaxWidget()
+{
+  return mMinMaxWidget;
+}
 
 void QgsSingleBandPseudoColorRendererWidget::setMapCanvas( QgsMapCanvas *canvas )
 {
@@ -142,11 +143,11 @@ void QgsSingleBandPseudoColorRendererWidget::setMapCanvas( QgsMapCanvas *canvas 
 
 void QgsSingleBandPseudoColorRendererWidget::setFromRenderer( const QgsRasterRenderer *r )
 {
-  const QgsSingleBandPseudoColorRenderer *pr = dynamic_cast<const QgsSingleBandPseudoColorRenderer *>( r );
-  if ( pr )
+  bool hasSetColorRampShader = false;
+  if ( const QgsSingleBandPseudoColorRenderer *pr = dynamic_cast<const QgsSingleBandPseudoColorRenderer *>( r ) )
   {
     mBandComboBox->setBand( pr->inputBand() );
-    mMinMaxWidget->setBands( QList< int >() << pr->inputBand() );
+    mMinMaxWidget->setBands( QList<int>() << pr->inputBand() );
     mColorRampShaderWidget->setRasterBand( pr->inputBand() );
 
     // need to set min/max properties here because if we use the raster shader below,
@@ -155,20 +156,26 @@ void QgsSingleBandPseudoColorRendererWidget::setFromRenderer( const QgsRasterRen
     setLineEditValue( mMaxLineEdit, pr->classificationMax() );
     mMinMaxWidget->setFromMinMaxOrigin( pr->minMaxOrigin() );
 
-    const QgsRasterShader *rasterShader = pr->shader();
-    if ( rasterShader )
+    if ( const QgsRasterShader *rasterShader = pr->shader() )
     {
-      const QgsColorRampShader *colorRampShader = dynamic_cast<const QgsColorRampShader *>( rasterShader->rasterShaderFunction() );
-      if ( colorRampShader )
+      if ( const auto *colorRampShader = dynamic_cast<const QgsColorRampShader *>( rasterShader->rasterShaderFunction() ) )
       {
         mColorRampShaderWidget->setFromShader( *colorRampShader );
+        hasSetColorRampShader = true;
       }
     }
   }
   else
   {
-    mMinMaxWidget->setBands( QList< int >() << mBandComboBox->currentBand() );
+    mMinMaxWidget->setBands( QList<int>() << mBandComboBox->currentBand() );
     mColorRampShaderWidget->setRasterBand( mBandComboBox->currentBand() );
+  }
+
+  if ( !hasSetColorRampShader )
+  {
+    // set a default color ramp shader for the widget, so that the widget is nicely populated with a
+    // usable state to begin with
+    mColorRampShaderWidget->setFromShader( QgsColorRampShader() );
   }
 }
 
@@ -183,7 +190,7 @@ void QgsSingleBandPseudoColorRendererWidget::bandChanged()
 
 void QgsSingleBandPseudoColorRendererWidget::loadMinMax( int bandNo, double min, double max )
 {
-  QgsDebugMsgLevel( QStringLiteral( "theBandNo = %1 min = %2 max = %3" ).arg( bandNo ).arg( min ).arg( max ), 2 );
+  QgsDebugMsgLevel( u"theBandNo = %1 min = %2 max = %3"_s.arg( bandNo ).arg( min ).arg( max ), 2 );
 
   const QString oldMinTextvalue = mMinLineEdit->text();
   const QString oldMaxTextvalue = mMaxLineEdit->text();

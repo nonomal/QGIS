@@ -17,12 +17,14 @@
 #define QGSATTRIBUTESFORMINITCODE_H
 
 // We don't want to expose this in the public API
-#define SIP_NO_FILE
 
 #include "ui_qgsattributesforminitcode.h"
 
 #include "qgis_gui.h"
+
 #include <QWidget>
+
+#define SIP_NO_FILE
 
 class QDialog;
 
@@ -31,7 +33,7 @@ class QDialog;
  * \class QgsAttributesFormInitCode
  * \brief A dialog for configuring the Python init code handling for attribute forms.
  */
-class GUI_EXPORT QgsAttributesFormInitCode: public QDialog, private Ui::QgsAttributesFormInitCode
+class GUI_EXPORT QgsAttributesFormInitCode : public QDialog, private Ui::QgsAttributesFormInitCode
 {
     Q_OBJECT
 

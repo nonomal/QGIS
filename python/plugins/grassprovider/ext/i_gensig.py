@@ -15,27 +15,30 @@
 ***************************************************************************
 """
 
-__author__ = 'Médéric Ribreux'
-__date__ = 'March 2016'
-__copyright__ = '(C) 2016, Médéric Ribreux'
+__author__ = "Médéric Ribreux"
+__date__ = "March 2016"
+__copyright__ = "(C) 2016, Médéric Ribreux"
 
 import os
-from .i import regroupRasters, exportSigFile
+
+from .i import exportSigFile, regroupRasters
 
 
 def processCommand(alg, parameters, context, feedback):
     # We need to extract the basename of the signature file
-    signatureFile = alg.parameterAsString(parameters, 'signaturefile', context)
+    signatureFile = alg.parameterAsString(parameters, "signaturefile", context)
     shortSigFile = os.path.basename(signatureFile)
-    parameters['signaturefile'] = shortSigFile
+    parameters["signaturefile"] = shortSigFile
 
     # Regroup rasters
-    group, subgroup = regroupRasters(alg, parameters, context, 'input', 'group', 'subgroup')
+    group, subgroup = regroupRasters(
+        alg, parameters, context, "input", "group", "subgroup"
+    )
     alg.processCommand(parameters, context, feedback)
 
     # Re-add signature files
-    parameters['signaturefile'] = signatureFile
-    alg.fileOutputs['signaturefile'] = signatureFile
+    parameters["signaturefile"] = signatureFile
+    alg.fileOutputs["signaturefile"] = signatureFile
 
     # Export signature file
     exportSigFile(alg, group, subgroup, signatureFile)

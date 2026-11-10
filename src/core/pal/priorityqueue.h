@@ -30,14 +30,15 @@
 #ifndef PAL_PRIORITYQUEUE_H
 #define PAL_PRIORITYQUEUE_H
 
-#define SIP_NO_FILE
-
 
 #include <iostream>
+#include <memory>
 
-#define LEFT(x) (2*x+1)
-#define RIGHT(x) (2*x+2)
-#define PARENT(x) ((x-1)/2)
+#define SIP_NO_FILE
+
+#define LEFT( x ) ( 2 * x + 1 )
+#define RIGHT( x ) ( 2 * x + 2 )
+#define PARENT( x ) ( ( x - 1 ) / 2 )
 
 
 namespace pal
@@ -51,9 +52,7 @@ namespace pal
    */
   class PriorityQueue
   {
-
     public:
-
       /**
        * \brief Create a priority queue of max size n
        * \\param n max size of the queuet
@@ -63,9 +62,7 @@ namespace pal
       PriorityQueue( int n, int maxId, bool min );
       ~PriorityQueue();
 
-      //! PriorityQueue cannot be copied.
       PriorityQueue( const PriorityQueue & ) = delete;
-      //! PriorityQueue cannot be copied.
       PriorityQueue &operator=( const PriorityQueue & ) = delete;
 
       void print();
@@ -90,18 +87,18 @@ namespace pal
 
 
       int getId( int key ) const;
-    private:
 
-      int size;
+    private:
+      int size = 0;
       int maxsize;
       int maxId;
-      int *heap = nullptr;
-      double *p = nullptr;
-      int *pos = nullptr;
+      std::unique_ptr<int[]> heap;
+      std::unique_ptr<double[]> p;
+      std::unique_ptr<int[]> pos;
 
       bool ( *greater )( double l, double r );
   };
 
-} // namespace
+} //namespace pal
 
 #endif

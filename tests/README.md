@@ -40,16 +40,18 @@ The test database must be initialized using the sql-scripts:
 
     tests/testdata/provider/testdata_pg*.sql
 
-They take care of activating PostGIS and creating some tables containing
-test data.
+They take care of creating database test users, activating PostGIS
+and creating some tables containing test data. For this reason the
+database role running them needs to have privileges to perform
+those operations.
 
 For convenience, a shell script is provided to create the database
 and initialize it as needed:
 
     tests/testdata/provider/testdata_pg.sh
 
-Some tests will attempt to create database users too and expect them to
-be allowed to connect using a password.
+Some tests will attempt to create database users too and expect them
+to be allowed to connect using a password.
 Most PostgreSQL installation by default use "ident" authentication
 model when connecting via unix sockets. Make sure the `qgis_test`
 service (or your `QGIS_PGTEST_DB` connection string) uses a connection
@@ -67,6 +69,28 @@ to bring up such server would be to (tweak $srcdir appropriately):
     export PGPASSWORD=docker
     tests/testdata/provider/testdata_pg.sh
     echo "${PGHOST} postgres # for qgis_test, docker" | sudo tee -a /etc/hosts
+
+## Local badssl server
+
+badssl.com is used in some tests and is really unstable. If your test requires it, prefer setting up a local instance if you want to reproduce like it's done in CI. To do so, follow these instructions
+
+```shell
+docker build -t badssl .
+docker run -d -p 4442:4442 -p 4443:4443 -p 4444:4444 -p 4445:4445 --name badssl badssl
+curl -XGET http://badssl:4442/ca.crt -o ca.crt
+
+# On Debian/Ubuntu ...
+sudo cp ca.crt /usr/local/share/ca-certificates/badssl-ca.crt
+sudo update-ca-certificates
+
+# On fedora
+cp ca.crt /etc/pki/ca-trust/source/anchors/
+update-ca-trust
+
+export QGIS_BADSSL_URL_SELFSIGNED=https://badssl:4443
+export QGIS_BADSSL_URL_EXPIRED=https://badssl:4444
+export QGIS_BADSSL_URL_UNTRUSTED=https://badssl:4445
+```
 
 
 # Running the tests
@@ -130,6 +154,16 @@ with something like this (tweak $builddir and $srcdir as appropriate)
    TestQgsVectorLayer.testOverwriteLayer
 ```
 
+A convenient way to set all the variables used in the above snippet
+automatically is by sourcing the tests/env.sh script in build dir,
+for example:
+
+```
+source build/tests/env.sh
+python ${srcdir}/tests/src/python/test_provider_postgres.py \
+  TestPyQgsPostgresProvider.testExtent
+````
+
 #### Running python tests in GDB
 
 First find out the required environment variables by running the test outside
@@ -174,5 +208,3 @@ WCS testing information can be found in:
 About benchmark tests you can read:
 
     ${TOP_SRCDIR}/tests/bench/README
-
-

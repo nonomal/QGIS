@@ -15,19 +15,29 @@
 
 #include "qgssimplelinematerialwidget.h"
 
-#include "qgssimplelinematerialsettings.h"
 #include "qgis.h"
+#include "qgssimplelinematerialsettings.h"
+
+#include <QString>
+
+#include "moc_qgssimplelinematerialwidget.cpp"
+
+using namespace Qt::StringLiterals;
 
 QgsSimpleLineMaterialWidget::QgsSimpleLineMaterialWidget( QWidget *parent )
   : QgsMaterialSettingsWidget( parent )
 {
   setupUi( this );
+  setPreviewVisible( false );
+  mPreviewWidget->setMaterialType( u"simpleline"_s );
 
   QgsSimpleLineMaterialSettings defaultMaterial;
   setSettings( &defaultMaterial, nullptr );
 
   connect( btnAmbient, &QgsColorButton::colorChanged, this, &QgsSimpleLineMaterialWidget::changed );
   connect( mAmbientDataDefinedButton, &QgsPropertyOverrideButton::changed, this, &QgsSimpleLineMaterialWidget::changed );
+
+  connect( this, &QgsSimpleLineMaterialWidget::changed, this, &QgsSimpleLineMaterialWidget::updatePreview );
 }
 
 QgsMaterialSettingsWidget *QgsSimpleLineMaterialWidget::create()
@@ -37,23 +47,51 @@ QgsMaterialSettingsWidget *QgsSimpleLineMaterialWidget::create()
 
 void QgsSimpleLineMaterialWidget::setSettings( const QgsAbstractMaterialSettings *settings, QgsVectorLayer *layer )
 {
-  const QgsSimpleLineMaterialSettings *lineMaterial = dynamic_cast< const QgsSimpleLineMaterialSettings * >( settings );
+  const QgsSimpleLineMaterialSettings *lineMaterial = dynamic_cast<const QgsSimpleLineMaterialSettings *>( settings );
   if ( !lineMaterial )
     return;
 
   btnAmbient->setColor( lineMaterial->ambient() );
 
   mPropertyCollection = settings->dataDefinedProperties();
-  mAmbientDataDefinedButton->init( static_cast< int >( QgsAbstractMaterialSettings::Property::Ambient ), mPropertyCollection, settings->propertyDefinitions(), layer, true );
+  mAmbientDataDefinedButton->init( static_cast<int>( QgsAbstractMaterialSettings::Property::Ambient ), mPropertyCollection, settings->propertyDefinitions(), layer, true );
+
+  updatePreview();
 }
 
-QgsAbstractMaterialSettings *QgsSimpleLineMaterialWidget::settings()
+std::unique_ptr<QgsAbstractMaterialSettings> QgsSimpleLineMaterialWidget::settings()
 {
-  std::unique_ptr< QgsSimpleLineMaterialSettings > m = std::make_unique< QgsSimpleLineMaterialSettings >();
+  auto m = std::make_unique<QgsSimpleLineMaterialSettings>();
   m->setAmbient( btnAmbient->color() );
 
   mPropertyCollection.setProperty( QgsAbstractMaterialSettings::Property::Ambient, mAmbientDataDefinedButton->toProperty() );
   m->setDataDefinedProperties( mPropertyCollection );
 
-  return m.release();
+  return m;
 }
+
+void QgsSimpleLineMaterialWidget::setPreviewVisible( bool visible )
+{
+  mPreviewWidget->setVisible( visible );
+  mGridLayout->setColumnStretch( 0, visible ? 1 : 0 );
+  if ( !visible )
+  {
+    mVerticalSpacer->changeSize( 0, 0, QSizePolicy::Fixed, QSizePolicy::Fixed );
+  }
+  else
+  {
+    mVerticalSpacer->changeSize( 20, 40, QSizePolicy::Minimum, QSizePolicy::Expanding );
+  }
+  updatePreview();
+}
+
+void QgsSimpleLineMaterialWidget::updatePreview()
+{
+  if ( mPreviewWidget->isHidden() )
+    return;
+  const std::unique_ptr<QgsAbstractMaterialSettings> newSettings( settings() );
+  mPreviewWidget->updatePreview( newSettings.get() );
+}
+
+void QgsSimpleLineMaterialWidget::updateWidgetVisibility()
+{}

@@ -16,16 +16,21 @@
  ***************************************************************************/
 
 #include "qgsalgorithmtessellate.h"
-#include "qgstessellator.h"
+
+#include "qgsgeos.h"
 #include "qgsmultipolygon.h"
 #include "qgspolygon.h"
-#include <geos_c.h>
+#include "qgstessellator.h"
+
+#include <QString>
+
+using namespace Qt::StringLiterals;
 
 ///@cond PRIVATE
 
 QString QgsTessellateAlgorithm::name() const
 {
-  return QStringLiteral( "tessellate" );
+  return u"tessellate"_s;
 }
 
 QString QgsTessellateAlgorithm::displayName() const
@@ -45,7 +50,7 @@ QString QgsTessellateAlgorithm::group() const
 
 QString QgsTessellateAlgorithm::groupId() const
 {
-  return QStringLiteral( "vectorgeometry" );
+  return u"vectorgeometry"_s;
 }
 
 QString QgsTessellateAlgorithm::outputName() const
@@ -66,13 +71,18 @@ Qgis::WkbType QgsTessellateAlgorithm::outputWkbType( Qgis::WkbType inputWkbType 
 QString QgsTessellateAlgorithm::shortHelpString() const
 {
   return QObject::tr( "This algorithm tessellates a polygon geometry layer, dividing the geometries into triangular components." )
-         + QStringLiteral( "\n\n" )
+         + u"\n\n"_s
          + QObject::tr( "The output layer consists of multipolygon geometries for each input feature, with each multipolygon consisting of multiple triangle component polygons." );
+}
+
+QString QgsTessellateAlgorithm::shortDescription() const
+{
+  return QObject::tr( "Tessellates a polygon geometry layer, dividing the geometries into triangular components." );
 }
 
 QList<int> QgsTessellateAlgorithm::inputLayerTypes() const
 {
-  return QList<int>() << static_cast< int >( Qgis::ProcessingSourceType::VectorPolygon );
+  return QList<int>() << static_cast<int>( Qgis::ProcessingSourceType::VectorPolygon );
 }
 
 QgsTessellateAlgorithm *QgsTessellateAlgorithm::createInstance() const
@@ -91,7 +101,7 @@ QgsFeatureList QgsTessellateAlgorithm::processFeature( const QgsFeature &feature
     {
       const QgsGeometry inputGeometry = f.geometry();
       bool tessellationComplete = false;
-#if (GEOS_VERSION_MAJOR==3 && GEOS_VERSION_MINOR>=11) || GEOS_VERSION_MAJOR>3
+#if GEOS_VERSION_NUM >= GEOS_COMPUTE_VERSION( 3, 11, 0 )
       if ( !inputGeometry.constGet()->is3D() )
       {
         // on supported GEOS versions we prefer to use GEOS GEOSConstrainedDelaunayTriangulation
@@ -121,20 +131,21 @@ QgsFeatureList QgsTessellateAlgorithm::processFeature( const QgsFeature &feature
       {
         // 3D case, or 2D case with unsupported GEOS version -- use less stable poly2tri backend
         const QgsRectangle bounds = f.geometry().boundingBox();
-        QgsTessellator t( bounds, false );
+        QgsTessellator t;
+        t.setBounds( bounds );
 
         if ( f.geometry().isMultipart() )
         {
-          const QgsMultiSurface *ms = qgsgeometry_cast< const QgsMultiSurface * >( f.geometry().constGet() );
+          const QgsMultiSurface *ms = qgsgeometry_cast<const QgsMultiSurface *>( f.geometry().constGet() );
           for ( int i = 0; i < ms->numGeometries(); ++i )
           {
-            const std::unique_ptr< QgsPolygon > p( qgsgeometry_cast< QgsPolygon * >( ms->geometryN( i )->segmentize() ) );
+            const std::unique_ptr<QgsPolygon> p( qgsgeometry_cast<QgsPolygon *>( ms->geometryN( i )->segmentize() ) );
             t.addPolygon( *p, 0 );
           }
         }
         else
         {
-          const std::unique_ptr< QgsPolygon > p( qgsgeometry_cast< QgsPolygon * >( f.geometry().constGet()->segmentize() ) );
+          const std::unique_ptr<QgsPolygon> p( qgsgeometry_cast<QgsPolygon *>( f.geometry().constGet()->segmentize() ) );
           t.addPolygon( *p, 0 );
         }
         QgsGeometry g( t.asMultiPolygon() );
@@ -165,5 +176,3 @@ QgsFeatureList QgsTessellateAlgorithm::processFeature( const QgsFeature &feature
 }
 
 ///@endcond
-
-

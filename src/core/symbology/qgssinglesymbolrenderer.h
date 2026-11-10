@@ -15,8 +15,8 @@
 #ifndef QGSSINGLESYMBOLRENDERER_H
 #define QGSSINGLESYMBOLRENDERER_H
 
-#include "qgis_core.h"
 #include "qgis.h"
+#include "qgis_core.h"
 #include "qgsrenderer.h"
 
 class QgsDataDefinedSizeLegend;
@@ -25,11 +25,11 @@ class QgsSymbol;
 /**
  * \ingroup core
  * \class QgsSingleSymbolRenderer
+ * \brief A feature renderer which renders all features with the same symbol.
  */
 class CORE_EXPORT QgsSingleSymbolRenderer : public QgsFeatureRenderer
 {
   public:
-
     /**
      * Constructor for QgsSingleSymbolRenderer.
      *
@@ -39,6 +39,7 @@ class CORE_EXPORT QgsSingleSymbolRenderer : public QgsFeatureRenderer
     QgsSingleSymbolRenderer( QgsSymbol *symbol SIP_TRANSFER );
     ~QgsSingleSymbolRenderer() override;
 
+    Qgis::FeatureRendererFlags flags() const override;
     QgsSymbol *symbolForFeature( const QgsFeature &feature, QgsRenderContext &context ) const override;
     QgsSymbol *originalSymbolForFeature( const QgsFeature &feature, QgsRenderContext &context ) const override;
     void startRender( QgsRenderContext &context, const QgsFields &fields ) override;
@@ -62,8 +63,8 @@ class CORE_EXPORT QgsSingleSymbolRenderer : public QgsFeatureRenderer
     QString dump() const override;
 
     QgsSingleSymbolRenderer *clone() const override SIP_FACTORY;
-
-    void toSld( QDomDocument &doc, QDomElement &element, const QVariantMap &props = QVariantMap() ) const override;
+    Q_DECL_DEPRECATED void toSld( QDomDocument &doc, QDomElement &element, const QVariantMap &props = QVariantMap() ) const override SIP_DEPRECATED;
+    bool toSld( QDomDocument &doc, QDomElement &element, QgsSldExportContext &context ) const override;
 
     /**
      * Creates a new single symbol renderer from an SLD \a element.
@@ -72,7 +73,7 @@ class CORE_EXPORT QgsSingleSymbolRenderer : public QgsFeatureRenderer
      *
      * The caller takes ownership of the returned renderer.
      */
-    static QgsFeatureRenderer *createFromSld( QDomElement &element, Qgis::GeometryType geomType ) SIP_FACTORY;
+    static std::unique_ptr<QgsFeatureRenderer> createFromSld( QDomElement &element, Qgis::GeometryType geomType );
 
     QgsFeatureRenderer::Capabilities capabilities() override { return SymbolLevels; }
     QgsSymbolList symbols( QgsRenderContext &context ) const override;
@@ -82,7 +83,7 @@ class CORE_EXPORT QgsSingleSymbolRenderer : public QgsFeatureRenderer
      *
      * The caller takes ownership of the returned renderer.
      */
-    static QgsFeatureRenderer *create( QDomElement &element, const QgsReadWriteContext &context ) SIP_FACTORY;
+    static std::unique_ptr<QgsFeatureRenderer> create( QDomElement &element, const QgsReadWriteContext &context );
 
     QDomElement save( QDomDocument &doc, const QgsReadWriteContext &context ) override;
     QgsLegendSymbolList legendSymbolItems() const override;
@@ -94,7 +95,7 @@ class CORE_EXPORT QgsSingleSymbolRenderer : public QgsFeatureRenderer
      * Creates a new single symbol renderer from an existing \a renderer.
      * \returns a new renderer if the conversion was possible, otherwise NULLPTR.
      */
-    static QgsSingleSymbolRenderer *convertFromRenderer( const QgsFeatureRenderer *renderer ) SIP_FACTORY;
+    static std::unique_ptr<QgsSingleSymbolRenderer> convertFromRenderer( const QgsFeatureRenderer *renderer );
 
     /**
      * Configures appearance of legend when renderer is configured to use data-defined size for marker symbols.
@@ -122,7 +123,6 @@ class CORE_EXPORT QgsSingleSymbolRenderer : public QgsFeatureRenderer
     QgsSingleSymbolRenderer( const QgsSingleSymbolRenderer & );
     QgsSingleSymbolRenderer &operator=( const QgsSingleSymbolRenderer & );
 #endif
-
 };
 
 

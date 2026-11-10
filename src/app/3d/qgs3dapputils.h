@@ -16,17 +16,13 @@
 #ifndef QGS3DAPPUTILS_H
 #define QGS3DAPPUTILS_H
 
-#include <memory>
-
 class Qgs3DAppUtils
 {
   public:
-
     /**
      * Initializes 3D components belonging to the app library.
      */
     static void initialize();
-
 };
 
 #endif // QGS3DAPPUTILS_H

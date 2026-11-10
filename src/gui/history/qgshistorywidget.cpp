@@ -14,20 +14,30 @@
  ***************************************************************************/
 
 #include "qgshistorywidget.h"
+
 #include "qgsgui.h"
 #include "qgshistoryentrymodel.h"
 #include "qgshistoryentrynode.h"
+#include "qgsnative.h"
 #include "qgssettings.h"
 
+#include <QDesktopServices>
+#include <QFileInfo>
+#include <QMenu>
+#include <QString>
 #include <QTextBrowser>
 #include <QtGlobal>
-#include <QMenu>
+
+#include "moc_qgshistorywidget.cpp"
+
+using namespace Qt::StringLiterals;
 
 QgsHistoryWidget::QgsHistoryWidget( const QString &providerId, Qgis::HistoryProviderBackends backends, QgsHistoryProviderRegistry *registry, const QgsHistoryWidgetContext &context, QWidget *parent )
   : QgsPanelWidget( parent )
   , mContext( context )
 {
   setupUi( this );
+  mContext.setHistoryWidget( this );
 
   mModel = new QgsHistoryEntryModel( providerId, backends, registry, mContext, this );
   mProxyModel = new QgsHistoryEntryProxyModel( this );
@@ -50,12 +60,11 @@ QgsHistoryWidget::QgsHistoryWidget( const QString &providerId, Qgis::HistoryProv
   mTreeView->expand( firstGroup );
 
   QgsSettings settings;
-  mSplitter->restoreState( settings.value( QStringLiteral( "history/splitterState%1" ).arg( providerId ) ).toByteArray() );
+  mSplitter->restoreState( settings.value( u"history/splitterState%1"_s.arg( providerId ) ).toByteArray() );
 
-  connect( mSplitter, &QSplitter::splitterMoved, this, [providerId, this]
-  {
+  connect( mSplitter, &QSplitter::splitterMoved, this, [providerId, this] {
     QgsSettings settings;
-    settings.setValue( QStringLiteral( "history/splitterState%1" ).arg( providerId ), mSplitter->saveState() );
+    settings.setValue( u"history/splitterState%1"_s.arg( providerId ), mSplitter->saveState() );
   } );
 }
 
@@ -71,8 +80,10 @@ void QgsHistoryWidget::currentItemChanged( const QModelIndex &selected, const QM
       if ( !html.isEmpty() )
       {
         QTextBrowser *htmlBrowser = new QTextBrowser();
-        htmlBrowser->setOpenExternalLinks( true );
+        htmlBrowser->setOpenLinks( false );
         htmlBrowser->setHtml( html );
+        connect( htmlBrowser, &QTextBrowser::anchorClicked, this, &QgsHistoryWidget::urlClicked );
+
         newWidget = htmlBrowser;
       }
     }
@@ -113,7 +124,7 @@ void QgsHistoryWidget::showNodeContextMenu( const QPoint &pos )
 {
   if ( QgsHistoryEntryNode *node = mModel->index2node( mProxyModel->mapToSource( mTreeView->currentIndex() ) ) )
   {
-    QMenu *menu = new QMenu();
+    QMenu *menu = new QMenu( this );
 
     node->populateContextMenu( menu, mContext );
     if ( !menu->isEmpty() )
@@ -122,6 +133,15 @@ void QgsHistoryWidget::showNodeContextMenu( const QPoint &pos )
     }
     delete menu;
   }
+}
+
+void QgsHistoryWidget::urlClicked( const QUrl &url )
+{
+  const QFileInfo file( url.toLocalFile() );
+  if ( file.exists() && !file.isDir() )
+    QgsGui::nativePlatformInterface()->openFileExplorerAndSelectFile( url.toLocalFile() );
+  else
+    QDesktopServices::openUrl( url );
 }
 
 //
@@ -151,7 +171,7 @@ bool QgsHistoryEntryProxyModel::filterAcceptsRow( int source_row, const QModelIn
     return true;
 
   const QModelIndex sourceIndex = sourceModel()->index( source_row, 0, source_parent );
-  if ( QgsHistoryEntryNode *node = qobject_cast< QgsHistoryEntryModel * >( sourceModel() )->index2node( sourceIndex ) )
+  if ( QgsHistoryEntryNode *node = qobject_cast<QgsHistoryEntryModel *>( sourceModel() )->index2node( sourceIndex ) )
   {
     if ( !node->matchesString( mFilter ) )
     {

@@ -3,8 +3,10 @@
  *                                                                      *
  * src/core/qgsunsetattributevalue.h                                    *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/
+
+
 
 
 
@@ -21,15 +23,12 @@ Represents a default, "not-specified" value for a feature attribute.
 #include "qgsunsetattributevalue.h"
 %End
   public:
-
     QgsUnsetAttributeValue();
-%Docstring
-Constructor for a QgsUnsetAttributeValue.
-%End
 
     explicit QgsUnsetAttributeValue( const QString &defaultValueClause );
 %Docstring
-Constructor for a QgsUnsetAttributeValue, with the specified original provider's default value clause.
+Constructor for a QgsUnsetAttributeValue, with the specified original
+provider's default value clause.
 %End
 
     QString defaultValueClause() const;
@@ -51,7 +50,7 @@ Returns the original data provider's default value clause.
     sipRes = PyUnicode_FromString( str.toUtf8().constData() );
 %End
 
-    operator QVariant() const;
+      operator QVariant() const;
 
 };
 
@@ -59,9 +58,8 @@ Returns the original data provider's default value clause.
 
 bool operator==( const QgsUnsetAttributeValue &value, const QString &other );
 
+
 bool operator!=( const QgsUnsetAttributeValue &value, const QString &other );
-
-
 
 
 /************************************************************************
@@ -69,5 +67,5 @@ bool operator!=( const QgsUnsetAttributeValue &value, const QString &other );
  *                                                                      *
  * src/core/qgsunsetattributevalue.h                                    *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.py again   *
  ************************************************************************/

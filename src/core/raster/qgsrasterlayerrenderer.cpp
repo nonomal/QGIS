@@ -15,39 +15,49 @@
 
 #include "qgsrasterlayerrenderer.h"
 
+#include <memory>
+
+#include "qgsapplication.h"
+#include "qgselevationmap.h"
+#include "qgsexception.h"
+#include "qgsgdalutils.h"
+#include "qgsinterval.h"
+#include "qgsmapclippingutils.h"
 #include "qgsmessagelog.h"
+#include "qgspainting.h"
 #include "qgsrasterdataprovider.h"
 #include "qgsrasterdrawer.h"
 #include "qgsrasteriterator.h"
+#include "qgsrasterlabeling.h"
 #include "qgsrasterlayer.h"
-#include "qgsrasterprojector.h"
-#include "qgsrendercontext.h"
-#include "qgsrasterrenderer.h"
-#include "qgsexception.h"
-#include "qgsrasterlayertemporalproperties.h"
-#include "qgsmapclippingutils.h"
-#include "qgsrasterpipe.h"
-#include "qgselevationmap.h"
-#include "qgsgdalutils.h"
-#include "qgsrasterresamplefilter.h"
 #include "qgsrasterlayerelevationproperties.h"
-#include "qgsruntimeprofiler.h"
-#include "qgsapplication.h"
-#include "qgsrastertransparency.h"
+#include "qgsrasterlayertemporalproperties.h"
 #include "qgsrasterlayerutils.h"
-#include "qgsinterval.h"
-#include "qgsunittypes.h"
 #include "qgsrasternuller.h"
+#include "qgsrasterpipe.h"
+#include "qgsrasterprojector.h"
+#include "qgsrasterrenderer.h"
+#include "qgsrasterresamplefilter.h"
+#include "qgsrastertransparency.h"
+#include "qgsrendercontext.h"
+#include "qgsrenderedlayerstatistics.h"
+#include "qgsruntimeprofiler.h"
+#include "qgsthreadingutils.h"
+#include "qgsunittypes.h"
 
 #include <QElapsedTimer>
 #include <QPointer>
+#include <QString>
 #include <QThread>
+
+#include "moc_qgsrasterlayerrenderer.cpp"
+
+using namespace Qt::StringLiterals;
 
 ///@cond PRIVATE
 
 QgsRasterLayerRendererFeedback::QgsRasterLayerRendererFeedback( QgsRasterLayerRenderer *r )
   : mR( r )
-  , mMinimalPreviewInterval( 250 )
 {
   setRenderPartialOutput( r->renderContext()->testFlag( Qgis::RenderContextFlag::RenderPartialOutput ) );
 }
@@ -55,7 +65,7 @@ QgsRasterLayerRendererFeedback::QgsRasterLayerRendererFeedback( QgsRasterLayerRe
 void QgsRasterLayerRendererFeedback::onNewData()
 {
   if ( !renderPartialOutput() )
-    return;  // we were not asked for partial renders and we may not have a temporary image for overwriting...
+    return; // we were not asked for partial renders and we may not have a temporary image for overwriting...
 
   // update only once upon a time
   // (preview itself takes some time)
@@ -64,7 +74,7 @@ void QgsRasterLayerRendererFeedback::onNewData()
 
   // TODO: update only the area that got new data
 
-  QgsDebugMsgLevel( QStringLiteral( "new raster preview! %1" ).arg( mLastPreview.msecsTo( QTime::currentTime() ) ), 3 );
+  QgsDebugMsgLevel( u"new raster preview! %1"_s.arg( mLastPreview.msecsTo( QTime::currentTime() ) ), 3 );
   QElapsedTimer t;
   t.start();
   QgsRasterBlockFeedback feedback;
@@ -72,9 +82,9 @@ void QgsRasterLayerRendererFeedback::onNewData()
   feedback.setRenderPartialOutput( true );
   QgsRasterIterator iterator( mR->mPipe->last() );
   QgsRasterDrawer drawer( &iterator );
-  drawer.draw( *( mR->renderContext() ), mR->mRasterViewPort, &feedback );
+  drawer.draw( *( mR->renderContext() ), mR->mRasterViewPort.get(), &feedback );
   mR->mReadyToCompose = true;
-  QgsDebugMsgLevel( QStringLiteral( "total raster preview time: %1 ms" ).arg( t.elapsed() ), 3 );
+  QgsDebugMsgLevel( u"total raster preview time: %1 ms"_s.arg( t.elapsed() ), 3 );
   mLastPreview = QTime::currentTime();
 }
 
@@ -85,7 +95,8 @@ QgsRasterLayerRenderer::QgsRasterLayerRenderer( QgsRasterLayer *layer, QgsRender
   , mLayerName( layer->name() )
   , mLayerOpacity( layer->opacity() )
   , mProviderCapabilities( layer->dataProvider()->providerCapabilities() )
-  , mFeedback( new QgsRasterLayerRendererFeedback( this ) )
+  , mInterfaceCapabilities( layer->dataProvider()->capabilities() )
+  , mFeedback( std::make_unique<QgsRasterLayerRendererFeedback>( this ) )
   , mEnableProfile( rendererContext.flags() & Qgis::RenderContextFlag::RecordProfile )
 {
   mReadyToCompose = false;
@@ -100,30 +111,27 @@ QgsRasterLayerRenderer::QgsRasterLayerRenderer( QgsRasterLayer *layer, QgsRender
     // Rotation will be handled by QPainter later
     // TODO: provide a method of QgsMapToPixel to fetch map center
     //       in geographical units
-    const QgsPointXY center = mapToPixel.toMapCoordinates(
-                                static_cast<int>( mapToPixel.mapWidth() / 2.0 ),
-                                static_cast<int>( mapToPixel.mapHeight() / 2.0 )
-                              );
+    const QgsPointXY center = mapToPixel.toMapCoordinates( static_cast<int>( mapToPixel.mapWidth() / 2.0 ), static_cast<int>( mapToPixel.mapHeight() / 2.0 ) );
     mapToPixel.setMapRotation( 0, center.x(), center.y() );
   }
 
-  QgsRectangle myProjectedViewExtent;
-  QgsRectangle myProjectedLayerExtent;
+  QgsRectangle viewExtentInMapCrs;
+  QgsRectangle layerExtentInMapCrs;
 
   if ( rendererContext.coordinateTransform().isValid() )
   {
-    QgsDebugMsgLevel( QStringLiteral( "coordinateTransform set -> project extents." ), 4 );
-    if ( rendererContext.extent().xMinimum() == std::numeric_limits<double>::lowest() &&
-         rendererContext.extent().yMinimum() == std::numeric_limits<double>::lowest() &&
-         rendererContext.extent().xMaximum() == std::numeric_limits<double>::max() &&
-         rendererContext.extent().yMaximum() == std::numeric_limits<double>::max() )
+    QgsDebugMsgLevel( u"coordinateTransform set -> project extents."_s, 4 );
+    if ( rendererContext.extent().xMinimum() == std::numeric_limits<double>::lowest()
+         && rendererContext.extent().yMinimum() == std::numeric_limits<double>::lowest()
+         && rendererContext.extent().xMaximum() == std::numeric_limits<double>::max()
+         && rendererContext.extent().yMaximum() == std::numeric_limits<double>::max() )
     {
       // We get in this situation if the view CRS is geographical and the
       // extent goes beyond -180,-90,180,90. To avoid reprojection issues to the
       // layer CRS, then this dummy extent is returned by QgsMapRendererJob::reprojectToLayerExtent()
       // Don't try to reproject it now to view extent as this would return
       // a null rectangle.
-      myProjectedViewExtent = rendererContext.extent();
+      viewExtentInMapCrs = rendererContext.extent();
     }
     else
     {
@@ -131,12 +139,12 @@ QgsRasterLayerRenderer::QgsRasterLayerRenderer( QgsRasterLayer *layer, QgsRender
       {
         QgsCoordinateTransform ct = rendererContext.coordinateTransform();
         ct.setBallparkTransformsAreAppropriate( true );
-        myProjectedViewExtent = ct.transformBoundingBox( rendererContext.extent() );
+        viewExtentInMapCrs = rendererContext.mapExtent();
       }
       catch ( QgsCsException &cs )
       {
         QgsMessageLog::logMessage( QObject::tr( "Could not reproject view extent: %1" ).arg( cs.what() ), QObject::tr( "Raster" ) );
-        myProjectedViewExtent.setNull();
+        viewExtentInMapCrs.setNull();
       }
     }
 
@@ -144,34 +152,73 @@ QgsRasterLayerRenderer::QgsRasterLayerRenderer( QgsRasterLayer *layer, QgsRender
     {
       QgsCoordinateTransform ct = rendererContext.coordinateTransform();
       ct.setBallparkTransformsAreAppropriate( true );
-      myProjectedLayerExtent = ct.transformBoundingBox( layer->extent() );
+      layerExtentInMapCrs = ct.transformBoundingBox( layer->extent() );
     }
     catch ( QgsCsException &cs )
     {
       QgsMessageLog::logMessage( QObject::tr( "Could not reproject layer extent: %1" ).arg( cs.what() ), QObject::tr( "Raster" ) );
-      myProjectedLayerExtent.setNull();
+      layerExtentInMapCrs.setNull();
     }
   }
   else
   {
-    QgsDebugMsgLevel( QStringLiteral( "coordinateTransform not set" ), 4 );
-    myProjectedViewExtent = rendererContext.extent();
-    myProjectedLayerExtent = layer->extent();
+    QgsDebugMsgLevel( u"coordinateTransform not set"_s, 4 );
+    viewExtentInMapCrs = rendererContext.extent();
+    layerExtentInMapCrs = layer->extent();
   }
 
   // clip raster extent to view extent
-  QgsRectangle myRasterExtent = layer->ignoreExtents() ? myProjectedViewExtent : myProjectedViewExtent.intersect( myProjectedLayerExtent );
-  if ( myRasterExtent.isEmpty() )
+  QgsRectangle visibleExtentOfRasterInMapCrs = layer->ignoreExtents() ? viewExtentInMapCrs : viewExtentInMapCrs.intersect( layerExtentInMapCrs );
+  if ( visibleExtentOfRasterInMapCrs.isEmpty() )
   {
-    QgsDebugMsgLevel( QStringLiteral( "draw request outside view extent." ), 2 );
+    if ( rendererContext.coordinateTransform().isShortCircuited() )
+    {
+      // no point doing the fallback logic, we aren't using transforms
+
+      QgsDebugMsgLevel( u"draw request outside view extent."_s, 2 );
+      // nothing to do
+      return;
+    }
+
+    // fallback logic, try the inverse operation
+    // eg if we are trying to view a global layer in a small area local projection, then the transform of the
+    // map extent to the layer's local projection probably failed.
+    // So we'll try the opposite logic here, and see if we can first calculate the visible region in the
+    // layers extent, and then transform that small region back to the map's crs
+    try
+    {
+      QgsCoordinateTransform layerToMapTransform = rendererContext.coordinateTransform();
+      layerToMapTransform.setBallparkTransformsAreAppropriate( true );
+      const QgsRectangle viewExtentInLayerCrs = layerToMapTransform.transformBoundingBox( rendererContext.mapExtent(), Qgis::TransformDirection::Reverse );
+
+      const QgsRectangle visibleExtentInLayerCrs = layer->ignoreExtents() ? viewExtentInLayerCrs : viewExtentInLayerCrs.intersect( layer->extent() );
+      if ( visibleExtentInLayerCrs.isEmpty() )
+      {
+        QgsDebugMsgLevel( u"draw request outside view extent."_s, 2 );
+        // nothing to do
+        return;
+      }
+
+      visibleExtentOfRasterInMapCrs = layerToMapTransform.transformBoundingBox( visibleExtentInLayerCrs );
+    }
+    catch ( QgsCsException &cs )
+    {
+      QgsMessageLog::logMessage( QObject::tr( "Could not reproject layer extent: %1" ).arg( cs.what() ), QObject::tr( "Raster" ) );
+      return;
+    }
+  }
+
+  if ( visibleExtentOfRasterInMapCrs.isEmpty() )
+  {
+    QgsDebugMsgLevel( u"draw request outside view extent."_s, 2 );
     // nothing to do
     return;
   }
 
-  QgsDebugMsgLevel( "theViewExtent is " + rendererContext.extent().toString(), 4 );
-  QgsDebugMsgLevel( "myProjectedViewExtent is " + myProjectedViewExtent.toString(), 4 );
-  QgsDebugMsgLevel( "myProjectedLayerExtent is " + myProjectedLayerExtent.toString(), 4 );
-  QgsDebugMsgLevel( "myRasterExtent is " + myRasterExtent.toString(), 4 );
+  QgsDebugMsgLevel( "map extent in layer crs is " + rendererContext.extent().toString(), 4 );
+  QgsDebugMsgLevel( "map extent in map crs is " + viewExtentInMapCrs.toString(), 4 );
+  QgsDebugMsgLevel( "layer extent in map crs is " + layerExtentInMapCrs.toString(), 4 );
+  QgsDebugMsgLevel( "visible extent of raster in map crs is " + visibleExtentOfRasterInMapCrs.toString(), 4 );
 
   //
   // The first thing we do is set up the QgsRasterViewPort. This struct stores all the settings
@@ -180,9 +227,9 @@ QgsRasterLayerRenderer::QgsRasterLayerRenderer( QgsRasterLayer *layer, QgsRender
   //
   //this is not a class level member because every time the user pans or zooms
   //the contents of the rasterViewPort will change
-  mRasterViewPort = new QgsRasterViewPort();
+  mRasterViewPort = std::make_unique<QgsRasterViewPort>();
 
-  mRasterViewPort->mDrawnExtent = myRasterExtent;
+  mRasterViewPort->mDrawnExtent = visibleExtentOfRasterInMapCrs;
   if ( rendererContext.coordinateTransform().isValid() )
   {
     mRasterViewPort->mSrcCRS = layer->crs();
@@ -191,13 +238,13 @@ QgsRasterLayerRenderer::QgsRasterLayerRenderer( QgsRasterLayer *layer, QgsRender
   }
   else
   {
-    mRasterViewPort->mSrcCRS = QgsCoordinateReferenceSystem(); // will be invalid
+    mRasterViewPort->mSrcCRS = QgsCoordinateReferenceSystem();  // will be invalid
     mRasterViewPort->mDestCRS = QgsCoordinateReferenceSystem(); // will be invalid
   }
 
   // get dimensions of clipped raster image in device coordinate space (this is the size of the viewport)
-  mRasterViewPort->mTopLeftPoint = mapToPixel.transform( myRasterExtent.xMinimum(), myRasterExtent.yMaximum() );
-  mRasterViewPort->mBottomRightPoint = mapToPixel.transform( myRasterExtent.xMaximum(), myRasterExtent.yMinimum() );
+  mRasterViewPort->mTopLeftPoint = mapToPixel.transform( visibleExtentOfRasterInMapCrs.xMinimum(), visibleExtentOfRasterInMapCrs.yMaximum() );
+  mRasterViewPort->mBottomRightPoint = mapToPixel.transform( visibleExtentOfRasterInMapCrs.xMaximum(), visibleExtentOfRasterInMapCrs.yMinimum() );
 
   // align to output device grid, i.e. std::floor/ceil to integers
   // TODO: this should only be done if paint device is raster - screen, image
@@ -210,24 +257,22 @@ QgsRasterLayerRenderer::QgsRasterLayerRenderer( QgsRasterLayer *layer, QgsRender
   mRasterViewPort->mBottomRightPoint.setX( std::ceil( mRasterViewPort->mBottomRightPoint.x() ) );
   mRasterViewPort->mBottomRightPoint.setY( std::ceil( mRasterViewPort->mBottomRightPoint.y() ) );
   // recalc myRasterExtent to aligned values
-  myRasterExtent.set(
-    mapToPixel.toMapCoordinates( mRasterViewPort->mTopLeftPoint.x(),
-                                 mRasterViewPort->mBottomRightPoint.y() ),
-    mapToPixel.toMapCoordinates( mRasterViewPort->mBottomRightPoint.x(),
-                                 mRasterViewPort->mTopLeftPoint.y() )
+  visibleExtentOfRasterInMapCrs.set(
+    mapToPixel.toMapCoordinates( mRasterViewPort->mTopLeftPoint.x(), mRasterViewPort->mBottomRightPoint.y() ),
+    mapToPixel.toMapCoordinates( mRasterViewPort->mBottomRightPoint.x(), mRasterViewPort->mTopLeftPoint.y() )
   );
 
   //raster viewport top left / bottom right are already rounded to int
   mRasterViewPort->mWidth = static_cast<qgssize>( std::abs( mRasterViewPort->mBottomRightPoint.x() - mRasterViewPort->mTopLeftPoint.x() ) );
   mRasterViewPort->mHeight = static_cast<qgssize>( std::abs( mRasterViewPort->mBottomRightPoint.y() - mRasterViewPort->mTopLeftPoint.y() ) );
 
-  const double dpi = 25.4 * rendererContext.scaleFactor();
-  if ( mProviderCapabilities & QgsRasterDataProvider::DpiDependentData
-       && rendererContext.dpiTarget() >= 0.0 )
+  double dpi = 25.4 * rendererContext.scaleFactor();
+  if ( mProviderCapabilities & Qgis::RasterProviderCapability::DpiDependentData && rendererContext.dpiTarget() >= 0.0 )
   {
     const double dpiScaleFactor = rendererContext.dpiTarget() / dpi;
     mRasterViewPort->mWidth *= dpiScaleFactor;
     mRasterViewPort->mHeight *= dpiScaleFactor;
+    dpi = rendererContext.dpiTarget();
   }
   else
   {
@@ -238,21 +283,21 @@ QgsRasterLayerRenderer::QgsRasterLayerRenderer( QgsRasterLayer *layer, QgsRender
   //mapToPixel.mapUnitsPerPixel() is less then 1,
   //so we will just get the pixel data and then render these special cases differently in paintImageToCanvas()
 
-  QgsDebugMsgLevel( QStringLiteral( "mapUnitsPerPixel = %1" ).arg( mapToPixel.mapUnitsPerPixel() ), 3 );
-  QgsDebugMsgLevel( QStringLiteral( "mWidth = %1" ).arg( layer->width() ), 3 );
-  QgsDebugMsgLevel( QStringLiteral( "mHeight = %1" ).arg( layer->height() ), 3 );
-  QgsDebugMsgLevel( QStringLiteral( "myRasterExtent.xMinimum() = %1" ).arg( myRasterExtent.xMinimum() ), 3 );
-  QgsDebugMsgLevel( QStringLiteral( "myRasterExtent.xMaximum() = %1" ).arg( myRasterExtent.xMaximum() ), 3 );
-  QgsDebugMsgLevel( QStringLiteral( "myRasterExtent.yMinimum() = %1" ).arg( myRasterExtent.yMinimum() ), 3 );
-  QgsDebugMsgLevel( QStringLiteral( "myRasterExtent.yMaximum() = %1" ).arg( myRasterExtent.yMaximum() ), 3 );
+  QgsDebugMsgLevel( u"mapUnitsPerPixel = %1"_s.arg( mapToPixel.mapUnitsPerPixel() ), 3 );
+  QgsDebugMsgLevel( u"mWidth = %1"_s.arg( layer->width() ), 3 );
+  QgsDebugMsgLevel( u"mHeight = %1"_s.arg( layer->height() ), 3 );
+  QgsDebugMsgLevel( u"visibleExtentOfRasterInMapCrs.xMinimum() = %1"_s.arg( visibleExtentOfRasterInMapCrs.xMinimum() ), 3 );
+  QgsDebugMsgLevel( u"visibleExtentOfRasterInMapCrs.xMaximum() = %1"_s.arg( visibleExtentOfRasterInMapCrs.xMaximum() ), 3 );
+  QgsDebugMsgLevel( u"visibleExtentOfRasterInMapCrs.yMinimum() = %1"_s.arg( visibleExtentOfRasterInMapCrs.yMinimum() ), 3 );
+  QgsDebugMsgLevel( u"visibleExtentOfRasterInMapCrs.yMaximum() = %1"_s.arg( visibleExtentOfRasterInMapCrs.yMaximum() ), 3 );
 
-  QgsDebugMsgLevel( QStringLiteral( "mTopLeftPoint.x() = %1" ).arg( mRasterViewPort->mTopLeftPoint.x() ), 3 );
-  QgsDebugMsgLevel( QStringLiteral( "mBottomRightPoint.x() = %1" ).arg( mRasterViewPort->mBottomRightPoint.x() ), 3 );
-  QgsDebugMsgLevel( QStringLiteral( "mTopLeftPoint.y() = %1" ).arg( mRasterViewPort->mTopLeftPoint.y() ), 3 );
-  QgsDebugMsgLevel( QStringLiteral( "mBottomRightPoint.y() = %1" ).arg( mRasterViewPort->mBottomRightPoint.y() ), 3 );
+  QgsDebugMsgLevel( u"mTopLeftPoint.x() = %1"_s.arg( mRasterViewPort->mTopLeftPoint.x() ), 3 );
+  QgsDebugMsgLevel( u"mBottomRightPoint.x() = %1"_s.arg( mRasterViewPort->mBottomRightPoint.x() ), 3 );
+  QgsDebugMsgLevel( u"mTopLeftPoint.y() = %1"_s.arg( mRasterViewPort->mTopLeftPoint.y() ), 3 );
+  QgsDebugMsgLevel( u"mBottomRightPoint.y() = %1"_s.arg( mRasterViewPort->mBottomRightPoint.y() ), 3 );
 
-  QgsDebugMsgLevel( QStringLiteral( "mWidth = %1" ).arg( mRasterViewPort->mWidth ), 3 );
-  QgsDebugMsgLevel( QStringLiteral( "mHeight = %1" ).arg( mRasterViewPort->mHeight ), 3 );
+  QgsDebugMsgLevel( u"mWidth = %1"_s.arg( mRasterViewPort->mWidth ), 3 );
+  QgsDebugMsgLevel( u"mHeight = %1"_s.arg( mRasterViewPort->mHeight ), 3 );
 
   // /\/\/\ - added to handle zoomed-in rasters
 
@@ -262,15 +307,31 @@ QgsRasterLayerRenderer::QgsRasterLayerRenderer( QgsRasterLayer *layer, QgsRender
   layer->dataProvider()->setDpi( std::floor( dpi * rendererContext.devicePixelRatio() ) );
 
   // copy the whole raster pipe!
-  mPipe.reset( new QgsRasterPipe( *layer->pipe() ) );
+  mPipe = std::make_unique<QgsRasterPipe>( *layer->pipe() );
 
   QObject::connect( mPipe->provider(), &QgsRasterDataProvider::statusChanged, layer, &QgsRasterLayer::statusChanged );
   QgsRasterRenderer *rasterRenderer = mPipe->renderer();
-  if ( rasterRenderer
-       && !( rendererContext.flags() & Qgis::RenderContextFlag::RenderPreviewJob )
-       && !( rendererContext.flags() & Qgis::RenderContextFlag::Render3DMap ) )
+  if ( rasterRenderer && !( rendererContext.flags() & Qgis::RenderContextFlag::RenderPreviewJob ) && !( rendererContext.flags() & Qgis::RenderContextFlag::Render3DMap ) )
   {
-    layer->refreshRendererIfNeeded( rasterRenderer, rendererContext.extent() );
+    if ( rasterRenderer->needsRefresh( rendererContext.extent() ) )
+    {
+      QList<double> minValues;
+      QList<double> maxValues;
+      const QgsRasterMinMaxOrigin &minMaxOrigin = rasterRenderer->minMaxOrigin();
+      for ( const int bandIdx : rasterRenderer->usesBands() )
+      {
+        double min;
+        double max;
+        layer->computeMinMax( bandIdx, minMaxOrigin, minMaxOrigin.limits(), rendererContext.extent(), static_cast<int>( QgsRasterLayer::SAMPLE_SIZE ), min, max );
+        minValues.append( min );
+        maxValues.append( max );
+      }
+
+      rasterRenderer->refresh( rendererContext.extent(), minValues, maxValues );
+      QgsRenderedLayerStatistics *layerStatistics = new QgsRenderedLayerStatistics( layer->id(), minValues, maxValues );
+      layerStatistics->setBoundingBox( rendererContext.extent() );
+      appendRenderedItemDetails( layerStatistics );
+    }
   }
 
   mPipe->evaluateDataDefinedProperties( rendererContext.expressionContext() );
@@ -278,17 +339,11 @@ QgsRasterLayerRenderer::QgsRasterLayerRenderer( QgsRasterLayer *layer, QgsRender
   const QgsRasterLayerTemporalProperties *temporalProperties = qobject_cast< const QgsRasterLayerTemporalProperties * >( layer->temporalProperties() );
   const QgsRasterLayerElevationProperties *elevationProperties = qobject_cast<QgsRasterLayerElevationProperties *>( layer->elevationProperties() );
 
-  if ( ( temporalProperties->isActive() && renderContext()->isTemporal() )
-       || ( elevationProperties->hasElevation() && !renderContext()->zRange().isInfinite() ) )
+  if ( ( temporalProperties->isActive() && renderContext()->isTemporal() ) || ( elevationProperties->hasElevation() && !renderContext()->zRange().isInfinite() ) )
   {
     // temporal and/or elevation band filtering may be applicable
     bool matched = false;
-    const int matchedBand = QgsRasterLayerUtils::renderedBandForElevationAndTemporalRange(
-                              layer,
-                              rendererContext.temporalRange(),
-                              rendererContext.zRange(),
-                              matched
-                            );
+    const int matchedBand = QgsRasterLayerUtils::renderedBandForElevationAndTemporalRange( layer, rendererContext.temporalRange(), rendererContext.zRange(), matched );
     if ( matched && matchedBand > 0 )
     {
       mPipe->renderer()->setInputBand( matchedBand );
@@ -299,6 +354,7 @@ QgsRasterLayerRenderer::QgsRasterLayerRenderer( QgsRasterLayer *layer, QgsRender
   {
     switch ( temporalProperties->mode() )
     {
+      case Qgis::RasterTemporalMode::FixedDateTime:
       case Qgis::RasterTemporalMode::FixedTemporalRange:
       case Qgis::RasterTemporalMode::RedrawLayerOnly:
       case Qgis::RasterTemporalMode::FixedRangePerBand:
@@ -318,9 +374,16 @@ QgsRasterLayerRenderer::QgsRasterLayerRenderer( QgsRasterLayer *layer, QgsRender
 
           const QDateTime &offset = temporalProperties->temporalRepresentationOffset();
           const QgsInterval &scale = temporalProperties->temporalRepresentationScale();
-          const double adjustedLower = static_cast< double >( offset.msecsTo( rendererContext.temporalRange().begin() ) ) * QgsUnitTypes::fromUnitToUnitFactor( Qgis::TemporalUnit::Milliseconds, scale.originalUnit() ) / scale.originalDuration();
-          const double adjustedUpper = static_cast< double >( offset.msecsTo( rendererContext.temporalRange().end() ) ) * QgsUnitTypes::fromUnitToUnitFactor( Qgis::TemporalUnit::Milliseconds, scale.originalUnit() ) / scale.originalDuration();
-          transparentPixels.append( QgsRasterTransparency::TransparentSingleValuePixel( std::numeric_limits<double>::lowest(), adjustedLower, 0, true, !rendererContext.zRange().includeLower() ) );
+          const double adjustedLower = static_cast< double >( offset.msecsTo( rendererContext.temporalRange().begin() ) )
+                                       * QgsUnitTypes::fromUnitToUnitFactor( Qgis::TemporalUnit::Milliseconds, scale.originalUnit() )
+                                       / scale.originalDuration();
+          const double adjustedUpper = static_cast< double >( offset.msecsTo( rendererContext.temporalRange().end() ) )
+                                       * QgsUnitTypes::fromUnitToUnitFactor( Qgis::TemporalUnit::Milliseconds, scale.originalUnit() )
+                                       / scale.originalDuration();
+          if ( !temporalProperties->accumulatePixels() )
+          {
+            transparentPixels.append( QgsRasterTransparency::TransparentSingleValuePixel( std::numeric_limits<double>::lowest(), adjustedLower, 0, true, !rendererContext.zRange().includeLower() ) );
+          }
           transparentPixels.append( QgsRasterTransparency::TransparentSingleValuePixel( adjustedUpper, std::numeric_limits<double>::max(), 0, !rendererContext.zRange().includeUpper(), true ) );
 
           transparency->setTransparentSingleValuePixelList( transparentPixels );
@@ -386,14 +449,18 @@ QgsRasterLayerRenderer::QgsRasterLayerRenderer( QgsRasterLayer *layer, QgsRender
               QgsRasterRangeList nullRanges;
               const double adjustedLower = ( rendererContext.zRange().lower() - mElevationOffset ) / mElevationScale;
               const double adjustedUpper = ( rendererContext.zRange().upper() - mElevationOffset ) / mElevationScale;
-              nullRanges.append( QgsRasterRange( std::numeric_limits<double>::lowest(), adjustedLower, rendererContext.zRange().includeLower() ? QgsRasterRange::BoundsType::IncludeMin : QgsRasterRange::BoundsType::IncludeMinAndMax ) );
-              nullRanges.append( QgsRasterRange( adjustedUpper, std::numeric_limits<double>::max(), rendererContext.zRange().includeUpper() ? QgsRasterRange::BoundsType::IncludeMax : QgsRasterRange::BoundsType::IncludeMinAndMax ) );
+              nullRanges.append(
+                QgsRasterRange( std::numeric_limits<double>::lowest(), adjustedLower, rendererContext.zRange().includeLower() ? QgsRasterRange::BoundsType::IncludeMin : QgsRasterRange::BoundsType::IncludeMinAndMax )
+              );
+              nullRanges.append(
+                QgsRasterRange( adjustedUpper, std::numeric_limits<double>::max(), rendererContext.zRange().includeUpper() ? QgsRasterRange::BoundsType::IncludeMax : QgsRasterRange::BoundsType::IncludeMinAndMax )
+              );
               nuller->setOutputNoDataValue( mElevationBand, static_cast< int >( adjustedLower - 1 ) );
               nuller->setNoData( mElevationBand, nullRanges );
 
               if ( !mPipe->insert( 1, nuller.release() ) )
               {
-                QgsDebugError( QStringLiteral( "Cannot set pipe nuller" ) );
+                QgsDebugError( u"Cannot set pipe nuller"_s );
               }
             }
             else
@@ -424,6 +491,8 @@ QgsRasterLayerRenderer::QgsRasterLayerRenderer( QgsRasterLayer *layer, QgsRender
     }
   }
 
+  prepareLabeling( layer );
+
   mFeedback->setRenderContext( rendererContext );
 
   mPipe->moveToThread( nullptr );
@@ -432,26 +501,22 @@ QgsRasterLayerRenderer::QgsRasterLayerRenderer( QgsRasterLayer *layer, QgsRender
 }
 
 QgsRasterLayerRenderer::~QgsRasterLayerRenderer()
-{
-  delete mFeedback;
-
-  delete mRasterViewPort;
-}
+{}
 
 bool QgsRasterLayerRenderer::render()
 {
+  QgsScopedThreadName threadName( u"render:%1"_s.arg( mLayerName ) );
+
   std::unique_ptr< QgsScopedRuntimeProfile > profile;
   if ( mEnableProfile )
   {
-    profile = std::make_unique< QgsScopedRuntimeProfile >( mLayerName, QStringLiteral( "rendering" ), layerId() );
+    profile = std::make_unique< QgsScopedRuntimeProfile >( mLayerName, u"rendering"_s, layerId() );
     if ( mPreparationTime > 0 )
-      QgsApplication::profiler()->record( QObject::tr( "Create renderer" ), mPreparationTime / 1000.0, QStringLiteral( "rendering" ) );
+      QgsApplication::profiler()->record( QObject::tr( "Create renderer" ), mPreparationTime / 1000.0, u"rendering"_s );
   }
 
   // Skip rendering of out of view tiles (xyz)
-  if ( !mRasterViewPort || ( renderContext()->testFlag( Qgis::RenderContextFlag::RenderPreviewJob ) &&
-                             !( mProviderCapabilities &
-                                QgsRasterInterface::Capability::Prefetch ) ) )
+  if ( !mRasterViewPort || ( renderContext()->testFlag( Qgis::RenderContextFlag::RenderPreviewJob ) && !( mInterfaceCapabilities & Qgis::RasterInterfaceCapability::Prefetch ) ) )
     return true;
 
   mPipe->moveToThread( QThread::currentThread() );
@@ -462,7 +527,7 @@ bool QgsRasterLayerRenderer::render()
   std::unique_ptr< QgsScopedRuntimeProfile > preparingProfile;
   if ( mEnableProfile )
   {
-    preparingProfile = std::make_unique< QgsScopedRuntimeProfile >( QObject::tr( "Preparing render" ), QStringLiteral( "rendering" ) );
+    preparingProfile = std::make_unique< QgsScopedRuntimeProfile >( QObject::tr( "Preparing render" ), u"rendering"_s );
   }
 
   //
@@ -473,13 +538,26 @@ bool QgsRasterLayerRenderer::render()
   //
 
   const QgsScopedQPainterState painterSate( renderContext()->painter() );
+
+  // important -- disable SmoothPixmapTransform and Antialiasing for raster layer renders. We want individual pixels to be clearly defined!
+  renderContext()->painter()->setRenderHint( QPainter::SmoothPixmapTransform, false );
+  bool antialiasEnabled = false;
   if ( !mClippingRegions.empty() )
   {
     bool needsPainterClipPath = false;
     const QPainterPath path = QgsMapClippingUtils::calculatePainterClipRegion( mClippingRegions, *renderContext(), Qgis::LayerType::Raster, needsPainterClipPath );
     if ( needsPainterClipPath )
+    {
       renderContext()->painter()->setClipPath( path, Qt::IntersectClip );
+      // this is an exception to the earlier flag disabling antialiasing!
+      // If we are rendering with clip paths, we WANT the boundaries of the raster to be
+      // rendered using antialiasing along the clip path, or things are very ugly! And since we can't
+      // selectively antialias JUST the clip path boundary, we fallback to antialiasing the
+      // whole raster render
+      antialiasEnabled = true;
+    }
   }
+  renderContext()->painter()->setRenderHint( QPainter::Antialiasing, antialiasEnabled );
 
   QgsRasterProjector *projector = mPipe->projector();
   bool restoreOldResamplingStage = false;
@@ -490,9 +568,9 @@ bool QgsRasterLayerRenderer::render()
   if ( projector )
   {
     // Force provider resampling if reprojection is needed
-    if ( ( mPipe->provider()->providerCapabilities() & QgsRasterDataProvider::ProviderHintCanPerformProviderResampling ) &&
-         mRasterViewPort->mSrcCRS != mRasterViewPort->mDestCRS &&
-         oldResamplingState != Qgis::RasterResamplingStage::Provider )
+    if ( ( mPipe->provider()->providerCapabilities() & Qgis::RasterProviderCapability::ProviderHintCanPerformProviderResampling )
+         && mRasterViewPort->mSrcCRS != mRasterViewPort->mDestCRS
+         && oldResamplingState != Qgis::RasterResamplingStage::Provider )
     {
       restoreOldResamplingStage = true;
       mPipe->setResamplingStage( Qgis::RasterResamplingStage::Provider );
@@ -500,23 +578,41 @@ bool QgsRasterLayerRenderer::render()
     projector->setCrs( mRasterViewPort->mSrcCRS, mRasterViewPort->mDestCRS, mRasterViewPort->mTransformContext );
   }
 
-  // important -- disable SmoothPixmapTransform for raster layer renders. We want individual pixels to be clearly defined!
-  renderContext()->painter()->setRenderHint( QPainter::SmoothPixmapTransform, false );
-
   preparingProfile.reset();
   std::unique_ptr< QgsScopedRuntimeProfile > renderingProfile;
   if ( mEnableProfile )
   {
-    renderingProfile = std::make_unique< QgsScopedRuntimeProfile >( QObject::tr( "Rendering" ), QStringLiteral( "rendering" ) );
+    renderingProfile = std::make_unique< QgsScopedRuntimeProfile >( QObject::tr( "Rendering" ), u"rendering"_s );
   }
 
   // Drawer to pipe?
   QgsRasterIterator iterator( mPipe->last() );
+
+  // Get the maximum tile size from the provider and set it as the maximum tile size for the iterator
+  if ( QgsRasterDataProvider *provider = mPipe->provider() )
+  {
+    const QSize maxTileSize { provider->maximumTileSize() };
+    iterator.setMaximumTileWidth( maxTileSize.width() );
+    iterator.setMaximumTileHeight( maxTileSize.height() );
+  }
+
   QgsRasterDrawer drawer( &iterator );
-  drawer.draw( *( renderContext() ), mRasterViewPort, mFeedback );
+  drawer.draw( *( renderContext() ), mRasterViewPort.get(), mFeedback.get() );
 
   if ( mDrawElevationMap )
     drawElevationMap();
+
+  renderingProfile.reset();
+
+  if ( mLabelProvider && !renderContext()->renderingStopped() )
+  {
+    std::unique_ptr< QgsScopedRuntimeProfile > labelingProfile;
+    if ( mEnableProfile )
+    {
+      labelingProfile = std::make_unique< QgsScopedRuntimeProfile >( QObject::tr( "Labeling" ), u"rendering"_s );
+    }
+    drawLabeling();
+  }
 
   if ( restoreOldResamplingStage )
   {
@@ -529,7 +625,7 @@ bool QgsRasterLayerRenderer::render()
     mErrors.append( error );
   }
 
-  QgsDebugMsgLevel( QStringLiteral( "total raster draw time (ms):     %1" ).arg( time.elapsed(), 5 ), 4 );
+  QgsDebugMsgLevel( u"total raster draw time (ms):     %1"_s.arg( time.elapsed(), 5 ), 4 );
   mReadyToCompose = true;
 
   mPipe->moveToThread( nullptr );
@@ -539,13 +635,13 @@ bool QgsRasterLayerRenderer::render()
 
 QgsFeedback *QgsRasterLayerRenderer::feedback() const
 {
-  return mFeedback;
+  return mFeedback.get();
 }
 
 bool QgsRasterLayerRenderer::forceRasterRender() const
 {
   if ( !mRasterViewPort || !mPipe )
-    return false;  // this layer is not going to get rendered
+    return false; // this layer is not going to get rendered
 
   // preview of intermediate raster rendering results requires a temporary output image
   if ( renderContext()->testFlag( Qgis::RenderContextFlag::RenderPartialOutput ) )
@@ -553,12 +649,53 @@ bool QgsRasterLayerRenderer::forceRasterRender() const
 
   if ( QgsRasterRenderer *renderer = mPipe->renderer() )
   {
-    if ( !( renderer->flags() & Qgis::RasterRendererFlag::InternalLayerOpacityHandling )
-         && renderContext()->testFlag( Qgis::RenderContextFlag::UseAdvancedEffects ) && ( !qgsDoubleNear( mLayerOpacity, 1.0 ) ) )
-      return true;
+    if ( !( renderer->flags() & Qgis::RasterRendererFlag::InternalLayerOpacityHandling ) )
+    {
+      switch ( renderContext()->rasterizedRenderingPolicy() )
+      {
+        case Qgis::RasterizedRenderingPolicy::Default:
+        case Qgis::RasterizedRenderingPolicy::PreferVector:
+          break;
+
+        case Qgis::RasterizedRenderingPolicy::ForceVector:
+          return false;
+      }
+
+      if ( !qgsDoubleNear( mLayerOpacity, 1.0 ) )
+        return true;
+    }
   }
 
   return false;
+}
+
+void QgsRasterLayerRenderer::prepareLabeling( QgsRasterLayer *layer )
+{
+  QgsRenderContext &context = *renderContext();
+
+  if ( QgsLabelingEngine *engine2 = context.labelingEngine() )
+  {
+    if ( QgsAbstractRasterLayerLabeling *labeling = layer->labeling() )
+    {
+      if ( layer->labelsEnabled() && labeling->isInScaleRange( context.rendererScale() ) )
+      {
+        std::unique_ptr< QgsRasterLayerLabelProvider > provider = labeling->provider( layer );
+        if ( provider )
+        {
+          // engine takes ownership
+          mLabelProvider = provider.release();
+          mLabelProvider->startRender( context );
+          engine2->addProvider( mLabelProvider );
+        }
+      }
+    }
+  }
+}
+
+void QgsRasterLayerRenderer::drawLabeling()
+{
+  if ( mLabelProvider )
+    mLabelProvider->generateLabels( *renderContext(), mPipe.get(), mRasterViewPort.get(), mFeedback.get() );
 }
 
 void QgsRasterLayerRenderer::drawElevationMap()
@@ -573,24 +710,18 @@ void QgsRasterLayerRenderer::drawElevationMap()
     else
       dpiScalefactor = 1.0;
 
-    int outputWidth = static_cast<int>( static_cast<double>( mRasterViewPort->mWidth )  / dpiScalefactor * renderContext()->devicePixelRatio() );
-    int outputHeight =  static_cast<int>( static_cast<double>( mRasterViewPort->mHeight ) / dpiScalefactor * renderContext()->devicePixelRatio() );
+    int outputWidth = static_cast<int>( static_cast<double>( mRasterViewPort->mWidth ) / dpiScalefactor * renderContext()->devicePixelRatio() );
+    int outputHeight = static_cast<int>( static_cast<double>( mRasterViewPort->mHeight ) / dpiScalefactor * renderContext()->devicePixelRatio() );
 
     QSize viewSize = renderContext()->deviceOutputSize();
-    int viewWidth =  static_cast<int>( viewSize.width() / dpiScalefactor );
-    int viewHeight =  static_cast<int>( viewSize.height() / dpiScalefactor );
+    int viewWidth = static_cast<int>( viewSize.width() / dpiScalefactor );
+    int viewHeight = static_cast<int>( viewSize.height() / dpiScalefactor );
 
     bool canRenderElevation = false;
     std::unique_ptr<QgsRasterBlock> elevationBlock;
     if ( mRasterViewPort->mSrcCRS == mRasterViewPort->mDestCRS )
     {
-      elevationBlock.reset(
-        dataProvider->block(
-          mElevationBand,
-          mRasterViewPort->mDrawnExtent,
-          outputWidth,
-          outputHeight,
-          mFeedback ) );
+      elevationBlock.reset( dataProvider->block( mElevationBand, mRasterViewPort->mDrawnExtent, outputWidth, outputHeight, mFeedback.get() ) );
       canRenderElevation = true;
     }
     else
@@ -601,10 +732,10 @@ void QgsRasterLayerRenderer::drawElevationMap()
       QgsRectangle viewExtentInLayerCoordinate = renderContext()->extent();
 
       // If view extent is infinite, we use the data provider extent
-      if ( viewExtentInLayerCoordinate.xMinimum() == std::numeric_limits<double>::lowest() &&
-           viewExtentInLayerCoordinate.yMinimum() == std::numeric_limits<double>::lowest() &&
-           viewExtentInLayerCoordinate.xMaximum() == std::numeric_limits<double>::max() &&
-           viewExtentInLayerCoordinate.yMaximum() == std::numeric_limits<double>::max() )
+      if ( viewExtentInLayerCoordinate.xMinimum() == std::numeric_limits<double>::lowest()
+           && viewExtentInLayerCoordinate.yMinimum() == std::numeric_limits<double>::lowest()
+           && viewExtentInLayerCoordinate.xMaximum() == std::numeric_limits<double>::max()
+           && viewExtentInLayerCoordinate.yMaximum() == std::numeric_limits<double>::max() )
       {
         viewExtentInLayerCoordinate = dataProvider->extent();
       }
@@ -616,7 +747,7 @@ void QgsRasterLayerRenderer::drawElevationMap()
       if ( mPipe->resampleFilter() )
         overSampling = mPipe->resampleFilter()->maxOversampling();
 
-      if ( dataProvider->capabilities() & QgsRasterDataProvider::Size )
+      if ( dataProvider->capabilities() & Qgis::RasterInterfaceCapability::Size )
       {
         // If the dataprovider has size capability, we calculate the requested resolution to provider
         double providerXResol = dataProvider->extent().width() / dataProvider->xSize();
@@ -638,25 +769,22 @@ void QgsRasterLayerRenderer::drawElevationMap()
         int sourceWidth = viewWidth + 4;
         int sourceHeight = viewHeight + 4;
         viewExtentInLayerCoordinate = QgsRectangle(
-                                        viewExtentInLayerCoordinate.xMinimum() - xLayerResol * 2,
-                                        viewExtentInLayerCoordinate.yMinimum() - yLayerResol * 2,
-                                        viewExtentInLayerCoordinate.xMaximum() + xLayerResol * 2,
-                                        viewExtentInLayerCoordinate.yMaximum() + yLayerResol * 2 );
+          viewExtentInLayerCoordinate.xMinimum() - xLayerResol * 2,
+          viewExtentInLayerCoordinate.yMinimum() - yLayerResol * 2,
+          viewExtentInLayerCoordinate.xMaximum() + xLayerResol * 2,
+          viewExtentInLayerCoordinate.yMaximum() + yLayerResol * 2
+        );
 
         // Now we can do the resampling
-        std::unique_ptr<QgsRasterBlock> sourcedata( dataProvider->block( mElevationBand, viewExtentInLayerCoordinate, sourceWidth, sourceHeight, mFeedback ) );
-        gdal::dataset_unique_ptr gdalDsInput =
-          QgsGdalUtils::blockToSingleBandMemoryDataset( viewExtentInLayerCoordinate, sourcedata.get() );
+        std::unique_ptr<QgsRasterBlock> sourcedata( dataProvider->block( mElevationBand, viewExtentInLayerCoordinate, sourceWidth, sourceHeight, mFeedback.get() ) );
+        gdal::dataset_unique_ptr gdalDsInput = QgsGdalUtils::blockToSingleBandMemoryDataset( viewExtentInLayerCoordinate, sourcedata.get() );
 
 
-        elevationBlock.reset( new QgsRasterBlock( dataType,
-                              outputWidth,
-                              outputHeight ) );
+        elevationBlock = std::make_unique<QgsRasterBlock>( dataType, outputWidth, outputHeight );
 
         elevationBlock->setNoDataValue( dataProvider->sourceNoDataValue( mElevationBand ) );
 
-        gdal::dataset_unique_ptr gdalDsOutput =
-          QgsGdalUtils::blockToSingleBandMemoryDataset( mRasterViewPort->mDrawnExtent, elevationBlock.get() );
+        gdal::dataset_unique_ptr gdalDsOutput = QgsGdalUtils::blockToSingleBandMemoryDataset( mRasterViewPort->mDrawnExtent, elevationBlock.get() );
 
         // For coordinate transformation, we try to obtain a coordinate operation string from the transform context.
         // Depending of the CRS, if we can't we use GDAL transformation directly from the source and destination CRS
@@ -668,11 +796,9 @@ void QgsRasterLayerRenderer::drawElevationMap()
           coordinateOperation = transformContext.calculateCoordinateOperation( mRasterViewPort->mSrcCRS, mRasterViewPort->mDestCRS );
 
         if ( coordinateOperation.isEmpty() )
-          canRenderElevation = QgsGdalUtils::resampleSingleBandRaster( gdalDsInput.get(), gdalDsOutput.get(), alg,
-                               mRasterViewPort->mSrcCRS, mRasterViewPort->mDestCRS );
+          canRenderElevation = QgsGdalUtils::resampleSingleBandRaster( gdalDsInput.get(), gdalDsOutput.get(), alg, mRasterViewPort->mSrcCRS, mRasterViewPort->mDestCRS );
         else
-          canRenderElevation = QgsGdalUtils::resampleSingleBandRaster( gdalDsInput.get(), gdalDsOutput.get(), alg,
-                               coordinateOperation.toUtf8().constData() );
+          canRenderElevation = QgsGdalUtils::resampleSingleBandRaster( gdalDsInput.get(), gdalDsOutput.get(), alg, coordinateOperation.toUtf8().constData() );
       }
     }
 
@@ -695,10 +821,11 @@ void QgsRasterLayerRenderer::drawElevationMap()
         int right = 0;
 
         QList<QgsPointXY> corners;
-        corners << QgsPointXY( mRasterViewPort->mDrawnExtent.xMinimum(), mRasterViewPort->mDrawnExtent.yMinimum() )
-                << QgsPointXY( mRasterViewPort->mDrawnExtent.xMaximum(), mRasterViewPort->mDrawnExtent.yMaximum() )
-                << QgsPointXY( mRasterViewPort->mDrawnExtent.xMinimum(), mRasterViewPort->mDrawnExtent.yMaximum() )
-                << QgsPointXY( mRasterViewPort->mDrawnExtent.xMaximum(), mRasterViewPort->mDrawnExtent.yMinimum() );
+        corners
+          << QgsPointXY( mRasterViewPort->mDrawnExtent.xMinimum(), mRasterViewPort->mDrawnExtent.yMinimum() )
+          << QgsPointXY( mRasterViewPort->mDrawnExtent.xMaximum(), mRasterViewPort->mDrawnExtent.yMaximum() )
+          << QgsPointXY( mRasterViewPort->mDrawnExtent.xMinimum(), mRasterViewPort->mDrawnExtent.yMaximum() )
+          << QgsPointXY( mRasterViewPort->mDrawnExtent.xMaximum(), mRasterViewPort->mDrawnExtent.yMinimum() );
 
         for ( const QgsPointXY &corner : std::as_const( corners ) )
         {
@@ -721,25 +848,18 @@ void QgsRasterLayerRenderer::drawElevationMap()
         double gridYSize = mtp.toMapCoordinates( left, bottom ).distance( origin );
         double angleRad = renderContext()->mapToPixel().mapRotation() / 180 * M_PI;
 
-        gdal::dataset_unique_ptr gdalDsInput =
-          QgsGdalUtils::blockToSingleBandMemoryDataset( mRasterViewPort->mDrawnExtent, elevationBlock.get() );
+        gdal::dataset_unique_ptr gdalDsInput = QgsGdalUtils::blockToSingleBandMemoryDataset( mRasterViewPort->mDrawnExtent, elevationBlock.get() );
 
-        std::unique_ptr<QgsRasterBlock> rotatedElevationBlock =
-          std::make_unique<QgsRasterBlock>( elevationBlock->dataType(),
-                                            ( right - left ) * renderContext()->devicePixelRatio() + 1,
-                                            ( bottom - top ) * renderContext()->devicePixelRatio() + 1 );
+        std::unique_ptr<QgsRasterBlock> rotatedElevationBlock
+          = std::make_unique<QgsRasterBlock>( elevationBlock->dataType(), ( right - left ) * renderContext()->devicePixelRatio() + 1, ( bottom - top ) * renderContext()->devicePixelRatio() + 1 );
 
         rotatedElevationBlock->setNoDataValue( elevationBlock->noDataValue() );
 
-        gdal::dataset_unique_ptr gdalDsOutput =
-          QgsGdalUtils::blockToSingleBandMemoryDataset( angleRad, origin, gridXSize, gridYSize, rotatedElevationBlock.get() );
+        gdal::dataset_unique_ptr gdalDsOutput = QgsGdalUtils::blockToSingleBandMemoryDataset( angleRad, origin, gridXSize, gridYSize, rotatedElevationBlock.get() );
 
-        if ( QgsGdalUtils::resampleSingleBandRaster(
-               gdalDsInput.get(),
-               gdalDsOutput.get(),
-               QgsGdalUtils::gdalResamplingAlgorithm( dataProvider->zoomedInResamplingMethod() ), nullptr ) )
+        if ( QgsGdalUtils::resampleSingleBandRaster( gdalDsInput.get(), gdalDsOutput.get(), QgsGdalUtils::gdalResamplingAlgorithm( dataProvider->zoomedInResamplingMethod() ), nullptr ) )
         {
-          elevationBlock.reset( rotatedElevationBlock.release() );
+          elevationBlock = std::move( rotatedElevationBlock );
         }
 
         topLeft = QPoint( left, top );
@@ -749,12 +869,7 @@ void QgsRasterLayerRenderer::drawElevationMap()
         topLeft = mRasterViewPort->mTopLeftPoint.toQPointF().toPoint();
       }
 
-      renderContext()->elevationMap()->fillWithRasterBlock(
-        elevationBlock.get(),
-        topLeft.y() * renderContext()->devicePixelRatio(),
-        topLeft.x() * renderContext()->devicePixelRatio(),
-        mElevationScale,
-        mElevationOffset );
+      renderContext()->elevationMap()->fillWithRasterBlock( elevationBlock.get(), topLeft.y() * renderContext()->devicePixelRatio(), topLeft.x() * renderContext()->devicePixelRatio(), mElevationScale, mElevationOffset );
     }
   }
 }

@@ -18,18 +18,26 @@
 #ifndef QGSPOINTCLOUDRENDERER_H
 #define QGSPOINTCLOUDRENDERER_H
 
-#include "qgsrendercontext.h"
-
 #include "qgis_core.h"
 #include "qgis_sip.h"
-#include "qgsvector3d.h"
 #include "qgspointcloudattribute.h"
+#include "qgspropertycollection.h"
+#include "qgsrange.h"
+#include "qgsrendercontext.h"
+#include "qgsstyle.h"
+#include "qgsvector3d.h"
+
+#include <QString>
+#include <QStringList>
+
+using namespace Qt::StringLiterals;
 
 class QgsPointCloudBlock;
 class QgsLayerTreeLayer;
 class QgsLayerTreeModelLegendNode;
 class QgsPointCloudLayer;
 class QgsElevationMap;
+class QgsExpressionContextScope;
 
 /**
  * \ingroup core
@@ -42,7 +50,6 @@ class QgsElevationMap;
 class CORE_EXPORT QgsPointCloudRenderContext
 {
   public:
-
     /**
      * Constructor for QgsPointCloudRenderContext.
      *
@@ -55,13 +62,9 @@ class CORE_EXPORT QgsPointCloudRenderContext
      * The \a zValueFixedOffset argument specifies any constant offset value which must be added to z values
      * taken from the point cloud index.
      */
-    QgsPointCloudRenderContext( QgsRenderContext &context, const QgsVector3D &scale, const QgsVector3D &offset,
-                                double zValueScale, double zValueFixedOffset, QgsFeedback *feedback = nullptr );
+    QgsPointCloudRenderContext( QgsRenderContext &context, const QgsVector3D &scale, const QgsVector3D &offset, double zValueScale, double zValueFixedOffset, QgsFeedback *feedback = nullptr );
 
-    //! QgsPointCloudRenderContext cannot be copied.
     QgsPointCloudRenderContext( const QgsPointCloudRenderContext &rh ) = delete;
-
-    //! QgsPointCloudRenderContext cannot be copied.
     QgsPointCloudRenderContext &operator=( const QgsPointCloudRenderContext & ) = delete;
 
     /**
@@ -73,7 +76,7 @@ class CORE_EXPORT QgsPointCloudRenderContext
      * Returns a reference to the context's render context.
      * \note Not available in Python bindings.
      */
-    const QgsRenderContext &renderContext() const { return mRenderContext; } SIP_SKIP
+    const QgsRenderContext &renderContext() const SIP_SKIP { return mRenderContext; }
 
     /**
      * Returns the scale of the layer's int32 coordinates compared to CRS coords.
@@ -174,14 +177,32 @@ class CORE_EXPORT QgsPointCloudRenderContext
      */
     QgsFeedback *feedback() const { return mFeedback; }
 
+    /**
+     * Sets the allowed range of Z values.
+     *
+     * Points which Z value is not in \a range after transformation will be discarded from rendering.
+     * If both bounds are set to infinite, no filtering is applied.
+     *
+     * \see mapCrsZFilter()
+     * \since QGIS 4.4
+     */
+    void setMapCrsZFilter( const QgsDoubleRange &range ) { mMapCrsZFilter = range; }
+
+    /**
+     * Returns the allowable range of z values in the map (destination) CRS.
+     *
+     * \see setMapCrsZFilter()
+     * \since QGIS 4.4
+     */
+    QgsDoubleRange mapCrsZFilter() const { return mMapCrsZFilter; }
+
 #ifndef SIP_RUN
 
     /**
      * Retrieves the attribute \a value from \a data at the specified \a offset, where
      * \a type indicates the original data type for the attribute.
      */
-    template <typename T>
-    static void getAttribute( const char *data, std::size_t offset, QgsPointCloudAttribute::DataType type, T &value )
+    template<typename T> static void getAttribute( const char *data, std::size_t offset, QgsPointCloudAttribute::DataType type, T &value )
     {
       switch ( type )
       {
@@ -225,7 +246,7 @@ class CORE_EXPORT QgsPointCloudRenderContext
     }
 #endif
 
-#ifndef SIP_RUN    // this is only meant for low-level rendering in C++ code
+#ifndef SIP_RUN // this is only meant for low-level rendering in C++ code
 
     /**
      * Helper data structure used when rendering points as triangulated surface.
@@ -235,9 +256,9 @@ class CORE_EXPORT QgsPointCloudRenderContext
      */
     struct TriangulationData
     {
-      std::vector<double> points;     //!< X,Y for each point - kept in this structure so that we can use it without further conversions in Delaunator-cpp
-      std::vector<QRgb> colors;       //!< RGB color for each point
-      std::vector<float> elevations;  //!< Z value for each point (only used when global map shading is enabled)
+        std::vector<double> points;    //!< X,Y for each point - kept in this structure so that we can use it without further conversions in Delaunator-cpp
+        std::vector<QRgb> colors;      //!< RGB color for each point
+        std::vector<float> elevations; //!< Z value for each point (only used when global map shading is enabled)
     };
 
     /**
@@ -264,6 +285,8 @@ class CORE_EXPORT QgsPointCloudRenderContext
     double mZValueScale = 1.0;
     double mZValueFixedOffset = 0;
 
+    QgsDoubleRange mMapCrsZFilter;
+
     QgsFeedback *mFeedback = nullptr;
 
     TriangulationData mTriangulationData;
@@ -283,7 +306,6 @@ class CORE_EXPORT QgsPointCloudRenderContext
 class CORE_EXPORT QgsPreparedPointCloudRendererData
 {
   public:
-
     virtual ~QgsPreparedPointCloudRendererData();
 
     /**
@@ -306,7 +328,6 @@ class CORE_EXPORT QgsPreparedPointCloudRendererData
      * \since QGIS 3.26
      */
     virtual QColor pointColor( const QgsPointCloudBlock *block, int i, double z ) = 0;
-
 };
 
 #endif
@@ -322,31 +343,36 @@ class CORE_EXPORT QgsPreparedPointCloudRendererData
  */
 class CORE_EXPORT QgsPointCloudRenderer
 {
-
 #ifdef SIP_RUN
     SIP_CONVERT_TO_SUBCLASS_CODE
 
     const QString type = sipCpp->type();
 
-    if ( type == QLatin1String( "rgb" ) )
+    if ( type == "rgb"_L1 )
       sipType = sipType_QgsPointCloudRgbRenderer;
-    else if ( type == QLatin1String( "ramp" ) )
+    else if ( type == "ramp"_L1 )
       sipType = sipType_QgsPointCloudAttributeByRampRenderer;
-    else if ( type == QLatin1String( "classified" ) )
+    else if ( type == "classified"_L1 )
       sipType = sipType_QgsPointCloudClassifiedRenderer;
-    else if ( type == QLatin1String( "extent" ) )
+    else if ( type == "extent"_L1 )
       sipType = sipType_QgsPointCloudExtentRenderer;
     else
       sipType = 0;
-    SIP_END
+  SIP_END
 #endif
 
   public:
 
     /**
-     * Constructor for QgsPointCloudRenderer.
+     * Data-defined properties that can be set on the renderer.
+     * \since QGIS 4.2
      */
-    QgsPointCloudRenderer() = default;
+    enum class Property : int
+    {
+      Color = 0, //!< Point color
+    };
+
+    QgsPointCloudRenderer();
 
     virtual ~QgsPointCloudRenderer() = default;
 
@@ -401,7 +427,7 @@ class CORE_EXPORT QgsPointCloudRenderer
      *
      * \see save()
      */
-    static QgsPointCloudRenderer *load( QDomElement &element, const QgsReadWriteContext &context ) SIP_FACTORY;
+    static std::unique_ptr<QgsPointCloudRenderer> load( QDomElement &element, const QgsReadWriteContext &context );
 
     /**
      * Saves the renderer configuration to an XML element.
@@ -681,8 +707,101 @@ class CORE_EXPORT QgsPointCloudRenderer
      */
     virtual QStringList legendRuleKeys() const;
 
-  protected:
+    /**
+     * Set whether the renderer should also render file labels inside extent
+     * \since QGIS 3.42
+     */
+    void setShowLabels( const bool show ) { mShowLabels = show; }
 
+    /**
+     * Returns whether the renderer shows file labels inside the extent
+     * rectangle
+     * \since QGIS 3.42
+     */
+    bool showLabels() const { return mShowLabels; }
+
+    /**
+       * Sets the text format renderers should use for rendering labels
+       * \since QGIS 3.42
+       */
+    void setLabelTextFormat( const QgsTextFormat &textFormat ) { mLabelTextFormat = textFormat; }
+
+    /**
+     * Returns the text format renderer is using for rendering labels
+     * \since QGIS 3.42
+     */
+    QgsTextFormat labelTextFormat() const { return mLabelTextFormat; }
+
+    /**
+     * Sets the renderer behavior when zoomed out
+     * \since QGIS 3.42
+     */
+    void setZoomOutBehavior( const Qgis::PointCloudZoomOutRenderBehavior behavior ) { mZoomOutBehavior = behavior; }
+
+    /**
+     * Returns the renderer behavior when zoomed out
+     * \since QGIS 3.42
+     */
+    Qgis::PointCloudZoomOutRenderBehavior zoomOutBehavior() const { return mZoomOutBehavior; }
+
+    /**
+      * Sets the overview switching scale
+      *
+      * Point clouds whose extents intersect the map extent are considered visible.
+      * When zoomed out beyond the overview switching scale (render extent exceeds average
+      * point cloud dimensions by the scale factor), and overview zoom-out behavior is enabled,
+      * the overview is rendered instead of an individual point cloud.
+      * \since QGIS 4.0
+      */
+    void setOverviewSwitchingScale( const double value );
+
+    /**
+      * Returns the overview switching scale
+      * \since QGIS 4.0
+      */
+    double overviewSwitchingScale() const { return mOverviewSwitchingScale; }
+
+    /**
+     * Returns the shading renderer used to render shading on the layer.
+     *
+     * \see setElevationShadingRenderer()
+     * \since QGIS 4.2
+     */
+    QgsElevationShadingRenderer elevationShadingRenderer() const;
+
+    /**
+     * Sets the shading \a renderer used to render shading on the layer.
+     *
+     * \see elevationShadingRenderer()
+     * \since QGIS 4.2
+     */
+    void setElevationShadingRenderer( const QgsElevationShadingRenderer &renderer ) { mElevationShadingRenderer = renderer; }
+
+    /**
+     * Returns the property definitions for data defined properties used by the renderer.
+     *
+     * \since QGIS 4.2
+     */
+    static const QgsPropertiesDefinition &propertyDefinitions();
+
+    /**
+     * Returns the renderer's property collection, used for data defined overrides.
+     *
+     * \see setDataDefinedProperties()
+     * \since QGIS 4.2
+     */
+    const QgsPropertyCollection &dataDefinedProperties() const { return mDataDefinedProperties; }
+
+    /**
+     * Sets the renderer's property collection, used for data defined overrides.
+     *
+     * \param collection property collection. Existing properties will be replaced.
+     * \see dataDefinedProperties()
+     * \since QGIS 4.2
+     */
+    void setDataDefinedProperties( const QgsPropertyCollection &collection ) { mDataDefinedProperties = collection; }
+
+  protected:
     /**
      * Retrieves the x and y coordinate for the point at index \a i.
      */
@@ -710,10 +829,7 @@ class CORE_EXPORT QgsPointCloudRenderer
     /**
      * Draws a point using a \a color at the specified \a x and \a y (in map coordinates).
      */
-    void drawPoint( double x, double y, const QColor &color, QgsPointCloudRenderContext &context ) const
-    {
-      drawPoint( x, y, color, mDefaultPainterPenWidth, context );
-    }
+    void drawPoint( double x, double y, const QColor &color, QgsPointCloudRenderContext &context ) const { drawPoint( x, y, color, mDefaultPainterPenWidth, context ); }
 
     /**
      * Draws a point using a \a color and painter \a width at the specified \a x and \a y (in map coordinates).
@@ -728,22 +844,18 @@ class CORE_EXPORT QgsPointCloudRenderer
       switch ( mPointSymbol )
       {
         case Qgis::PointCloudSymbol::Square:
-          painter->fillRect( QRectF( x - width * 0.5,
-                                     y - width * 0.5,
-                                     width, width ), color );
+          painter->fillRect( QRectF( x - width * 0.5, y - width * 0.5, width, width ), color );
           break;
 
         case Qgis::PointCloudSymbol::Circle:
           painter->setBrush( QBrush( color ) );
           painter->setPen( Qt::NoPen );
-          painter->drawEllipse( QRectF( x - width * 0.5,
-                                        y - width * 0.5,
-                                        width, width ) );
+          painter->drawEllipse( QRectF( x - width * 0.5, y - width * 0.5, width, width ) );
           break;
       };
     }
 
-#ifndef SIP_RUN   // intentionally left out from SIP to avoid API breaks in future when we move elevation post-processing elsewhere
+#ifndef SIP_RUN // intentionally left out from SIP to avoid API breaks in future when we move elevation post-processing elsewhere
 
     /**
      * Draws a point at the elevation \a z using at the specified \a x and \a y (in map coordinates) on the elevation map.
@@ -794,6 +906,13 @@ class CORE_EXPORT QgsPointCloudRenderer
      */
     void saveCommonProperties( QDomElement &element, const QgsReadWriteContext &context ) const;
 
+    /**
+     * Computes color from the expression set, uses expression referenced variables and renderer base color.
+     *
+     * \since QGIS 4.2
+     */
+    QColor colorFromExpression( const QgsPointCloudBlock *block, int pointIndex, const QColor &rendererColor, QgsPointCloudRenderContext &context ) SIP_SKIP;
+
   private:
 #ifdef SIP_RUN
     QgsPointCloudRenderer( const QgsPointCloudRenderer &other );
@@ -819,6 +938,20 @@ class CORE_EXPORT QgsPointCloudRenderer
     bool mHorizontalTriangleFilter = false;
     double mHorizontalTriangleFilterThreshold = 5.0;
     Qgis::RenderUnit mHorizontalTriangleFilterUnit = Qgis::RenderUnit::Millimeters;
+
+    bool mShowLabels = false;
+    QgsTextFormat mLabelTextFormat;
+
+    Qgis::PointCloudZoomOutRenderBehavior mZoomOutBehavior = Qgis::PointCloudZoomOutRenderBehavior::RenderExtents;
+    double mOverviewSwitchingScale = 1.0;
+
+    QgsElevationShadingRenderer mElevationShadingRenderer;
+
+    static void initPropertyDefinitions();
+    static QgsPropertiesDefinition sPropertyDefinitions;
+    QgsPropertyCollection mDataDefinedProperties;
+
+    std::unique_ptr<QgsExpressionContextScope> mExpressionContextScope;
 };
 
 #endif // QGSPOINTCLOUDRENDERER_H

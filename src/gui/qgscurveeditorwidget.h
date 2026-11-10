@@ -16,17 +16,18 @@
 #ifndef QGSCURVEEDITORWIDGET_H
 #define QGSCURVEEDITORWIDGET_H
 
-#include <QWidget>
+#include "qgis_gui.h"
 #include "qgis_sip.h"
-#include <QThread>
+#include "qgshistogram.h"
+#include "qgspropertytransformer.h"
+#include "qgsvectorlayer.h"
+
 #include <QMutex>
 #include <QPen>
 #include <QPointer>
+#include <QThread>
+#include <QWidget>
 #include <qwt_global.h>
-#include "qgis_gui.h"
-#include "qgspropertytransformer.h"
-#include "qgshistogram.h"
-#include "qgsvectorlayer.h"
 
 class QwtPlot;
 class QwtPlotCurve;
@@ -48,7 +49,7 @@ typedef QPointF QwtDoublePoint SIP_SKIP;
  * Calculates a histogram in a thread.
  * \note not available in Python bindings
  */
-class QgsHistogramValuesGatherer: public QThread
+class QgsHistogramValuesGatherer : public QThread
 {
     Q_OBJECT
 
@@ -95,23 +96,11 @@ class QgsHistogramValuesGatherer: public QThread
 
     const QgsHistogram &histogram() const { return mHistogram; }
 
-    const QgsVectorLayer *layer() const
-    {
-      return mLayer;
-    }
-    void setLayer( const QgsVectorLayer *layer )
-    {
-      mLayer = const_cast< QgsVectorLayer * >( layer );
-    }
+    const QgsVectorLayer *layer() const { return mLayer; }
+    void setLayer( const QgsVectorLayer *layer ) { mLayer = const_cast<QgsVectorLayer *>( layer ); }
 
-    QString expression() const
-    {
-      return mExpression;
-    }
-    void setExpression( const QString &expression )
-    {
-      mExpression = expression;
-    }
+    QString expression() const { return mExpression; }
+    void setExpression( const QString &expression ) { mExpression = expression; }
 
   signals:
 
@@ -121,8 +110,7 @@ class QgsHistogramValuesGatherer: public QThread
     void calculatedHistogram();
 
   private:
-
-    QPointer< const QgsVectorLayer > mLayer = nullptr;
+    QPointer<const QgsVectorLayer> mLayer = nullptr;
     QString mExpression;
     QgsHistogram mHistogram;
     QgsFeedback *mFeedback = nullptr;
@@ -144,7 +132,6 @@ class GUI_EXPORT QgsCurveEditorWidget : public QWidget
     Q_OBJECT
 
   public:
-
     /**
      * Constructor for QgsCurveEditorWidget.
      */
@@ -209,7 +196,6 @@ class GUI_EXPORT QgsCurveEditorWidget : public QWidget
     void changed();
 
   protected:
-
     void keyPressEvent( QKeyEvent *event ) override;
 
   private slots:
@@ -219,19 +205,18 @@ class GUI_EXPORT QgsCurveEditorWidget : public QWidget
     void plotMouseMove( QPointF point );
 
   private:
-
     QgsCurveTransform mCurve;
 
     QwtPlot *mPlot = nullptr;
 
     QwtPlotCurve *mPlotCurve = nullptr;
 
-    QList< QwtPlotMarker * > mMarkers;
+    QList<QwtPlotMarker *> mMarkers;
     QgsCurveEditorPlotEventFilter *mPlotFilter = nullptr;
     int mCurrentPlotMarkerIndex = -1;
     //! Background histogram gatherer thread
-    std::unique_ptr< QgsHistogramValuesGatherer > mGatherer;
-    std::unique_ptr< QgsHistogram > mHistogram;
+    std::unique_ptr<QgsHistogramValuesGatherer> mGatherer;
+    std::unique_ptr<QgsHistogram> mHistogram;
     double mMinValueRange = 0.0;
     double mMaxValueRange = 1.0;
 
@@ -244,10 +229,7 @@ class GUI_EXPORT QgsCurveEditorWidget : public QWidget
     int findNearestControlPoint( QPointF point ) const;
 
     QwtPlotHistogram *createPlotHistogram( const QBrush &brush, const QPen &pen = Qt::NoPen ) const;
-
 };
-
-
 
 
 #ifndef SIP_RUN
@@ -256,12 +238,11 @@ class GUI_EXPORT QgsCurveEditorWidget : public QWidget
 // For private only, not part of stable api or exposed to Python bindings
 //
 /// @cond PRIVATE
-class GUI_EXPORT QgsCurveEditorPlotEventFilter: public QObject
+class GUI_EXPORT QgsCurveEditorPlotEventFilter : public QObject
 {
     Q_OBJECT
 
   public:
-
     QgsCurveEditorPlotEventFilter( QwtPlot *plot );
 
     bool eventFilter( QObject *object, QEvent *event ) override;
@@ -273,7 +254,6 @@ class GUI_EXPORT QgsCurveEditorPlotEventFilter: public QObject
     void mouseMove( QPointF );
 
   private:
-
     QwtPlot *mPlot = nullptr;
     QPointF mapPoint( QPointF point ) const;
 };

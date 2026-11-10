@@ -20,11 +20,11 @@
 #ifndef QGSREQUESTHANDLER_H
 #define QGSREQUESTHANDLER_H
 
-#include <QMap>
-#include "qgis_sip.h"
-#include <QString>
-
 #include "qgis_server.h"
+#include "qgis_sip.h"
+
+#include <QMap>
+#include <QString>
 
 class QgsServerException;
 class QgsServerRequest;
@@ -32,13 +32,12 @@ class QgsServerResponse;
 
 /**
  * \ingroup server
- * \brief This class is an interface hiding the details of reading input and writing
+ * \brief An interface hiding the details of reading input and writing
  * output from/to a wms request mechanism.
  */
 class SERVER_EXPORT QgsRequestHandler
 {
   public:
-
     /**
      * Constructor
      *
@@ -66,8 +65,23 @@ class SERVER_EXPORT QgsRequestHandler
     //! Retrieve response header value
     QString responseHeader( const QString &name ) const;
 
-    //! Returns the response headers
-    QMap<QString, QString> responseHeaders() const;
+    /**
+     *  Returns the response headers: note that if multiple values are set for the same header, only the last one is returned
+     *  \deprecated QGIS 4.2. Use fullResponseHeaders() instead.
+     */
+    Q_DECL_DEPRECATED QMap<QString, QString> responseHeaders() const SIP_DEPRECATED;
+
+    /**
+     * Returns the list of response headers for a given header \a name
+     * \since QGIS 4.2
+     */
+    QList<QString> fullResponseHeader( const QString &name ) const;
+
+    /**
+     * Returns the response headers as a map of header name to list of values (to support multiple values for the same header)
+     * \since QGIS 4.2
+     */
+    QMap<QString, QList<QString>> fullResponseHeaders() const;
 
     //! Sets an HTTP request header
     void setRequestHeader( const QString &name, const QString &value );
@@ -78,7 +92,7 @@ class SERVER_EXPORT QgsRequestHandler
     //! Retrieve request header value
     QString requestHeader( const QString &name ) const;
 
-    //! Returns the the Request headers
+    //! Returns the Request headers
     QMap<QString, QString> requestHeaders() const;
 
     //! Clears the response body and headers
@@ -115,9 +129,10 @@ class SERVER_EXPORT QgsRequestHandler
     int statusCode() const;
 
     /**
-     * Returns the parsed parameters as a key-value pair, to modify
-     * a parameter setParameter( const QString &key, const QString &value)
-     * and removeParameter(const QString &key) must be used
+     * Returns the parsed parameters as a key-value pair.
+     *
+     * \see setParameter()
+     * \see removeParameter()
      */
     QMap<QString, QString> parameterMap() const;
 
@@ -153,11 +168,10 @@ class SERVER_EXPORT QgsRequestHandler
     QString mFormat;
     QString mFormatString; //format string as it is passed in the request (with base)
     QString mService;
-    bool mExceptionRaised;
+    bool mExceptionRaised = false;
 
-    QgsServerRequest   &mRequest;
-    QgsServerResponse  &mResponse;
-
+    QgsServerRequest &mRequest;
+    QgsServerResponse &mResponse;
 };
 
 #endif

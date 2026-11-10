@@ -16,14 +16,15 @@
 #ifndef QGSMAPTOOLSIMPLIFY_H
 #define QGSMAPTOOLSIMPLIFY_H
 
-#include "qgsmaptooledit.h"
 #include "ui_qgssimplifytolerancedialog.h"
 
-#include <QVector>
-#include "qgstolerance.h"
-#include "qgsgeometry.h"
 #include "qgis_app.h"
 #include "qgsfeature.h"
+#include "qgsgeometry.h"
+#include "qgsmaptooledit.h"
+#include "qgstolerance.h"
+
+#include <QVector>
 
 class QgsRubberBand;
 class QgsMapToolSimplify;
@@ -32,15 +33,14 @@ class QgsSimplifyUserInputWidget;
 
 
 //! Map tool to simplify line/polygon features
-class APP_EXPORT QgsMapToolSimplify: public QgsMapToolEdit
+class APP_EXPORT QgsMapToolSimplify : public QgsMapToolEdit
 {
     Q_OBJECT
   public:
-
     enum Method
     {
-      SimplifyDistance    = 0,
-      SimplifySnapToGrid  = 1,
+      SimplifyDistance = 0,
+      SimplifySnapToGrid = 1,
       SimplifyVisvalingam = 2,
       Smooth = 3
     };
@@ -84,7 +84,6 @@ class APP_EXPORT QgsMapToolSimplify: public QgsMapToolEdit
     void setMethod( QgsMapToolSimplify::Method method );
 
   private:
-
     void selectOneFeature( QPoint canvasPoint );
     void selectFeaturesInRect();
 
@@ -135,15 +134,13 @@ class APP_EXPORT QgsSimplifyUserInputWidget : public QWidget, private Ui::Simpli
     Q_OBJECT
 
   public:
-
-    QgsSimplifyUserInputWidget( QWidget *parent = nullptr );
+    QgsSimplifyUserInputWidget( QgsMapCanvas *canvas, QWidget *parent = nullptr );
 
     void updateStatusText( const QString &text );
     void enableOkButton( bool enabled );
 
-    void setConfig( QgsMapToolSimplify::Method method, double tolerance,
-                    Qgis::MapToolUnit units, double smoothOffset,
-                    int smoothIterations );
+    void setConfig( QgsMapToolSimplify::Method method, double tolerance, Qgis::MapToolUnit units, double smoothOffset, int smoothIterations );
+    void setTargetLayer( QgsMapLayer *layer );
 
   signals:
     void accepted();
@@ -157,6 +154,11 @@ class APP_EXPORT QgsSimplifyUserInputWidget : public QWidget, private Ui::Simpli
   protected:
     bool eventFilter( QObject *object, QEvent *ev ) override;
     void keyReleaseEvent( QKeyEvent *event ) override;
+
+  private:
+    QString mapUnitComboText() const;
+
+    QPointer< QgsMapCanvas > mCanvas;
 };
 
 #endif

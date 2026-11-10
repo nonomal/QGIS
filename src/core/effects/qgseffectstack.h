@@ -21,10 +21,14 @@
 #include "qgis_sip.h"
 #include "qgspainteffect.h"
 
+#include <QString>
+
+using namespace Qt::StringLiterals;
+
 /**
  * \ingroup core
  * \class QgsEffectStack
- * \brief A paint effect which consists of a stack of other chained paint effects
+ * \brief A paint effect which consists of a stack of other chained paint effects.
  *
  * Effect stacks can be used to apply multiple paint effects to a QPicture. For
  * instance, an effect stack may blur then apply a drop shadow.
@@ -42,20 +46,15 @@
 
 class CORE_EXPORT QgsEffectStack : public QgsPaintEffect SIP_NODEFAULTCTORS
 {
-
   public:
-
     /**
      * Creates a new QgsEffectStack effect. This method ignores
      * the map parameter, and always returns an empty effect stack.
      * \param map unused encoded properties string map
      * \returns new QgsEffectStack
      */
-    static QgsPaintEffect *create( const QVariantMap &map ) SIP_FACTORY;
+    static std::unique_ptr<QgsPaintEffect> create( const QVariantMap &map );
 
-    /**
-     * Constructor for empty QgsEffectStack.
-     */
     QgsEffectStack() = default;
 
     QgsEffectStack( const QgsEffectStack &other );
@@ -74,7 +73,8 @@ class CORE_EXPORT QgsEffectStack : public QgsPaintEffect SIP_NODEFAULTCTORS
 
     ~QgsEffectStack() override;
 
-    QString type() const override { return QStringLiteral( "effectStack" ); }
+    Qgis::PaintEffectFlags flags() const override;
+    QString type() const override { return u"effectStack"_s; }
     QgsEffectStack *clone() const override SIP_FACTORY;
     bool saveProperties( QDomDocument &doc, QDomElement &element ) const override;
     bool readProperties( const QDomElement &element ) override;
@@ -146,15 +146,12 @@ class CORE_EXPORT QgsEffectStack : public QgsPaintEffect SIP_NODEFAULTCTORS
 
 
   protected:
-
     void draw( QgsRenderContext &context ) override;
 
   private:
-
     QList< QgsPaintEffect * > mEffectList;
 
     void clearStack();
 };
 
 #endif // QGSEFFECTSTACK_H
-

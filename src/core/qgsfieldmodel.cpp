@@ -13,21 +13,22 @@
 *                                                                         *
 ***************************************************************************/
 
-#include <QFont>
-#include <QIcon>
-
 #include "qgsfieldmodel.h"
-#include "qgsmaplayermodel.h"
-#include "qgsmaplayerproxymodel.h"
-#include "qgslogger.h"
-#include "qgsapplication.h"
+
 #include "qgsvectorlayer.h"
 #include "qgsvectorlayerjoinbuffer.h"
 
+#include <QFont>
+#include <QIcon>
+#include <QString>
+
+#include "moc_qgsfieldmodel.cpp"
+
+using namespace Qt::StringLiterals;
+
 QgsFieldModel::QgsFieldModel( QObject *parent )
   : QAbstractItemModel( parent )
-{
-}
+{}
 
 QModelIndex QgsFieldModel::indexFromName( const QString &fieldName )
 {
@@ -376,7 +377,7 @@ QVariant QgsFieldModel::data( const QModelIndex &index, int role ) const
     {
       if ( exprIdx < 0 && !isEmpty )
       {
-        if ( mLayer && mFields.fieldOrigin( index.row() - fieldOffset ) == QgsFields::OriginJoin )
+        if ( mLayer && mFields.fieldOrigin( index.row() - fieldOffset ) == Qgis::FieldOrigin::Join )
         {
           int srcFieldIndex;
           const QgsVectorLayerJoinInfo *info = mLayer->joinBuffer()->joinForFieldIndex( index.row() - fieldOffset, mLayer->fields(), srcFieldIndex );
@@ -473,46 +474,64 @@ QVariant QgsFieldModel::data( const QModelIndex &index, int role ) const
   }
 }
 
-QString QgsFieldModel::fieldToolTip( const QgsField &field )
+QString QgsFieldModel::fieldToolTip( const QgsField &field, const QString &predefinedComment )
 {
   QString toolTip;
   if ( !field.alias().isEmpty() )
   {
-    toolTip = QStringLiteral( "<b>%1</b> (%2)" ).arg( field.alias(), field.name() );
+    toolTip = u"<b>%1</b> (%2)"_s.arg( field.alias(), field.name() );
   }
   else
   {
-    toolTip = QStringLiteral( "<b>%1</b>" ).arg( field.name() );
+    toolTip = u"<b>%1</b>"_s.arg( field.name() );
   }
 
-  toolTip += QStringLiteral( "<br><font style='font-family:monospace; white-space: nowrap;'>%3</font>" ).arg( field.displayType( true ) );
+  toolTip += u"<br><font style='font-family:monospace; white-space: nowrap;'>%3</font>"_s.arg( field.displayType( true ) );
 
-  const QString comment = field.comment();
-
-  if ( ! comment.isEmpty() )
+  QString comment = field.comment();
+  if ( !predefinedComment.isNull() )
   {
-    toolTip += QStringLiteral( "<br><em>%1</em>" ).arg( comment );
+    //predefinedComment overrides the comment - even when it's empty (not when it's null)
+    comment = predefinedComment;
+  }
+  else
+  {
+    //otherwise custom comment overrides the comment - even when it's empty (not when it's null)
+    const QString customComment = field.customComment();
+    if ( !customComment.isNull() )
+    {
+      comment = customComment;
+    }
+  }
+
+  if ( !comment.isEmpty() )
+  {
+    toolTip += u"<br><em>%1</em>"_s.arg( comment );
+  }
+
+  QString domainName = field.constraints().domainName();
+  if ( !domainName.isEmpty() )
+  {
+    toolTip += u"<br>"_s + tr( "Domain: %1" ).arg( domainName );
   }
 
   return toolTip;
 }
 
-QString QgsFieldModel::fieldToolTipExtended( const QgsField &field, const QgsVectorLayer *layer )
+QString QgsFieldModel::fieldToolTipExtended( const QgsField &field, const QgsVectorLayer *layer, const QString &predefinedComment )
 {
-  QString toolTip = QgsFieldModel::fieldToolTip( field );
+  QString toolTip = QgsFieldModel::fieldToolTip( field, predefinedComment );
   const QgsFields fields = layer->fields();
   const int fieldIdx = fields.indexOf( field.name() );
 
   if ( fieldIdx < 0 )
     return QString();
 
-  const QString expressionString = fields.fieldOrigin( fieldIdx ) == QgsFields::OriginExpression
-                                   ? layer->expressionField( fieldIdx )
-                                   : QString();
+  const QString expressionString = fields.fieldOrigin( fieldIdx ) == Qgis::FieldOrigin::Expression ? layer->expressionField( fieldIdx ) : QString();
 
   if ( !expressionString.isEmpty() )
   {
-    toolTip += QStringLiteral( "<br><font style='font-family:monospace;'>%3</font>" ).arg( expressionString );
+    toolTip += u"<br><font style='font-family:monospace;'>%3</font>"_s.arg( expressionString );
   }
 
   return toolTip;

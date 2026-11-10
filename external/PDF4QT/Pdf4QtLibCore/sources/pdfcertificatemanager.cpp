@@ -1,19 +1,24 @@
-//    Copyright (C) 2022 Jakub Melka
+// MIT License
 //
-//    This file is part of PDF4QT.
+// Copyright (c) 2018-2025 Jakub Melka and Contributors
 //
-//    PDF4QT is free software: you can redistribute it and/or modify
-//    it under the terms of the GNU Lesser General Public License as published by
-//    the Free Software Foundation, either version 3 of the License, or
-//    with the written consent of the copyright owner, any later version.
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
 //
-//    PDF4QT is distributed in the hope that it will be useful,
-//    but WITHOUT ANY WARRANTY; without even the implied warranty of
-//    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-//    GNU Lesser General Public License for more details.
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
 //
-//    You should have received a copy of the GNU Lesser General Public License
-//    along with PDF4QT.  If not, see <https://www.gnu.org/licenses/>.
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
 
 #include "pdfcertificatemanager.h"
 
@@ -80,9 +85,13 @@ void PDFCertificateManager::createCertificate(const NewCertificateInfo& info)
             X509_gmtime_adj(X509_getm_notAfter(certificate.get()), info.validityInSeconds);
 
             // Set name
-            X509_NAME* name = X509_get_subject_name(certificate.get());
+            const X509_NAME* name = X509_get_subject_name(certificate.get());
+            std::unique_ptr<X509_NAME, decltype(&X509_NAME_free)> nameCopy(
+              X509_NAME_dup(name),
+              X509_NAME_free
+              );
 
-            auto addString = [name](const char* identifier, QString string)
+            auto addString = [&nameCopy](const char* identifier, QString string)
             {
                 if (string.isEmpty())
                 {
@@ -90,7 +99,7 @@ void PDFCertificateManager::createCertificate(const NewCertificateInfo& info)
                 }
 
                 QByteArray stringUtf8 = string.toUtf8();
-                X509_NAME_add_entry_by_txt(name, identifier, MBSTRING_UTF8, reinterpret_cast<const unsigned char*>(stringUtf8.constData()), stringUtf8.length(), -1, 0);
+                X509_NAME_add_entry_by_txt(nameCopy.get(), identifier, MBSTRING_UTF8, reinterpret_cast<const unsigned char*>(stringUtf8.constData()), stringUtf8.length(), -1, 0);
             };
             addString("C", info.certCountryCode);
             addString("O", info.certOrganization);
@@ -106,7 +115,7 @@ void PDFCertificateManager::createCertificate(const NewCertificateInfo& info)
             X509_add_ext(certificate.get(), extension, -1);
             X509_EXTENSION_free(extension);
 
-            X509_set_issuer_name(certificate.get(), name);
+            X509_set_issuer_name(certificate.get(), nameCopy.get());
 
             // Set public key
             X509_set_pubkey(certificate.get(), privateKey.get());

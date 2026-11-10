@@ -15,18 +15,22 @@
 
 #include "qgsuniquevaluewidgetwrapper.h"
 
-#include "qgsvectorlayer.h"
-#include "qgsfilterlineedit.h"
 #include "qgsapplication.h"
+#include "qgsfilterlineedit.h"
+#include "qgsvectorlayer.h"
 
 #include <QCompleter>
 #include <QSettings>
+#include <QString>
+
+#include "moc_qgsuniquevaluewidgetwrapper.cpp"
+
+using namespace Qt::StringLiterals;
 
 QgsUniqueValuesWidgetWrapper::QgsUniqueValuesWidgetWrapper( QgsVectorLayer *layer, int fieldIdx, QWidget *editor, QWidget *parent )
   : QgsEditorWidgetWrapper( layer, fieldIdx, editor, parent )
 
-{
-}
+{}
 
 QVariant QgsUniqueValuesWidgetWrapper::value() const
 {
@@ -38,7 +42,7 @@ QVariant QgsUniqueValuesWidgetWrapper::value() const
   if ( mLineEdit )
   {
     if ( mLineEdit->text() == QgsApplication::nullRepresentation() )
-      value = QVariant( field().type() );
+      value = QgsVariantUtils::createNullVariant( field().type() );
     else
       value = mLineEdit->text();
   }
@@ -48,7 +52,7 @@ QVariant QgsUniqueValuesWidgetWrapper::value() const
 
 QWidget *QgsUniqueValuesWidgetWrapper::createWidget( QWidget *parent )
 {
-  if ( config( QStringLiteral( "Editable" ) ).toBool() )
+  if ( config( u"Editable"_s ).toBool() )
     return new QgsFilterLineEdit( parent );
   else
   {
@@ -66,7 +70,7 @@ void QgsUniqueValuesWidgetWrapper::initWidget( QWidget *editor )
 
   QStringList sValues;
 
-  const QSet< QVariant> values = layer()->uniqueValues( fieldIdx() );
+  const QSet<QVariant> values = layer()->uniqueValues( fieldIdx() );
 
   const auto constValues = values;
   for ( const QVariant &v : constValues )
@@ -85,18 +89,17 @@ void QgsUniqueValuesWidgetWrapper::initWidget( QWidget *editor )
   if ( mLineEdit )
   {
     QgsFilterLineEdit *fle = qobject_cast<QgsFilterLineEdit *>( editor );
-    if ( fle && !( field().type() == QVariant::Int || field().type() == QVariant::Double || field().type() == QVariant::LongLong || field().type() == QVariant::Date ) )
+    if ( fle && !( field().type() == QMetaType::Type::Int || field().type() == QMetaType::Type::Double || field().type() == QMetaType::Type::LongLong || field().type() == QMetaType::Type::QDate ) )
     {
       fle->setNullValue( QgsApplication::nullRepresentation() );
     }
 
-    QCompleter *c = new QCompleter( sValues );
+    QCompleter *c = new QCompleter( sValues, mLineEdit );
     c->setCaseSensitivity( Qt::CaseInsensitive );
     c->setCompletionMode( QCompleter::PopupCompletion );
     mLineEdit->setCompleter( c );
 
-    connect( mLineEdit, &QLineEdit::textChanged, this, [ = ]( const QString & value )
-    {
+    connect( mLineEdit, &QLineEdit::textChanged, this, [this]( const QString &value ) {
       Q_NOWARN_DEPRECATED_PUSH
       emit valueChanged( value );
       Q_NOWARN_DEPRECATED_POP
@@ -106,8 +109,7 @@ void QgsUniqueValuesWidgetWrapper::initWidget( QWidget *editor )
 
   if ( mComboBox )
   {
-    connect( mComboBox, static_cast<void ( QComboBox::* )( int )>( &QComboBox::currentIndexChanged ),
-             this, static_cast<void ( QgsEditorWidgetWrapper::* )()>( &QgsEditorWidgetWrapper::emitValueChanged ) );
+    connect( mComboBox, static_cast<void ( QComboBox::* )( int )>( &QComboBox::currentIndexChanged ), this, static_cast<void ( QgsEditorWidgetWrapper::* )()>( &QgsEditorWidgetWrapper::emitValueChanged ) );
   }
 }
 

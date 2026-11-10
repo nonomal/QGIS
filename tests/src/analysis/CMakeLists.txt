@@ -18,14 +18,19 @@ endif()
 #############################################################
 # Tests:
 set(TESTS
+ testqgsdistanceutils.cpp
  testqgsgeometrysnapper.cpp
  testqgsinterpolator.cpp
  testqgsprocessingalgspt1.cpp
  testqgsprocessingalgspt2.cpp
+ testqgsprocessingcheckgeometry.cpp
+ testqgsprocessingfixgeometry.cpp
  testqgsprocessingmodelalgorithm.cpp
  testqgszonalstatistics.cpp
+ testqgsrasteranalysisutils.cpp
  testqgsrastercalculator.cpp
  testqgsreclassifyutils.cpp
+ testqgsrelief.cpp
  testqgsalignraster.cpp
  testqgsnetworkanalysis.cpp
  testqgsninecellfilters.cpp
@@ -37,8 +42,12 @@ if(HAVE_GSL)
   set(TESTS ${TESTS} testqgsgcptransformer.cpp)
 endif()
 
-if (WITH_PDAL AND PDAL_2_5_OR_HIGHER)
+if (WITH_PDAL)
   set(TESTS ${TESTS} testqgsprocessingpdalalgs.cpp)
+endif()
+
+if (WITH_SFCGAL)
+  set(TESTS ${TESTS} testqgsprocessingsfcgalalgs.cpp)
 endif()
 
 foreach(TESTSRC ${TESTS})

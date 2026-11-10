@@ -14,16 +14,19 @@
  ***************************************************************************/
 
 #include "qgsnullsymbolrenderer.h"
-#include "qgssymbol.h"
+
 #include "qgsgeometry.h"
+#include "qgssymbol.h"
 
 #include <QDomDocument>
 #include <QDomElement>
+#include <QString>
+
+using namespace Qt::StringLiterals;
 
 QgsNullSymbolRenderer::QgsNullSymbolRenderer()
-  : QgsFeatureRenderer( QStringLiteral( "nullSymbol" ) )
-{
-}
+  : QgsFeatureRenderer( u"nullSymbol"_s )
+{}
 
 QgsNullSymbolRenderer::~QgsNullSymbolRenderer() = default;
 
@@ -45,15 +48,13 @@ bool QgsNullSymbolRenderer::renderFeature( const QgsFeature &feature, QgsRenderC
     return true;
   }
 
-  if ( !feature.hasGeometry() ||
-       feature.geometry().type() == Qgis::GeometryType::Null ||
-       feature.geometry().type() == Qgis::GeometryType::Unknown )
+  if ( !feature.hasGeometry() || feature.geometry().type() == Qgis::GeometryType::Null || feature.geometry().type() == Qgis::GeometryType::Unknown )
     return true;
 
   if ( !mSymbol )
   {
     //create default symbol
-    mSymbol.reset( QgsSymbol::defaultSymbol( feature.geometry().type() ) );
+    mSymbol = QgsSymbol::defaultSymbol( feature.geometry().type() );
     mSymbol->startRender( context );
   }
 
@@ -85,7 +86,7 @@ QSet<QString> QgsNullSymbolRenderer::usedAttributes( const QgsRenderContext & ) 
 
 QString QgsNullSymbolRenderer::dump() const
 {
-  return QStringLiteral( "NULL" );
+  return u"NULL"_s;
 }
 
 QgsFeatureRenderer *QgsNullSymbolRenderer::clone() const
@@ -100,11 +101,11 @@ QgsSymbolList QgsNullSymbolRenderer::symbols( QgsRenderContext & ) const
   return QgsSymbolList();
 }
 
-QgsFeatureRenderer *QgsNullSymbolRenderer::create( QDomElement &element, const QgsReadWriteContext &context )
+std::unique_ptr<QgsFeatureRenderer> QgsNullSymbolRenderer::create( QDomElement &element, const QgsReadWriteContext &context )
 {
   Q_UNUSED( element )
   Q_UNUSED( context )
-  QgsNullSymbolRenderer *r = new QgsNullSymbolRenderer();
+  auto r = std::make_unique<QgsNullSymbolRenderer>();
   return r;
 }
 
@@ -112,16 +113,16 @@ QDomElement QgsNullSymbolRenderer::save( QDomDocument &doc, const QgsReadWriteCo
 {
   Q_UNUSED( context )
   QDomElement rendererElem = doc.createElement( RENDERER_TAG_NAME );
-  rendererElem.setAttribute( QStringLiteral( "type" ), QStringLiteral( "nullSymbol" ) );
+  rendererElem.setAttribute( u"type"_s, u"nullSymbol"_s );
 
   saveRendererData( doc, rendererElem, context );
 
   return rendererElem;
 }
 
-QgsNullSymbolRenderer *QgsNullSymbolRenderer::convertFromRenderer( const QgsFeatureRenderer *renderer )
+std::unique_ptr<QgsNullSymbolRenderer> QgsNullSymbolRenderer::convertFromRenderer( const QgsFeatureRenderer *renderer )
 {
-  std::unique_ptr< QgsNullSymbolRenderer > res = std::make_unique< QgsNullSymbolRenderer >();
+  auto res = std::make_unique< QgsNullSymbolRenderer >();
   renderer->copyRendererData( res.get() );
-  return res.release();
+  return res;
 }
